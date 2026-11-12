@@ -63,6 +63,64 @@ internal static class ExpenseDataCodec
         return fields.ToArray();
     }
 
+    internal static string EncodeRow(string[] values)
+    {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (i > 0)
+                result.Append('|');
+            string value = values[i] ?? "";
+            for (int j = 0; j < value.Length; j++)
+            {
+                char character = value[j];
+                if (character == '\\' || character == '|')
+                    result.Append('\\');
+                result.Append(character);
+            }
+        }
+        return result.ToString();
+    }
+
+    internal static void SaveRows(string path, List<string[]> rows)
+    {
+        string temporaryPath = path + ".tmp";
+        string backupPath = path + ".bak";
+        bool hadOriginal = File.Exists(path);
+        if (hadOriginal)
+            File.Copy(path, backupPath, true);
+
+        try
+        {
+            using (StreamWriter writer = new StreamWriter(temporaryPath, false, new UTF8Encoding(false)))
+                for (int i = 0; i < rows.Count; i++)
+                    writer.WriteLine(EncodeRow(rows[i]));
+
+            File.Move(temporaryPath, path, true);
+        }
+        catch (Exception saveError)
+        {
+            try
+            {
+                if (hadOriginal && File.Exists(backupPath))
+                    File.Copy(backupPath, path, true);
+                else if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (Exception restoreError)
+            {
+                throw new IOException("Не удалось сохранить файл: " + saveError.Message +
+                    ". Не удалось вернуть предыдущий файл: " + restoreError.Message);
+            }
+            throw;
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
+    }
+
     internal static void ValidateDirectory(string directory)
     {
         for (int i = 0; i < DataFiles.Length; i++)
