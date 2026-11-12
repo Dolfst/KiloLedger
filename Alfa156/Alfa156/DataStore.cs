@@ -17,6 +17,10 @@ namespace CarExpenses
         private const string RepairsFile = "repairs.dat";
         private const string UtilitiesFile = "utilities.dat";
         private const string StartMenuShortcut = "Alfa 156.lnk";
+        private static readonly string[] DataFiles = new string[]
+        {
+            CarsFile, FuelFile, RepairsFile, UtilitiesFile
+        };
 
         internal static readonly string[] RepairCategories = new string[]
         {
@@ -36,6 +40,117 @@ namespace CarExpenses
             EnsureFile(FuelFile, null);
             EnsureFile(RepairsFile, "Alfa156.SeedData.Repairs.seed");
             EnsureFile(UtilitiesFile, "Alfa156.SeedData.Utilities.seed");
+        }
+
+        internal static string CreateBackup()
+        {
+            string backupRoot = GetBackupRoot();
+            Directory.CreateDirectory(backupRoot);
+
+            string folderName = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            string backupPath = Path.Combine(backupRoot, folderName);
+            int suffix = 1;
+            while (Directory.Exists(backupPath))
+            {
+                backupPath = Path.Combine(backupRoot, folderName + "_" + suffix.ToString(CultureInfo.InvariantCulture));
+                suffix++;
+            }
+
+            Directory.CreateDirectory(backupPath);
+            for (int i = 0; i < DataFiles.Length; i++)
+                File.Copy(GetPath(DataFiles[i]), Path.Combine(backupPath, DataFiles[i]), false);
+            return backupPath;
+        }
+
+        internal static string[] ListBackupNames()
+        {
+            string backupRoot = GetBackupRoot();
+            if (!Directory.Exists(backupRoot))
+                return new string[0];
+
+            string[] directories = Directory.GetDirectories(backupRoot);
+            List<string> names = new List<string>();
+            for (int i = 0; i < directories.Length; i++)
+                if (HasCompleteBackup(directories[i]))
+                    names.Add(Path.GetFileName(directories[i]));
+
+            for (int i = 0; i < names.Count; i++)
+                for (int j = i + 1; j < names.Count; j++)
+                    if (String.CompareOrdinal(names[i], names[j]) < 0)
+                    {
+                        string name = names[i];
+                        names[i] = names[j];
+                        names[j] = name;
+                    }
+            return names.ToArray();
+        }
+
+        internal static void RestoreBackup(string folderName)
+        {
+            if (folderName == null || folderName.Length == 0)
+                throw new ArgumentException("Выбрана неверная папка резервной копии.", "folderName");
+
+            string backupRoot = GetBackupRoot();
+            string[] backupNames = ListBackupNames();
+            bool found = false;
+            for (int i = 0; i < backupNames.Length; i++)
+                if (backupNames[i] == folderName)
+                    found = true;
+            if (!found)
+                throw new InvalidDataException("Выбрана неверная или неполная резервная копия.");
+
+            string backupPath = Path.Combine(backupRoot, folderName);
+            if (!HasCompleteBackup(backupPath))
+                throw new InvalidDataException("Резервная копия неполная или отсутствует.");
+
+            string safetyBackup = CreateBackup();
+            try
+            {
+                CopyBackupFiles(backupPath);
+            }
+            catch (Exception restoreError)
+            {
+                try
+                {
+                    CopyBackupFiles(safetyBackup);
+                }
+                catch (Exception rollbackError)
+                {
+                    throw new IOException("Восстановление прервано: " + restoreError.Message +
+                        ". Автоматический возврат текущих данных не удался: " + rollbackError.Message +
+                        ". Текущая копия сохранена в " + safetyBackup);
+                }
+                throw;
+            }
+        }
+
+        private static string GetBackupRoot()
+        {
+            string[] cardRoots = new string[]
+            {
+                @"\Storage Card", @"\SD Card", @"\SDMMC"
+            };
+            for (int i = 0; i < cardRoots.Length; i++)
+                if (Directory.Exists(cardRoots[i]))
+                    return Path.Combine(cardRoots[i], "Alfa156_Backups");
+            throw new DirectoryNotFoundException(
+                "Не найдена SD-карта. Проверьте, что она доступна как «Storage Card» или «SD Card».");
+        }
+
+        private static bool HasCompleteBackup(string backupPath)
+        {
+            if (!Directory.Exists(backupPath))
+                return false;
+            for (int i = 0; i < DataFiles.Length; i++)
+                if (!File.Exists(Path.Combine(backupPath, DataFiles[i])))
+                    return false;
+            return true;
+        }
+
+        private static void CopyBackupFiles(string backupPath)
+        {
+            for (int i = 0; i < DataFiles.Length; i++)
+                File.Copy(Path.Combine(backupPath, DataFiles[i]), GetPath(DataFiles[i]), true);
         }
 
         internal static void CreateStartMenuShortcut()

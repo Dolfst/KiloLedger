@@ -60,6 +60,10 @@ namespace CarExpenses
             MenuItem cars = CreateMenuItem("Авто");
             cars.MenuItems.Add(CreateMenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
             menu.MenuItems.Add(cars);
+            MenuItem data = CreateMenuItem("Данные");
+            data.MenuItems.Add(CreateMenuItem("Создать копию на SD", new EventHandler(CreateBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
+            menu.MenuItems.Add(data);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
 
@@ -457,15 +461,21 @@ namespace CarExpenses
 
         private bool ConfirmDelete(string description)
         {
+            return ConfirmAction("Подтверждение удаления",
+                "Удалить запись?\r\n" + description, "Удалить");
+        }
+
+        private bool ConfirmAction(string title, string messageText, string acceptText)
+        {
             using (Form confirmation = new Form())
             {
-                confirmation.Text = "Подтверждение удаления";
+                confirmation.Text = title;
                 confirmation.ClientSize = new Size(240, 150);
                 confirmation.MinimizeBox = false;
                 confirmation.WindowState = FormWindowState.Maximized;
 
                 Label message = new Label();
-                message.Text = "Удалить запись?\r\n" + description;
+                message.Text = messageText;
                 message.Location = new Point(10, 10);
                 message.Size = new Size(confirmation.ClientSize.Width - 20,
                     confirmation.ClientSize.Height - 90);
@@ -474,7 +484,7 @@ namespace CarExpenses
                 int buttonLeft = (confirmation.ClientSize.Width - 210) / 2;
                 int buttonTop = confirmation.ClientSize.Height - 55;
                 Button delete = new Button();
-                delete.Text = "Удалить";
+                delete.Text = acceptText;
                 delete.Location = new Point(buttonLeft, buttonTop);
                 delete.Size = new Size(100, 40);
                 delete.Click += delegate { confirmation.DialogResult = DialogResult.Yes; };
@@ -488,6 +498,75 @@ namespace CarExpenses
                 confirmation.Controls.Add(cancel);
 
                 return confirmation.ShowDialog() == DialogResult.Yes;
+            }
+        }
+
+        private void CreateBackupFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                string path = DataStore.CreateBackup();
+                MessageBox.Show("Резервная копия создана:\r\n" + path +
+                    "\r\nСкопируйте эту папку на компьютер через ActiveSync.",
+                    "Резервная копия");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось создать копию на SD-карте: " + ex.Message,
+                    "Ошибка резервного копирования");
+            }
+        }
+
+        private void RestoreBackupFromMenu(object sender, EventArgs e)
+        {
+            string[] backups;
+            try
+            {
+                backups = DataStore.ListBackupNames();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось прочитать копии с SD-карты: " + ex.Message,
+                    "Ошибка восстановления");
+                return;
+            }
+
+            if (backups.Length == 0)
+            {
+                MessageBox.Show("На SD-карте нет полных резервных копий Alfa 156.",
+                    "Восстановление");
+                return;
+            }
+
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Выберите дату копии", backups[0], backups, true)
+            };
+            string backupName;
+            using (EntryEditorForm editor = new EntryEditorForm("Выбор копии", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                backupName = editor.Values[0];
+            }
+
+            if (!ConfirmAction("Подтверждение восстановления",
+                "Текущие данные сначала сохранятся отдельной копией на SD-карту.\r\nЗаменить их копией " +
+                backupName + "?", "Восстановить"))
+                return;
+
+            try
+            {
+                DataStore.RestoreBackup(backupName);
+                currentCar = DataStore.LoadCarNames()[0];
+                ShowHome();
+                MessageBox.Show("Данные восстановлены из копии " + backupName + ".",
+                    "Восстановление завершено");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось восстановить данные: " + ex.Message,
+                    "Ошибка восстановления");
             }
         }
 
