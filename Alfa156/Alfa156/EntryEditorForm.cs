@@ -34,22 +34,29 @@ namespace CarExpenses
     {
         private readonly EntryField[] fields;
         private readonly Control[] inputs;
+        private readonly Label[] labels;
+        private readonly CheckBox[] dateEnabled;
 
         internal EntryEditorForm(string title, EntryField[] fields)
         {
             this.fields = fields;
             inputs = new Control[fields.Length];
+            labels = new Label[fields.Length];
+            dateEnabled = new CheckBox[fields.Length];
             Text = title;
             ClientSize = new System.Drawing.Size(240, 268);
             AutoScroll = true;
+            BackColor = System.Drawing.Color.FromArgb(232, 238, 244);
             MinimizeBox = false;
+            WindowState = FormWindowState.Maximized;
 
             for (int i = 0; i < fields.Length; i++)
                 AddField(i);
 
+            Resize += new EventHandler(ResizeInputs);
             MainMenu menu = new MainMenu();
-            menu.MenuItems.Add(new MenuItem("Сохранить", new EventHandler(Save)));
-            menu.MenuItems.Add(new MenuItem("Отмена", new EventHandler(Cancel)));
+            menu.MenuItems.Add(CreateMenuItem("Сохранить", new EventHandler(Save)));
+            menu.MenuItems.Add(CreateMenuItem("Отмена", new EventHandler(Cancel)));
             Menu = menu;
         }
 
@@ -64,7 +71,20 @@ namespace CarExpenses
                     if (combo != null)
                         values[i] = combo.SelectedItem == null ? "" : combo.SelectedItem.ToString();
                     else
-                        values[i] = inputs[i].Text.Trim();
+                    {
+                        DateTimePicker datePicker = inputs[i] as DateTimePicker;
+                        if (datePicker != null)
+                        {
+                            if (dateEnabled[i] == null || dateEnabled[i].Checked)
+                                values[i] = datePicker.Value.ToString(
+                                    fields[i].Kind == "month" ? "yyyy-MM" : "yyyy-MM-dd",
+                                    CultureInfo.InvariantCulture);
+                            else
+                                values[i] = "";
+                        }
+                        else
+                            values[i] = inputs[i].Text.Trim();
+                    }
                 }
                 return values;
             }
@@ -72,11 +92,13 @@ namespace CarExpenses
 
         private void AddField(int index)
         {
-            int top = 4 + index * 44;
+            int top = 8 + index * 72;
             Label label = new Label();
-            label.Location = new System.Drawing.Point(4, top);
-            label.Size = new System.Drawing.Size(225, 18);
             label.Text = fields[index].Label;
+            label.BackColor = BackColor;
+            label.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+            label.Font = new System.Drawing.Font("Arial", 9, System.Drawing.FontStyle.Bold);
+            labels[index] = label;
             Controls.Add(label);
 
             Control input;
@@ -84,6 +106,8 @@ namespace CarExpenses
             {
                 ComboBox combo = new ComboBox();
                 combo.DropDownStyle = ComboBoxStyle.DropDownList;
+                combo.BackColor = System.Drawing.Color.White;
+                combo.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
                 for (int j = 0; j < fields[index].Options.Length; j++)
                 {
                     combo.Items.Add(fields[index].Options[j]);
@@ -94,17 +118,105 @@ namespace CarExpenses
                     combo.SelectedIndex = 0;
                 input = combo;
             }
+            else if (fields[index].Kind == "date" || fields[index].Kind == "month")
+            {
+                DateTimePicker picker = new DateTimePicker();
+                picker.Format = DateTimePickerFormat.Custom;
+                picker.CustomFormat = fields[index].Kind == "month" ? "yyyy-MM" : "yyyy-MM-dd";
+                DateTime initialValue;
+                if (TryReadDate(fields[index].Value, fields[index].Kind == "month", out initialValue))
+                    picker.Value = initialValue;
+                if (!fields[index].Required)
+                {
+                    CheckBox enabled = new CheckBox();
+                    enabled.Text = "Указать";
+                    enabled.Checked = fields[index].Value.Length > 0;
+                    enabled.BackColor = BackColor;
+                    enabled.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                    dateEnabled[index] = enabled;
+                    picker.Enabled = enabled.Checked;
+                    enabled.Click += delegate { picker.Enabled = enabled.Checked; };
+                    Controls.Add(enabled);
+                }
+                input = picker;
+            }
             else
             {
                 TextBox text = new TextBox();
                 text.Text = fields[index].Value;
+                text.BackColor = System.Drawing.Color.White;
+                text.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
                 input = text;
             }
 
-            input.Location = new System.Drawing.Point(4, top + 18);
-            input.Size = new System.Drawing.Size(225, 22);
             inputs[index] = input;
             Controls.Add(input);
+            LayoutField(index, top);
+        }
+
+        private void ResizeInputs(object sender, EventArgs e)
+        {
+            for (int i = 0; i < fields.Length; i++)
+                LayoutField(i, 8 + i * 72);
+        }
+
+        private void LayoutField(int index, int top)
+        {
+            int width = ClientSize.Width - 20;
+            if (width < 40)
+                width = 40;
+            labels[index].Location = new System.Drawing.Point(10, top);
+            labels[index].Size = new System.Drawing.Size(width, 26);
+            if (dateEnabled[index] != null)
+            {
+                int inputWidth = width - 74;
+                if (inputWidth < 40)
+                    inputWidth = 40;
+                dateEnabled[index].Location = new System.Drawing.Point(10, top + 33);
+                dateEnabled[index].Size = new System.Drawing.Size(72, 34);
+                inputs[index].Location = new System.Drawing.Point(84, top + 33);
+                inputs[index].Size = new System.Drawing.Size(inputWidth, 34);
+            }
+            else
+            {
+                inputs[index].Location = new System.Drawing.Point(10, top + 33);
+                inputs[index].Size = new System.Drawing.Size(width, 34);
+            }
+        }
+
+        private static bool TryReadDate(string value, bool monthOnly, out DateTime date)
+        {
+            date = DateTime.Today;
+            if (monthOnly)
+            {
+                if (value.Length != 7 || value[4] != '-' || !HasDigits(value, 0, 4) ||
+                    !HasDigits(value, 5, 2))
+                    return false;
+                int year = ReadDigits(value, 0, 4);
+                int month = ReadDigits(value, 5, 2);
+                if (year < 1753 || year > 9998 || month < 1 || month > 12)
+                    return false;
+                date = new DateTime(year, month, 1);
+                return true;
+            }
+
+            if (value.Length != 10 || value[4] != '-' || value[7] != '-' ||
+                !HasDigits(value, 0, 4) || !HasDigits(value, 5, 2) || !HasDigits(value, 8, 2))
+                return false;
+            int dateYear = ReadDigits(value, 0, 4);
+            int dateMonth = ReadDigits(value, 5, 2);
+            int day = ReadDigits(value, 8, 2);
+            if (dateYear < 1753)
+                return false;
+            try
+            {
+                date = new DateTime(dateYear, dateMonth, day);
+                return true;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
 
         private void Save(object sender, EventArgs e)
@@ -124,9 +236,7 @@ namespace CarExpenses
 
                 if (fields[i].Kind == "date")
                 {
-                    DateTime date;
-                    if (!DateTime.TryParseExact(values[i], "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out date))
+                    if (!IsValidDate(values[i]))
                     {
                         InvalidValue(i, "Введите дату в формате гггг-мм-дд.");
                         return;
@@ -134,9 +244,7 @@ namespace CarExpenses
                 }
                 else if (fields[i].Kind == "month")
                 {
-                    DateTime month;
-                    if (!DateTime.TryParseExact(values[i], "yyyy-MM", CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out month))
+                    if (!IsValidMonth(values[i]))
                     {
                         InvalidValue(i, "Введите месяц в формате гггг-мм.");
                         return;
@@ -155,6 +263,60 @@ namespace CarExpenses
             }
 
             DialogResult = DialogResult.OK;
+        }
+
+        private static MenuItem CreateMenuItem(string text, EventHandler handler)
+        {
+            MenuItem item = new MenuItem();
+            item.Text = text;
+            item.Click += handler;
+            return item;
+        }
+
+        private static bool IsValidMonth(string value)
+        {
+            if (value.Length != 7 || value[4] != '-')
+                return false;
+            if (!HasDigits(value, 0, 4) || !HasDigits(value, 5, 2))
+                return false;
+            int year = ReadDigits(value, 0, 4);
+            int month = ReadDigits(value, 5, 2);
+            return year >= 1753 && month >= 1 && month <= 12;
+        }
+
+        private static bool IsValidDate(string value)
+        {
+            if (value.Length != 10 || value[4] != '-' || value[7] != '-')
+                return false;
+            if (!HasDigits(value, 0, 4) || !HasDigits(value, 5, 2) || !HasDigits(value, 8, 2))
+                return false;
+
+            int year = ReadDigits(value, 0, 4);
+            int month = ReadDigits(value, 5, 2);
+            int day = ReadDigits(value, 8, 2);
+            if (year < 1753 || month < 1 || month > 12)
+                return false;
+
+            int[] daysInMonth = new int[] { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+            if (month == 2 && (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)))
+                daysInMonth[1] = 29;
+            return day >= 1 && day <= daysInMonth[month - 1];
+        }
+
+        private static bool HasDigits(string value, int start, int count)
+        {
+            for (int i = start; i < start + count; i++)
+                if (value[i] < '0' || value[i] > '9')
+                    return false;
+            return true;
+        }
+
+        private static int ReadDigits(string value, int start, int count)
+        {
+            int number = 0;
+            for (int i = start; i < start + count; i++)
+                number = number * 10 + value[i] - '0';
+            return number;
         }
 
         private void InvalidValue(int index, string message)

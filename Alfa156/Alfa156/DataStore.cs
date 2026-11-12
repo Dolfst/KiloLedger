@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -15,6 +16,7 @@ namespace CarExpenses
         private const string FuelFile = "fuel.dat";
         private const string RepairsFile = "repairs.dat";
         private const string UtilitiesFile = "utilities.dat";
+        private const string StartMenuShortcut = "Alfa 156.lnk";
 
         internal static readonly string[] RepairCategories = new string[]
         {
@@ -35,6 +37,39 @@ namespace CarExpenses
             EnsureFile(RepairsFile, "Alfa156.SeedData.Repairs.seed");
             EnsureFile(UtilitiesFile, "Alfa156.SeedData.Utilities.seed");
         }
+
+        internal static void CreateStartMenuShortcut()
+        {
+            string programsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+            if (programsDirectory == null || programsDirectory.Length == 0)
+                throw new IOException("Windows Mobile не вернул путь к меню «Пуск → Программы».");
+
+            string shortcutPath = Path.Combine(programsDirectory, StartMenuShortcut);
+            if (File.Exists(shortcutPath))
+                return;
+
+            Directory.CreateDirectory(programsDirectory);
+            string executablePath = GetExecutablePath();
+            string target = "\"" + executablePath + "\"";
+            using (StreamWriter writer = new StreamWriter(shortcutPath, false, Encoding.ASCII))
+            {
+                writer.Write(target.Length.ToString(CultureInfo.InvariantCulture));
+                writer.Write("#");
+                writer.Write(target);
+            }
+        }
+
+        private static string GetExecutablePath()
+        {
+            StringBuilder path = new StringBuilder(260);
+            int length = GetModuleFileName(IntPtr.Zero, path, path.Capacity);
+            if (length <= 0 || length >= path.Capacity)
+                throw new IOException("Не удалось определить путь к файлу Alfa156.exe.");
+            return path.ToString();
+        }
+
+        [DllImport("coredll.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetModuleFileName(IntPtr module, StringBuilder fileName, int size);
 
         private static void EnsureFile(string fileName, string resourceName)
         {
@@ -117,6 +152,42 @@ namespace CarExpenses
             Append(UtilitiesFile, values);
         }
 
+        internal static void UpdateFuelAt(int index, string[] values)
+        {
+            ReplaceAt(FuelFile, index, values);
+        }
+
+        internal static void UpdateRepairAt(int index, string[] values)
+        {
+            ReplaceAt(RepairsFile, index, values);
+        }
+
+        internal static void UpdateUtilityAt(int index, string[] values)
+        {
+            List<string[]> records = ReadRows(UtilitiesFile);
+            ValidateIndex(records, index);
+            for (int i = 0; i < records.Count; i++)
+                if (i != index && records[i][0] == values[0])
+                    throw new InvalidOperationException("Запись за этот месяц уже существует.");
+            records[index] = values;
+            SaveRows(UtilitiesFile, records);
+        }
+
+        internal static void DeleteFuelAt(int index)
+        {
+            DeleteAt(FuelFile, index);
+        }
+
+        internal static void DeleteRepairAt(int index)
+        {
+            DeleteAt(RepairsFile, index);
+        }
+
+        internal static void DeleteUtilityAt(int index)
+        {
+            DeleteAt(UtilitiesFile, index);
+        }
+
         internal static bool ContainsUtilityMonth(string month)
         {
             List<string[]> records = LoadUtilities();
@@ -144,6 +215,67 @@ namespace CarExpenses
         {
             using (StreamWriter writer = new StreamWriter(GetPath(fileName), true))
                 writer.WriteLine(EncodeRow(values));
+        }
+
+        private static void ReplaceAt(string fileName, int index, string[] values)
+        {
+            List<string[]> records = ReadRows(fileName);
+            ValidateIndex(records, index);
+            records[index] = values;
+            SaveRows(fileName, records);
+        }
+
+        private static void DeleteAt(string fileName, int index)
+        {
+            List<string[]> records = ReadRows(fileName);
+            ValidateIndex(records, index);
+            records.RemoveAt(index);
+            SaveRows(fileName, records);
+        }
+
+        private static void ValidateIndex(List<string[]> records, int index)
+        {
+            if (index < 0 || index >= records.Count)
+                throw new ArgumentOutOfRangeException("index", "Выбранная запись уже отсутствует.");
+        }
+
+        private static void SaveRows(string fileName, List<string[]> records)
+        {
+            string path = GetPath(fileName);
+            string backupPath = path + ".bak";
+            string temporaryPath = path + ".tmp";
+
+            File.Copy(path, backupPath, true);
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(temporaryPath, false))
+                    for (int i = 0; i < records.Count; i++)
+                        writer.WriteLine(EncodeRow(records[i]));
+            }
+            catch
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+                throw;
+            }
+
+            try
+            {
+                File.Delete(path);
+                File.Move(temporaryPath, path);
+            }
+            catch
+            {
+                if (File.Exists(backupPath))
+                {
+                    if (File.Exists(path))
+                        File.Delete(path);
+                    File.Copy(backupPath, path, true);
+                }
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+                throw;
+            }
         }
 
         private static List<string[]> ReadRows(string fileName)
@@ -225,8 +357,22 @@ namespace CarExpenses
             else
                 normalized = normalized.Replace(',', '.');
 
-            return Decimal.TryParse(normalized, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
-                CultureInfo.InvariantCulture, out value);
+            try
+            {
+                value = Decimal.Parse(normalized, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch (FormatException)
+            {
+                value = 0;
+                return false;
+            }
+            catch (OverflowException)
+            {
+                value = 0;
+                return false;
+            }
         }
 
         internal static decimal NumberOrZero(string text)

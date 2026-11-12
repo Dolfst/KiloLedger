@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
 
@@ -15,47 +16,96 @@ namespace CarExpenses
         private string currentCar;
         private ListBox recordList;
         private List<string[]> displayedRecords;
+        private List<int> displayedRecordIndexes;
+        private string screenType;
+        private Label homeCarLabel;
+        private Panel homeLogoPanel;
+        private Label screenHeading;
+        private TextBox summaryBox;
+        private List<Button> homeButtons;
+        private string filterCategory = "Все категории";
+        private string filterDateFrom = "";
+        private string filterDateTo = "";
+        private string filterText = "";
 
         public Form1()
         {
             InitializeComponent();
             DataStore.Initialize();
+            try
+            {
+                DataStore.CreateStartMenuShortcut();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось создать ярлык в меню «Пуск»: " + ex.Message, "Предупреждение");
+            }
             currentCar = DataStore.LoadCarNames()[0];
+            Resize += new EventHandler(FormResized);
             ShowHome();
         }
 
         private void ShowHome()
         {
+            screenType = "home";
             Controls.Clear();
+            homeCarLabel = null;
+            homeLogoPanel = null;
+            screenHeading = null;
+            summaryBox = null;
+            recordList = null;
+            homeButtons = new List<Button>();
             Text = "Учет расходов";
             MainMenu menu = new MainMenu();
-            MenuItem cars = new MenuItem("Авто");
-            cars.MenuItems.Add(new MenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
+            MenuItem cars = CreateMenuItem("Авто");
+            cars.MenuItems.Add(CreateMenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
             menu.MenuItems.Add(cars);
-            menu.MenuItems.Add(new MenuItem("Выход", new EventHandler(ExitApplication)));
+            menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
 
-            Label selectedCar = new Label();
-            selectedCar.Location = new System.Drawing.Point(4, 4);
-            selectedCar.Size = new System.Drawing.Size(225, 28);
-            selectedCar.Text = "Автомобиль: " + currentCar;
-            Controls.Add(selectedCar);
+            homeLogoPanel = new Panel();
+            homeLogoPanel.BackColor = Color.FromArgb(35, 51, 70);
+            homeLogoPanel.Paint += new PaintEventHandler(DrawLogo);
+            Controls.Add(homeLogoPanel);
 
-            AddHomeButton(FuelSection, 35);
-            AddHomeButton(RepairSection, 78);
-            AddHomeButton(UtilitiesSection, 121);
-            AddHomeButton("Сводка и ТО", 164);
+            homeCarLabel = new Label();
+            homeCarLabel.Text = "Автомобиль: " + currentCar;
+            homeCarLabel.BackColor = Color.FromArgb(232, 238, 244);
+            homeCarLabel.ForeColor = Color.FromArgb(35, 51, 70);
+            homeCarLabel.Font = new Font("Arial", 10, FontStyle.Bold);
+            Controls.Add(homeCarLabel);
+
+            AddHomeButton(FuelSection);
+            AddHomeButton(RepairSection);
+            AddHomeButton(UtilitiesSection);
+            AddHomeButton("Сводка и ТО");
+            LayoutScreen();
         }
 
-        private void AddHomeButton(string section, int top)
+        private void AddHomeButton(string section)
         {
             Button button = new Button();
-            button.Location = new System.Drawing.Point(5, top);
-            button.Size = new System.Drawing.Size(225, 38);
             button.Text = section;
             button.Tag = section;
+            button.BackColor = Color.FromArgb(49, 77, 102);
+            button.ForeColor = Color.White;
             button.Click += new EventHandler(OpenSection);
             Controls.Add(button);
+            homeButtons.Add(button);
+        }
+
+        private void DrawLogo(object sender, PaintEventArgs e)
+        {
+            e.Graphics.Clear(Color.FromArgb(35, 51, 70));
+            using (SolidBrush badge = new SolidBrush(Color.FromArgb(160, 32, 45)))
+            using (SolidBrush whiteBrush = new SolidBrush(Color.White))
+            using (Font markFont = new Font("Arial", 17, FontStyle.Bold))
+            using (Font titleFont = new Font("Arial", 13, FontStyle.Bold))
+            {
+                e.Graphics.FillEllipse(badge, 8, 8, 36, 36);
+                e.Graphics.DrawString("A", markFont, whiteBrush, 16, 8);
+                e.Graphics.DrawString("ALFA 156", titleFont, whiteBrush, 56, 15);
+            }
         }
 
         private void OpenSection(object sender, EventArgs e)
@@ -69,23 +119,28 @@ namespace CarExpenses
 
         private void ShowRecords(string section)
         {
+            screenType = "records";
+            homeCarLabel = null;
+            homeLogoPanel = null;
+            screenHeading = null;
+            summaryBox = null;
+            homeButtons = null;
             currentSection = section;
             Controls.Clear();
             Text = section;
 
-            Label heading = new Label();
-            heading.Location = new System.Drawing.Point(4, 3);
-            heading.Size = new System.Drawing.Size(225, 22);
-            heading.Text = section == UtilitiesSection ? section : section + ": " + currentCar;
-            Controls.Add(heading);
+            screenHeading = new Label();
+            screenHeading.Text = section == UtilitiesSection ? section : section + ": " + currentCar;
+            StyleHeading(screenHeading);
+            Controls.Add(screenHeading);
 
             recordList = new ListBox();
-            recordList.Location = new System.Drawing.Point(3, 26);
-            recordList.Size = new System.Drawing.Size(230, 225);
-            recordList.HorizontalScrollbar = true;
+            recordList.BackColor = Color.White;
+            recordList.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(recordList);
 
             displayedRecords = new List<string[]>();
+            displayedRecordIndexes = new List<int>();
             List<string[]> records;
             try
             {
@@ -108,8 +163,11 @@ namespace CarExpenses
                 string[] row = records[i];
                 if (section != UtilitiesSection && row[1] != currentCar)
                     continue;
+                if (section == RepairSection && !MatchesRepairFilter(row))
+                    continue;
 
                 displayedRecords.Add(row);
+                displayedRecordIndexes.Add(i);
                 if (section == FuelSection)
                     recordList.Items.Add(FormatFuel(row, records));
                 else if (section == RepairSection)
@@ -120,12 +178,77 @@ namespace CarExpenses
             }
 
             MainMenu menu = new MainMenu();
-            MenuItem actions = new MenuItem("Действия");
-            actions.MenuItems.Add(new MenuItem("Добавить", new EventHandler(AddCurrentRecord)));
-            actions.MenuItems.Add(new MenuItem("Подробно", new EventHandler(ShowRecordDetails)));
+            MenuItem actions = CreateMenuItem("Действия");
+            actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCurrentRecord)));
+            actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
+            actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
+            actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
+            if (section == RepairSection)
+            {
+                actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditRepairFilter)));
+                actions.MenuItems.Add(CreateMenuItem("Сбросить фильтр", new EventHandler(ResetRepairFilter)));
+            }
             menu.MenuItems.Add(actions);
-            menu.MenuItems.Add(new MenuItem("Назад", new EventHandler(ShowHome)));
+            menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
+            LayoutScreen();
+        }
+
+        private bool MatchesRepairFilter(string[] row)
+        {
+            if (filterCategory != "Все категории" && row[3] != filterCategory)
+                return false;
+            if (filterDateFrom != "" && String.CompareOrdinal(row[0], filterDateFrom) < 0)
+                return false;
+            if (filterDateTo != "" && String.CompareOrdinal(row[0], filterDateTo) > 0)
+                return false;
+            if (filterText != "")
+            {
+                string searchableText = (row[4] + " " + row[5]).ToLower(CultureInfo.CurrentCulture);
+                if (searchableText.IndexOf(filterText.ToLower(CultureInfo.CurrentCulture)) < 0)
+                    return false;
+            }
+            return true;
+        }
+
+        private void EditRepairFilter(object sender, EventArgs e)
+        {
+            List<string> categories = new List<string>();
+            categories.Add("Все категории");
+            categories.AddRange(DataStore.RepairCategories);
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Категория", filterCategory, categories.ToArray(), true),
+                new EntryField("Дата с (гггг-мм-дд)", filterDateFrom, "date", false),
+                new EntryField("Дата по (гггг-мм-дд)", filterDateTo, "date", false),
+                new EntryField("Название / товар", filterText, "text", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Фильтр ремонта", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                if (values[1] != "" && values[2] != "" &&
+                    String.CompareOrdinal(values[1], values[2]) > 0)
+                {
+                    MessageBox.Show("Начало периода не может быть позже его окончания.", "Фильтр");
+                    return;
+                }
+                filterCategory = values[0];
+                filterDateFrom = values[1];
+                filterDateTo = values[2];
+                filterText = values[3];
+            }
+            ShowRecords(RepairSection);
+        }
+
+        private void ResetRepairFilter(object sender, EventArgs e)
+        {
+            filterCategory = "Все категории";
+            filterDateFrom = "";
+            filterDateTo = "";
+            filterText = "";
+            ShowRecords(RepairSection);
         }
 
         private string FormatFuel(string[] row, List<string[]> allRows)
@@ -193,27 +316,179 @@ namespace CarExpenses
             string details;
             if (currentSection == FuelSection)
             {
-                details = "Авто: " + row[1] + "\nДата: " + row[0] +
-                    "\nПробег: " + row[2] + " км\nЛитры: " + row[3] +
-                    "\nСтоимость: " + row[4] + " BYN";
+                details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
+                    "\r\nПробег: " + row[2] + " км\r\nЛитры: " + row[3] +
+                    "\r\nСтоимость: " + row[4] + " BYN";
             }
             else if (currentSection == RepairSection)
             {
-                details = "Авто: " + row[1] + "\nДата: " + row[0] +
-                    "\nПробег: " + row[2] + " км\nКатегория: " + row[3] +
-                    "\nТовар: " + row[4] + "\nНаименование: " + row[5] +
-                    "\nКоличество: " + row[6] + "\nСумма: " + row[7] +
-                    " BYN\nКомментарий: " + row[8];
+                details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
+                    "\r\nПробег: " + row[2] + " км\r\nКатегория: " + row[3] +
+                    "\r\nТовар: " + row[4] + "\r\nНаименование: " + row[5] +
+                    "\r\nКоличество: " + row[6] + "\r\nСумма: " + row[7] +
+                    " BYN\r\nКомментарий: " + row[8];
             }
             else
             {
                 string[] labels = DataStore.UtilityLabels;
-                details = row[0] + "\n";
+                details = row[0] + "\r\n";
                 for (int i = 0; i < labels.Length; i++)
-                    details += labels[i] + ": " + row[i + 1] + " BYN\n";
+                    details += labels[i] + ": " + row[i + 1] + " BYN\r\n";
                 details += "Итого: " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
             }
             MessageBox.Show(details, "Запись");
+        }
+
+        private void EditCurrentRecord(object sender, EventArgs e)
+        {
+            if (recordList.SelectedIndex < 0 || displayedRecords == null)
+            {
+                MessageBox.Show("Сначала выберите запись.", "Учет");
+                return;
+            }
+
+            int selectedIndex = recordList.SelectedIndex;
+            int sourceIndex = displayedRecordIndexes[selectedIndex];
+            string[] row = displayedRecords[selectedIndex];
+
+            if (currentSection == FuelSection)
+            {
+                EntryField[] fields = new EntryField[]
+                {
+                    new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
+                    new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
+                    new EntryField("Пробег, км", row[2], "number", true),
+                    new EntryField("Литры", row[3], "number", true),
+                    new EntryField("Стоимость, BYN", row[4], "number", true)
+                };
+                using (EntryEditorForm editor = new EntryEditorForm("Изменить заправку", fields))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.UpdateFuelAt(sourceIndex, values); }))
+                        return;
+                    currentCar = values[1];
+                }
+            }
+            else if (currentSection == RepairSection)
+            {
+                EntryField[] fields = new EntryField[]
+                {
+                    new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
+                    new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
+                    new EntryField("Пробег, км", row[2], "number", false),
+                    new EntryField("Категория", row[3], DataStore.RepairCategories, true),
+                    new EntryField("Товар / деталь", row[4], "text", true),
+                    new EntryField("Наименование", row[5], "text", false),
+                    new EntryField("Количество", row[6], "number", true),
+                    new EntryField("Сумма, BYN", row[7], "number", true),
+                    new EntryField("Комментарий", row[8], "text", false)
+                };
+                using (EntryEditorForm editor = new EntryEditorForm("Изменить ремонт", fields))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.UpdateRepairAt(sourceIndex, values); }))
+                        return;
+                    currentCar = values[1];
+                }
+            }
+            else
+            {
+                EntryField[] fields = CreateUtilityFields(row);
+                using (EntryEditorForm editor = new EntryEditorForm("Изменить коммунальные", fields))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.UpdateUtilityAt(sourceIndex, values); }))
+                        return;
+                }
+            }
+
+            ShowRecords(currentSection);
+        }
+
+        private EntryField[] CreateUtilityFields(string[] row)
+        {
+            EntryField[] fields = new EntryField[8];
+            fields[0] = new EntryField("Месяц (гггг-мм)", row[0], "month", true);
+            for (int i = 0; i < DataStore.UtilityLabels.Length; i++)
+                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", BYN",
+                    row[i + 1], "number", false);
+            return fields;
+        }
+
+        private void DeleteCurrentRecord(object sender, EventArgs e)
+        {
+            if (recordList.SelectedIndex < 0 || displayedRecords == null)
+            {
+                MessageBox.Show("Сначала выберите запись.", "Учет");
+                return;
+            }
+
+            int selectedIndex = recordList.SelectedIndex;
+            string[] row = displayedRecords[selectedIndex];
+            string description;
+            if (currentSection == FuelSection)
+                description = row[0] + ", " + row[2] + " км, " + row[4] + " BYN";
+            else if (currentSection == RepairSection)
+                description = row[0] + ", " + row[3] + ": " + ShortText(row[4], 24);
+            else
+                description = "коммунальные платежи за " + row[0];
+
+            if (!ConfirmDelete(description))
+                return;
+
+            int sourceIndex = displayedRecordIndexes[selectedIndex];
+            bool saved;
+            if (currentSection == FuelSection)
+                saved = TrySave(delegate { DataStore.DeleteFuelAt(sourceIndex); });
+            else if (currentSection == RepairSection)
+                saved = TrySave(delegate { DataStore.DeleteRepairAt(sourceIndex); });
+            else
+                saved = TrySave(delegate { DataStore.DeleteUtilityAt(sourceIndex); });
+
+            if (saved)
+                ShowRecords(currentSection);
+        }
+
+        private bool ConfirmDelete(string description)
+        {
+            using (Form confirmation = new Form())
+            {
+                confirmation.Text = "Подтверждение удаления";
+                confirmation.ClientSize = new Size(240, 150);
+                confirmation.MinimizeBox = false;
+                confirmation.WindowState = FormWindowState.Maximized;
+
+                Label message = new Label();
+                message.Text = "Удалить запись?\r\n" + description;
+                message.Location = new Point(10, 10);
+                message.Size = new Size(confirmation.ClientSize.Width - 20,
+                    confirmation.ClientSize.Height - 90);
+                confirmation.Controls.Add(message);
+
+                int buttonLeft = (confirmation.ClientSize.Width - 210) / 2;
+                int buttonTop = confirmation.ClientSize.Height - 55;
+                Button delete = new Button();
+                delete.Text = "Удалить";
+                delete.Location = new Point(buttonLeft, buttonTop);
+                delete.Size = new Size(100, 40);
+                delete.Click += delegate { confirmation.DialogResult = DialogResult.Yes; };
+                confirmation.Controls.Add(delete);
+
+                Button cancel = new Button();
+                cancel.Text = "Отмена";
+                cancel.Location = new Point(buttonLeft + 110, buttonTop);
+                cancel.Size = new Size(100, 40);
+                cancel.Click += delegate { confirmation.DialogResult = DialogResult.No; };
+                confirmation.Controls.Add(cancel);
+
+                return confirmation.ShowDialog() == DialogResult.Yes;
+            }
         }
 
         private void AddCurrentRecord(object sender, EventArgs e)
@@ -313,17 +588,22 @@ namespace CarExpenses
 
         private void ShowCars(object sender, EventArgs e)
         {
+            screenType = "cars";
+            homeCarLabel = null;
+            homeLogoPanel = null;
+            screenHeading = null;
+            summaryBox = null;
+            homeButtons = null;
             Controls.Clear();
             Text = "Автомобили";
-            Label heading = new Label();
-            heading.Location = new System.Drawing.Point(4, 3);
-            heading.Size = new System.Drawing.Size(225, 22);
-            heading.Text = "Текущий автомобиль: " + currentCar;
-            Controls.Add(heading);
+            screenHeading = new Label();
+            screenHeading.Text = "Текущий автомобиль: " + currentCar;
+            StyleHeading(screenHeading);
+            Controls.Add(screenHeading);
 
             recordList = new ListBox();
-            recordList.Location = new System.Drawing.Point(3, 26);
-            recordList.Size = new System.Drawing.Size(230, 225);
+            recordList.BackColor = Color.White;
+            recordList.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(recordList);
             string[] cars;
             try
@@ -344,12 +624,13 @@ namespace CarExpenses
             }
 
             MainMenu menu = new MainMenu();
-            MenuItem actions = new MenuItem("Действия");
-            actions.MenuItems.Add(new MenuItem("Выбрать", new EventHandler(SelectCar)));
-            actions.MenuItems.Add(new MenuItem("Добавить", new EventHandler(AddCar)));
+            MenuItem actions = CreateMenuItem("Действия");
+            actions.MenuItems.Add(CreateMenuItem("Выбрать", new EventHandler(SelectCar)));
+            actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCar)));
             menu.MenuItems.Add(actions);
-            menu.MenuItems.Add(new MenuItem("Назад", new EventHandler(ShowHome)));
+            menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
+            LayoutScreen();
         }
 
         private void SelectCar(object sender, EventArgs e)
@@ -388,23 +669,28 @@ namespace CarExpenses
 
         private void ShowSummary()
         {
+            screenType = "summary";
+            homeCarLabel = null;
+            homeLogoPanel = null;
+            screenHeading = null;
+            recordList = null;
+            homeButtons = null;
             Controls.Clear();
             Text = "Сводка";
-            Label heading = new Label();
-            heading.Location = new System.Drawing.Point(4, 3);
-            heading.Size = new System.Drawing.Size(225, 22);
-            heading.Text = "Сводка расходов";
-            Controls.Add(heading);
+            screenHeading = new Label();
+            screenHeading.Text = "Сводка расходов";
+            StyleHeading(screenHeading);
+            Controls.Add(screenHeading);
 
-            TextBox summary = new TextBox();
-            summary.Location = new System.Drawing.Point(3, 26);
-            summary.Size = new System.Drawing.Size(230, 225);
-            summary.Multiline = true;
-            summary.ReadOnly = true;
-            summary.ScrollBars = ScrollBars.Vertical;
+            summaryBox = new TextBox();
+            summaryBox.Multiline = true;
+            summaryBox.ReadOnly = true;
+            summaryBox.ScrollBars = ScrollBars.Vertical;
+            summaryBox.BackColor = Color.FromArgb(245, 248, 251);
+            summaryBox.ForeColor = Color.FromArgb(35, 51, 70);
             try
             {
-                summary.Text = BuildSummary();
+                summaryBox.Text = BuildSummary();
             }
             catch (Exception ex)
             {
@@ -412,11 +698,87 @@ namespace CarExpenses
                 ShowHome();
                 return;
             }
-            Controls.Add(summary);
+            Controls.Add(summaryBox);
 
             MainMenu menu = new MainMenu();
-            menu.MenuItems.Add(new MenuItem("Назад", new EventHandler(ShowHome)));
+            menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
+            LayoutScreen();
+        }
+
+        private static void StyleHeading(Label label)
+        {
+            label.BackColor = Color.FromArgb(35, 51, 70);
+            label.ForeColor = Color.White;
+            label.Font = new Font("Arial", 10, FontStyle.Bold);
+        }
+
+        private void FormResized(object sender, EventArgs e)
+        {
+            LayoutScreen();
+        }
+
+        private void LayoutScreen()
+        {
+            int width = ClientSize.Width;
+            int height = ClientSize.Height;
+            if (width <= 0 || height <= 0)
+                return;
+
+            if (screenType == "home")
+            {
+                if (homeLogoPanel != null)
+                {
+                    homeLogoPanel.Location = new Point(4, 4);
+                    homeLogoPanel.Size = new Size(width - 8, 52);
+                }
+                if (homeCarLabel != null)
+                {
+                    homeCarLabel.Location = new Point(8, 60);
+                    homeCarLabel.Size = new Size(width - 16, 26);
+                }
+                if (homeButtons != null && homeButtons.Count > 0)
+                {
+                    int gap = 8;
+                    int buttonHeight = (height - 108 - gap * (homeButtons.Count - 1)) / homeButtons.Count;
+                    if (buttonHeight > 108)
+                        buttonHeight = 108;
+                    if (buttonHeight < 40)
+                        buttonHeight = 40;
+                    int firstButtonTop = 92;
+                    for (int i = 0; i < homeButtons.Count; i++)
+                    {
+                        homeButtons[i].Location = new Point(4, firstButtonTop + i * (buttonHeight + gap));
+                        homeButtons[i].Size = new Size(width - 8, buttonHeight);
+                    }
+                }
+            }
+            else if (screenType == "records" || screenType == "cars")
+            {
+                if (screenHeading != null)
+                {
+                    screenHeading.Location = new System.Drawing.Point(4, 4);
+                    screenHeading.Size = new System.Drawing.Size(width - 8, 26);
+                }
+                if (recordList != null)
+                {
+                    recordList.Location = new System.Drawing.Point(4, 36);
+                    recordList.Size = new System.Drawing.Size(width - 8, height - 40);
+                }
+            }
+            else if (screenType == "summary")
+            {
+                if (screenHeading != null)
+                {
+                    screenHeading.Location = new System.Drawing.Point(4, 4);
+                    screenHeading.Size = new System.Drawing.Size(width - 8, 26);
+                }
+                if (summaryBox != null)
+                {
+                    summaryBox.Location = new System.Drawing.Point(4, 36);
+                    summaryBox.Size = new System.Drawing.Size(width - 8, height - 40);
+                }
+            }
         }
 
         private string BuildSummary()
@@ -447,11 +809,11 @@ namespace CarExpenses
             for (int i = 0; i < utilities.Count; i++)
                 utilityTotal += UtilityTotal(utilities[i]);
 
-            string result = currentCar + "\n\nЗаправки: " + Money(fuelTotal) +
-                " BYN\nРемонт и ТО: " + Money(repairTotal) + " BYN\n\nРемонт по категориям:\n";
+            string result = currentCar + "\r\n\r\nЗаправки: " + Money(fuelTotal) +
+                " BYN\r\nРемонт и ТО: " + Money(repairTotal) + " BYN\r\n\r\nРемонт по категориям:\r\n";
             foreach (KeyValuePair<string, decimal> pair in byCategory)
-                result += pair.Key + ": " + Money(pair.Value) + " BYN\n";
-            result += "\nКоммунальные за весь период:\n" + Money(utilityTotal) + " BYN\n\n";
+                result += pair.Key + ": " + Money(pair.Value) + " BYN\r\n";
+            result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) + " BYN\r\n\r\n";
 
             decimal currentMileage = 0;
             decimal lastOilMileage = 0;
@@ -477,8 +839,8 @@ namespace CarExpenses
                 if (row[3] == "ТО ГРМ" && mileage > lastTimingMileage)
                     lastTimingMileage = mileage;
             }
-            result += "Текущий пробег: " + Money(currentMileage) + " км\n";
-            result += ServiceStatus("Замена масла", currentMileage, lastOilMileage, 10000, 1000) + "\n";
+            result += "Текущий пробег: " + Money(currentMileage) + " км\r\n";
+            result += ServiceStatus("Замена масла", currentMileage, lastOilMileage, 10000, 1000) + "\r\n";
             result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage, 60000, 5000);
             return result;
         }
@@ -512,6 +874,25 @@ namespace CarExpenses
                 MessageBox.Show("Не удалось сохранить данные: " + ex.Message, "Ошибка");
                 return false;
             }
+        }
+
+        private static MenuItem CreateMenuItem(string text)
+        {
+            MenuItem item = new MenuItem();
+            item.Text = text;
+            return item;
+        }
+
+        private static MenuItem CreateMenuItem(string text, EventHandler handler)
+        {
+            MenuItem item = CreateMenuItem(text);
+            item.Click += handler;
+            return item;
+        }
+
+        private void ShowHomeFromMenu(object sender, EventArgs e)
+        {
+            ShowHome();
         }
 
         private void ExitApplication(object sender, EventArgs e)
