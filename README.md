@@ -64,13 +64,14 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj \
   -p:AcceptAndroidSDKLicenses=True
 ```
 
-После установки задайте переменные `ANDROID_HOME` и `JAVA_HOME`, затем соберите APK:
+После установки задайте переменные `ANDROID_HOME` и `JAVA_HOME`, затем соберите самостоятельный Release APK для ARM64 (сборки приложения включены внутрь файла):
 
 ```sh
-dotnet build Alfa156.Android/Alfa156.Android.csproj -c Debug
+dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
+  -p:RuntimeIdentifier=android-arm64
 ```
 
-Готовый APK: `Alfa156.Android/bin/Debug/net10.0-android/com.alfa156.mobile-Signed.apk`. На Samsung передайте его на телефон, откройте через «Мои файлы» и разрешите установку из этого источника, если Android попросит.
+Готовый APK: `Alfa156.Android/bin/Release/net10.0-android/android-arm64/com.alfa156.mobile-Signed.apk`. На Samsung передайте его на телефон, откройте через «Мои файлы» и разрешите установку из этого источника, если Android попросит.
 
 ## Текущее ограничение
 
