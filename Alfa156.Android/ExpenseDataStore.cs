@@ -7,7 +7,7 @@ namespace Alfa156.Android;
 
 internal static class ExpenseDataStore
 {
-    internal static readonly string[] RepairCategories =
+    private static readonly string[] DefaultRepairCategories =
     {
         "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
     };
@@ -35,6 +35,120 @@ internal static class ExpenseDataStore
         if (!ExpenseDataCodec.IsDataFile(fileName) || fileName == "cars.dat")
             throw new ArgumentException("Неверный файл журнала.", "fileName");
         return ExpenseDataCodec.ReadRows(Path.Combine(directory, fileName));
+    }
+
+    internal static void EnsureRepairCategories(string directory)
+    {
+        string path = Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile);
+        List<string> categories = new List<string>();
+        bool changed = !File.Exists(path);
+        if (File.Exists(path))
+        {
+            List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (rows[i].Length != 1 || rows[i][0].Trim().Length == 0)
+                    throw new InvalidDataException("Неверная запись в " +
+                        ExpenseDataCodec.RepairCategoriesFile + ".");
+                if (ContainsCategory(categories, rows[i][0]))
+                    changed = true;
+                else
+                    categories.Add(rows[i][0]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < DefaultRepairCategories.Length; i++)
+                AddUniqueCategory(categories, DefaultRepairCategories[i]);
+        }
+
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < repairs.Count; i++)
+        {
+            if (repairs[i][3].Length == 0 || ContainsCategory(categories, repairs[i][3]))
+                continue;
+            categories.Add(repairs[i][3]);
+            changed = true;
+        }
+        if (changed)
+            SaveRepairCategories(directory, categories);
+    }
+
+    internal static List<string> LoadRepairCategories(string directory)
+    {
+        EnsureRepairCategories(directory);
+        List<string[]> rows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile));
+        List<string> categories = new List<string>();
+        for (int i = 0; i < rows.Count; i++)
+            categories.Add(rows[i][0]);
+        return categories;
+    }
+
+    internal static void AddRepairCategory(string directory, string name)
+    {
+        name = ValidateRepairCategoryName(name);
+        List<string> categories = LoadRepairCategories(directory);
+        if (ContainsCategory(categories, name))
+            throw new InvalidOperationException("Такая категория уже есть.");
+        categories.Add(name);
+        SaveRepairCategories(directory, categories);
+    }
+
+    internal static void RenameRepairCategory(string directory, string oldName, string newName)
+    {
+        newName = ValidateRepairCategoryName(newName);
+        List<string> categories = LoadRepairCategories(directory);
+        int categoryIndex = FindCategory(categories, oldName);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+        if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Новое название совпадает с текущим.");
+        if (ContainsCategory(categories, newName))
+            throw new InvalidOperationException("Категория с таким названием уже есть.");
+
+        string previousName = categories[categoryIndex];
+        List<string> previousCategories = new List<string>(categories);
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < repairs.Count; i++)
+            if (String.Equals(repairs[i][3], previousName, StringComparison.OrdinalIgnoreCase))
+                repairs[i][3] = newName;
+
+        categories[categoryIndex] = newName;
+        SaveRepairCategories(directory, categories);
+        try
+        {
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), repairs);
+        }
+        catch (Exception renameError)
+        {
+            try
+            {
+                SaveRepairCategories(directory, previousCategories);
+            }
+            catch (Exception rollbackError)
+            {
+                throw new IOException("Не удалось переименовать категорию: " +
+                    renameError.Message + ". Не удалось вернуть список категорий: " +
+                    rollbackError.Message);
+            }
+            throw;
+        }
+    }
+
+    internal static void DeleteRepairCategory(string directory, string name)
+    {
+        List<string> categories = LoadRepairCategories(directory);
+        int categoryIndex = FindCategory(categories, name);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < repairs.Count; i++)
+            if (String.Equals(repairs[i][3], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Сначала перенесите записи из этой категории в другую.");
+        categories.RemoveAt(categoryIndex);
+        SaveRepairCategories(directory, categories);
     }
 
     internal static void AddCar(string directory, string name)
@@ -121,8 +235,8 @@ internal static class ExpenseDataStore
         {
             string name = Path.GetFileName(directories[i]);
             bool complete = true;
-            for (int j = 0; j < ExpenseDataCodec.DataFiles.Length; j++)
-                if (!File.Exists(Path.Combine(directories[i], ExpenseDataCodec.DataFiles[j])))
+            for (int j = 0; j < ExpenseDataCodec.CoreDataFiles.Length; j++)
+                if (!File.Exists(Path.Combine(directories[i], ExpenseDataCodec.CoreDataFiles[j])))
                     complete = false;
             if (complete)
                 names.Add(name);
@@ -170,11 +284,23 @@ internal static class ExpenseDataStore
     private static void CopyData(string source, string destination)
     {
         Directory.CreateDirectory(destination);
-        for (int i = 0; i < ExpenseDataCodec.DataFiles.Length; i++)
+        for (int i = 0; i < ExpenseDataCodec.CoreDataFiles.Length; i++)
         {
-            string fileName = ExpenseDataCodec.DataFiles[i];
+            string fileName = ExpenseDataCodec.CoreDataFiles[i];
             File.Copy(Path.Combine(source, fileName), Path.Combine(destination, fileName), true);
         }
+        string categoriesSource = Path.Combine(source, ExpenseDataCodec.RepairCategoriesFile);
+        string categoriesDestination = Path.Combine(destination, ExpenseDataCodec.RepairCategoriesFile);
+        if (File.Exists(categoriesSource))
+            File.Copy(categoriesSource, categoriesDestination, true);
+        else
+            SaveRepairCategories(destination, new List<string>(DefaultRepairCategories));
+        EnsureRepairCategories(destination);
+    }
+
+    internal static void CopyDataFiles(string source, string destination)
+    {
+        CopyData(source, destination);
     }
 
     private static string GetBackupRoot(string dataDirectory)
@@ -207,5 +333,45 @@ internal static class ExpenseDataStore
     {
         if (index < 0 || index >= rows.Count)
             throw new ArgumentOutOfRangeException("index", "Выбранная запись уже отсутствует.");
+    }
+
+    private static string ValidateRepairCategoryName(string name)
+    {
+        name = (name ?? "").Trim();
+        if (name.Length == 0)
+            throw new InvalidOperationException("Введите название категории.");
+        if (String.Equals(name, "Все категории", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Это название зарезервировано для фильтра.");
+        if (name.IndexOf('\r') >= 0 || name.IndexOf('\n') >= 0)
+            throw new InvalidOperationException("Название категории не должно содержать перевод строки.");
+        return name;
+    }
+
+    private static void SaveRepairCategories(string directory, List<string> categories)
+    {
+        List<string[]> rows = new List<string[]>();
+        for (int i = 0; i < categories.Count; i++)
+            rows.Add(new string[] { categories[i] });
+        ExpenseDataCodec.SaveRows(Path.Combine(directory,
+            ExpenseDataCodec.RepairCategoriesFile), rows);
+    }
+
+    private static void AddUniqueCategory(List<string> categories, string name)
+    {
+        if (!ContainsCategory(categories, name))
+            categories.Add(name);
+    }
+
+    private static bool ContainsCategory(List<string> categories, string name)
+    {
+        return FindCategory(categories, name) >= 0;
+    }
+
+    private static int FindCategory(List<string> categories, string name)
+    {
+        for (int i = 0; i < categories.Count; i++)
+            if (String.Equals(categories[i], name, StringComparison.OrdinalIgnoreCase))
+                return i;
+        return -1;
     }
 }

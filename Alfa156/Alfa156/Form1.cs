@@ -191,6 +191,9 @@ namespace CarExpenses
             {
                 actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditRepairFilter)));
                 actions.MenuItems.Add(CreateMenuItem("Сбросить фильтр", new EventHandler(ResetRepairFilter)));
+                actions.MenuItems.Add(CreateMenuItem("Добавить категорию", new EventHandler(AddRepairCategory)));
+                actions.MenuItems.Add(CreateMenuItem("Переименовать категорию", new EventHandler(RenameRepairCategory)));
+                actions.MenuItems.Add(CreateMenuItem("Удалить категорию", new EventHandler(DeleteRepairCategory)));
             }
             menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
@@ -219,7 +222,7 @@ namespace CarExpenses
         {
             List<string> categories = new List<string>();
             categories.Add("Все категории");
-            categories.AddRange(DataStore.RepairCategories);
+            categories.AddRange(DataStore.LoadRepairCategories());
             EntryField[] fields = new EntryField[]
             {
                 new EntryField("Категория", filterCategory, categories.ToArray(), true),
@@ -252,6 +255,81 @@ namespace CarExpenses
             filterDateFrom = "";
             filterDateTo = "";
             filterText = "";
+            ShowRecords(RepairSection);
+        }
+
+        private void AddRepairCategory(object sender, EventArgs e)
+        {
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Название", "", "text", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Новая категория", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                if (!TrySave(delegate { DataStore.AddRepairCategory(values[0]); }))
+                    return;
+            }
+            ShowRecords(RepairSection);
+        }
+
+        private void RenameRepairCategory(object sender, EventArgs e)
+        {
+            string[] categories = DataStore.LoadRepairCategories();
+            if (categories.Length == 0)
+            {
+                MessageBox.Show("Нет категорий для переименования.", "Категории");
+                return;
+            }
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Категория", categories[0], categories, true),
+                new EntryField("Новое название", "", "text", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Переименовать категорию", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                if (!TrySave(delegate
+                {
+                    DataStore.RenameRepairCategory(values[0], values[1]);
+                }))
+                    return;
+                if (filterCategory == values[0])
+                    filterCategory = values[1].Trim();
+            }
+            ShowRecords(RepairSection);
+        }
+
+        private void DeleteRepairCategory(object sender, EventArgs e)
+        {
+            string[] categories = DataStore.LoadRepairCategories();
+            if (categories.Length == 0)
+            {
+                MessageBox.Show("Нет категорий для удаления.", "Категории");
+                return;
+            }
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Категория", categories[0], categories, true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Удалить категорию", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string name = editor.Values[0];
+                if (MessageBox.Show(
+                    "Записи не удаляются. Если категория используется, сначала перенесите записи в другую. Удалить категорию?",
+                    "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                    return;
+                if (!TrySave(delegate { DataStore.DeleteRepairCategory(name); }))
+                    return;
+                if (filterCategory == name)
+                    filterCategory = "Все категории";
+            }
             ShowRecords(RepairSection);
         }
 
@@ -382,7 +460,7 @@ namespace CarExpenses
                     new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
                     new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
                     new EntryField("Пробег, км", row[2], "number", false),
-                    new EntryField("Категория", row[3], DataStore.RepairCategories, true),
+                    new EntryField("Категория", row[3], DataStore.LoadRepairCategories(), true),
                     new EntryField("Товар / деталь", row[4], "text", true),
                     new EntryField("Наименование", row[5], "text", false),
                     new EntryField("Количество", row[6], "number", true),
@@ -583,11 +661,14 @@ namespace CarExpenses
         private void AddFuel()
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
+            string lastMileage = LastFuelMileage(currentCar);
             EntryField[] fields = new EntryField[]
             {
                 new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
                 new EntryField("Автомобиль", currentCar, cars, true),
-                new EntryField("Пробег, км", "", "number", true),
+                new EntryField(lastMileage.Length > 0
+                    ? "Пробег, км (последняя запись)"
+                    : "Пробег, км", lastMileage, "number", true),
                 new EntryField("Литры", "", "number", true),
                 new EntryField("Стоимость, BYN", "", "number", true)
             };
@@ -606,15 +687,34 @@ namespace CarExpenses
             ShowRecords(FuelSection);
         }
 
+        private static string LastFuelMileage(string car)
+        {
+            List<string[]> fuels = DataStore.LoadFuel();
+            for (int i = fuels.Count - 1; i >= 0; i--)
+            {
+                decimal mileage;
+                if (fuels[i].Length >= 3 && fuels[i][1] == car &&
+                    DataStore.TryNumber(fuels[i][2], out mileage) && mileage >= 0)
+                    return fuels[i][2];
+            }
+            return "";
+        }
+
         private void AddRepair()
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
+            string[] categories = DataStore.LoadRepairCategories();
+            if (categories.Length == 0)
+            {
+                MessageBox.Show("Сначала добавьте категорию ремонта.", "Категории");
+                return;
+            }
             EntryField[] fields = new EntryField[]
             {
                 new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
                 new EntryField("Автомобиль", currentCar, cars, true),
                 new EntryField("Пробег, км", "", "number", false),
-                new EntryField("Категория", DataStore.RepairCategories[0], DataStore.RepairCategories, true),
+                new EntryField("Категория", categories[0], categories, true),
                 new EntryField("Товар / деталь", "", "text", true),
                 new EntryField("Наименование", "", "text", false),
                 new EntryField("Количество", "1", "number", true),
@@ -917,6 +1017,8 @@ namespace CarExpenses
             decimal currentMileage = 0;
             decimal lastOilMileage = 0;
             decimal lastTimingMileage = 0;
+            string lastOilDate = "";
+            string lastTimingDate = "";
             for (int i = 0; i < fuels.Count; i++)
                 if (fuels[i][1] == currentCar)
                     AddMileageReading(fuels[i][2], ref currentMileage,
@@ -930,11 +1032,22 @@ namespace CarExpenses
                 if (DataStore.TryNumber(row[2], out mileage) && mileage >= 0)
                     AddMileageReading(row[2], ref currentMileage,
                         ref minimumMileage, ref maximumMileage);
-                mileage = DataStore.NumberOrZero(row[2]);
-                if (row[3] == "ТО Масло" && mileage > lastOilMileage)
+                if (!DataStore.TryNumber(row[2], out mileage) || mileage < 0)
+                    continue;
+                if (row[3] == "ТО Масло" &&
+                    (mileage > lastOilMileage ||
+                    (mileage == lastOilMileage && String.CompareOrdinal(row[0], lastOilDate) > 0)))
+                {
                     lastOilMileage = mileage;
-                if (row[3] == "ТО ГРМ" && mileage > lastTimingMileage)
+                    lastOilDate = row[0];
+                }
+                if (row[3] == "ТО ГРМ" &&
+                    (mileage > lastTimingMileage ||
+                    (mileage == lastTimingMileage && String.CompareOrdinal(row[0], lastTimingDate) > 0)))
+                {
                     lastTimingMileage = mileage;
+                    lastTimingDate = row[0];
+                }
             }
             result += "Учтённые расходы на км (примерно): ";
             if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
@@ -962,8 +1075,10 @@ namespace CarExpenses
             for (int i = 0; i < cars.Count; i++)
                 result += cars[i] + ": " + Money(carTotals[cars[i]]) + " BYN\r\n";
             result += "\r\nТекущий пробег: " + Money(currentMileage) + " км\r\n";
-            result += ServiceStatus("Замена масла", currentMileage, lastOilMileage, 10000, 1000) + "\r\n";
-            result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage, 60000, 5000);
+            result += ServiceStatus("Замена масла", currentMileage, lastOilMileage,
+                lastOilDate, 10000, 1000) + "\r\n";
+            result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
+                lastTimingDate, 60000, 5000);
             return result;
         }
 
@@ -1000,16 +1115,21 @@ namespace CarExpenses
                 maximumMileage = mileage;
         }
 
-        private static string ServiceStatus(string name, decimal currentMileage, decimal lastMileage, decimal interval, decimal warningDistance)
+        private static string ServiceStatus(string name, decimal currentMileage,
+            decimal lastMileage, string lastDate, decimal interval, decimal warningDistance)
         {
             if (lastMileage == 0)
                 return name + ": замена не зафиксирована";
+            string lastService = "последняя запись " + lastDate + ", " +
+                Money(lastMileage) + " км; ";
             decimal since = currentMileage - lastMileage;
             if (since >= interval)
-                return name + ": требуется замена";
+                return name + ": " + lastService + "требуется замена";
             if (since >= interval - warningDistance)
-                return name + ": скоро замена (" + Money(interval - since) + " км)";
-            return name + ": в норме (" + Money(interval - since) + " км)";
+                return name + ": " + lastService + "скоро замена (" +
+                    Money(interval - since) + " км)";
+            return name + ": " + lastService + "в норме (" +
+                Money(interval - since) + " км)";
         }
 
         private static string Money(decimal value)

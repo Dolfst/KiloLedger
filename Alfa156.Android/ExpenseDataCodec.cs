@@ -8,9 +8,16 @@ namespace Alfa156.Android;
 
 internal static class ExpenseDataCodec
 {
-    internal static readonly string[] DataFiles =
+    internal static readonly string[] CoreDataFiles =
     {
         "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat"
+    };
+
+    internal const string RepairCategoriesFile = "repair-categories.dat";
+
+    internal static readonly string[] DataFiles =
+    {
+        "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile
     };
 
     internal static bool IsDataFile(string name)
@@ -123,19 +130,28 @@ internal static class ExpenseDataCodec
 
     internal static void ValidateDirectory(string directory)
     {
-        for (int i = 0; i < DataFiles.Length; i++)
-            if (!File.Exists(Path.Combine(directory, DataFiles[i])))
+        for (int i = 0; i < CoreDataFiles.Length; i++)
+            if (!File.Exists(Path.Combine(directory, CoreDataFiles[i])))
                 throw new InvalidDataException("Нужны все четыре файла: cars.dat, fuel.dat, repairs.dat и utilities.dat.");
 
         int[] columns = { 1, 5, 9, 8 };
-        for (int i = 0; i < DataFiles.Length; i++)
+        for (int i = 0; i < CoreDataFiles.Length; i++)
         {
-            List<string[]> rows = ReadRows(Path.Combine(directory, DataFiles[i]));
+            List<string[]> rows = ReadRows(Path.Combine(directory, CoreDataFiles[i]));
             for (int j = 0; j < rows.Count; j++)
                 if (rows[j].Length != columns[i])
-                    throw new InvalidDataException("Неверный формат записи в " + DataFiles[i] + ".");
+                    throw new InvalidDataException("Неверный формат записи в " + CoreDataFiles[i] + ".");
             if (i == 0 && rows.Count == 0)
                 throw new InvalidDataException("В cars.dat нет автомобилей.");
+        }
+
+        string categoriesPath = Path.Combine(directory, RepairCategoriesFile);
+        if (File.Exists(categoriesPath))
+        {
+            List<string[]> categories = ReadRows(categoriesPath);
+            for (int i = 0; i < categories.Count; i++)
+                if (categories[i].Length != 1 || categories[i][0].Trim().Length == 0)
+                    throw new InvalidDataException("Неверный формат записи в " + RepairCategoriesFile + ".");
         }
     }
 
