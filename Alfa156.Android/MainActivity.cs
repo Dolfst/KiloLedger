@@ -89,8 +89,6 @@ public sealed class MainActivity : Activity
             if (requestCode == ImportRequest)
             {
                 ImportSelection(data);
-                RefreshRecords();
-                ShowMessage("Импорт завершён. Данные сохранены на телефоне.");
             }
             else if (requestCode == ExportRequest)
             {
@@ -475,10 +473,11 @@ public sealed class MainActivity : Activity
     {
         if (selectedSection == Fuel)
         {
+            string lastMileage = LastFuelMileage(currentCar);
             ShowRecordEditor(false, new string[]
             {
                 DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                currentCar, "", "", ""
+                currentCar, lastMileage, "", ""
             }, -1);
         }
         else if (selectedSection == Repairs)
@@ -530,7 +529,11 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Date("Дата", row[0], true));
             fields.Add(EditorField.Option("Автомобиль", row[1],
                 ExpenseDataStore.LoadCarNames(DataDirectory).ToArray(), true));
-            fields.Add(EditorField.Number("Пробег, км", row[2], true));
+            fields.Add(EditorField.Number(
+                !editing && row[2].Length > 0
+                    ? "Пробег, км (последняя запись)"
+                    : "Пробег, км",
+                row[2], true));
             fields.Add(EditorField.Number("Литры", row[3], true));
             fields.Add(EditorField.Number("Стоимость, BYN", row[4], true));
         }
@@ -570,6 +573,19 @@ public sealed class MainActivity : Activity
                     SetCurrentCar(values[1]);
                 RefreshRecords();
             });
+    }
+
+    private string LastFuelMileage(string car)
+    {
+            List<string[]> rows = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+            for (int i = rows.Count - 1; i >= 0; i--)
+            {
+                decimal mileage;
+                if (rows[i].Length >= 3 && rows[i][1] == car &&
+                    TryNumber(rows[i][2], out mileage) && mileage >= 0)
+                    return rows[i][2];
+            }
+            return "";
     }
 
     private void AddCar()
@@ -904,49 +920,119 @@ public sealed class MainActivity : Activity
         decimal repairTotal = 0;
         decimal utilityTotal = 0;
         decimal currentMileage = 0;
+        decimal minimumMileage = Decimal.MaxValue;
+        decimal maximumMileage = 0;
         decimal lastOilMileage = 0;
         decimal lastTimingMileage = 0;
         Dictionary<string, decimal> byCategory = new Dictionary<string, decimal>();
+        Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
+        Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        for (int i = 0; i < cars.Count; i++)
+            carTotals.Add(cars[i], 0);
 
         for (int i = 0; i < fuels.Count; i++)
         {
             string[] row = fuels[i];
+            decimal amount = NumberOrZero(row[4]);
+            AddMonthlyAmount(monthlyTotals, row[0], 0, amount);
+            if (carTotals.ContainsKey(row[1]))
+                carTotals[row[1]] += amount;
             if (row[1] != currentCar)
                 continue;
-            fuelTotal += NumberOrZero(row[4]);
-            currentMileage = Math.Max(currentMileage, NumberOrZero(row[2]));
+            fuelTotal += amount;
+            AddMileageReading(row[2], ref currentMileage, ref minimumMileage, ref maximumMileage);
         }
         for (int i = 0; i < repairs.Count; i++)
         {
             string[] row = repairs[i];
+            decimal amount = NumberOrZero(row[7]);
+            AddMonthlyAmount(monthlyTotals, row[0], 1, amount);
+            if (carTotals.ContainsKey(row[1]))
+                carTotals[row[1]] += amount;
             if (row[1] != currentCar)
                 continue;
-            decimal amount = NumberOrZero(row[7]);
-            decimal mileage = NumberOrZero(row[2]);
             repairTotal += amount;
-            currentMileage = Math.Max(currentMileage, mileage);
+            decimal mileage;
+            if (TryNumber(row[2], out mileage) && mileage >= 0)
+                AddMileageReading(row[2], ref currentMileage, ref minimumMileage, ref maximumMileage);
             if (!byCategory.ContainsKey(row[3]))
                 byCategory.Add(row[3], 0);
             byCategory[row[3]] += amount;
             if (row[3] == "ТО Масло")
-                lastOilMileage = Math.Max(lastOilMileage, mileage);
+                lastOilMileage = Math.Max(lastOilMileage, NumberOrZero(row[2]));
             if (row[3] == "ТО ГРМ")
-                lastTimingMileage = Math.Max(lastTimingMileage, mileage);
+                lastTimingMileage = Math.Max(lastTimingMileage, NumberOrZero(row[2]));
         }
         for (int i = 0; i < utilities.Count; i++)
-            utilityTotal += ExpenseDataCodec.Sum(utilities[i], 1);
+        {
+            decimal amount = ExpenseDataCodec.Sum(utilities[i], 1);
+            utilityTotal += amount;
+            AddMonthlyAmount(monthlyTotals, utilities[i][0], 2, amount);
+        }
 
         StringBuilder result = new StringBuilder(currentCar);
         result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" BYN")
             .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" BYN")
+            .Append("\nУчтённые расходы на км (примерно): ")
+            .Append(minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage
+                ? Money((fuelTotal + repairTotal) / (maximumMileage - minimumMileage)) + " BYN/км"
+                : "недостаточно данных о пробеге")
             .Append("\n\nРемонт по категориям:");
         foreach (KeyValuePair<string, decimal> pair in byCategory)
             result.Append("\n").Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" BYN");
         result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" BYN")
+            .Append("\n\nРасходы по месяцам (последние 12):");
+        List<string> months = new List<string>(monthlyTotals.Keys);
+        months.Sort(StringComparer.Ordinal);
+        int firstMonth = Math.Max(0, months.Count - 12);
+        for (int i = firstMonth; i < months.Count; i++)
+        {
+            decimal[] totals = monthlyTotals[months[i]];
+            result.Append("\n").Append(months[i])
+                .Append(": топливо ").Append(Money(totals[0]))
+                .Append(", ремонт ").Append(Money(totals[1]))
+                .Append(", коммунальные ").Append(Money(totals[2])).Append(" BYN");
+        }
+        result.Append("\n\nТопливо и ремонт по автомобилям:");
+        for (int i = 0; i < cars.Count; i++)
+            result.Append("\n").Append(cars[i]).Append(": ")
+                .Append(Money(carTotals[cars[i]])).Append(" BYN");
+        result
             .Append("\n\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км")
             .Append("\n").Append(ServiceStatus("Замена масла", currentMileage, lastOilMileage, 10000, 1000))
             .Append("\n").Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage, 60000, 5000));
         return result.ToString();
+    }
+
+    private static void AddMonthlyAmount(Dictionary<string, decimal[]> totals,
+        string date, int category, decimal amount)
+    {
+        DateTime month;
+        if (date == null || date.Length < 7 ||
+            !DateTime.TryParseExact(date.Substring(0, 7), "yyyy-MM",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out month))
+            return;
+
+        string key = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        decimal[] monthly;
+        if (!totals.TryGetValue(key, out monthly))
+        {
+            monthly = new decimal[3];
+            totals.Add(key, monthly);
+        }
+        monthly[category] += amount;
+    }
+
+    private static void AddMileageReading(string value, ref decimal currentMileage,
+        ref decimal minimumMileage, ref decimal maximumMileage)
+    {
+        decimal mileage;
+        if (!TryNumber(value, out mileage) || mileage < 0)
+            return;
+        currentMileage = Math.Max(currentMileage, mileage);
+        minimumMileage = Math.Min(minimumMileage, mileage);
+        maximumMileage = Math.Max(maximumMileage, mileage);
     }
 
     private void CreateLocalBackup()
@@ -1051,6 +1137,7 @@ public sealed class MainActivity : Activity
 
         string staging = Path.Combine(CacheDir.AbsolutePath, "import_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
+        bool awaitingConfirmation = false;
         try
         {
             for (int i = 0; i < uris.Count; i++)
@@ -1063,13 +1150,65 @@ public sealed class MainActivity : Activity
             }
 
             ExpenseDataCodec.ValidateDirectory(staging);
-            InstallImportedData(staging);
+            ConfirmImportedData(staging);
+            awaitingConfirmation = true;
         }
         finally
         {
-            if (Directory.Exists(staging))
+            if (!awaitingConfirmation && Directory.Exists(staging))
                 Directory.Delete(staging, true);
         }
+    }
+
+    private void ConfirmImportedData(string source)
+    {
+        List<string[]> cars = ExpenseDataCodec.ReadRows(Path.Combine(source, "cars.dat"));
+        List<string[]> fuel = ExpenseDataCodec.ReadRows(Path.Combine(source, "fuel.dat"));
+        List<string[]> repairs = ExpenseDataCodec.ReadRows(Path.Combine(source, "repairs.dat"));
+        List<string[]> utilities = ExpenseDataCodec.ReadRows(Path.Combine(source, "utilities.dat"));
+        StringBuilder summary = new StringBuilder("Автомобили: ");
+        for (int i = 0; i < cars.Count; i++)
+        {
+            if (i > 0)
+                summary.Append(", ");
+            summary.Append(cars[i][0]);
+        }
+        summary.Append("\n\nЗаправки: ").Append(fuel.Count)
+            .Append("\nРемонт и ТО: ").Append(repairs.Count)
+            .Append("\nКоммунальные записи: ").Append(utilities.Count);
+        summary.Append(IsCompleteData(DataDirectory)
+            ? "\n\nТекущие данные сначала сохранятся отдельной копией."
+            : "\n\nИмпорт заменит текущий набор данных.");
+
+        new AlertDialog.Builder(this)
+            .SetTitle("Проверка копии")
+            .SetMessage(summary.ToString())
+            .SetNegativeButton("Отмена", delegate { DeleteImportStaging(source); })
+            .SetPositiveButton("Заменить данные", delegate
+            {
+                try
+                {
+                    InstallImportedData(source);
+                    RefreshRecords();
+                    ShowMessage("Импорт завершён. Данные сохранены на телефоне.");
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage("Импорт не выполнен: " + ex.Message);
+                }
+                finally
+                {
+                    DeleteImportStaging(source);
+                }
+            })
+            .SetCancelable(false)
+            .Show();
+    }
+
+    private static void DeleteImportStaging(string directory)
+    {
+        if (Directory.Exists(directory))
+            Directory.Delete(directory, true);
     }
 
     private void ImportZip(Uri uri, string destination)

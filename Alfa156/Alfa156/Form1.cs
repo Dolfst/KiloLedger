@@ -864,20 +864,37 @@ namespace CarExpenses
         {
             decimal fuelTotal = 0;
             List<string[]> fuels = DataStore.LoadFuel();
+            Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
+            Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
+            List<string> cars = DataStore.LoadCarNames();
+            for (int i = 0; i < cars.Count; i++)
+                carTotals.Add(cars[i], 0);
+
             for (int i = 0; i < fuels.Count; i++)
-                if (fuels[i][1] == currentCar)
-                    fuelTotal += DataStore.NumberOrZero(fuels[i][4]);
+            {
+                string[] row = fuels[i];
+                decimal amount = DataStore.NumberOrZero(row[4]);
+                AddMonthlyAmount(monthlyTotals, row[0], 0, amount);
+                if (carTotals.ContainsKey(row[1]))
+                    carTotals[row[1]] += amount;
+                if (row[1] == currentCar)
+                    fuelTotal += amount;
+            }
 
             decimal repairTotal = 0;
             Dictionary<string, decimal> byCategory = new Dictionary<string, decimal>();
             List<string[]> repairs = DataStore.LoadRepairs();
             for (int i = 0; i < repairs.Count; i++)
             {
-                if (repairs[i][1] != currentCar)
+                string[] row = repairs[i];
+                decimal amount = DataStore.NumberOrZero(row[7]);
+                AddMonthlyAmount(monthlyTotals, row[0], 1, amount);
+                if (carTotals.ContainsKey(row[1]))
+                    carTotals[row[1]] += amount;
+                if (row[1] != currentCar)
                     continue;
-                decimal amount = DataStore.NumberOrZero(repairs[i][7]);
                 repairTotal += amount;
-                string category = repairs[i][3];
+                string category = row[3];
                 if (!byCategory.ContainsKey(category))
                     byCategory.Add(category, 0);
                 byCategory[category] += amount;
@@ -886,42 +903,101 @@ namespace CarExpenses
             decimal utilityTotal = 0;
             List<string[]> utilities = DataStore.LoadUtilities();
             for (int i = 0; i < utilities.Count; i++)
-                utilityTotal += UtilityTotal(utilities[i]);
+            {
+                decimal amount = UtilityTotal(utilities[i]);
+                utilityTotal += amount;
+                AddMonthlyAmount(monthlyTotals, utilities[i][0], 2, amount);
+            }
 
             string result = currentCar + "\r\n\r\nЗаправки: " + Money(fuelTotal) +
-                " BYN\r\nРемонт и ТО: " + Money(repairTotal) + " BYN\r\n\r\nРемонт по категориям:\r\n";
-            foreach (KeyValuePair<string, decimal> pair in byCategory)
-                result += pair.Key + ": " + Money(pair.Value) + " BYN\r\n";
-            result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) + " BYN\r\n\r\n";
+                " BYN\r\nРемонт и ТО: " + Money(repairTotal) + " BYN\r\n";
 
+            decimal minimumMileage = Decimal.MaxValue;
+            decimal maximumMileage = 0;
             decimal currentMileage = 0;
             decimal lastOilMileage = 0;
             decimal lastTimingMileage = 0;
-            List<string[]> fuelsForCar = DataStore.LoadFuel();
-            for (int i = 0; i < fuelsForCar.Count; i++)
-                if (fuelsForCar[i][1] == currentCar)
-                {
-                    decimal fuelMileage = DataStore.NumberOrZero(fuelsForCar[i][2]);
-                    if (fuelMileage > currentMileage)
-                        currentMileage = fuelMileage;
-                }
+            for (int i = 0; i < fuels.Count; i++)
+                if (fuels[i][1] == currentCar)
+                    AddMileageReading(fuels[i][2], ref currentMileage,
+                        ref minimumMileage, ref maximumMileage);
             for (int i = 0; i < repairs.Count; i++)
             {
                 string[] row = repairs[i];
                 if (row[1] != currentCar)
                     continue;
-                decimal mileage = DataStore.NumberOrZero(row[2]);
-                if (mileage > currentMileage)
-                    currentMileage = mileage;
+                decimal mileage;
+                if (DataStore.TryNumber(row[2], out mileage) && mileage >= 0)
+                    AddMileageReading(row[2], ref currentMileage,
+                        ref minimumMileage, ref maximumMileage);
+                mileage = DataStore.NumberOrZero(row[2]);
                 if (row[3] == "ТО Масло" && mileage > lastOilMileage)
                     lastOilMileage = mileage;
                 if (row[3] == "ТО ГРМ" && mileage > lastTimingMileage)
                     lastTimingMileage = mileage;
             }
-            result += "Текущий пробег: " + Money(currentMileage) + " км\r\n";
+            result += "Учтённые расходы на км (примерно): ";
+            if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
+                result += Money((fuelTotal + repairTotal) /
+                    (maximumMileage - minimumMileage)) + " BYN/км\r\n";
+            else
+                result += "недостаточно данных о пробеге\r\n";
+
+            result += "\r\nРемонт по категориям:\r\n";
+            foreach (KeyValuePair<string, decimal> pair in byCategory)
+                result += pair.Key + ": " + Money(pair.Value) + " BYN\r\n";
+            result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) +
+                " BYN\r\n\r\nРасходы по месяцам (последние 12):\r\n";
+            List<string> months = new List<string>(monthlyTotals.Keys);
+            months.Sort(StringComparer.Ordinal);
+            int firstMonth = Math.Max(0, months.Count - 12);
+            for (int i = firstMonth; i < months.Count; i++)
+            {
+                decimal[] totals = monthlyTotals[months[i]];
+                result += months[i] + ": топливо " + Money(totals[0]) +
+                    ", ремонт " + Money(totals[1]) + ", коммунальные " +
+                    Money(totals[2]) + " BYN\r\n";
+            }
+            result += "\r\nТопливо и ремонт по автомобилям:\r\n";
+            for (int i = 0; i < cars.Count; i++)
+                result += cars[i] + ": " + Money(carTotals[cars[i]]) + " BYN\r\n";
+            result += "\r\nТекущий пробег: " + Money(currentMileage) + " км\r\n";
             result += ServiceStatus("Замена масла", currentMileage, lastOilMileage, 10000, 1000) + "\r\n";
             result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage, 60000, 5000);
             return result;
+        }
+
+        private static void AddMonthlyAmount(Dictionary<string, decimal[]> totals,
+            string date, int category, decimal amount)
+        {
+            DateTime month;
+            if (date == null || date.Length < 7 ||
+                !DateTime.TryParseExact(date.Substring(0, 7), "yyyy-MM",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out month))
+                return;
+
+            string key = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            decimal[] monthly;
+            if (!totals.TryGetValue(key, out monthly))
+            {
+                monthly = new decimal[3];
+                totals.Add(key, monthly);
+            }
+            monthly[category] += amount;
+        }
+
+        private static void AddMileageReading(string value, ref decimal currentMileage,
+            ref decimal minimumMileage, ref decimal maximumMileage)
+        {
+            decimal mileage;
+            if (!DataStore.TryNumber(value, out mileage) || mileage < 0)
+                return;
+            if (mileage > currentMileage)
+                currentMileage = mileage;
+            if (mileage < minimumMileage)
+                minimumMileage = mileage;
+            if (mileage > maximumMileage)
+                maximumMileage = mileage;
         }
 
         private static string ServiceStatus(string name, decimal currentMileage, decimal lastMileage, decimal interval, decimal warningDistance)
