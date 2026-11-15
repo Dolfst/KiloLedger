@@ -1,0 +1,69 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Alfa156.Android/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Set Android version code
+        id: android-version
+        run: echo "version_code=$((GITHUB_RUN_NUMBER + 4))" >> "$GITHUB_OUTPUT"
+
+      - name: Build ARM64 APK
+        run: >-
+          dotnet build Alfa156.Android/Alfa156.Android.csproj
+          -c Release
+          -p:RuntimeIdentifier=android-arm64
+          -p:ApplicationVersion=${{ steps.android-version.outputs.version_code }}
+          -p:AcceptAndroidSDKLicenses=True
+
+      - name: Publish latest APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk_path="$RUNNER_TEMP/Alfa156.apk"
+          cp Alfa156.Android/bin/Release/net10.0-android/android-arm64/com.alfa156.mobile-Signed.apk "$apk_path"
+
+          if gh release view android-latest >/dev/null 2>&1; then
+            gh release upload android-latest "$apk_path" --clobber
+          else
+            gh release create android-latest "$apk_path" \
+              --title "Latest Android APK" \
+              --notes "Automatically updated Android ARM64 build." \
+              --target "$GITHUB_SHA"
+          fi
