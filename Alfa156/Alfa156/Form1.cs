@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
+using System.IO;
+using System.Net.Sockets;
+using System.Text;
 using System.Windows.Forms;
 
 namespace CarExpenses
@@ -27,6 +30,9 @@ namespace CarExpenses
         private string filterDateFrom = "";
         private string filterDateTo = "";
         private string filterText = "";
+        private string fuelFilterDateFrom = "";
+        private string fuelFilterDateTo = "";
+        private string fuelFilterText = "";
 
         public Form1()
         {
@@ -61,8 +67,11 @@ namespace CarExpenses
             cars.MenuItems.Add(CreateMenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
             menu.MenuItems.Add(cars);
             MenuItem data = CreateMenuItem("Данные");
+            data.MenuItems.Add(CreateMenuItem("Создать копию в памяти КПК", new EventHandler(CreateLocalBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("Восстановить копию из памяти КПК", new EventHandler(RestoreLocalBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Создать копию на SD", new EventHandler(CreateBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
             menu.MenuItems.Add(data);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
@@ -93,9 +102,51 @@ namespace CarExpenses
             button.Tag = section;
             button.BackColor = Color.FromArgb(49, 77, 102);
             button.ForeColor = Color.White;
+            button.Image = CreateSectionIcon(section);
+            button.ImageAlign = ContentAlignment.MiddleLeft;
+            button.TextAlign = ContentAlignment.MiddleCenter;
             button.Click += new EventHandler(OpenSection);
             Controls.Add(button);
             homeButtons.Add(button);
+        }
+
+        private Bitmap CreateSectionIcon(string section)
+        {
+            Color fill = Color.FromArgb(49, 77, 102);
+            string letter = "A";
+            if (section == FuelSection)
+            {
+                fill = Color.FromArgb(23, 122, 86);
+                letter = "F";
+            }
+            else if (section == RepairSection)
+            {
+                fill = Color.FromArgb(196, 101, 30);
+                letter = "R";
+            }
+            else if (section == UtilitiesSection)
+            {
+                fill = Color.FromArgb(79, 104, 179);
+                letter = "U";
+            }
+            else if (section == "Сводка и ТО")
+            {
+                fill = Color.FromArgb(130, 88, 180);
+                letter = "S";
+            }
+
+            Bitmap icon = new Bitmap(24, 24);
+            using (Graphics g = Graphics.FromImage(icon))
+            {
+                g.Clear(Color.Transparent);
+                using (SolidBrush badge = new SolidBrush(fill))
+                    g.FillEllipse(badge, 1, 1, 22, 22);
+                using (SolidBrush whiteBrush = new SolidBrush(Color.White))
+                using (Font letterFont = new Font("Arial", 10, FontStyle.Bold))
+                    g.DrawString(letter, letterFont, whiteBrush,
+                        new PointF(7, 3));
+            }
+            return icon;
         }
 
         private void DrawLogo(object sender, PaintEventArgs e)
@@ -169,6 +220,8 @@ namespace CarExpenses
                     continue;
                 if (section == RepairSection && !MatchesRepairFilter(row))
                     continue;
+                if (section == FuelSection && !MatchesFuelFilter(row))
+                    continue;
 
                 displayedRecords.Add(row);
                 displayedRecordIndexes.Add(i);
@@ -187,7 +240,12 @@ namespace CarExpenses
             actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
             actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
-            if (section == RepairSection)
+            if (section == FuelSection)
+            {
+                actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditFuelFilter)));
+                actions.MenuItems.Add(CreateMenuItem("Сбросить фильтр", new EventHandler(ResetFuelFilter)));
+            }
+            else if (section == RepairSection)
             {
                 actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditRepairFilter)));
                 actions.MenuItems.Add(CreateMenuItem("Сбросить фильтр", new EventHandler(ResetRepairFilter)));
@@ -216,6 +274,59 @@ namespace CarExpenses
                     return false;
             }
             return true;
+        }
+
+        private bool MatchesFuelFilter(string[] row)
+        {
+            if (fuelFilterDateFrom != "" &&
+                String.CompareOrdinal(row[0], fuelFilterDateFrom) < 0)
+                return false;
+            if (fuelFilterDateTo != "" &&
+                String.CompareOrdinal(row[0], fuelFilterDateTo) > 0)
+                return false;
+            if (fuelFilterText != "")
+            {
+                string searchableText = (row[2] + " " + row[3] + " " + row[4])
+                    .ToLower(CultureInfo.CurrentCulture);
+                if (searchableText.IndexOf(
+                    fuelFilterText.ToLower(CultureInfo.CurrentCulture)) < 0)
+                    return false;
+            }
+            return true;
+        }
+
+        private void EditFuelFilter(object sender, EventArgs e)
+        {
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Дата с (гггг-мм-дд)", fuelFilterDateFrom, "date", false),
+                new EntryField("Дата по (гггг-мм-дд)", fuelFilterDateTo, "date", false),
+                new EntryField("Пробег / литры / стоимость", fuelFilterText, "text", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Фильтр заправок", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                if (values[0] != "" && values[1] != "" &&
+                    String.CompareOrdinal(values[0], values[1]) > 0)
+                {
+                    MessageBox.Show("Начало периода не может быть позже его окончания.", "Фильтр");
+                    return;
+                }
+                fuelFilterDateFrom = values[0];
+                fuelFilterDateTo = values[1];
+                fuelFilterText = values[2];
+            }
+            ShowRecords(FuelSection);
+        }
+
+        private void ResetFuelFilter(object sender, EventArgs e)
+        {
+            fuelFilterDateFrom = "";
+            fuelFilterDateTo = "";
+            fuelFilterText = "";
+            ShowRecords(FuelSection);
         }
 
         private void EditRepairFilter(object sender, EventArgs e)
@@ -359,7 +470,6 @@ namespace CarExpenses
                     DataStore.TryNumber(row[3], out liters) &&
                     mileage > previousMileage)
                     return liters * 100 / (mileage - previousMileage);
-                return 0;
             }
             return 0;
         }
@@ -595,6 +705,74 @@ namespace CarExpenses
             }
         }
 
+        private void CreateLocalBackupFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                string path = DataStore.CreateLocalBackup();
+                MessageBox.Show("Локальная резервная копия создана:\r\n" + path,
+                    "Резервная копия");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось создать локальную копию: " + ex.Message,
+                    "Ошибка резервного копирования");
+            }
+        }
+
+        private void RestoreLocalBackupFromMenu(object sender, EventArgs e)
+        {
+            string[] backups;
+            try
+            {
+                backups = DataStore.ListLocalBackupNames();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось прочитать локальные копии: " + ex.Message,
+                    "Ошибка восстановления");
+                return;
+            }
+
+            if (backups.Length == 0)
+            {
+                MessageBox.Show("В памяти КПК нет полных резервных копий Alfa 156.",
+                    "Восстановление");
+                return;
+            }
+
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Выберите дату копии", backups[0], backups, true)
+            };
+            string backupName;
+            using (EntryEditorForm editor = new EntryEditorForm("Локальная копия", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                backupName = editor.Values[0];
+            }
+
+            if (!ConfirmAction("Подтверждение восстановления",
+                "Текущие данные сначала сохранятся в отдельную локальную копию.\r\nЗаменить их копией " +
+                backupName + "?", "Восстановить"))
+                return;
+
+            try
+            {
+                DataStore.RestoreLocalBackup(backupName);
+                currentCar = DataStore.LoadCarNames()[0];
+                ShowHome();
+                MessageBox.Show("Данные восстановлены из локальной копии " + backupName + ".",
+                    "Восстановление завершено");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось восстановить локальную копию: " + ex.Message,
+                    "Ошибка восстановления");
+            }
+        }
+
         private void RestoreBackupFromMenu(object sender, EventArgs e)
         {
             string[] backups;
@@ -646,6 +824,76 @@ namespace CarExpenses
                 MessageBox.Show("Не удалось восстановить данные: " + ex.Message,
                     "Ошибка восстановления");
             }
+        }
+
+        private void SyncWithAndroidFromMenu(object sender, EventArgs e)
+        {
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("IP-адрес Android (на экране синхронизации)", "", "text", true),
+                new EntryField("Код подключения", "", "text", true)
+            };
+            string address;
+            string pairingCode;
+            using (EntryEditorForm editor = new EntryEditorForm("Синхронизация по Wi-Fi", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                address = editor.Values[0].Trim();
+                pairingCode = editor.Values[1].Trim();
+            }
+
+            if (pairingCode.Length != 6 || !IsDigits(pairingCode))
+            {
+                MessageBox.Show("Введите шестизначный код с экрана Android.",
+                    "Синхронизация");
+                return;
+            }
+
+            try
+            {
+                using (TcpClient client = new TcpClient())
+                {
+                    client.SendTimeout = 30000;
+                    client.ReceiveTimeout = 300000;
+                    client.Connect(address, 45816);
+                    NetworkStream stream = client.GetStream();
+                    byte[] handshake = Encoding.ASCII.GetBytes("ALFA156SYNC1|" +
+                        pairingCode + "\n");
+                    stream.Write(handshake, 0, handshake.Length);
+                    stream.Flush();
+
+                    int status = DataStore.ReadSyncInt32(stream);
+                    if (status != 0)
+                        throw new IOException(DataStore.ReadSyncMessage(stream));
+
+                    DataStore.WriteSyncSnapshot(stream);
+                    status = DataStore.ReadSyncInt32(stream);
+                    if (status != 0)
+                        throw new IOException(DataStore.ReadSyncMessage(stream));
+
+                    DataStore.InstallSyncSnapshot(stream);
+                }
+
+                currentCar = DataStore.LoadCarNames()[0];
+                ShowHome();
+                MessageBox.Show("Синхронизация завершена. Добавленные записи объединены; " +
+                    "совпадающие записи были разрешены на Android.",
+                    "Синхронизация");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Синхронизация не выполнена: " + ex.Message,
+                    "Ошибка синхронизации");
+            }
+        }
+
+        private static bool IsDigits(string value)
+        {
+            for (int i = 0; i < value.Length; i++)
+                if (value[i] < '0' || value[i] > '9')
+                    return false;
+            return true;
         }
 
         private void AddCurrentRecord(object sender, EventArgs e)

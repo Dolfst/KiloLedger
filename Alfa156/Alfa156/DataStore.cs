@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -51,8 +52,17 @@ namespace CarExpenses
 
         internal static string CreateBackup()
         {
+            return CreateBackup(GetBackupRoot());
+        }
+
+        internal static string CreateLocalBackup()
+        {
+            return CreateBackup(GetLocalBackupRoot());
+        }
+
+        private static string CreateBackup(string backupRoot)
+        {
             EnsureRepairCategories();
-            string backupRoot = GetBackupRoot();
             Directory.CreateDirectory(backupRoot);
 
             string folderName = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
@@ -72,7 +82,16 @@ namespace CarExpenses
 
         internal static string[] ListBackupNames()
         {
-            string backupRoot = GetBackupRoot();
+            return ListBackupNames(GetBackupRoot());
+        }
+
+        internal static string[] ListLocalBackupNames()
+        {
+            return ListBackupNames(GetLocalBackupRoot());
+        }
+
+        private static string[] ListBackupNames(string backupRoot)
+        {
             if (!Directory.Exists(backupRoot))
                 return new string[0];
 
@@ -95,11 +114,22 @@ namespace CarExpenses
 
         internal static void RestoreBackup(string folderName)
         {
+            RestoreBackup(folderName, GetBackupRoot());
+        }
+
+        internal static void RestoreLocalBackup(string folderName)
+        {
+            RestoreBackup(folderName, GetLocalBackupRoot());
+        }
+
+        private static void RestoreBackup(string folderName, string backupRoot)
+        {
             if (folderName == null || folderName.Length == 0)
                 throw new ArgumentException("Выбрана неверная папка резервной копии.", "folderName");
+            if (Path.GetFileName(folderName) != folderName)
+                throw new InvalidDataException("Выбрана неверная папка резервной копии.");
 
-            string backupRoot = GetBackupRoot();
-            string[] backupNames = ListBackupNames();
+            string[] backupNames = ListBackupNames(backupRoot);
             bool found = false;
             for (int i = 0; i < backupNames.Length; i++)
                 if (backupNames[i] == folderName)
@@ -111,7 +141,7 @@ namespace CarExpenses
             if (!HasCompleteBackup(backupPath))
                 throw new InvalidDataException("Резервная копия неполная или отсутствует.");
 
-            string safetyBackup = CreateBackup();
+            string safetyBackup = CreateBackup(backupRoot);
             try
             {
                 CopyBackupFiles(backupPath);
@@ -132,6 +162,176 @@ namespace CarExpenses
             }
         }
 
+        internal static void WriteSyncSnapshot(NetworkStream stream)
+        {
+            for (int i = 0; i < DataFiles.Length; i++)
+            {
+                byte[] content = ReadFileBytes(GetPath(DataFiles[i]));
+                if (content.Length > 16 * 1024 * 1024)
+                    throw new InvalidDataException("Файл " + DataFiles[i] +
+                        " превышает допустимый размер синхронизации.");
+                WriteSyncInt32(stream, content.Length);
+                stream.Write(content, 0, content.Length);
+            }
+            stream.Flush();
+        }
+
+        internal static void InstallSyncSnapshot(NetworkStream stream)
+        {
+            string parent = Path.GetDirectoryName(DataDirectory);
+            string staging = Path.Combine(parent, "Alfa156_Sync_" + Guid.NewGuid().ToString("N"));
+            string safetyName = "Alfa156_SyncSafety_" +
+                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            string safety = Path.Combine(parent, safetyName);
+            int suffix = 1;
+            while (Directory.Exists(safety))
+            {
+                safety = Path.Combine(parent, safetyName + "_" +
+                    suffix.ToString(CultureInfo.InvariantCulture));
+                suffix++;
+            }
+            Directory.CreateDirectory(staging);
+            try
+            {
+                for (int i = 0; i < DataFiles.Length; i++)
+                {
+                    int length = ReadSyncInt32(stream);
+                    if (length < 0 || length > 16 * 1024 * 1024)
+                        throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
+                    byte[] content = ReadSyncBytes(stream, length);
+                    using (FileStream output = File.Create(Path.Combine(staging, DataFiles[i])))
+                        output.Write(content, 0, content.Length);
+                }
+                ValidateSyncDirectory(staging);
+
+                Directory.CreateDirectory(safety);
+                for (int i = 0; i < DataFiles.Length; i++)
+                    File.Copy(GetPath(DataFiles[i]), Path.Combine(safety, DataFiles[i]), true);
+                try
+                {
+                    CopyBackupFiles(staging);
+                    EnsureRepairCategories();
+                    LoadCars();
+                }
+                catch (Exception installError)
+                {
+                    try
+                    {
+                        CopyBackupFiles(safety);
+                    }
+                    catch (Exception rollbackError)
+                    {
+                        throw new IOException("Синхронизация не завершена: " +
+                            installError.Message + ". Не удалось вернуть прежние данные: " +
+                            rollbackError.Message + ". Копия сохранена в " + safety);
+                    }
+                    throw;
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(staging))
+                    Directory.Delete(staging, true);
+            }
+        }
+
+        internal static int ReadSyncInt32(NetworkStream stream)
+        {
+            byte[] bytes = ReadSyncBytes(stream, 4);
+            return bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
+        }
+
+        internal static string ReadSyncMessage(NetworkStream stream)
+        {
+            int length = ReadSyncInt32(stream);
+            if (length < 0 || length > 4096)
+                throw new InvalidDataException("Неверное сообщение синхронизации.");
+            return Encoding.UTF8.GetString(ReadSyncBytes(stream, length), 0, length);
+        }
+
+        internal static void WriteSyncInt32(NetworkStream stream, int value)
+        {
+            byte[] bytes = new byte[]
+            {
+                (byte)value, (byte)(value >> 8), (byte)(value >> 16), (byte)(value >> 24)
+            };
+            stream.Write(bytes, 0, bytes.Length);
+            stream.Flush();
+        }
+
+        private static void ValidateSyncDirectory(string directory)
+        {
+            int[] columns = new int[] { 1, 5, 9, 8 };
+            for (int i = 0; i < CoreDataFiles.Length; i++)
+            {
+                string path = Path.Combine(directory, CoreDataFiles[i]);
+                if (!File.Exists(path))
+                    throw new InvalidDataException("Не получен файл " + CoreDataFiles[i] + ".");
+                List<string[]> rows = ReadRowsFromPath(path);
+                for (int j = 0; j < rows.Count; j++)
+                    if (rows[j].Length != columns[i])
+                        throw new InvalidDataException("Неверный формат записи в " +
+                            CoreDataFiles[i] + ".");
+                if (i == 0 && rows.Count == 0)
+                    throw new InvalidDataException("Список автомобилей пуст.");
+            }
+
+            string categoriesPath = Path.Combine(directory, RepairCategoriesFile);
+            if (File.Exists(categoriesPath))
+            {
+                List<string[]> categories = ReadRowsFromPath(categoriesPath);
+                for (int i = 0; i < categories.Count; i++)
+                    if (categories[i].Length != 1 || categories[i][0].Trim().Length == 0)
+                        throw new InvalidDataException("Неверный формат repair-categories.dat.");
+            }
+        }
+
+        private static List<string[]> ReadRowsFromPath(string path)
+        {
+            List<string[]> rows = new List<string[]>();
+            using (StreamReader reader = new StreamReader(path))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                    if (line.Length > 0)
+                        rows.Add(DecodeRow(line));
+            }
+            return rows;
+        }
+
+        private static byte[] ReadFileBytes(string path)
+        {
+            using (FileStream input = File.OpenRead(path))
+            {
+                if (input.Length > Int32.MaxValue)
+                    throw new InvalidDataException("Слишком большой файл синхронизации.");
+                byte[] content = new byte[(int)input.Length];
+                int offset = 0;
+                while (offset < content.Length)
+                {
+                    int count = input.Read(content, offset, content.Length - offset);
+                    if (count == 0)
+                        throw new EndOfStreamException("Не удалось прочитать файл для синхронизации.");
+                    offset += count;
+                }
+                return content;
+            }
+        }
+
+        private static byte[] ReadSyncBytes(NetworkStream stream, int length)
+        {
+            byte[] bytes = new byte[length];
+            int offset = 0;
+            while (offset < length)
+            {
+                int count = stream.Read(bytes, offset, length - offset);
+                if (count == 0)
+                    throw new EndOfStreamException("Соединение синхронизации прервано.");
+                offset += count;
+            }
+            return bytes;
+        }
+
         private static string GetBackupRoot()
         {
             string[] cardRoots = new string[]
@@ -143,6 +343,11 @@ namespace CarExpenses
                     return Path.Combine(cardRoots[i], "Alfa156_Backups");
             throw new DirectoryNotFoundException(
                 "Не найдена SD-карта. Проверьте, что она доступна как «Storage Card» или «SD Card».");
+        }
+
+        private static string GetLocalBackupRoot()
+        {
+            return Path.Combine(Path.GetDirectoryName(DataDirectory), "Alfa156_LocalBackups");
         }
 
         private static bool HasCompleteBackup(string backupPath)
