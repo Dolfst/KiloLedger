@@ -37,6 +37,23 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          sdk_path="$(command -v sdkmanager || true)"
+          if [ -z "$sdk_path" ]; then
+            sdk_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          if [ ! -x "$sdk_path" ]; then
+            sdk_path="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
+          fi
+          if [ -x "$sdk_path" ]; then
+            yes | "$sdk_path" --licenses >/dev/null
+          else
+            echo "sdkmanager not found" >&2
+            exit 1
+          fi
+
       - name: Install Android workload
         run: dotnet workload install android
 
