@@ -101,9 +101,11 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 Готовый APK: `Alfa156.Android/bin/Release/net10.0-android/android-arm64/com.alfa156.mobile-Signed.apk`. На Samsung передайте его на телефон, откройте через «Мои файлы» и разрешите установку из этого источника, если Android попросит.
 
+Текущая ARM64-сборка также хранится в `Alfa156.Android/Alfa156.apk` и включается в ZIP-архив репозитория. При обновлении Android-приложения замените этот файл новой Release-сборкой.
+
 ### Скачать последнюю Android-сборку
 
-После изменений Android-проекта GitHub Actions автоматически собирает APK для ARM64 и обновляет отдельный релиз `Latest Android APK`. Откройте [Releases → Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest) и скачайте `Alfa156.apk`. APK доступен отдельно от ZIP исходного кода. Сборку также можно запустить вручную через **Actions → Android APK → Run workflow**.
+После изменений Android-проекта GitHub Actions автоматически собирает APK для ARM64 и обновляет отдельный релиз `Latest Android APK`. Откройте [Releases → Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest) и скачайте `Alfa156.apk`. Это отдельный способ скачать последнюю сборку; вручную запустить сборку можно через **Actions → Android APK → Run workflow**.
 
 APK из GitHub Actions подписывается отладочным ключом сборочной среды. Для установки поверх предыдущей версии нужна постоянная подпись; пока она не настроена, Android может потребовать удалить установленное приложение. Перед этим сохраните данные через экспорт ZIP.
 
