@@ -775,22 +775,52 @@ public sealed class MainActivity : Activity
     private string FormatDetails(string[] row)
     {
         if (selectedSection == Fuel && row.Length >= 5)
-            return "Авто: " + row[1] + "\nДата: " + row[0] +
-                "\nПробег: " + row[2] + " км\nЛитры: " + row[3] +
-                "\nСтоимость: " + row[4] + " BYN";
+        {
+            StringBuilder details = new StringBuilder();
+            details.Append("Авто: ").Append(row[1])
+                .Append("\nДата: ").Append(row[0])
+                .Append("\nПробег: ").Append(row[2]).Append(" км")
+                .Append("\nЛитры: ").Append(row[3])
+                .Append("\nСтоимость: ").Append(row[4]).Append(" BYN");
+            decimal liters;
+            decimal cost;
+            if (TryNumber(row[3], out liters) && liters > 0 && TryNumber(row[4], out cost))
+                details.Append("\nЦена за литр: ")
+                    .Append((cost / liters).ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" BYN");
+            decimal consumption = FuelConsumption(row);
+            if (consumption > 0)
+                details.Append("\nРасход: ")
+                    .Append(consumption.ToString("0.0", CultureInfo.InvariantCulture))
+                    .Append(" л/100 км");
+            return details.ToString();
+        }
         if (selectedSection == Repairs && row.Length >= 9)
-            return "Авто: " + row[1] + "\nДата: " + row[0] +
-                "\nПробег: " + row[2] + " км\nКатегория: " + row[3] +
-                "\nТовар: " + row[4] + "\nНаименование: " + row[5] +
-                "\nКоличество: " + row[6] + "\nСумма: " + row[7] +
-                " BYN\nКомментарий: " + row[8];
+        {
+            StringBuilder details = new StringBuilder();
+            details.Append("Авто: ").Append(row[1])
+                .Append("\nДата: ").Append(row[0])
+                .Append("\nПробег: ").Append(row[2].Length > 0 ? row[2] + " км" : "—")
+                .Append("\nКатегория: ").Append(row[3])
+                .Append("\nТовар: ").Append(row[4])
+                .Append("\nНаименование: ").Append(row[5].Length > 0 ? row[5] : "—")
+                .Append("\nКоличество: ").Append(row[6])
+                .Append("\nСумма: ").Append(row[7]).Append(" BYN")
+                .Append("\nКомментарий: ").Append(row[8].Length > 0 ? row[8] : "—");
+            return details.ToString();
+        }
         if (selectedSection == Utilities && row.Length >= 8)
         {
             StringBuilder details = new StringBuilder("Месяц: ");
             details.Append(row[0]);
             for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length; i++)
+            {
+                string amount = row[i + 1];
+                if (amount == null || amount.Trim().Length == 0 || amount == "0")
+                    continue;
                 details.Append("\n").Append(ExpenseDataStore.UtilityLabels[i])
-                    .Append(": ").Append(row[i + 1]).Append(" BYN");
+                    .Append(": ").Append(amount).Append(" BYN");
+            }
             details.Append("\nИтого: ")
                 .Append(ExpenseDataCodec.Sum(row, 1).ToString("0.##", CultureInfo.InvariantCulture))
                 .Append(" BYN");

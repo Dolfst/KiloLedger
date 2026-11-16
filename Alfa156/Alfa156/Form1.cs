@@ -550,6 +550,16 @@ namespace CarExpenses
                 details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
                     "\r\nПробег: " + row[2] + " км\r\nЛитры: " + row[3] +
                     "\r\nСтоимость: " + row[4] + " BYN";
+                decimal liters;
+                decimal cost;
+                if (DataStore.TryNumber(row[3], out liters) && liters > 0 &&
+                    DataStore.TryNumber(row[4], out cost))
+                    details += "\r\nЦена за литр: " +
+                        (cost / liters).ToString("0.00", CultureInfo.InvariantCulture) + " BYN";
+                decimal consumption = FuelConsumption(row, DataStore.LoadFuel());
+                if (consumption > 0)
+                    details += "\r\nРасход: " +
+                        consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100 км";
             }
             else if (currentSection == RepairSection)
             {
