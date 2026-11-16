@@ -42,6 +42,7 @@ jobs:
       - name: Accept Android SDK licenses
         shell: bash
         run: |
+          set +o pipefail
           sdk_path="$(command -v sdkmanager || true)"
           if [ -z "$sdk_path" ]; then
             sdk_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -49,12 +50,13 @@ jobs:
           if [ ! -x "$sdk_path" ]; then
             sdk_path="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
           fi
-          if [ -x "$sdk_path" ]; then
-            yes | "$sdk_path" --licenses >/dev/null
-          else
+          if [ ! -x "$sdk_path" ]; then
             echo "sdkmanager not found" >&2
             exit 1
           fi
+          # yes завершается SIGPIPE после принятия лицензий — это ожидаемо.
+          yes | "$sdk_path" --licenses >/dev/null || true
+          set -o pipefail
 
       - name: Install Android workload
         run: dotnet workload install android
