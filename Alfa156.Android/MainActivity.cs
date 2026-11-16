@@ -499,9 +499,7 @@ public sealed class MainActivity : Activity
         summaryButton.Enabled = !syncActive;
         recordList.Enabled = !syncActive;
         bool supportsFilter = selectedSection == Repairs || selectedSection == Fuel;
-        filterButton.Text = (selectedSection == Fuel ? "Фильтр заправок" : "Фильтр") +
-            (HasCurrentFilter() ? " ●" : "");
-        filterButton.Enabled = enabled && !syncActive && supportsFilter;
+        UpdateFilterButtonAppearance(enabled && !syncActive && supportsFilter);
         resetFilterButton.Enabled = enabled && !syncActive && supportsFilter && HasCurrentFilter();
         categoriesButton.Enabled = enabled && !syncActive && selectedSection == Repairs;
         carSpinner.Enabled = enabled && !syncActive;
@@ -516,15 +514,31 @@ public sealed class MainActivity : Activity
         editButton.Enabled = selected && !syncActive && hasData;
         deleteButton.Enabled = selected && !syncActive && hasData;
         bool supportsFilter = selectedSection == Repairs || selectedSection == Fuel;
-        filterButton.Text = (selectedSection == Fuel ? "Фильтр заправок" : "Фильтр") +
-            (HasCurrentFilter() ? " ●" : "");
-        filterButton.Enabled = !syncActive && supportsFilter && hasData;
+        UpdateFilterButtonAppearance(!syncActive && supportsFilter && hasData);
         resetFilterButton.Enabled = supportsFilter &&
             !syncActive && hasData && HasCurrentFilter();
         categoriesButton.Enabled = !syncActive && selectedSection == Repairs && hasData;
         if (addCarButton != null)
             addCarButton.Enabled = hasData && !syncActive;
         addButton.Enabled = hasData && !syncActive;
+    }
+
+    private void UpdateFilterButtonAppearance(bool enabled)
+    {
+        if (filterButton == null)
+            return;
+        bool active = HasCurrentFilter();
+        filterButton.Text = (selectedSection == Fuel ? "Фильтр заправок" : "Фильтр") +
+            (active ? " ●" : "");
+        filterButton.Enabled = enabled;
+        filterButton.SetBackgroundColor(active
+            ? AndroidColor.Rgb(196, 101, 30)
+            : AndroidColor.Rgb(225, 231, 237));
+        filterButton.SetTextColor(active
+            ? AndroidColor.White
+            : AndroidColor.Rgb(35, 51, 70));
+        string iconKind = filterButton.Tag != null ? filterButton.Tag.ToString() : ButtonIcons.Filter;
+        ApplyButtonIcon(filterButton, iconKind, IconColor(active), false);
     }
 
     private void SetCarOptions(List<string> cars)
