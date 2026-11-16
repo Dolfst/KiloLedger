@@ -25,6 +25,7 @@ internal static class ButtonIcons
     public const string Categories = "categories";
     public const string Backup = "backup";
     public const string Restore = "restore";
+    public const string Menu = "menu";
 
     public static Drawable Create(Context context, string kind, AndroidColor color)
     {
@@ -85,6 +86,9 @@ internal static class ButtonIcons
                 break;
             case Restore:
                 DrawRestore(canvas, paint, s, color);
+                break;
+            case Menu:
+                DrawMenu(canvas, paint, s, color);
                 break;
             default:
                 DrawAdd(canvas, paint, s, color);
@@ -361,5 +365,15 @@ internal static class ButtonIcons
         tip.LineTo(s * 0.58f, s * 0.28f);
         tip.Close();
         canvas.DrawPath(tip, paint);
+    }
+
+    private static void DrawMenu(Canvas canvas, Paint paint, float s, AndroidColor color)
+    {
+        // Три горизонтальные полоски — меню данных.
+        paint.Color = color;
+        paint.SetStyle(Paint.Style.Fill);
+        canvas.DrawRoundRect(new RectF(s * 0.18f, s * 0.22f, s * 0.82f, s * 0.34f), s * 0.04f, s * 0.04f, paint);
+        canvas.DrawRoundRect(new RectF(s * 0.18f, s * 0.44f, s * 0.82f, s * 0.56f), s * 0.04f, s * 0.04f, paint);
+        canvas.DrawRoundRect(new RectF(s * 0.18f, s * 0.66f, s * 0.82f, s * 0.78f), s * 0.04f, s * 0.04f, paint);
     }
 }
