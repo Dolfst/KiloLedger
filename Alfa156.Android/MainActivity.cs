@@ -229,6 +229,11 @@ public sealed class MainActivity : Activity
         }
         else
         {
+            if (!hasData)
+            {
+                labels.Add("Начать с нуля");
+                actions.Add(delegate { StartFromScratch(); });
+            }
             labels.Add("Импорт копии");
             actions.Add(delegate { ChooseImportFiles(); });
             if (hasData)
@@ -398,14 +403,14 @@ public sealed class MainActivity : Activity
         SetDataActionsEnabled(hasData);
         if (!hasData)
         {
-            status.Text = "Откройте «Данные» → «Импорт копии», чтобы начать работу.";
+            status.Text = "«Данные» → «Начать с нуля» или «Импорт копии».";
             allRows = new List<string[]>();
             visibleRows = new List<string[]>();
             visibleIndexes = new List<int>();
             selectedRecordPosition = -1;
             recordList.Adapter = CreateAdapter(new List<string>
             {
-                "Нет данных. Импортируйте копию с КПК или ZIP."
+                "Нет данных. Можно начать с нуля или импортировать копию."
             });
             SetCarOptions(new List<string>());
             UpdateSectionButtons();
@@ -491,7 +496,8 @@ public sealed class MainActivity : Activity
         if (dataMenuButton != null)
             dataMenuButton.Enabled = true;
         if (addCarButton != null)
-            addCarButton.Enabled = enabled && !syncActive;
+            // Без данных кнопка запускает «Начать с нуля».
+            addCarButton.Enabled = !syncActive;
         syncButton.Enabled = true;
         fuelButton.Enabled = !syncActive;
         repairsButton.Enabled = !syncActive;
@@ -519,7 +525,7 @@ public sealed class MainActivity : Activity
             !syncActive && hasData && HasCurrentFilter();
         categoriesButton.Enabled = !syncActive && selectedSection == Repairs && hasData;
         if (addCarButton != null)
-            addCarButton.Enabled = hasData && !syncActive;
+            addCarButton.Enabled = !syncActive;
         addButton.Enabled = hasData && !syncActive;
     }
 
@@ -1042,14 +1048,14 @@ public sealed class MainActivity : Activity
 
     private void AddCar()
     {
-        if (!IsCompleteData(DataDirectory))
-        {
-            ShowMessage("Сначала импортируйте копию через «Данные».");
-            return;
-        }
         if (syncActive)
         {
             ShowMessage("Дождитесь окончания синхронизации.");
+            return;
+        }
+        if (!IsCompleteData(DataDirectory))
+        {
+            StartFromScratch();
             return;
         }
         List<EditorField> fields = new List<EditorField>
@@ -1065,6 +1071,38 @@ public sealed class MainActivity : Activity
                 ExpenseDataStore.AddCar(DataDirectory, name);
                 SetCurrentCar(name);
                 RefreshRecords();
+            });
+    }
+
+    private void StartFromScratch()
+    {
+        if (syncActive)
+        {
+            ShowMessage("Дождитесь окончания синхронизации.");
+            return;
+        }
+        if (IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Данные уже есть. Добавляйте записи через «Добавить».");
+            return;
+        }
+        List<EditorField> fields = new List<EditorField>
+        {
+            EditorField.Text("Название первого автомобиля", "", true)
+        };
+        RenderEditor("Начать с нуля", fields,
+            delegate(string[] values)
+            {
+                string name = values[0].Trim();
+                ExpenseDataStore.CreateNewWorkspace(DataDirectory, name);
+                SetCurrentCar(name);
+                selectedSection = Fuel;
+                GetSharedPreferences("settings", FileCreationMode.Private)
+                    .Edit().PutString("selectedSection", selectedSection).Apply();
+                RefreshRecords();
+                Toast.MakeText(this,
+                    "Готово. Можно добавлять заправки и ремонт.",
+                    ToastLength.Long).Show();
             });
     }
 
@@ -1974,12 +2012,7 @@ public sealed class MainActivity : Activity
 
     private static bool IsCompleteData(string directory)
     {
-        if (!Directory.Exists(directory))
-            return false;
-        for (int i = 0; i < ExpenseDataCodec.CoreDataFiles.Length; i++)
-            if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.CoreDataFiles[i])))
-                return false;
-        return true;
+        return ExpenseDataStore.HasCompleteCoreFiles(directory);
     }
 
     private static bool TryNumber(string value, out decimal number)

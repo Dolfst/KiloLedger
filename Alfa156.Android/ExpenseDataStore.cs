@@ -163,6 +163,41 @@ internal static class ExpenseDataStore
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"), rows);
     }
 
+    /// <summary>
+    /// Создаёт пустой набор данных на телефоне: авто, пустые журналы и категории ремонта.
+    /// </summary>
+    internal static void CreateNewWorkspace(string directory, string firstCarName)
+    {
+        firstCarName = (firstCarName ?? "").Trim();
+        if (firstCarName.Length == 0)
+            throw new InvalidOperationException("Введите название автомобиля.");
+        if (firstCarName.IndexOf('\n') >= 0 || firstCarName.IndexOf('\r') >= 0)
+            throw new InvalidOperationException("Название автомобиля не должно содержать перевод строки.");
+
+        if (HasCompleteCoreFiles(directory))
+            throw new InvalidOperationException(
+                "На телефоне уже есть данные. Сначала экспортируйте копию или удалите приложение.");
+
+        Directory.CreateDirectory(directory);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"),
+            new List<string[]> { new string[] { firstCarName } });
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), new List<string[]>());
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), new List<string[]>());
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "utilities.dat"), new List<string[]>());
+        EnsureRepairCategories(directory);
+        ExpenseDataCodec.ValidateDirectory(directory);
+    }
+
+    internal static bool HasCompleteCoreFiles(string directory)
+    {
+        if (!Directory.Exists(directory))
+            return false;
+        for (int i = 0; i < ExpenseDataCodec.CoreDataFiles.Length; i++)
+            if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.CoreDataFiles[i])))
+                return false;
+        return true;
+    }
+
     internal static void AddRecord(string directory, string fileName, string[] row)
     {
         ValidateRecord(fileName, row);
