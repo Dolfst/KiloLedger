@@ -468,7 +468,8 @@ public sealed class MainActivity : Activity
         summaryButton.Enabled = !syncActive;
         recordList.Enabled = !syncActive;
         bool supportsFilter = selectedSection == Repairs || selectedSection == Fuel;
-        filterButton.Text = selectedSection == Fuel ? "Фильтр заправок" : "Фильтр";
+        filterButton.Text = (selectedSection == Fuel ? "Фильтр заправок" : "Фильтр") +
+            (HasCurrentFilter() ? " ●" : "");
         filterButton.Enabled = enabled && !syncActive && supportsFilter;
         resetFilterButton.Enabled = enabled && !syncActive && supportsFilter && HasCurrentFilter();
         categoriesButton.Enabled = enabled && !syncActive && selectedSection == Repairs;
@@ -483,6 +484,8 @@ public sealed class MainActivity : Activity
         editButton.Enabled = selected && !syncActive;
         deleteButton.Enabled = selected && !syncActive;
         bool supportsFilter = selectedSection == Repairs || selectedSection == Fuel;
+        filterButton.Text = (selectedSection == Fuel ? "Фильтр заправок" : "Фильтр") +
+            (HasCurrentFilter() ? " ●" : "");
         filterButton.Enabled = !syncActive && supportsFilter && IsCompleteData(DataDirectory);
         resetFilterButton.Enabled = supportsFilter &&
             !syncActive && IsCompleteData(DataDirectory) && HasCurrentFilter();
@@ -567,6 +570,8 @@ public sealed class MainActivity : Activity
             syncListener = listener;
             syncActive = true;
             syncButton.Text = "Остановить синхронизацию";
+            if (dataMenuButton != null)
+                dataMenuButton.Text = "Данные ●";
             SetDataActionsEnabled(IsCompleteData(DataDirectory));
             UpdateRecordActions();
 
@@ -707,6 +712,8 @@ public sealed class MainActivity : Activity
         if (syncButton != null)
         {
             syncButton.Text = "Синхронизация по Wi-Fi";
+            if (dataMenuButton != null)
+                dataMenuButton.Text = "Данные";
             SetDataActionsEnabled(IsCompleteData(DataDirectory));
             UpdateRecordActions();
         }
@@ -1419,9 +1426,17 @@ public sealed class MainActivity : Activity
         }
         try
         {
+            ScrollView scroll = new ScrollView(this);
+            TextView body = new TextView(this);
+            body.Text = BuildSummary();
+            body.TextSize = 14;
+            body.SetTextIsSelectable(true);
+            body.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            body.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+            scroll.AddView(body);
             new AlertDialog.Builder(this)
-                .SetTitle("Сводка и ТО")
-                .SetMessage(BuildSummary())
+                .SetTitle("Сводка и ТО · " + currentCar)
+                .SetView(scroll)
                 .SetPositiveButton("Закрыть", delegate { })
                 .Show();
         }
