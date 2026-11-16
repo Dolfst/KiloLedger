@@ -36,6 +36,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
 
       - name: Accept Android SDK licenses
         shell: bash
@@ -61,12 +63,23 @@ jobs:
         id: android-version
         run: echo "version_code=$((GITHUB_RUN_NUMBER + 4))" >> "$GITHUB_OUTPUT"
 
+      - name: Install Android build dependencies
+        run: >-
+          dotnet build Alfa156.Android/Alfa156.Android.csproj
+          -t:InstallAndroidDependencies
+          -f net10.0-android
+          -p:AndroidSdkDirectory="$ANDROID_HOME"
+          -p:JavaSdkDirectory="$JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True
+
       - name: Build ARM64 APK
         run: >-
           dotnet build Alfa156.Android/Alfa156.Android.csproj
           -c Release
           -p:RuntimeIdentifier=android-arm64
           -p:ApplicationVersion=${{ steps.android-version.outputs.version_code }}
+          -p:AndroidSdkDirectory="$ANDROID_HOME"
+          -p:JavaSdkDirectory="$JAVA_HOME"
           -p:AcceptAndroidSDKLicenses=True
 
       - name: Publish latest APK
@@ -74,7 +87,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           apk_path="$RUNNER_TEMP/Alfa156.apk"
-          cp Alfa156.Android/bin/Release/net10.0-android/android-arm64/com.alfa156.mobile-Signed.apk "$apk_path"
+          signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
+          if [ -z "$signed" ]; then
+            echo "Signed APK not found" >&2
+            find Alfa156.Android/bin/Release -name '*.apk' -print >&2 || true
+            exit 1
+          fi
+          cp "$signed" "$apk_path"
 
           if gh release view android-latest >/dev/null 2>&1; then
             gh release upload android-latest "$apk_path" --clobber
