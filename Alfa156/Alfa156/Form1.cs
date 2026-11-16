@@ -113,38 +113,59 @@ namespace CarExpenses
         private Bitmap CreateSectionIcon(string section)
         {
             Color fill = Color.FromArgb(49, 77, 102);
-            string letter = "A";
             if (section == FuelSection)
-            {
                 fill = Color.FromArgb(23, 122, 86);
-                letter = "F";
-            }
             else if (section == RepairSection)
-            {
                 fill = Color.FromArgb(196, 101, 30);
-                letter = "R";
-            }
             else if (section == UtilitiesSection)
-            {
                 fill = Color.FromArgb(79, 104, 179);
-                letter = "U";
-            }
             else if (section == "Сводка и ТО")
-            {
                 fill = Color.FromArgb(130, 88, 180);
-                letter = "S";
-            }
 
             Bitmap icon = new Bitmap(24, 24);
             using (Graphics g = Graphics.FromImage(icon))
+            using (SolidBrush badge = new SolidBrush(fill))
+            using (SolidBrush whiteBrush = new SolidBrush(Color.White))
+            using (Pen whitePen = new Pen(Color.White))
             {
                 g.Clear(Color.Transparent);
-                using (SolidBrush badge = new SolidBrush(fill))
-                    g.FillEllipse(badge, 1, 1, 22, 22);
-                using (SolidBrush whiteBrush = new SolidBrush(Color.White))
-                using (Font letterFont = new Font("Arial", 10, FontStyle.Bold))
-                    g.DrawString(letter, letterFont, whiteBrush,
-                        new PointF(7, 3));
+                g.FillEllipse(badge, 1, 1, 22, 22);
+
+                if (section == FuelSection)
+                {
+                    // Колонка заправки
+                    g.FillRectangle(whiteBrush, 7, 6, 7, 13);
+                    g.FillRectangle(badge, 8, 7, 5, 4);
+                    g.DrawLine(whitePen, 14, 8, 17, 11);
+                    g.FillRectangle(whiteBrush, 16, 11, 3, 4);
+                }
+                else if (section == RepairSection)
+                {
+                    // Гаечный ключ
+                    g.DrawEllipse(whitePen, 5, 5, 7, 7);
+                    g.DrawLine(whitePen, 11, 11, 18, 18);
+                    g.FillRectangle(whiteBrush, 16, 16, 4, 3);
+                }
+                else if (section == UtilitiesSection)
+                {
+                    // Дом
+                    Point[] roof = new Point[]
+                    {
+                        new Point(12, 5),
+                        new Point(19, 11),
+                        new Point(5, 11)
+                    };
+                    g.FillPolygon(whiteBrush, roof);
+                    g.FillRectangle(whiteBrush, 7, 11, 10, 8);
+                    g.FillRectangle(badge, 10, 14, 4, 5);
+                }
+                else
+                {
+                    // Столбцы сводки
+                    g.FillRectangle(whiteBrush, 6, 13, 3, 6);
+                    g.FillRectangle(whiteBrush, 11, 7, 3, 12);
+                    g.FillRectangle(whiteBrush, 16, 10, 3, 9);
+                }
             }
             return icon;
         }

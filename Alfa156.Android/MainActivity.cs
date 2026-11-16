@@ -131,11 +131,11 @@ public sealed class MainActivity : Activity
         root.AddView(title, MatchWrap());
 
         LinearLayout transferRow = NewRow();
-        transferRow.AddView(CreateButton("Импорт копии", SystemDrawable("ic_menu_upload"), delegate { ChooseImportFiles(); }), WeightedButton());
-        transferRow.AddView(CreateButton("Экспорт ZIP", SystemDrawable("ic_menu_download"), delegate { ChooseExportFile(); }), WeightedButton());
+        transferRow.AddView(CreateButton("Импорт копии", ButtonIcons.Import, delegate { ChooseImportFiles(); }), WeightedButton());
+        transferRow.AddView(CreateButton("Экспорт ZIP", ButtonIcons.Export, delegate { ChooseExportFile(); }), WeightedButton());
         root.AddView(transferRow);
 
-        syncButton = CreateButton("Синхронизация по Wi-Fi", delegate { ToggleWiFiSync(); });
+        syncButton = CreateButton("Синхронизация по Wi-Fi", ButtonIcons.Sync, delegate { ToggleWiFiSync(); });
         root.AddView(syncButton, MatchWrap());
 
         LinearLayout carRow = NewRow();
@@ -148,15 +148,15 @@ public sealed class MainActivity : Activity
         carSpinner.ItemSelected += CarSelected;
         carRow.AddView(carSpinner, new LinearLayout.LayoutParams(0,
             ViewGroup.LayoutParams.WrapContent, 1));
-        carRow.AddView(CreateButton("Добавить", SystemDrawable("ic_menu_add"), delegate { AddCar(); }),
+        carRow.AddView(CreateButton("Добавить", ButtonIcons.Add, delegate { AddCar(); }),
             new LinearLayout.LayoutParams(Dp(100), ViewGroup.LayoutParams.WrapContent));
         root.AddView(carRow);
 
         LinearLayout sectionRow = NewRow();
-        fuelButton = CreateButton("Заправки", SystemDrawable("ic_menu_mapmode"), delegate { SelectSection(Fuel); });
-        repairsButton = CreateButton("Ремонт и ТО", SystemDrawable("ic_menu_edit"), delegate { SelectSection(Repairs); });
-        utilitiesButton = CreateButton("Коммунальные", SystemDrawable("ic_menu_info_details"), delegate { SelectSection(Utilities); });
-        summaryButton = CreateButton("Сводка и ТО", SystemDrawable("ic_menu_gallery"), delegate { ShowSummary(); });
+        fuelButton = CreateButton("Заправки", ButtonIcons.Fuel, delegate { SelectSection(Fuel); });
+        repairsButton = CreateButton("Ремонт и ТО", ButtonIcons.Repairs, delegate { SelectSection(Repairs); });
+        utilitiesButton = CreateButton("Коммунальные", ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
+        summaryButton = CreateButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
         sectionRow.AddView(fuelButton, WeightedButton());
         sectionRow.AddView(repairsButton, WeightedButton());
         sectionRow.AddView(utilitiesButton, WeightedButton());
@@ -164,18 +164,18 @@ public sealed class MainActivity : Activity
         root.AddView(sectionRow);
 
         LinearLayout recordActions = NewRow();
-        addButton = CreateButton("Добавить", SystemDrawable("ic_menu_add"), delegate { AddRecord(); });
-        editButton = CreateButton("Изменить", SystemDrawable("ic_menu_edit"), delegate { EditSelectedRecord(); });
-        deleteButton = CreateButton("Удалить", SystemDrawable("ic_menu_delete"), delegate { DeleteSelectedRecord(); });
+        addButton = CreateButton("Добавить", ButtonIcons.Add, delegate { AddRecord(); });
+        editButton = CreateButton("Изменить", ButtonIcons.Edit, delegate { EditSelectedRecord(); });
+        deleteButton = CreateButton("Удалить", ButtonIcons.Delete, delegate { DeleteSelectedRecord(); });
         recordActions.AddView(addButton, WeightedButton());
         recordActions.AddView(editButton, WeightedButton());
         recordActions.AddView(deleteButton, WeightedButton());
         root.AddView(recordActions);
 
         LinearLayout maintenanceActions = NewRow();
-        filterButton = CreateButton("Фильтр ремонта", SystemDrawable("ic_menu_search"), delegate { EditSectionFilter(); });
-        resetFilterButton = CreateButton("Сбросить фильтр", SystemDrawable("ic_menu_revert"), delegate { ResetSectionFilter(); });
-        categoriesButton = CreateButton("Категории", SystemDrawable("ic_menu_sort_by_size"), delegate { ManageRepairCategories(); });
+        filterButton = CreateButton("Фильтр ремонта", ButtonIcons.Filter, delegate { EditSectionFilter(); });
+        resetFilterButton = CreateButton("Сбросить фильтр", ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
+        categoriesButton = CreateButton("Категории", ButtonIcons.Categories, delegate { ManageRepairCategories(); });
         maintenanceActions.AddView(filterButton, new LinearLayout.LayoutParams(
             0, ViewGroup.LayoutParams.WrapContent, 1.2f));
         maintenanceActions.AddView(resetFilterButton, new LinearLayout.LayoutParams(
@@ -184,8 +184,8 @@ public sealed class MainActivity : Activity
         root.AddView(maintenanceActions);
 
         LinearLayout backupActions = NewRow();
-        backupButton = CreateButton("Копия на телефоне", SystemDrawable("ic_menu_save"), delegate { CreateLocalBackup(); });
-        restoreButton = CreateButton("Восстановить", SystemDrawable("ic_menu_rotate"), delegate { RestoreLocalBackup(); });
+        backupButton = CreateButton("Копия на телефоне", ButtonIcons.Backup, delegate { CreateLocalBackup(); });
+        restoreButton = CreateButton("Восстановить", ButtonIcons.Restore, delegate { RestoreLocalBackup(); });
         backupActions.AddView(backupButton, WeightedButton());
         backupActions.AddView(restoreButton, WeightedButton());
         root.AddView(backupActions);
@@ -224,28 +224,38 @@ public sealed class MainActivity : Activity
 
     private Button CreateButton(string text, EventHandler clickHandler)
     {
-        return CreateButton(text, 0, clickHandler);
+        return CreateButton(text, null, clickHandler);
     }
 
-    private Button CreateButton(string text, int iconResId, EventHandler clickHandler)
+    private Button CreateButton(string text, string iconKind, EventHandler clickHandler)
     {
         Button button = new Button(this);
         button.Text = text;
         button.TextSize = 11;
         button.SetMinHeight(Dp(40));
-        button.SetPadding(Dp(3), 0, Dp(3), 0);
-        if (iconResId != 0)
+        button.SetPadding(Dp(6), 0, Dp(6), 0);
+        if (!string.IsNullOrEmpty(iconKind))
         {
-            button.SetCompoundDrawablesWithIntrinsicBounds(iconResId, 0, 0, 0);
+            button.Tag = iconKind;
+            ApplyButtonIcon(button, iconKind, IconColor(false));
         }
         if (clickHandler != null)
             button.Click += clickHandler;
         return button;
     }
 
-    private int SystemDrawable(string name)
+    private void ApplyButtonIcon(Button button, string iconKind, AndroidColor color)
     {
-        return Resources.GetIdentifier(name, "drawable", "android");
+        if (button == null || string.IsNullOrEmpty(iconKind))
+            return;
+        button.SetCompoundDrawablesWithIntrinsicBounds(
+            ButtonIcons.Create(this, iconKind, color), null, null, null);
+        button.CompoundDrawablePadding = Dp(4);
+    }
+
+    private static AndroidColor IconColor(bool selected)
+    {
+        return selected ? AndroidColor.White : AndroidColor.Rgb(35, 51, 70);
     }
 
     private int Dp(int value)
@@ -280,7 +290,7 @@ public sealed class MainActivity : Activity
         SetSectionButton(utilitiesButton, selectedSection == Utilities);
     }
 
-    private static void SetSectionButton(Button button, bool selected)
+    private void SetSectionButton(Button button, bool selected)
     {
         if (button == null)
             return;
@@ -289,6 +299,9 @@ public sealed class MainActivity : Activity
             : AndroidColor.Rgb(225, 231, 237));
         button.SetTextColor(selected ? AndroidColor.White :
             AndroidColor.Rgb(35, 51, 70));
+        string iconKind = button.Tag as string;
+        if (!string.IsNullOrEmpty(iconKind))
+            ApplyButtonIcon(button, iconKind, IconColor(selected));
     }
 
     private void RefreshRecords()
