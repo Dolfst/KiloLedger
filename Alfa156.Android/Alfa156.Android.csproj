@@ -4,11 +4,17 @@
     <OutputType>Exe</OutputType>
     <ApplicationId>com.alfa156.mobile</ApplicationId>
     <ApplicationTitle>Alfa 156</ApplicationTitle>
-    <ApplicationVersion>6</ApplicationVersion>
-    <ApplicationDisplayVersion>1.5</ApplicationDisplayVersion>
+    <ApplicationVersion>7</ApplicationVersion>
+    <ApplicationDisplayVersion>1.5.1</ApplicationDisplayVersion>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <Nullable>disable</Nullable>
+    <!-- Постоянная подпись для обновлений sideload (один ключ для CI и локальных сборок). -->
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>$(MSBuildThisFileDirectory)alfa156-upload.keystore</AndroidSigningKeyStore>
+    <AndroidSigningStorePass>Alfa156Upload!</AndroidSigningStorePass>
+    <AndroidSigningKeyAlias>alfa156</AndroidSigningKeyAlias>
+    <AndroidSigningKeyPass>Alfa156Upload!</AndroidSigningKeyPass>
   </PropertyGroup>
 </Project>
