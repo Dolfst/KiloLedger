@@ -293,7 +293,8 @@ namespace CarExpenses
 
         private bool MatchesRepairFilter(string[] row)
         {
-            if (filterCategory != "Все категории" && row[3] != filterCategory)
+            if (filterCategory != "Все категории" &&
+                !String.Equals(row[3], filterCategory, StringComparison.OrdinalIgnoreCase))
                 return false;
             if (filterDateFrom != "" && String.CompareOrdinal(row[0], filterDateFrom) < 0)
                 return false;

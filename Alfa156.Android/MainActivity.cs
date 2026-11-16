@@ -14,6 +14,7 @@ using Android.OS;
 using Android.Views;
 using Android.Widget;
 using AndroidColor = global::Android.Graphics.Color;
+using AndroidTypefaceStyle = global::Android.Graphics.TypefaceStyle;
 using AndroidLayout = global::Android.Resource.Layout;
 using Uri = global::Android.Net.Uri;
 
@@ -135,7 +136,7 @@ public sealed class MainActivity : Activity
         TextView title = new TextView(this);
         title.Text = "Alfa 156";
         title.TextSize = 22;
-        title.SetTypeface(title.Typeface, Android.Graphics.TypefaceStyle.Bold);
+        title.SetTypeface(title.Typeface, AndroidTypefaceStyle.Bold);
         title.SetTextColor(AndroidColor.Rgb(35, 51, 70));
         titleRow.AddView(title, new LinearLayout.LayoutParams(0,
             ViewGroup.LayoutParams.WrapContent, 1));
@@ -386,7 +387,7 @@ public sealed class MainActivity : Activity
             : AndroidColor.Rgb(225, 231, 237));
         button.SetTextColor(selected ? AndroidColor.White :
             AndroidColor.Rgb(35, 51, 70));
-        string iconKind = button.Tag as string;
+        string iconKind = button.Tag != null ? button.Tag.ToString() : null;
         if (!string.IsNullOrEmpty(iconKind))
             ApplyButtonIcon(button, iconKind, IconColor(selected), iconOnTop);
     }
