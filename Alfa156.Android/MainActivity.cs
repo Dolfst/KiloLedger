@@ -633,6 +633,8 @@ public sealed class MainActivity : Activity
                             if (syncButton != null)
                             {
                                 syncButton.Text = "Синхронизация по Wi-Fi";
+                                if (dataMenuButton != null)
+                                    dataMenuButton.Text = "Данные";
                                 SetDataActionsEnabled(IsCompleteData(DataDirectory));
                                 UpdateRecordActions();
                             }
