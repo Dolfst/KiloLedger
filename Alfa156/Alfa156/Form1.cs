@@ -198,7 +198,15 @@ namespace CarExpenses
             Text = section;
 
             screenHeading = new Label();
-            screenHeading.Text = section == UtilitiesSection ? section : section + ": " + currentCar;
+            string heading = section == UtilitiesSection ? section : section + ": " + currentCar;
+            bool filterOn = (section == FuelSection &&
+                    (fuelFilterDateFrom != "" || fuelFilterDateTo != "" || fuelFilterText != "")) ||
+                (section == RepairSection &&
+                    (filterCategory != "Все категории" || filterDateFrom != "" ||
+                     filterDateTo != "" || filterText != ""));
+            if (filterOn)
+                heading += " [фильтр]";
+            screenHeading.Text = heading;
             StyleHeading(screenHeading);
             Controls.Add(screenHeading);
 
@@ -940,7 +948,7 @@ namespace CarExpenses
         private void AddFuel()
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
-            string lastMileage = LastFuelMileage(currentCar);
+            string lastMileage = LastCarMileage(currentCar);
             EntryField[] fields = new EntryField[]
             {
                 new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
@@ -966,17 +974,31 @@ namespace CarExpenses
             ShowRecords(FuelSection);
         }
 
-        private static string LastFuelMileage(string car)
+        private static string LastCarMileage(string car)
         {
-            List<string[]> fuels = DataStore.LoadFuel();
-            for (int i = fuels.Count - 1; i >= 0; i--)
+            decimal best = -1;
+            string bestText = "";
+            RememberLatestMileage(DataStore.LoadFuel(), car, ref best, ref bestText);
+            RememberLatestMileage(DataStore.LoadRepairs(), car, ref best, ref bestText);
+            return bestText;
+        }
+
+        private static void RememberLatestMileage(List<string[]> rows, string car,
+            ref decimal best, ref string bestText)
+        {
+            for (int i = 0; i < rows.Count; i++)
             {
+                if (rows[i].Length < 3 || rows[i][1] != car)
+                    continue;
                 decimal mileage;
-                if (fuels[i].Length >= 3 && fuels[i][1] == car &&
-                    DataStore.TryNumber(fuels[i][2], out mileage) && mileage >= 0)
-                    return fuels[i][2];
+                if (!DataStore.TryNumber(rows[i][2], out mileage) || mileage < 0)
+                    continue;
+                if (mileage >= best)
+                {
+                    best = mileage;
+                    bestText = rows[i][2];
+                }
             }
-            return "";
         }
 
         private void AddRepair()
@@ -988,11 +1010,14 @@ namespace CarExpenses
                 MessageBox.Show("Сначала добавьте категорию ремонта.", "Категории");
                 return;
             }
+            string lastMileage = LastCarMileage(currentCar);
             EntryField[] fields = new EntryField[]
             {
                 new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
                 new EntryField("Автомобиль", currentCar, cars, true),
-                new EntryField("Пробег, км", "", "number", false),
+                new EntryField(lastMileage.Length > 0
+                    ? "Пробег, км (последняя запись)"
+                    : "Пробег, км", lastMileage, "number", false),
                 new EntryField("Категория", categories[0], categories, true),
                 new EntryField("Товар / деталь", "", "text", true),
                 new EntryField("Наименование", "", "text", false),
