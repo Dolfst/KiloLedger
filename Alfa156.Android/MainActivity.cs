@@ -53,10 +53,12 @@ public sealed class MainActivity : Activity
     private Button backupButton;
     private Button restoreButton;
     private Button syncButton;
+    private Button dataMenuButton;
+    private LinearLayout filterRow;
     private TcpListener syncListener;
     private TcpClient syncClient;
     private volatile bool syncActive;
-    private string selectedSection = Repairs;
+    private string selectedSection = Fuel;
     private string currentCar = "";
     private string filterCategory = AllCategories;
     private string filterDateFrom = "";
@@ -82,8 +84,11 @@ public sealed class MainActivity : Activity
         try
         {
             Title = "Alfa 156";
-            currentCar = GetSharedPreferences("settings", FileCreationMode.Private)
-                .GetString("currentCar", "");
+            var settings = GetSharedPreferences("settings", FileCreationMode.Private);
+            currentCar = settings.GetString("currentCar", "");
+            string savedSection = settings.GetString("selectedSection", Fuel);
+            if (savedSection == Fuel || savedSection == Repairs || savedSection == Utilities)
+                selectedSection = savedSection;
             CreateLayout();
             RefreshRecords();
         }
@@ -124,21 +129,28 @@ public sealed class MainActivity : Activity
         root.SetPadding(Dp(12), Dp(8), Dp(12), Dp(4));
         root.SetBackgroundColor(AndroidColor.Rgb(245, 247, 250));
 
+        LinearLayout titleRow = NewRow();
+        titleRow.SetGravity(GravityFlags.CenterVertical);
         TextView title = new TextView(this);
         title.Text = "Alfa 156";
-        title.TextSize = 23;
+        title.TextSize = 22;
+        title.SetTypeface(title.Typeface, Android.Graphics.TypefaceStyle.Bold);
         title.SetTextColor(AndroidColor.Rgb(35, 51, 70));
-        root.AddView(title, MatchWrap());
+        titleRow.AddView(title, new LinearLayout.LayoutParams(0,
+            ViewGroup.LayoutParams.WrapContent, 1));
+        dataMenuButton = CreateButton("Данные", ButtonIcons.Backup, delegate { ShowDataMenu(); });
+        dataMenuButton.TextSize = 12;
+        titleRow.AddView(dataMenuButton, new LinearLayout.LayoutParams(
+            Dp(118), ViewGroup.LayoutParams.WrapContent));
+        root.AddView(titleRow, MatchWrap());
 
-        LinearLayout transferRow = NewRow();
-        transferRow.AddView(CreateButton("Импорт копии", ButtonIcons.Import, delegate { ChooseImportFiles(); }), WeightedButton());
-        transferRow.AddView(CreateButton("Экспорт ZIP", ButtonIcons.Export, delegate { ChooseExportFile(); }), WeightedButton());
-        root.AddView(transferRow);
-
+        // Скрытые кнопки данных — вызываются из меню, нужны для Enable/Disable.
         syncButton = CreateButton("Синхронизация по Wi-Fi", ButtonIcons.Sync, delegate { ToggleWiFiSync(); });
-        root.AddView(syncButton, MatchWrap());
+        backupButton = CreateButton("Копия на телефоне", ButtonIcons.Backup, delegate { CreateLocalBackup(); });
+        restoreButton = CreateButton("Восстановить", ButtonIcons.Restore, delegate { RestoreLocalBackup(); });
 
         LinearLayout carRow = NewRow();
+        carRow.SetGravity(GravityFlags.CenterVertical);
         TextView carLabel = new TextView(this);
         carLabel.Text = "Авто";
         carLabel.TextSize = 14;
@@ -152,16 +164,19 @@ public sealed class MainActivity : Activity
             new LinearLayout.LayoutParams(Dp(100), ViewGroup.LayoutParams.WrapContent));
         root.AddView(carRow);
 
-        LinearLayout sectionRow = NewRow();
-        fuelButton = CreateButton("Заправки", ButtonIcons.Fuel, delegate { SelectSection(Fuel); });
-        repairsButton = CreateButton("Ремонт и ТО", ButtonIcons.Repairs, delegate { SelectSection(Repairs); });
-        utilitiesButton = CreateButton("Коммунальные", ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
-        summaryButton = CreateButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
-        sectionRow.AddView(fuelButton, WeightedButton());
-        sectionRow.AddView(repairsButton, WeightedButton());
-        sectionRow.AddView(utilitiesButton, WeightedButton());
-        sectionRow.AddView(summaryButton, WeightedButton());
-        root.AddView(sectionRow);
+        LinearLayout sectionRow1 = NewRow();
+        fuelButton = CreateSectionButton("Заправки", ButtonIcons.Fuel, delegate { SelectSection(Fuel); });
+        repairsButton = CreateSectionButton("Ремонт и ТО", ButtonIcons.Repairs, delegate { SelectSection(Repairs); });
+        sectionRow1.AddView(fuelButton, WeightedButton());
+        sectionRow1.AddView(repairsButton, WeightedButton());
+        root.AddView(sectionRow1);
+
+        LinearLayout sectionRow2 = NewRow();
+        utilitiesButton = CreateSectionButton("Коммунальные", ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
+        summaryButton = CreateSectionButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
+        sectionRow2.AddView(utilitiesButton, WeightedButton());
+        sectionRow2.AddView(summaryButton, WeightedButton());
+        root.AddView(sectionRow2);
 
         LinearLayout recordActions = NewRow();
         addButton = CreateButton("Добавить", ButtonIcons.Add, delegate { AddRecord(); });
@@ -172,28 +187,19 @@ public sealed class MainActivity : Activity
         recordActions.AddView(deleteButton, WeightedButton());
         root.AddView(recordActions);
 
-        LinearLayout maintenanceActions = NewRow();
-        filterButton = CreateButton("Фильтр ремонта", ButtonIcons.Filter, delegate { EditSectionFilter(); });
-        resetFilterButton = CreateButton("Сбросить фильтр", ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
+        filterRow = NewRow();
+        filterButton = CreateButton("Фильтр", ButtonIcons.Filter, delegate { EditSectionFilter(); });
+        resetFilterButton = CreateButton("Сбросить", ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
         categoriesButton = CreateButton("Категории", ButtonIcons.Categories, delegate { ManageRepairCategories(); });
-        maintenanceActions.AddView(filterButton, new LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.WrapContent, 1.2f));
-        maintenanceActions.AddView(resetFilterButton, new LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.WrapContent, 1.2f));
-        maintenanceActions.AddView(categoriesButton, WeightedButton());
-        root.AddView(maintenanceActions);
-
-        LinearLayout backupActions = NewRow();
-        backupButton = CreateButton("Копия на телефоне", ButtonIcons.Backup, delegate { CreateLocalBackup(); });
-        restoreButton = CreateButton("Восстановить", ButtonIcons.Restore, delegate { RestoreLocalBackup(); });
-        backupActions.AddView(backupButton, WeightedButton());
-        backupActions.AddView(restoreButton, WeightedButton());
-        root.AddView(backupActions);
+        filterRow.AddView(filterButton, WeightedButton());
+        filterRow.AddView(resetFilterButton, WeightedButton());
+        filterRow.AddView(categoriesButton, WeightedButton());
+        root.AddView(filterRow);
 
         status = new TextView(this);
         status.TextSize = 12;
         status.SetTextColor(AndroidColor.Rgb(60, 70, 80));
-        status.SetPadding(0, Dp(4), 0, Dp(4));
+        status.SetPadding(0, Dp(6), 0, Dp(4));
         root.AddView(status, MatchWrap());
 
         recordList = new ListView(this);
@@ -202,6 +208,43 @@ public sealed class MainActivity : Activity
         root.AddView(recordList, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MatchParent, 0, 1));
         SetContentView(root);
+    }
+
+    private void ShowDataMenu()
+    {
+        string[] items =
+        {
+            "Импорт копии",
+            "Экспорт ZIP",
+            syncActive ? "Остановить синхронизацию" : "Синхронизация по Wi-Fi",
+            "Копия на телефоне",
+            "Восстановить копию"
+        };
+        new AlertDialog.Builder(this)
+            .SetTitle("Данные")
+            .SetItems(items, (sender, args) =>
+            {
+                switch (args.Which)
+                {
+                    case 0:
+                        ChooseImportFiles();
+                        break;
+                    case 1:
+                        ChooseExportFile();
+                        break;
+                    case 2:
+                        ToggleWiFiSync();
+                        break;
+                    case 3:
+                        CreateLocalBackup();
+                        break;
+                    case 4:
+                        RestoreLocalBackup();
+                        break;
+                }
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
     }
 
     private LinearLayout NewRow()
@@ -237,19 +280,40 @@ public sealed class MainActivity : Activity
         if (!string.IsNullOrEmpty(iconKind))
         {
             button.Tag = iconKind;
-            ApplyButtonIcon(button, iconKind, IconColor(false));
+            ApplyButtonIcon(button, iconKind, IconColor(false), false);
         }
         if (clickHandler != null)
             button.Click += clickHandler;
         return button;
     }
 
-    private void ApplyButtonIcon(Button button, string iconKind, AndroidColor color)
+    private Button CreateSectionButton(string text, string iconKind, EventHandler clickHandler)
+    {
+        Button button = new Button(this);
+        button.Text = text;
+        button.TextSize = 12;
+        button.SetMinHeight(Dp(64));
+        button.SetPadding(Dp(4), Dp(8), Dp(4), Dp(8));
+        button.SetAllCaps(false);
+        if (!string.IsNullOrEmpty(iconKind))
+        {
+            button.Tag = iconKind;
+            ApplyButtonIcon(button, iconKind, IconColor(false), true);
+        }
+        if (clickHandler != null)
+            button.Click += clickHandler;
+        return button;
+    }
+
+    private void ApplyButtonIcon(Button button, string iconKind, AndroidColor color, bool iconOnTop)
     {
         if (button == null || string.IsNullOrEmpty(iconKind))
             return;
-        button.SetCompoundDrawablesWithIntrinsicBounds(
-            ButtonIcons.Create(this, iconKind, color), null, null, null);
+        var icon = ButtonIcons.Create(this, iconKind, color);
+        if (iconOnTop)
+            button.SetCompoundDrawablesWithIntrinsicBounds(null, icon, null, null);
+        else
+            button.SetCompoundDrawablesWithIntrinsicBounds(icon, null, null, null);
         button.CompoundDrawablePadding = Dp(4);
     }
 
@@ -279,18 +343,21 @@ public sealed class MainActivity : Activity
     private void SelectSection(string section)
     {
         selectedSection = section;
+        GetSharedPreferences("settings", FileCreationMode.Private)
+            .Edit().PutString("selectedSection", selectedSection).Apply();
         UpdateSectionButtons();
         RefreshRecords();
     }
 
     private void UpdateSectionButtons()
     {
-        SetSectionButton(fuelButton, selectedSection == Fuel);
-        SetSectionButton(repairsButton, selectedSection == Repairs);
-        SetSectionButton(utilitiesButton, selectedSection == Utilities);
+        SetSectionButton(fuelButton, selectedSection == Fuel, true);
+        SetSectionButton(repairsButton, selectedSection == Repairs, true);
+        SetSectionButton(utilitiesButton, selectedSection == Utilities, true);
+        SetSectionButton(summaryButton, false, true);
     }
 
-    private void SetSectionButton(Button button, bool selected)
+    private void SetSectionButton(Button button, bool selected, bool iconOnTop)
     {
         if (button == null)
             return;
@@ -301,7 +368,7 @@ public sealed class MainActivity : Activity
             AndroidColor.Rgb(35, 51, 70));
         string iconKind = button.Tag as string;
         if (!string.IsNullOrEmpty(iconKind))
-            ApplyButtonIcon(button, iconKind, IconColor(selected));
+            ApplyButtonIcon(button, iconKind, IconColor(selected), iconOnTop);
     }
 
     private void RefreshRecords()
@@ -310,13 +377,18 @@ public sealed class MainActivity : Activity
         SetDataActionsEnabled(hasData);
         if (!hasData)
         {
-            status.Text = "Импортируйте копию с КПК, чтобы начать работу.";
+            status.Text = "Откройте «Данные» → «Импорт копии», чтобы начать работу.";
             allRows = new List<string[]>();
             visibleRows = new List<string[]>();
             visibleIndexes = new List<int>();
             selectedRecordPosition = -1;
-            recordList.Adapter = CreateAdapter(new List<string>());
+            recordList.Adapter = CreateAdapter(new List<string>
+            {
+                "Нет данных. Импортируйте копию с КПК или ZIP."
+            });
             SetCarOptions(new List<string>());
+            UpdateSectionButtons();
+            UpdateFilterRowVisibility();
             return;
         }
 
@@ -331,11 +403,6 @@ public sealed class MainActivity : Activity
         List<string[]> fuelRows = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
         List<string[]> repairRows = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
         List<string[]> utilityRows = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
-        List<string[]> carRows = ExpenseDataCodec.ReadRows(Path.Combine(DataDirectory, "cars.dat"));
-        status.Text = "Авто: " + currentCar + " · Заправок: " + fuelRows.Count +
-            " · Ремонт/ТО: " + repairRows.Count + " · Коммунальных месяцев: " + utilityRows.Count +
-            (HasCurrentFilter() ? " · фильтр включён" : "");
-
         allRows = ExpenseDataStore.Load(DataDirectory, GetSelectedFile());
         visibleRows = new List<string[]>();
         visibleIndexes = new List<int>();
@@ -354,9 +421,37 @@ public sealed class MainActivity : Activity
             visibleIndexes.Add(i);
             displayRows.Add(FormatRow(row));
         }
+
+        string sectionTitle = selectedSection == Fuel ? "Заправки"
+            : selectedSection == Repairs ? "Ремонт и ТО" : "Коммунальные";
+        string filterNote = HasCurrentFilter() ? " · фильтр" : "";
+        if (displayRows.Count == 0)
+        {
+            status.Text = sectionTitle + " · " + currentCar + " · нет записей" + filterNote;
+            displayRows.Add(HasCurrentFilter()
+                ? "Нет записей по фильтру. Сбросьте фильтр или добавьте запись."
+                : "Пока нет записей. Нажмите «Добавить».");
+        }
+        else
+        {
+            status.Text = sectionTitle + " · " + currentCar + " · показано " +
+                displayRows.Count + " · всего заправок " + fuelRows.Count +
+                ", ремонт " + repairRows.Count + ", комм. " + utilityRows.Count + filterNote;
+        }
         recordList.Adapter = CreateAdapter(displayRows);
         UpdateRecordActions();
         UpdateSectionButtons();
+        UpdateFilterRowVisibility();
+    }
+
+    private void UpdateFilterRowVisibility()
+    {
+        if (filterRow == null)
+            return;
+        bool showFilters = selectedSection == Fuel || selectedSection == Repairs;
+        filterRow.Visibility = showFilters ? ViewStates.Visible : ViewStates.Gone;
+        categoriesButton.Visibility = selectedSection == Repairs
+            ? ViewStates.Visible : ViewStates.Gone;
     }
 
     private void SetDataActionsEnabled(bool enabled)
@@ -364,6 +459,8 @@ public sealed class MainActivity : Activity
         addButton.Enabled = enabled && !syncActive;
         backupButton.Enabled = enabled && !syncActive;
         restoreButton.Enabled = enabled && !syncActive;
+        if (dataMenuButton != null)
+            dataMenuButton.Enabled = !syncActive || syncActive;
         syncButton.Enabled = true;
         fuelButton.Enabled = !syncActive;
         repairsButton.Enabled = !syncActive;
@@ -371,11 +468,12 @@ public sealed class MainActivity : Activity
         summaryButton.Enabled = !syncActive;
         recordList.Enabled = !syncActive;
         bool supportsFilter = selectedSection == Repairs || selectedSection == Fuel;
-        filterButton.Text = selectedSection == Fuel ? "Фильтр заправок" : "Фильтр ремонта";
+        filterButton.Text = selectedSection == Fuel ? "Фильтр заправок" : "Фильтр";
         filterButton.Enabled = enabled && !syncActive && supportsFilter;
         resetFilterButton.Enabled = enabled && !syncActive && supportsFilter && HasCurrentFilter();
         categoriesButton.Enabled = enabled && !syncActive && selectedSection == Repairs;
         carSpinner.Enabled = enabled && !syncActive;
+        UpdateFilterRowVisibility();
     }
 
     private void UpdateRecordActions()
@@ -627,18 +725,21 @@ public sealed class MainActivity : Activity
     {
         if (selectedSection == Fuel && row.Length >= 5)
         {
-            string formatted = row[0] + "  " + row[2] + " км  " + row[3] +
-                " л  " + row[4] + " BYN";
+            string formatted = row[0] + " · " + row[2] + " км · " + row[3] +
+                " л · " + row[4] + " BYN";
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
-                formatted += "  " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
+                formatted += " · " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
             return formatted;
         }
         if (selectedSection == Repairs && row.Length >= 9)
-            return row[0] + "  " + row[3] + ": " + ShortText(row[4], 20) +
-                "  " + row[7] + " BYN";
+        {
+            string mileage = row[2].Length > 0 ? " · " + row[2] + " км" : "";
+            return row[0] + mileage + " · " + row[3] + ": " + ShortText(row[4], 22) +
+                " · " + row[7] + " BYN";
+        }
         if (selectedSection == Utilities && row.Length >= 8)
-            return row[0] + "  итого " + ExpenseDataCodec.Sum(row, 1)
+            return row[0] + " · итого " + ExpenseDataCodec.Sum(row, 1)
                 .ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
         return String.Join(" | ", row);
     }
@@ -710,7 +811,7 @@ public sealed class MainActivity : Activity
     {
         if (selectedSection == Fuel)
         {
-            string lastMileage = LastFuelMileage(currentCar);
+            string lastMileage = LastCarMileage(currentCar);
             ShowRecordEditor(false, new string[]
             {
                 DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
@@ -726,10 +827,11 @@ public sealed class MainActivity : Activity
                 ManageRepairCategories();
                 return;
             }
+            string lastMileage = LastCarMileage(currentCar);
             ShowRecordEditor(false, new string[]
             {
                 DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                currentCar, "", categories[0], "", "", "1", "", ""
+                currentCar, lastMileage, categories[0], "", "", "1", "", ""
             }, -1);
         }
         else
@@ -786,7 +888,11 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Date("Дата", row[0], true));
             fields.Add(EditorField.Option("Автомобиль", row[1],
                 ExpenseDataStore.LoadCarNames(DataDirectory).ToArray(), true));
-            fields.Add(EditorField.Number("Пробег, км", row[2], false));
+            fields.Add(EditorField.Number(
+                !editing && row[2].Length > 0
+                    ? "Пробег, км (последняя запись)"
+                    : "Пробег, км",
+                row[2], false));
             List<string> categories = ExpenseDataStore.LoadRepairCategories(DataDirectory);
             fields.Add(EditorField.Option("Категория", row[3],
                 categories.ToArray(), true));
@@ -820,17 +926,31 @@ public sealed class MainActivity : Activity
             });
     }
 
-    private string LastFuelMileage(string car)
+    private string LastCarMileage(string car)
     {
-            List<string[]> rows = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
-            for (int i = rows.Count - 1; i >= 0; i--)
+        decimal best = -1;
+        string bestText = "";
+        RememberLatestMileage(ExpenseDataStore.Load(DataDirectory, "fuel.dat"), car, 2, ref best, ref bestText);
+        RememberLatestMileage(ExpenseDataStore.Load(DataDirectory, "repairs.dat"), car, 2, ref best, ref bestText);
+        return bestText;
+    }
+
+    private static void RememberLatestMileage(List<string[]> rows, string car, int mileageIndex,
+        ref decimal best, ref string bestText)
+    {
+        for (int i = 0; i < rows.Count; i++)
+        {
+            if (rows[i].Length <= mileageIndex || rows[i][1] != car)
+                continue;
+            decimal mileage;
+            if (!TryNumber(rows[i][mileageIndex], out mileage) || mileage < 0)
+                continue;
+            if (mileage >= best)
             {
-                decimal mileage;
-                if (rows[i].Length >= 3 && rows[i][1] == car &&
-                    TryNumber(rows[i][2], out mileage) && mileage >= 0)
-                    return rows[i][2];
+                best = mileage;
+                bestText = rows[i][mileageIndex];
             }
-            return "";
+        }
     }
 
     private void AddCar()
@@ -1798,6 +1918,18 @@ public sealed class MainActivity : Activity
 
     private void ShowMessage(string message)
     {
+        bool looksLikeError = message != null && (
+            message.IndexOf("не удалось", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("не выполнен", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("Ошибка", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("Сначала", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf('\n') >= 0 ||
+            message.Length > 120);
+        if (!looksLikeError)
+        {
+            Toast.MakeText(this, message, ToastLength.Long).Show();
+            return;
+        }
         new AlertDialog.Builder(this)
             .SetTitle("Alfa 156")
             .SetMessage(message)

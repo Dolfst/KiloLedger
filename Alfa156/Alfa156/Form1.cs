@@ -98,13 +98,21 @@ namespace CarExpenses
         private void AddHomeButton(string section)
         {
             Button button = new Button();
-            button.Text = section;
+            button.Text = "  " + section;
             button.Tag = section;
-            button.BackColor = Color.FromArgb(49, 77, 102);
+            if (section == FuelSection)
+                button.BackColor = Color.FromArgb(23, 122, 86);
+            else if (section == RepairSection)
+                button.BackColor = Color.FromArgb(196, 101, 30);
+            else if (section == UtilitiesSection)
+                button.BackColor = Color.FromArgb(79, 104, 179);
+            else
+                button.BackColor = Color.FromArgb(130, 88, 180);
             button.ForeColor = Color.White;
+            button.Font = new Font("Arial", 11, FontStyle.Bold);
             button.Image = CreateSectionIcon(section);
             button.ImageAlign = ContentAlignment.MiddleLeft;
-            button.TextAlign = ContentAlignment.MiddleCenter;
+            button.TextAlign = ContentAlignment.MiddleLeft;
             button.Click += new EventHandler(OpenSection);
             Controls.Add(button);
             homeButtons.Add(button);
@@ -112,59 +120,43 @@ namespace CarExpenses
 
         private Bitmap CreateSectionIcon(string section)
         {
-            Color fill = Color.FromArgb(49, 77, 102);
-            if (section == FuelSection)
-                fill = Color.FromArgb(23, 122, 86);
-            else if (section == RepairSection)
-                fill = Color.FromArgb(196, 101, 30);
-            else if (section == UtilitiesSection)
-                fill = Color.FromArgb(79, 104, 179);
-            else if (section == "Сводка и ТО")
-                fill = Color.FromArgb(130, 88, 180);
-
-            Bitmap icon = new Bitmap(24, 24);
+            Bitmap icon = new Bitmap(28, 28);
             using (Graphics g = Graphics.FromImage(icon))
-            using (SolidBrush badge = new SolidBrush(fill))
             using (SolidBrush whiteBrush = new SolidBrush(Color.White))
-            using (Pen whitePen = new Pen(Color.White))
+            using (Pen whitePen = new Pen(Color.White, 2))
             {
                 g.Clear(Color.Transparent);
-                g.FillEllipse(badge, 1, 1, 22, 22);
 
                 if (section == FuelSection)
                 {
-                    // Колонка заправки
-                    g.FillRectangle(whiteBrush, 7, 6, 7, 13);
-                    g.FillRectangle(badge, 8, 7, 5, 4);
-                    g.DrawLine(whitePen, 14, 8, 17, 11);
-                    g.FillRectangle(whiteBrush, 16, 11, 3, 4);
+                    g.FillRectangle(whiteBrush, 6, 5, 10, 18);
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(23, 122, 86)), 8, 7, 6, 5);
+                    g.DrawLine(whitePen, 16, 8, 22, 12);
+                    g.FillRectangle(whiteBrush, 20, 12, 4, 6);
                 }
                 else if (section == RepairSection)
                 {
-                    // Гаечный ключ
-                    g.DrawEllipse(whitePen, 5, 5, 7, 7);
-                    g.DrawLine(whitePen, 11, 11, 18, 18);
-                    g.FillRectangle(whiteBrush, 16, 16, 4, 3);
+                    g.DrawEllipse(whitePen, 4, 4, 10, 10);
+                    g.DrawLine(whitePen, 12, 12, 22, 22);
+                    g.FillRectangle(whiteBrush, 19, 19, 5, 4);
                 }
                 else if (section == UtilitiesSection)
                 {
-                    // Дом
                     Point[] roof = new Point[]
                     {
-                        new Point(12, 5),
-                        new Point(19, 11),
-                        new Point(5, 11)
+                        new Point(14, 3),
+                        new Point(24, 12),
+                        new Point(4, 12)
                     };
                     g.FillPolygon(whiteBrush, roof);
-                    g.FillRectangle(whiteBrush, 7, 11, 10, 8);
-                    g.FillRectangle(badge, 10, 14, 4, 5);
+                    g.FillRectangle(whiteBrush, 7, 12, 14, 12);
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(79, 104, 179)), 11, 16, 6, 8);
                 }
                 else
                 {
-                    // Столбцы сводки
-                    g.FillRectangle(whiteBrush, 6, 13, 3, 6);
-                    g.FillRectangle(whiteBrush, 11, 7, 3, 12);
-                    g.FillRectangle(whiteBrush, 16, 10, 3, 9);
+                    g.FillRectangle(whiteBrush, 4, 14, 5, 10);
+                    g.FillRectangle(whiteBrush, 11, 6, 5, 18);
+                    g.FillRectangle(whiteBrush, 18, 10, 5, 14);
                 }
             }
             return icon;
@@ -253,6 +245,17 @@ namespace CarExpenses
                         ShortText(row[4], 18) + " " + row[7] + " BYN");
                 else
                     recordList.Items.Add(row[0] + "  " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " BYN");
+            }
+            if (recordList.Items.Count == 0)
+            {
+                bool hasFilter = (section == FuelSection &&
+                        (fuelFilterDateFrom != "" || fuelFilterDateTo != "" || fuelFilterText != "")) ||
+                    (section == RepairSection &&
+                        (filterCategory != "Все категории" || filterDateFrom != "" ||
+                         filterDateTo != "" || filterText != ""));
+                recordList.Items.Add(hasFilter
+                    ? "Нет записей по фильтру"
+                    : "Нет записей. Меню Действия - Добавить");
             }
 
             MainMenu menu = new MainMenu();
@@ -517,9 +520,16 @@ namespace CarExpenses
             return total;
         }
 
+        private bool HasSelectedRecord()
+        {
+            return recordList != null && displayedRecords != null &&
+                recordList.SelectedIndex >= 0 &&
+                recordList.SelectedIndex < displayedRecords.Count;
+        }
+
         private void ShowRecordDetails(object sender, EventArgs e)
         {
-            if (recordList.SelectedIndex < 0 || displayedRecords == null)
+            if (!HasSelectedRecord())
             {
                 MessageBox.Show("Сначала выберите запись.", "Учет");
                 return;
@@ -554,7 +564,7 @@ namespace CarExpenses
 
         private void EditCurrentRecord(object sender, EventArgs e)
         {
-            if (recordList.SelectedIndex < 0 || displayedRecords == null)
+            if (!HasSelectedRecord())
             {
                 MessageBox.Show("Сначала выберите запись.", "Учет");
                 return;
@@ -636,7 +646,7 @@ namespace CarExpenses
 
         private void DeleteCurrentRecord(object sender, EventArgs e)
         {
-            if (recordList.SelectedIndex < 0 || displayedRecords == null)
+            if (!HasSelectedRecord())
             {
                 MessageBox.Show("Сначала выберите запись.", "Учет");
                 return;
