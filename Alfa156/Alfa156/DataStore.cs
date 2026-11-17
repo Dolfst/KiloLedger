@@ -19,6 +19,9 @@ namespace CarExpenses
         private const string UtilitiesFile = "utilities.dat";
         private const string RepairCategoriesFile = "repair-categories.dat";
         private const string StartMenuShortcut = "Alfa 156.lnk";
+        private const int SyncIoTimeoutMs = 60000;
+        private const int SyncPollMicroseconds = 200000;
+        private const int SocketWouldBlock = 10035;
         private static readonly string[] CoreDataFiles = new string[]
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile
@@ -162,7 +165,7 @@ namespace CarExpenses
             }
         }
 
-        internal static void WriteSyncSnapshot(NetworkStream stream)
+        internal static void WriteSyncSnapshot(Socket socket)
         {
             for (int i = 0; i < DataFiles.Length; i++)
             {
@@ -170,16 +173,16 @@ namespace CarExpenses
                 if (content.Length > 16 * 1024 * 1024)
                     throw new InvalidDataException("Файл " + DataFiles[i] +
                         " превышает допустимый размер синхронизации.");
-                WriteSyncInt32(stream, content.Length);
-                stream.Write(content, 0, content.Length);
+                WriteSyncInt32(socket, content.Length);
+                WriteSyncBytes(socket, content, SyncIoTimeoutMs);
             }
-            stream.Flush();
         }
 
-        internal static void InstallSyncSnapshot(NetworkStream stream)
+        internal static void InstallSyncSnapshot(Socket socket)
         {
             string parent = Path.GetDirectoryName(DataDirectory);
-            string staging = Path.Combine(parent, "Alfa156_Sync_" + Guid.NewGuid().ToString("N"));
+            string staging = Path.Combine(parent, "Alfa156_Sync_" +
+                Guid.NewGuid().ToString().Replace("-", ""));
             string safetyName = "Alfa156_SyncSafety_" +
                 DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             string safety = Path.Combine(parent, safetyName);
@@ -195,10 +198,10 @@ namespace CarExpenses
             {
                 for (int i = 0; i < DataFiles.Length; i++)
                 {
-                    int length = ReadSyncInt32(stream);
+                    int length = ReadSyncInt32(socket, SyncIoTimeoutMs);
                     if (length < 0 || length > 16 * 1024 * 1024)
                         throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
-                    byte[] content = ReadSyncBytes(stream, length);
+                    byte[] content = ReadSyncBytes(socket, length, SyncIoTimeoutMs);
                     using (FileStream output = File.Create(Path.Combine(staging, DataFiles[i])))
                         output.Write(content, 0, content.Length);
                 }
@@ -235,28 +238,58 @@ namespace CarExpenses
             }
         }
 
-        internal static int ReadSyncInt32(NetworkStream stream)
+        internal static int ReadSyncInt32(Socket socket, int timeoutMs)
         {
-            byte[] bytes = ReadSyncBytes(stream, 4);
+            byte[] bytes = ReadSyncBytes(socket, 4, timeoutMs);
             return bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
         }
 
-        internal static string ReadSyncMessage(NetworkStream stream)
+        internal static string ReadSyncMessage(Socket socket, int timeoutMs)
         {
-            int length = ReadSyncInt32(stream);
+            int length = ReadSyncInt32(socket, timeoutMs);
             if (length < 0 || length > 4096)
                 throw new InvalidDataException("Неверное сообщение синхронизации.");
-            return Encoding.UTF8.GetString(ReadSyncBytes(stream, length), 0, length);
+            return Encoding.UTF8.GetString(ReadSyncBytes(socket, length, timeoutMs), 0, length);
         }
 
-        internal static void WriteSyncInt32(NetworkStream stream, int value)
+        internal static void WriteSyncInt32(Socket socket, int value)
         {
             byte[] bytes = new byte[]
             {
                 (byte)value, (byte)(value >> 8), (byte)(value >> 16), (byte)(value >> 24)
             };
-            stream.Write(bytes, 0, bytes.Length);
-            stream.Flush();
+            WriteSyncBytes(socket, bytes, SyncIoTimeoutMs);
+        }
+
+        internal static void WriteSyncBytes(Socket socket, byte[] content, int timeoutMs)
+        {
+            int offset = 0;
+            int length = content.Length;
+            int started = Environment.TickCount;
+            while (length > 0)
+            {
+                if (unchecked(Environment.TickCount - started) >= timeoutMs)
+                    throw new IOException(
+                        "Не удалось отправить данные на телефон. Проверьте Wi-Fi и повторите синхронизацию.");
+                if (!socket.Poll(SyncPollMicroseconds, SelectMode.SelectWrite))
+                    continue;
+                int count;
+                try
+                {
+                    count = socket.Send(content, offset, length, SocketFlags.None);
+                }
+                catch (SocketException sendError)
+                {
+                    if (sendError.ErrorCode == SocketWouldBlock)
+                        continue;
+                    throw;
+                }
+                if (count <= 0)
+                    throw new IOException("Телефон закрыл соединение во время передачи.");
+                offset += count;
+                length -= count;
+                started = Environment.TickCount;
+            }
         }
 
         private static void ValidateSyncDirectory(string directory)
@@ -318,16 +351,36 @@ namespace CarExpenses
             }
         }
 
-        private static byte[] ReadSyncBytes(NetworkStream stream, int length)
+        private static byte[] ReadSyncBytes(Socket socket, int length, int timeoutMs)
         {
             byte[] bytes = new byte[length];
             int offset = 0;
+            int started = Environment.TickCount;
             while (offset < length)
             {
-                int count = stream.Read(bytes, offset, length - offset);
+                // SO_RCVTIMEO на Windows Mobile зарезервирован и бросает SocketException,
+                // поэтому ожидание делается через Poll, а не через ReceiveTimeout.
+                if (unchecked(Environment.TickCount - started) >= timeoutMs)
+                    throw new IOException(
+                        "Телефон не ответил вовремя. Если на Android открыт выбор версии записи, " +
+                        "подтвердите его и повторите синхронизацию.");
+                if (!socket.Poll(SyncPollMicroseconds, SelectMode.SelectRead))
+                    continue;
+                int count;
+                try
+                {
+                    count = socket.Receive(bytes, offset, length - offset, SocketFlags.None);
+                }
+                catch (SocketException receiveError)
+                {
+                    if (receiveError.ErrorCode == SocketWouldBlock)
+                        continue;
+                    throw;
+                }
                 if (count == 0)
                     throw new EndOfStreamException("Соединение синхронизации прервано.");
                 offset += count;
+                started = Environment.TickCount;
             }
             return bytes;
         }

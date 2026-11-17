@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
@@ -900,29 +901,49 @@ namespace CarExpenses
                 return;
             }
 
+            IPAddress ip;
+            if (!IPAddress.TryParse(address, out ip) || ip.AddressFamily != AddressFamily.InterNetwork)
+            {
+                MessageBox.Show(
+                    "Введите IPv4-адрес телефона цифрами, как на экране Android, например 192.168.43.1.",
+                    "Синхронизация");
+                return;
+            }
+
             try
             {
                 using (TcpClient client = new TcpClient())
                 {
-                    client.SendTimeout = 30000;
-                    client.ReceiveTimeout = 300000;
-                    client.Connect(address, 45816);
-                    NetworkStream stream = client.GetStream();
+                    // Connect(string) на .NET CF всегда идёт через DNS. Точка доступа телефона
+                    // DNS обычно не даёт, и даже верный IP заканчивается SocketException.
+                    client.Connect(ip, 45816);
+                    try
+                    {
+                        client.NoDelay = true;
+                    }
+                    catch (SocketException)
+                    {
+                    }
+                    catch (NotSupportedException)
+                    {
+                    }
+
+                    Socket socket = client.Client;
+                    socket.Blocking = false;
                     byte[] handshake = Encoding.ASCII.GetBytes("ALFA156SYNC1|" +
                         pairingCode + "\n");
-                    stream.Write(handshake, 0, handshake.Length);
-                    stream.Flush();
+                    DataStore.WriteSyncBytes(socket, handshake, 30000);
 
-                    int status = DataStore.ReadSyncInt32(stream);
+                    int status = DataStore.ReadSyncInt32(socket, 60000);
                     if (status != 0)
-                        throw new IOException(DataStore.ReadSyncMessage(stream));
+                        throw new IOException(DataStore.ReadSyncMessage(socket, 60000));
 
-                    DataStore.WriteSyncSnapshot(stream);
-                    status = DataStore.ReadSyncInt32(stream);
+                    DataStore.WriteSyncSnapshot(socket);
+                    status = DataStore.ReadSyncInt32(socket, 300000);
                     if (status != 0)
-                        throw new IOException(DataStore.ReadSyncMessage(stream));
+                        throw new IOException(DataStore.ReadSyncMessage(socket, 60000));
 
-                    DataStore.InstallSyncSnapshot(stream);
+                    DataStore.InstallSyncSnapshot(socket);
                 }
 
                 currentCar = DataStore.LoadCarNames()[0];
@@ -933,9 +954,52 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Синхронизация не выполнена: " + ex.Message,
+                MessageBox.Show("Синхронизация не выполнена: " + DescribeSyncException(ex),
                     "Ошибка синхронизации");
             }
+        }
+
+        private static string DescribeSyncException(Exception ex)
+        {
+            StringBuilder text = new StringBuilder();
+            text.Append(ex.GetType().Name);
+            SocketException socketError = ex as SocketException;
+            if (socketError != null)
+            {
+                text.Append(" ");
+                text.Append(socketError.ErrorCode.ToString(CultureInfo.InvariantCulture));
+                string hint = SyncSocketHint(socketError.ErrorCode);
+                if (hint.Length > 0)
+                {
+                    text.Append(": ");
+                    text.Append(hint);
+                }
+            }
+
+            string message = ex.Message;
+            if (message != null && message.Length > 0 && message.IndexOf("NETCFv35.Messages") < 0)
+            {
+                text.Append(": ");
+                text.Append(message);
+            }
+            return text.ToString();
+        }
+
+        private static string SyncSocketHint(int errorCode)
+        {
+            if (errorCode == 10060)
+                return "телефон не ответил. Проверьте, что КПК в той же Wi-Fi сети и синхронизация на Android запущена";
+            if (errorCode == 10061)
+                return "телефон отклонил подключение. Запустите синхронизацию на Android и проверьте IP";
+            if (errorCode == 10050 || errorCode == 10051 || errorCode == 10065)
+                return "сеть КПК недоступна. Подключите его к той же Wi-Fi, что и телефон";
+            if (errorCode == 10053 || errorCode == 10054)
+                return "соединение оборвалось. Повторите синхронизацию, не выключая Wi-Fi";
+            if (errorCode == 11001 || errorCode == 11004)
+                return "КПК не смог разобрать адрес. Введите IP цифрами, не имя";
+            if (errorCode == 10022 || errorCode == 10042 || errorCode == 10045)
+                return "прошивка КПК не поддерживает этот параметр сокета";
+            return "";
         }
 
         private static bool IsDigits(string value)
