@@ -929,7 +929,6 @@ namespace CarExpenses
                     }
 
                     Socket socket = client.Client;
-                    socket.Blocking = false;
                     byte[] handshake = Encoding.ASCII.GetBytes("ALFA156SYNC1|" +
                         pairingCode + "\n");
                     DataStore.WriteSyncBytes(socket, handshake, 30000);

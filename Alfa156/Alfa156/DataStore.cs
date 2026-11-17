@@ -21,7 +21,6 @@ namespace CarExpenses
         private const string StartMenuShortcut = "Alfa 156.lnk";
         private const int SyncIoTimeoutMs = 60000;
         private const int SyncPollMicroseconds = 200000;
-        private const int SocketWouldBlock = 10035;
         private static readonly string[] CoreDataFiles = new string[]
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile
@@ -273,17 +272,7 @@ namespace CarExpenses
                         "Не удалось отправить данные на телефон. Проверьте Wi-Fi и повторите синхронизацию.");
                 if (!socket.Poll(SyncPollMicroseconds, SelectMode.SelectWrite))
                     continue;
-                int count;
-                try
-                {
-                    count = socket.Send(content, offset, length, SocketFlags.None);
-                }
-                catch (SocketException sendError)
-                {
-                    if (sendError.ErrorCode == SocketWouldBlock)
-                        continue;
-                    throw;
-                }
+                int count = socket.Send(content, offset, length, SocketFlags.None);
                 if (count <= 0)
                     throw new IOException("Телефон закрыл соединение во время передачи.");
                 offset += count;
@@ -358,25 +347,16 @@ namespace CarExpenses
             int started = Environment.TickCount;
             while (offset < length)
             {
-                // SO_RCVTIMEO на Windows Mobile зарезервирован и бросает SocketException,
-                // поэтому ожидание делается через Poll, а не через ReceiveTimeout.
+                // SO_RCVTIMEO на Windows Mobile зарезервирован и бросает SocketException.
+                // Сокет остаётся блокирующим: неблокирующий Send/Receive на .NET CF не поддерживается.
+                // Срок ожидания ограничивает Poll, затем обычный Receive забирает уже готовые байты.
                 if (unchecked(Environment.TickCount - started) >= timeoutMs)
                     throw new IOException(
                         "Телефон не ответил вовремя. Если на Android открыт выбор версии записи, " +
                         "подтвердите его и повторите синхронизацию.");
                 if (!socket.Poll(SyncPollMicroseconds, SelectMode.SelectRead))
                     continue;
-                int count;
-                try
-                {
-                    count = socket.Receive(bytes, offset, length - offset, SocketFlags.None);
-                }
-                catch (SocketException receiveError)
-                {
-                    if (receiveError.ErrorCode == SocketWouldBlock)
-                        continue;
-                    throw;
-                }
+                int count = socket.Receive(bytes, offset, length - offset, SocketFlags.None);
                 if (count == 0)
                     throw new EndOfStreamException("Соединение синхронизации прервано.");
                 offset += count;
