@@ -6,6 +6,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace CarExpenses
@@ -990,43 +991,105 @@ namespace CarExpenses
                 "Синхронизация");
         }
 
+        private sealed class ConnectAttempt
+        {
+            internal TcpClient Client;
+            internal bool TimedOut;
+            internal Exception Error;
+            internal readonly object Gate = new object();
+            internal ManualResetEvent Finished = new ManualResetEvent(false);
+        }
+
         private static void ConnectWithin(TcpClient client, string host, int port, int timeoutMs)
         {
-            IAsyncResult result = null;
+            ConnectAttempt attempt = new ConnectAttempt();
+            attempt.Client = client;
             try
-            {
-                IPAddress parsed;
-                if (IPAddress.TryParse(host, out parsed))
-                    result = client.BeginConnect(parsed, port, null, null);
-                else
-                    result = client.BeginConnect(host, port, null, null);
-            }
-            catch (NotSupportedException)
-            {
-                client.Connect(host, port);
-                return;
-            }
-            catch (MissingMethodException)
-            {
-                client.Connect(host, port);
-                return;
-            }
-
-            if (!result.AsyncWaitHandle.WaitOne(timeoutMs, false))
             {
                 try
                 {
-                    client.Close();
+                    IPAddress parsed;
+                    AsyncCallback callback = new AsyncCallback(FinishConnect);
+                    if (IPAddress.TryParse(host, out parsed))
+                        client.BeginConnect(parsed, port, callback, attempt);
+                    else
+                        client.BeginConnect(host, port, callback, attempt);
+                }
+                catch (NotSupportedException)
+                {
+                    client.Connect(host, port);
+                    return;
+                }
+                catch (MissingMethodException)
+                {
+                    client.Connect(host, port);
+                    return;
+                }
+
+                if (!attempt.Finished.WaitOne(timeoutMs, false))
+                {
+                    lock (attempt.Gate)
+                    {
+                        attempt.TimedOut = true;
+                        try
+                        {
+                            client.Close();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                    throw new IOException("Нет ответа от " + host + ":" +
+                        port.ToString(CultureInfo.InvariantCulture) +
+                        ". На Android откройте Данные → Синхронизация по Wi-Fi и введите IP с этого экрана. " +
+                        "КПК и телефон должны быть в одной Wi-Fi сети.");
+                }
+                if (attempt.Error != null)
+                    throw attempt.Error;
+            }
+            finally
+            {
+                try
+                {
+                    attempt.Finished.Close();
                 }
                 catch (Exception)
                 {
                 }
-                throw new IOException("Нет ответа от " + host + ":" +
-                    port.ToString(CultureInfo.InvariantCulture) +
-                    ". На Android откройте Данные → Синхронизация по Wi-Fi и введите IP с этого экрана. " +
-                    "КПК и телефон должны быть в одной Wi-Fi сети.");
             }
-            client.EndConnect(result);
+        }
+
+        private static void FinishConnect(IAsyncResult result)
+        {
+            ConnectAttempt attempt = (ConnectAttempt)result.AsyncState;
+            lock (attempt.Gate)
+            {
+                try
+                {
+                    attempt.Client.EndConnect(result);
+                }
+                catch (Exception ex)
+                {
+                    attempt.Error = ex;
+                }
+                if (attempt.TimedOut || attempt.Error != null)
+                {
+                    try
+                    {
+                        attempt.Client.Close();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
+            try
+            {
+                attempt.Finished.Set();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
         }
 
         private static bool ShouldRetryWithRoute(Exception ex)

@@ -621,7 +621,7 @@ public sealed class MainActivity : Activity
 
             TcpListener listener = new TcpListener(IPAddress.Any, ExpenseSyncService.Port);
             listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            listener.Start();
+            listener.Start(8);
             syncListener = listener;
             syncActive = true;
             syncButton.Text = "Остановить синхронизацию";

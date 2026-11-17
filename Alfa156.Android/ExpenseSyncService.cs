@@ -24,6 +24,8 @@ internal static class ExpenseSyncService
     private const int MaximumFileSize = 16 * 1024 * 1024;
     private const string ProtocolHeader = "ALFA156SYNC1|";
 
+    private const int HandshakeTimeoutMs = 10000;
+
     internal static string Serve(
         TcpListener listener,
         string pairingCode,
@@ -32,10 +34,18 @@ internal static class ExpenseSyncService
         SyncConflictResolver resolveConflict,
         Action<TcpClient> clientAccepted)
     {
-        using (TcpClient client = listener.AcceptTcpClient())
+        while (true)
         {
+            TcpClient client = listener.AcceptTcpClient();
             clientAccepted(client);
-            return ServeClient(client, pairingCode, dataDirectory, stagingRoot, resolveConflict);
+            using (client)
+            {
+                bool abandoned;
+                string error = ServeClient(client, pairingCode, dataDirectory, stagingRoot,
+                    resolveConflict, out abandoned);
+                if (!abandoned)
+                    return error;
+            }
         }
     }
 
@@ -44,18 +54,31 @@ internal static class ExpenseSyncService
         string pairingCode,
         string dataDirectory,
         string stagingRoot,
-        SyncConflictResolver resolveConflict)
+        SyncConflictResolver resolveConflict,
+        out bool abandoned)
     {
+        abandoned = false;
         using (NetworkStream stream = client.GetStream())
         {
-            stream.ReadTimeout = 300000;
-            stream.WriteTimeout = 300000;
+            stream.ReadTimeout = HandshakeTimeoutMs;
+            stream.WriteTimeout = HandshakeTimeoutMs;
             string incomingDirectory = Path.Combine(stagingRoot, "incoming_" + Guid.NewGuid().ToString("N"));
             string mergedDirectory = Path.Combine(stagingRoot, "merged_" + Guid.NewGuid().ToString("N"));
             bool finalResponseStarted = false;
             try
             {
-                string handshake = ReadLine(stream);
+                string handshake;
+                try
+                {
+                    handshake = ReadLine(stream);
+                }
+                catch (Exception)
+                {
+                    abandoned = true;
+                    return null;
+                }
+                stream.ReadTimeout = 300000;
+                stream.WriteTimeout = 300000;
                 if (!String.Equals(handshake, ProtocolHeader + pairingCode, StringComparison.Ordinal))
                 {
                     WriteResponse(stream, 1, "Неверный код подключения.");
