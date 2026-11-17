@@ -1030,6 +1030,22 @@ namespace CarExpenses
                 {
                     lock (attempt.Gate)
                     {
+                        // EndConnect мог успеть завершиться, пока WaitOne уже вернул false:
+                        // Finished.Set стоит в том же lock, но ожидание к этому моменту кончилось.
+                        bool open = false;
+                        if (attempt.Error == null)
+                        {
+                            try
+                            {
+                                open = client.Connected;
+                            }
+                            catch (Exception)
+                            {
+                                open = false;
+                            }
+                        }
+                        if (open)
+                            return;
                         attempt.TimedOut = true;
                         try
                         {
@@ -1082,13 +1098,13 @@ namespace CarExpenses
                     {
                     }
                 }
-            }
-            try
-            {
-                attempt.Finished.Set();
-            }
-            catch (ObjectDisposedException)
-            {
+                try
+                {
+                    attempt.Finished.Set();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
             }
         }
 
