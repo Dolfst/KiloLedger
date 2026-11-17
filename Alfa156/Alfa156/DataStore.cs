@@ -230,8 +230,17 @@ namespace CarExpenses
             }
             finally
             {
-                if (Directory.Exists(staging))
-                    Directory.Delete(staging, true);
+                try
+                {
+                    if (Directory.Exists(staging))
+                        Directory.Delete(staging, true);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
             }
         }
 
@@ -324,6 +333,7 @@ namespace CarExpenses
             int offset = 0;
             while (offset < length)
             {
+                WaitForSyncBytes();
                 int count = stream.Read(bytes, offset, length - offset);
                 if (count == 0)
                     throw new EndOfStreamException("Соединение синхронизации прервано.");
@@ -331,6 +341,128 @@ namespace CarExpenses
             }
             return bytes;
         }
+
+        private static Socket activeSyncSocket;
+        private static int syncReadTimeoutMicroseconds;
+        private static readonly Guid InternetDestination =
+            new Guid("436EF144-B4FB-4863-A041-8F905A62C572");
+        private static readonly Guid WorkDestination =
+            new Guid("A1182988-0D73-439e-87AD-2A5B369F808B");
+
+        internal static void BindSyncSocket(Socket socket, int readTimeoutMicroseconds)
+        {
+            activeSyncSocket = socket;
+            syncReadTimeoutMicroseconds = readTimeoutMicroseconds;
+        }
+
+        internal static IntPtr OpenRoute(string address)
+        {
+            try
+            {
+                Guid mapped = Guid.Empty;
+                int mappedOk = ConnMgrMapURL("http://" + address + "/", ref mapped, 0);
+                Guid first = mappedOk == 0 && !mapped.Equals(Guid.Empty)
+                    ? mapped
+                    : InternetDestination;
+                Guid second = first.Equals(WorkDestination)
+                    ? InternetDestination
+                    : WorkDestination;
+
+                IntPtr handle;
+                int status;
+                if (TryOpenRoute(first, out handle, out status))
+                    return handle;
+                ReleaseRouteHandle(handle);
+                if (!second.Equals(first) && TryOpenRoute(second, out handle, out status))
+                    return handle;
+                ReleaseRouteHandle(handle);
+            }
+            catch (Exception)
+            {
+            }
+            return IntPtr.Zero;
+        }
+
+        internal static void CloseRoute(IntPtr handle)
+        {
+            ReleaseRouteHandle(handle);
+        }
+
+        private static bool TryOpenRoute(Guid destination, out IntPtr handle, out int status)
+        {
+            handle = IntPtr.Zero;
+            status = 0;
+            ConnMgrConnectionInfo info = new ConnMgrConnectionInfo();
+            info.cbSize = Marshal.SizeOf(typeof(ConnMgrConnectionInfo));
+            info.dwParams = 0x1;
+            info.dwFlags = 0;
+            info.dwPriority = 0x8000;
+            info.guidDestNet = destination;
+            int result = ConnMgrEstablishConnectionSync(ref info, ref handle, 20000, ref status);
+            return result == 0 && status == 0x10;
+        }
+
+        private static void ReleaseRouteHandle(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero)
+                return;
+            try
+            {
+                ConnMgrReleaseConnection(handle, 1);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private static void WaitForSyncBytes()
+        {
+            Socket socket = activeSyncSocket;
+            if (socket == null || syncReadTimeoutMicroseconds <= 0)
+                return;
+            try
+            {
+                if (socket.Poll(syncReadTimeoutMicroseconds, SelectMode.SelectRead))
+                    return;
+            }
+            catch (NotSupportedException)
+            {
+                return;
+            }
+
+            int seconds = syncReadTimeoutMicroseconds / 1000000;
+            throw new IOException("Телефон не ответил за " +
+                seconds.ToString(CultureInfo.InvariantCulture) +
+                " с. Оставьте на Android открытым окно синхронизации.");
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        private struct ConnMgrConnectionInfo
+        {
+            public int cbSize;
+            public int dwParams;
+            public int dwFlags;
+            public int dwPriority;
+            public int bExclusive;
+            public int bDisabled;
+            public Guid guidDestNet;
+            public IntPtr hWnd;
+            public int uMsg;
+            public int lParam;
+            public int ulMaxCost;
+            public int ulMinRcvBw;
+            public int ulMaxConnLatency;
+        }
+
+        [DllImport("cellcore.dll", CharSet = CharSet.Unicode)]
+        private static extern int ConnMgrMapURL(string url, ref Guid networkGuid, int reserved);
+
+        [DllImport("cellcore.dll")]
+        private static extern int ConnMgrEstablishConnectionSync(
+            ref ConnMgrConnectionInfo info, ref IntPtr connection, uint timeoutMs, ref int status);
+
+        [DllImport("cellcore.dll")]
+        private static extern int ConnMgrReleaseConnection(IntPtr connection, int cache);
 
         private static string GetBackupRoot()
         {

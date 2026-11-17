@@ -620,6 +620,7 @@ public sealed class MainActivity : Activity
                 .GetInt32(100000, 1000000).ToString(CultureInfo.InvariantCulture);
 
             TcpListener listener = new TcpListener(IPAddress.Any, ExpenseSyncService.Port);
+            listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             listener.Start();
             syncListener = listener;
             syncActive = true;
@@ -632,7 +633,8 @@ public sealed class MainActivity : Activity
             new AlertDialog.Builder(this)
                 .SetTitle("Офлайн-синхронизация")
                 .SetMessage("Подключите КПК и телефон к одной Wi-Fi сети " +
-                    "(интернет не нужен).\n\nIP телефона:\n" + addressText +
+                    "(интернет не нужен). Если КПК подключён к точке доступа телефона, " +
+                    "введите адрес с пометкой «точка доступа».\n\nIP телефона:\n" + addressText +
                     "\n\nКод подключения: " + pairingCode +
                     "\n\nНа КПК откройте Данные → Синхронизация по Wi-Fi.")
                 .SetPositiveButton("Скрыть", delegate { })

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
@@ -900,42 +901,206 @@ namespace CarExpenses
                 return;
             }
 
+            bool synced = false;
+            Exception lastError = null;
+            IntPtr route = IntPtr.Zero;
+            Cursor previousCursor = Cursor.Current;
             try
             {
-                using (TcpClient client = new TcpClient())
+                for (int attempt = 0; attempt < 2 && !synced; attempt++)
                 {
-                    client.SendTimeout = 30000;
-                    client.ReceiveTimeout = 300000;
-                    client.Connect(address, 45816);
-                    NetworkStream stream = client.GetStream();
-                    byte[] handshake = Encoding.ASCII.GetBytes("ALFA156SYNC1|" +
-                        pairingCode + "\n");
-                    stream.Write(handshake, 0, handshake.Length);
-                    stream.Flush();
+                    if (attempt == 1)
+                    {
+                        Cursor.Current = previousCursor;
+                        route = DataStore.OpenRoute(address);
+                    }
 
-                    int status = DataStore.ReadSyncInt32(stream);
-                    if (status != 0)
-                        throw new IOException(DataStore.ReadSyncMessage(stream));
+                    Cursor.Current = Cursors.WaitCursor;
+                    using (TcpClient client = new TcpClient())
+                    {
+                        bool connected = false;
+                        try
+                        {
+                            // Windows Mobile не поддерживает SO_SNDTIMEO/SO_RCVTIMEO.
+                            // Установка SendTimeout или ReceiveTimeout бросает SocketException,
+                            // а без пакета сообщений .NET CF на экране остаётся только просьба
+                            // установить NETCFv35.Messages.
+                            ConnectWithin(client, address, 45816, attempt == 0 ? 8000 : 20000);
+                            connected = true;
+                            try
+                            {
+                                client.NoDelay = true;
+                            }
+                            catch (SocketException)
+                            {
+                            }
 
-                    DataStore.WriteSyncSnapshot(stream);
-                    status = DataStore.ReadSyncInt32(stream);
-                    if (status != 0)
-                        throw new IOException(DataStore.ReadSyncMessage(stream));
+                            DataStore.BindSyncSocket(client.Client, 30 * 1000 * 1000);
+                            NetworkStream stream = client.GetStream();
+                            byte[] handshake = Encoding.UTF8.GetBytes("ALFA156SYNC1|" +
+                                pairingCode + "\n");
+                            stream.Write(handshake, 0, handshake.Length);
+                            stream.Flush();
 
-                    DataStore.InstallSyncSnapshot(stream);
+                            int status = DataStore.ReadSyncInt32(stream);
+                            if (status != 0)
+                                throw new IOException(DataStore.ReadSyncMessage(stream));
+
+                            DataStore.BindSyncSocket(client.Client, 5 * 60 * 1000 * 1000);
+                            DataStore.WriteSyncSnapshot(stream);
+                            status = DataStore.ReadSyncInt32(stream);
+                            if (status != 0)
+                                throw new IOException(DataStore.ReadSyncMessage(stream));
+
+                            DataStore.InstallSyncSnapshot(stream);
+                            synced = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            lastError = ex;
+                            if (attempt == 0 && !connected && ShouldRetryWithRoute(ex))
+                                continue;
+                            break;
+                        }
+                        finally
+                        {
+                            DataStore.BindSyncSocket(null, 0);
+                        }
+                    }
                 }
-
-                currentCar = DataStore.LoadCarNames()[0];
-                ShowHome();
-                MessageBox.Show("Синхронизация завершена. Добавленные записи объединены; " +
-                    "совпадающие записи были разрешены на Android.",
-                    "Синхронизация");
             }
-            catch (Exception ex)
+            finally
             {
-                MessageBox.Show("Синхронизация не выполнена: " + ex.Message,
-                    "Ошибка синхронизации");
+                Cursor.Current = previousCursor;
+                DataStore.CloseRoute(route);
             }
+
+            if (!synced)
+            {
+                MessageBox.Show("Синхронизация не выполнена: " +
+                    ExplainSyncFailure(lastError, address),
+                    "Ошибка синхронизации");
+                return;
+            }
+
+            currentCar = DataStore.LoadCarNames()[0];
+            ShowHome();
+            MessageBox.Show("Синхронизация завершена. Добавленные записи объединены; " +
+                "совпадающие записи были разрешены на Android.",
+                "Синхронизация");
+        }
+
+        private static void ConnectWithin(TcpClient client, string host, int port, int timeoutMs)
+        {
+            IAsyncResult result = null;
+            try
+            {
+                IPAddress parsed;
+                if (IPAddress.TryParse(host, out parsed))
+                    result = client.BeginConnect(parsed, port, null, null);
+                else
+                    result = client.BeginConnect(host, port, null, null);
+            }
+            catch (NotSupportedException)
+            {
+                client.Connect(host, port);
+                return;
+            }
+            catch (MissingMethodException)
+            {
+                client.Connect(host, port);
+                return;
+            }
+
+            if (!result.AsyncWaitHandle.WaitOne(timeoutMs, false))
+            {
+                try
+                {
+                    client.Close();
+                }
+                catch (Exception)
+                {
+                }
+                throw new IOException("Нет ответа от " + host + ":" +
+                    port.ToString(CultureInfo.InvariantCulture) +
+                    ". На Android откройте Данные → Синхронизация по Wi-Fi и введите IP с этого экрана. " +
+                    "КПК и телефон должны быть в одной Wi-Fi сети.");
+            }
+            client.EndConnect(result);
+        }
+
+        private static bool ShouldRetryWithRoute(Exception ex)
+        {
+            SocketException socket = FindSocketException(ex);
+            if (socket != null)
+            {
+                int code = SocketCode(socket);
+                if (code == 10061 || code == 11001 || code == 11004)
+                    return false;
+                return true;
+            }
+
+            IOException io = ex as IOException;
+            return io != null && io.Message != null && io.Message.StartsWith("Нет ответа от ");
+        }
+
+        private static string ExplainSyncFailure(Exception ex, string address)
+        {
+            if (ex == null)
+                return "неизвестная ошибка";
+
+            SocketException socket = FindSocketException(ex);
+            if (socket != null)
+            {
+                int code = SocketCode(socket);
+                if (code == 10060 || code == 10065 || code == 10051 || code == 10050 || code == 10049)
+                    return "КПК не достучался до " + address +
+                        ". Подключите КПК к той же Wi-Fi сети, что и телефон, или к точке доступа телефона, " +
+                        "и введите IP с экрана синхронизации Android.";
+                if (code == 10061)
+                    return "Телефон отклонил подключение. На Android ещё раз откройте Данные → Синхронизация по Wi-Fi " +
+                        "и не закрывайте это окно.";
+                if (code == 11001 || code == 11004)
+                    return "Адрес «" + address + "» не найден. Введите IP с экрана Android, например 192.168.1.20.";
+                return "Подключение к " + address + " не удалось, код " +
+                    code.ToString(CultureInfo.InvariantCulture) + ".";
+            }
+            return VisibleExceptionText(ex);
+        }
+
+        private static SocketException FindSocketException(Exception ex)
+        {
+            while (ex != null)
+            {
+                SocketException socket = ex as SocketException;
+                if (socket != null)
+                    return socket;
+                ex = ex.InnerException;
+            }
+            return null;
+        }
+
+        private static int SocketCode(SocketException socket)
+        {
+            if (socket.ErrorCode != 0)
+                return socket.ErrorCode;
+            return socket.NativeErrorCode;
+        }
+
+        private static string VisibleExceptionText(Exception ex)
+        {
+            string message = ex.Message;
+            if (message != null && message.Length > 0 &&
+                message.IndexOf("NETCFv35.Messages") < 0)
+                return message;
+
+            string text = ex.GetType().Name;
+            SocketException socket = ex as SocketException;
+            if (socket != null)
+                text += ", код " + SocketCode(socket).ToString(CultureInfo.InvariantCulture);
+            if (ex.InnerException != null)
+                text += " / " + VisibleExceptionText(ex.InnerException);
+            return text;
         }
 
         private static bool IsDigits(string value)

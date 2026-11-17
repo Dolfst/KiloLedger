@@ -101,22 +101,80 @@ internal static class ExpenseSyncService
     internal static List<string> GetLocalIpv4Addresses()
     {
         List<string> addresses = new List<string>();
+        List<string> labels = new List<string>();
         NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
         for (int i = 0; i < interfaces.Length; i++)
         {
-            if (interfaces[i].OperationalStatus != OperationalStatus.Up)
+            OperationalStatus status = interfaces[i].OperationalStatus;
+            if (status != OperationalStatus.Up && status != OperationalStatus.Unknown)
                 continue;
             UnicastIPAddressInformationCollection unicast =
                 interfaces[i].GetIPProperties().UnicastAddresses;
             for (int j = 0; j < unicast.Count; j++)
             {
                 IPAddress address = unicast[j].Address;
-                if (address.AddressFamily == AddressFamily.InterNetwork &&
-                    !IPAddress.IsLoopback(address) && !addresses.Contains(address.ToString()))
-                    addresses.Add(address.ToString());
+                if (address.AddressFamily != AddressFamily.InterNetwork ||
+                    IPAddress.IsLoopback(address))
+                    continue;
+                string ip = address.ToString();
+                if (ip.StartsWith("169.254.") || ip == "0.0.0.0" || addresses.Contains(ip))
+                    continue;
+                addresses.Add(ip);
+                labels.Add(DescribeEndpoint(interfaces[i], ip));
             }
         }
-        return addresses;
+
+        for (int i = 0; i < addresses.Count; i++)
+        {
+            for (int j = i + 1; j < addresses.Count; j++)
+            {
+                if (EndpointRank(labels[i], addresses[i]) <= EndpointRank(labels[j], addresses[j]))
+                    continue;
+                string ip = addresses[i];
+                addresses[i] = addresses[j];
+                addresses[j] = ip;
+                string label = labels[i];
+                labels[i] = labels[j];
+                labels[j] = label;
+            }
+        }
+
+        List<string> lines = new List<string>();
+        for (int i = 0; i < addresses.Count; i++)
+            lines.Add(addresses[i] + " — " + labels[i]);
+        return lines;
+    }
+
+    private static string DescribeEndpoint(NetworkInterface nic, string ip)
+    {
+        string name = nic.Name == null ? "" : nic.Name.ToLowerInvariant();
+        bool hotspotName = name.IndexOf("softap") >= 0 || name.IndexOf("ap0") >= 0 ||
+            name.IndexOf("swlan") >= 0;
+        bool hotspotIp = ip.EndsWith(".1") &&
+            (ip.StartsWith("192.168.43.") || ip.StartsWith("192.168.44.") ||
+             ip.StartsWith("192.168.49.") || ip.StartsWith("192.168.137.") ||
+             ip.StartsWith("192.168.165."));
+        if (hotspotName || hotspotIp)
+            return "точка доступа";
+        if (nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
+            name.IndexOf("wlan") >= 0 || name.IndexOf("wifi") >= 0)
+            return "Wi-Fi";
+        if (nic.Name == null || nic.Name.Length == 0)
+            return "сеть";
+        return nic.Name;
+    }
+
+    private static int EndpointRank(string label, string ip)
+    {
+        if (label == "точка доступа")
+            return 0;
+        if (label == "Wi-Fi")
+            return 1;
+        if (ip.StartsWith("192.168."))
+            return 2;
+        if (ip.StartsWith("10."))
+            return 3;
+        return 4;
     }
 
     private static void MergeAndInstall(
