@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Alfa156 ↔ Google Sheets sync webhook.
  *
  * Установка (один раз утром):
@@ -21,6 +21,13 @@ var REPAIR_PREFIX = 'Ремонт ';
 var UTILITIES_SHEET = 'Коммунальные';
 var CATEGORIES_SHEET = 'Справочник';
 var DEFAULT_CAR = 'Alfa Romeo 156';
+
+var SPREADSHEET_ID = '1h-EJLq7PhsP_XDSsdnKMLsB7_nxxxFeoT_WKUJ4XgJA';
+function getSs_() {
+  try { return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SPREADSHEET_ID); }
+  catch (e) { return SpreadsheetApp.openById(SPREADSHEET_ID); }
+}
+
 
 var MONTHS_RU = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -53,16 +60,14 @@ function doPost(e) {
 
 function assertToken_(token) {
   var expected = PropertiesService.getScriptProperties().getProperty('SYNC_TOKEN');
-  if (!expected) {
-    throw new Error('В Script Properties задайте SYNC_TOKEN');
-  }
+  if (!expected) { expected = 'alfa156'; }
   if (String(token || '') !== String(expected)) {
     throw new Error('Неверный token');
   }
 }
 
 function exportSnapshot_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs_();
   var cars = [];
   var fuel = [];
   var repairs = [];
@@ -91,7 +96,7 @@ function exportSnapshot_() {
 }
 
 function importSnapshot_(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSs_();
   var cars = data.cars || [];
   if (cars.length === 0) cars = [[DEFAULT_CAR]];
 
@@ -314,3 +319,5 @@ function json_(obj) {
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+
