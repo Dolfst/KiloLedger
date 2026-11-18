@@ -436,7 +436,7 @@ namespace CarExpenses
                 " с. Оставьте на Android открытым окно синхронизации.");
         }
 
-        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        [StructLayout(LayoutKind.Sequential)]
         private struct ConnMgrConnectionInfo
         {
             public int cbSize;

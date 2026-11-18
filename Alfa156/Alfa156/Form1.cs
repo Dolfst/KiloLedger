@@ -959,21 +959,20 @@ namespace CarExpenses
             attempt.Client = client;
             try
             {
-                try
-                {
-                    IPAddress parsed;
-                    AsyncCallback callback = new AsyncCallback(FinishConnect);
-                    if (IPAddress.TryParse(host, out parsed))
-                        client.BeginConnect(parsed, port, callback, attempt);
-                    else
-                        client.BeginConnect(host, port, callback, attempt);
-                }
-                catch (NotSupportedException)
+                IPAddress parsed;
+                if (!TryParseIpAddress(host, out parsed))
                 {
                     client.Connect(host, port);
                     return;
                 }
-                catch (MissingMethodException)
+
+                try
+                {
+                    // CF: у TcpClient нет BeginConnect — только у Socket.
+                    client.Client.BeginConnect(parsed, port,
+                        new AsyncCallback(FinishConnect), attempt);
+                }
+                catch (NotSupportedException)
                 {
                     client.Connect(host, port);
                     return;
@@ -983,14 +982,13 @@ namespace CarExpenses
                 {
                     lock (attempt.Gate)
                     {
-                        // EndConnect мог успеть завершиться, пока WaitOne уже вернул false:
-                        // Finished.Set стоит в том же lock, но ожидание к этому моменту кончилось.
+                        // EndConnect мог успеть завершиться, пока WaitOne уже вернул false.
                         bool open = false;
                         if (attempt.Error == null)
                         {
                             try
                             {
-                                open = client.Connected;
+                                open = client.Client != null && client.Client.Connected;
                             }
                             catch (Exception)
                             {
@@ -1028,6 +1026,22 @@ namespace CarExpenses
             }
         }
 
+        private static bool TryParseIpAddress(string host, out IPAddress address)
+        {
+            address = null;
+            if (host == null || host.Length == 0)
+                return false;
+            try
+            {
+                address = IPAddress.Parse(host);
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
         private static void FinishConnect(IAsyncResult result)
         {
             ConnectAttempt attempt = (ConnectAttempt)result.AsyncState;
@@ -1035,7 +1049,7 @@ namespace CarExpenses
             {
                 try
                 {
-                    attempt.Client.EndConnect(result);
+                    attempt.Client.Client.EndConnect(result);
                 }
                 catch (Exception ex)
                 {
