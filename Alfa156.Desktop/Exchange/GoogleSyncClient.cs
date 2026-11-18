@@ -54,12 +54,65 @@ namespace Alfa156.Desktop.Exchange
         internal static string SyncBidirectional(AlfaRepository local, GoogleSyncSettings settings)
         {
             AlfaRepository remote = Pull(settings);
-            SyncMerge.MergeInto(local, remote, SyncConflictPolicy.MergeFields);
+            // Локальные уникальные записи сохраняем: неполная выгрузка из Google их не сотрёт.
+            SyncMerge.MergeInto(local, remote, SyncConflictPolicy.PreferLocal);
+            CleanCurrencyInPlace(local);
             Push(settings, local);
             return "Синхронизация с Google: авто=" + local.Cars.Count +
                 ", заправки=" + local.Fuel.Count +
                 ", ремонт=" + local.Repairs.Count +
-                ", коммуналка=" + local.Utilities.Count;
+                ", коммуналка=" + local.Utilities.Count +
+                " (из Google: ремонт " + remote.Repairs.Count + ", заправки " + remote.Fuel.Count + ")";
+        }
+
+        private static void CleanCurrencyInPlace(AlfaRepository repo)
+        {
+            for (int i = 0; i < repo.Fuel.Count; i++)
+            {
+                if (repo.Fuel[i].Length > 4)
+                {
+                    repo.Fuel[i][2] = StripMoney(repo.Fuel[i][2]);
+                    repo.Fuel[i][3] = StripMoney(repo.Fuel[i][3]);
+                    repo.Fuel[i][4] = StripMoney(repo.Fuel[i][4]);
+                }
+            }
+            for (int i = 0; i < repo.Repairs.Count; i++)
+            {
+                if (repo.Repairs[i].Length > 7)
+                {
+                    repo.Repairs[i][2] = StripMoney(repo.Repairs[i][2]);
+                    repo.Repairs[i][6] = StripMoney(repo.Repairs[i][6]);
+                    repo.Repairs[i][7] = StripMoney(repo.Repairs[i][7]);
+                }
+            }
+            for (int i = 0; i < repo.Utilities.Count; i++)
+            {
+                for (int c = 1; c < repo.Utilities[i].Length && c < 8; c++)
+                    repo.Utilities[i][c] = StripMoney(repo.Utilities[i][c]);
+            }
+        }
+
+        private static string StripMoney(string text)
+        {
+            if (String.IsNullOrEmpty(text)) return "";
+            string s = text.Trim().Replace(" ", "").Replace("₽", "");
+            s = ReplaceIgnoreCase(s, "р.", "");
+            s = ReplaceIgnoreCase(s, "руб.", "");
+            s = ReplaceIgnoreCase(s, "руб", "");
+            s = ReplaceIgnoreCase(s, "BYN", "");
+            decimal value;
+            if (AlfaCodec.TryNumber(s, out value))
+                return value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return s;
+        }
+
+        private static string ReplaceIgnoreCase(string text, string oldValue, string newValue)
+        {
+            if (String.IsNullOrEmpty(text) || String.IsNullOrEmpty(oldValue)) return text;
+            int index;
+            while ((index = text.IndexOf(oldValue, StringComparison.OrdinalIgnoreCase)) >= 0)
+                text = text.Substring(0, index) + newValue + text.Substring(index + oldValue.Length);
+            return text;
         }
 
         internal static AlfaRepository Pull(GoogleSyncSettings settings)

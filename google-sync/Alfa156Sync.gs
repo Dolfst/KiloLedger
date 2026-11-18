@@ -115,38 +115,43 @@ function importSnapshot_(data) {
 }
 
 function readFuel_(sheet, car) {
-  var values = sheet.getDataRange().getDisplayValues();
+  var values = sheet.getDataRange().getValues();
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
   for (var r = 1; r < values.length; r++) {
-    var date = normalizeDate_(values[r][0]);
+    var date = normalizeDate_(values[r][0], display[r][0]);
     if (!date) continue;
-    rows.push([
-      date,
-      car,
-      num_(values[r][1]),
-      num_(values[r][2]),
-      num_(values[r][3])
-    ]);
+    var km = num_(display[r][1]);
+    var liters = num_(display[r][2]);
+    var cost = num_(display[r][3]);
+    if (!km && !liters && !cost) continue;
+    rows.push([date, car, km, liters, cost]);
   }
   return rows;
 }
 
 function readRepairs_(sheet, car) {
-  var values = sheet.getDataRange().getDisplayValues();
+  var values = sheet.getDataRange().getValues();
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
   for (var r = 1; r < values.length; r++) {
-    var date = normalizeDate_(values[r][0]);
+    var date = normalizeDate_(values[r][0], display[r][0]);
     if (!date) continue;
+    var product = clean_(display[r][3]);
+    var description = clean_(display[r][4]);
+    var sum = num_(display[r][6]);
+    // пропускаем совсем пустые хвосты
+    if (!product && !description && !sum && !clean_(display[r][2])) continue;
     rows.push([
       date,
       car,
-      num_(values[r][1]),
-      String(values[r][2] || '').trim(),
-      clean_(values[r][3]),
-      clean_(values[r][4]),
-      num_(values[r][5]) || '1',
-      num_(values[r][6]),
-      clean_(values[r][7])
+      num_(display[r][1]),
+      String(display[r][2] || '').trim(),
+      product,
+      description,
+      num_(display[r][5]) || '1',
+      sum,
+      clean_(display[r][7])
     ]);
   }
   return rows;
@@ -155,21 +160,25 @@ function readRepairs_(sheet, car) {
 function readUtilities_(ss) {
   var sheet = ss.getSheetByName(UTILITIES_SHEET);
   if (!sheet) return [];
-  var values = sheet.getDataRange().getDisplayValues();
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
-  for (var r = 1; r < values.length; r++) {
-    var month = normalizeMonth_(values[r][0]);
+  for (var r = 1; r < display.length; r++) {
+    var month = normalizeMonth_(display[r][0]);
     if (!month) continue;
-    rows.push([
+    var row = [
       month,
-      num_(values[r][1]),
-      num_(values[r][2]),
-      num_(values[r][3]),
-      num_(values[r][4]),
-      num_(values[r][5]),
-      num_(values[r][6]),
-      num_(values[r][7])
-    ]);
+      num_(display[r][1]),
+      num_(display[r][2]),
+      num_(display[r][3]),
+      num_(display[r][4]),
+      num_(display[r][5]),
+      num_(display[r][6]),
+      num_(display[r][7])
+    ];
+    var any = false;
+    for (var c = 1; c < 8; c++) if (row[c]) { any = true; break; }
+    if (!any) continue;
+    rows.push(row);
   }
   return rows;
 }
@@ -260,19 +269,57 @@ function carIn_(cars, car) {
   return false;
 }
 
-function normalizeDate_(value) {
-  var s = String(value || '').trim();
+function normalizeDate_(value, display) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return value.getFullYear() + '-' + pad_(value.getMonth() + 1) + '-' + pad_(value.getDate());
+  }
+  if (typeof value === 'number' && value > 20000 && value < 80000) {
+    var epoch = new Date(Date.UTC(1899, 11, 30));
+    epoch.setUTCDate(epoch.getUTCDate() + Math.floor(value));
+    return epoch.getUTCFullYear() + '-' + pad_(epoch.getUTCMonth() + 1) + '-' + pad_(epoch.getUTCDate());
+  }
+  var s = String((display != null && display !== '') ? display : (value || '')).trim();
   if (!s) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   var m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
   if (m) {
     return m[3] + '-' + pad_(m[2]) + '-' + pad_(m[1]);
   }
+  // "18 авг. 2025" / "18 августа 2025"
+  m = s.match(/^(\d{1,2})\s+([A-Za-zА-Яа-яЁё.]+)\s+(\d{4})$/);
+  if (m) {
+    var month = russianMonthIndex_(m[2]);
+    if (month >= 0) return m[3] + '-' + pad_(month + 1) + '-' + pad_(m[1]);
+  }
   var d = new Date(s);
   if (!isNaN(d.getTime())) {
     return d.getFullYear() + '-' + pad_(d.getMonth() + 1) + '-' + pad_(d.getDate());
   }
   return '';
+}
+
+function russianMonthIndex_(name) {
+  var n = String(name || '').toLowerCase().replace(/\./g, '');
+  var names = [
+    ['январ', 'янв', 'january', 'jan'],
+    ['феврал', 'фев', 'february', 'feb'],
+    ['март', 'мар', 'march', 'mar'],
+    ['апрел', 'апр', 'april', 'apr'],
+    ['ма', 'may'],
+    ['июн', 'june', 'jun'],
+    ['июл', 'july', 'jul'],
+    ['август', 'авг', 'august', 'aug'],
+    ['сентябр', 'сен', 'september', 'sep'],
+    ['октябр', 'окт', 'october', 'oct'],
+    ['ноябр', 'ноя', 'november', 'nov'],
+    ['декабр', 'дек', 'december', 'dec']
+  ];
+  for (var i = 0; i < names.length; i++) {
+    for (var j = 0; j < names[i].length; j++) {
+      if (n.indexOf(names[i][j]) === 0) return i;
+    }
+  }
+  return -1;
 }
 
 function normalizeMonth_(value) {
@@ -299,10 +346,18 @@ function monthToRu_(ym) {
 }
 
 function num_(value) {
-  var s = String(value == null ? '' : value).trim().replace(/\s/g, '').replace(',', '.');
+  var s = String(value == null ? '' : value).trim();
   if (!s || s.charAt(0) === '#') return '';
+  s = s.replace(/\s/g, '')
+    .replace(/р\./gi, '')
+    .replace(/руб\.?/gi, '')
+    .replace(/BYN/gi, '')
+    .replace(/₽/g, '')
+    .replace(',', '.');
+  s = s.replace(/[^0-9.\-]/g, '');
+  if (!s || s === '-' || s === '.') return '';
   var n = Number(s);
-  return isNaN(n) ? s : String(n);
+  return isNaN(n) ? '' : String(n);
 }
 
 function clean_(value) {
