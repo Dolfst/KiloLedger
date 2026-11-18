@@ -1,3 +1,5 @@
 /Alfa156.Android/bin/
 /Alfa156.Android/obj/
 /Alfa156.Android/*.SdkResolver.*.proj.Backup.tmp
+/Alfa156.Desktop/bin/
+/Alfa156.Desktop/obj/
