@@ -33,8 +33,14 @@ jobs:
       - name: Publish to dist/download
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $exe = "Alfa156/Alfa156/bin/Release/Alfa156.exe"
           if (-not (Test-Path $exe)) { throw "KPK exe not found" }
+
+          # Drop build-tree dirt so rebase/push is clean.
+          git checkout -- "Alfa156/Alfa156/obj" "Alfa156/Alfa156/bin" 2>$null
+          git clean -fd "Alfa156/Alfa156/obj" 2>$null
+
           New-Item -ItemType Directory -Path dist/download, dist/Alfa156-KPK -Force | Out-Null
           Copy-Item $exe "dist/download/Alfa156-KPK.exe" -Force
           Copy-Item $exe "dist/Alfa156-KPK/Alfa156.exe" -Force
@@ -51,20 +57,22 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
           git add dist/download/Alfa156-KPK.exe dist/download/Alfa156-KPK.zip dist/Alfa156-KPK/Alfa156.exe dist/Alfa156-KPK.zip Alfa156/Alfa156/bin/Release/Alfa156.exe
           if (Test-Path "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab") { git add dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab }
           if (Test-Path "dist/Alfa156-KPK/README-KPK.txt") { git add dist/Alfa156-KPK/README-KPK.txt }
+
           if (git diff --cached --quiet) {
             Write-Host "KPK exe unchanged"
             exit 0
           }
+
           git commit -m "Update Alfa156-KPK.exe in dist/download (build #${{ github.run_number }})."
           for ($i = 1; $i -le 5; $i++) {
             git pull --rebase origin main
+            if ($LASTEXITCODE -ne 0) { throw "git pull --rebase failed" }
             git push origin HEAD:main
-            if ($LASTEXITCODE -eq 0) { break }
+            if ($LASTEXITCODE -eq 0) { exit 0 }
             Write-Host "push retry $i"
             Start-Sleep -Seconds (3 * $i)
-            if ($i -eq 5) { throw "git push failed" }
           }
+          throw "git push failed"
