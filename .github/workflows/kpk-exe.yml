@@ -44,17 +44,6 @@ jobs:
           if (Test-Path $cab) {
             Copy-Item $cab "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab" -Force
           }
-          if (-not (Test-Path "dist/Alfa156-KPK/README-KPK.txt")) {
-            @"
-Alfa 156 для КПК (Windows Mobile, .NET CF 3.5)
-==============================================
-
-- Alfa156.exe — приложение
-- NETCFv35.wm.armv4i.cab — .NET CF 3.5 (если ещё не установлен)
-
-Скопируйте на КПК через ActiveSync / карту памяти и запустите.
-"@ | Set-Content "dist/Alfa156-KPK/README-KPK.txt" -Encoding UTF8
-          }
 
           if (Test-Path "dist/Alfa156-KPK.zip") { Remove-Item "dist/Alfa156-KPK.zip" -Force }
           Compress-Archive -Path "dist/Alfa156-KPK\*" -DestinationPath "dist/Alfa156-KPK.zip" -Force
