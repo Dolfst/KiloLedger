@@ -120,5 +120,10 @@ jobs:
             echo "APK unchanged"
             exit 0
           fi
-          git commit -m "Обновить Alfa156.apk в dist/download (сборка #${{ github.run_number }})."
-          git push origin HEAD:main
+          git commit -m "Update Alfa156.apk in dist/download (build #${{ github.run_number }})."
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && break
+            echo "push retry $i"
+            sleep $((3 * i))
+            if [ "$i" -eq 5 ]; then exit 1; fi
+          done

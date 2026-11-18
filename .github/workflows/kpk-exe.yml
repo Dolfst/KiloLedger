@@ -46,23 +46,25 @@ jobs:
           }
 
           if (Test-Path "dist/Alfa156-KPK.zip") { Remove-Item "dist/Alfa156-KPK.zip" -Force }
-          Compress-Archive -Path "dist/Alfa156-KPK\*" -DestinationPath "dist/Alfa156-KPK.zip" -Force
+          Compress-Archive -Path "dist/Alfa156-KPK/*" -DestinationPath "dist/Alfa156-KPK.zip" -Force
           Copy-Item "dist/Alfa156-KPK.zip" "dist/download/Alfa156-KPK.zip" -Force
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/download/Alfa156-KPK.exe dist/download/Alfa156-KPK.zip `
-            dist/Alfa156-KPK/Alfa156.exe dist/Alfa156-KPK.zip `
-            Alfa156/Alfa156/bin/Release/Alfa156.exe
-          if (Test-Path "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab") {
-            git add dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab
-          }
-          if (Test-Path "dist/Alfa156-KPK/README-KPK.txt") {
-            git add dist/Alfa156-KPK/README-KPK.txt
-          }
+          git fetch origin main
+          git add dist/download/Alfa156-KPK.exe dist/download/Alfa156-KPK.zip dist/Alfa156-KPK/Alfa156.exe dist/Alfa156-KPK.zip Alfa156/Alfa156/bin/Release/Alfa156.exe
+          if (Test-Path "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab") { git add dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab }
+          if (Test-Path "dist/Alfa156-KPK/README-KPK.txt") { git add dist/Alfa156-KPK/README-KPK.txt }
           if (git diff --cached --quiet) {
             Write-Host "KPK exe unchanged"
             exit 0
           }
-          git commit -m "Обновить Alfa156-KPK.exe в dist/download (сборка #${{ github.run_number }})."
-          git push origin HEAD:main
+          git commit -m "Update Alfa156-KPK.exe in dist/download (build #${{ github.run_number }})."
+          for ($i = 1; $i -le 5; $i++) {
+            git pull --rebase origin main
+            git push origin HEAD:main
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "push retry $i"
+            Start-Sleep -Seconds (3 * $i)
+            if ($i -eq 5) { throw "git push failed" }
+          }

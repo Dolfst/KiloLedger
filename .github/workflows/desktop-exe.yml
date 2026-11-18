@@ -53,5 +53,12 @@ jobs:
             Write-Host "Desktop exe unchanged"
             exit 0
           }
-          git commit -m "Обновить Alfa156.Desktop.exe в dist/download (сборка #${{ github.run_number }})."
-          git push origin HEAD:main
+          git commit -m "Update Alfa156.Desktop.exe in dist/download (build #${{ github.run_number }})."
+          for ($i = 1; $i -le 5; $i++) {
+            git pull --rebase origin main
+            git push origin HEAD:main
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "push retry $i"
+            Start-Sleep -Seconds (3 * $i)
+            if ($i -eq 5) { throw "git push failed" }
+          }
