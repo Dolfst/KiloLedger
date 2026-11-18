@@ -831,16 +831,132 @@ namespace CarExpenses
 
         internal static void AddCar(string name)
         {
+            name = ValidateCarName(name);
+            if (ContainsCar(name))
+                throw new InvalidOperationException("Такой автомобиль уже есть.");
             Append(CarsFile, new string[] { name });
+        }
+
+        internal static void RenameCar(string oldName, string newName)
+        {
+            newName = ValidateCarName(newName);
+            List<string> cars = LoadCarNames();
+            int carIndex = FindCar(cars, oldName);
+            if (carIndex < 0)
+                throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+            if (String.Equals(cars[carIndex], newName, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Новое название совпадает с текущим.");
+            if (ContainsCar(newName))
+                throw new InvalidOperationException("Автомобиль с таким названием уже есть.");
+
+            string previousName = cars[carIndex];
+            List<string[]> fuel = LoadFuel();
+            List<string[]> repairs = LoadRepairs();
+            for (int i = 0; i < fuel.Count; i++)
+                if (String.Equals(fuel[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                    fuel[i][1] = newName;
+            for (int i = 0; i < repairs.Count; i++)
+                if (String.Equals(repairs[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                    repairs[i][1] = newName;
+
+            cars[carIndex] = newName;
+            SaveCarNames(cars);
+            try
+            {
+                SaveRows(FuelFile, fuel);
+                SaveRows(RepairsFile, repairs);
+            }
+            catch (Exception renameError)
+            {
+                cars[carIndex] = previousName;
+                try
+                {
+                    SaveCarNames(cars);
+                }
+                catch (Exception rollbackError)
+                {
+                    throw new IOException("Не удалось переименовать автомобиль: " +
+                        renameError.Message + ". Не удалось вернуть список автомобилей: " +
+                        rollbackError.Message);
+                }
+                throw;
+            }
+        }
+
+        internal static void DeleteCar(string name)
+        {
+            List<string> cars = LoadCarNames();
+            int carIndex = FindCar(cars, name);
+            if (carIndex < 0)
+                throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+            if (cars.Count <= 1)
+                throw new InvalidOperationException("Нельзя удалить единственный автомобиль.");
+
+            string carName = cars[carIndex];
+            List<string[]> fuel = LoadFuel();
+            List<string[]> repairs = LoadRepairs();
+            List<string[]> keptFuel = new List<string[]>();
+            List<string[]> keptRepairs = new List<string[]>();
+            for (int i = 0; i < fuel.Count; i++)
+                if (!String.Equals(fuel[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                    keptFuel.Add(fuel[i]);
+            for (int i = 0; i < repairs.Count; i++)
+                if (!String.Equals(repairs[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                    keptRepairs.Add(repairs[i]);
+
+            cars.RemoveAt(carIndex);
+            SaveCarNames(cars);
+            try
+            {
+                SaveRows(FuelFile, keptFuel);
+                SaveRows(RepairsFile, keptRepairs);
+            }
+            catch (Exception deleteError)
+            {
+                cars.Insert(carIndex, carName);
+                try
+                {
+                    SaveCarNames(cars);
+                }
+                catch (Exception rollbackError)
+                {
+                    throw new IOException("Не удалось удалить автомобиль: " +
+                        deleteError.Message + ". Не удалось вернуть список автомобилей: " +
+                        rollbackError.Message);
+                }
+                throw;
+            }
         }
 
         internal static bool ContainsCar(string name)
         {
-            List<string[]> cars = LoadCars();
+            return FindCar(LoadCarNames(), name) >= 0;
+        }
+
+        private static string ValidateCarName(string name)
+        {
+            name = name == null ? "" : name.Trim();
+            if (name.Length == 0)
+                throw new InvalidOperationException("Введите название автомобиля.");
+            if (name.IndexOf('\n') >= 0 || name.IndexOf('\r') >= 0)
+                throw new InvalidOperationException("Название автомобиля не должно содержать перевод строки.");
+            return name;
+        }
+
+        private static int FindCar(List<string> cars, string name)
+        {
             for (int i = 0; i < cars.Count; i++)
-                if (String.Compare(cars[i][0], name, true, CultureInfo.CurrentCulture) == 0)
-                    return true;
-            return false;
+                if (String.Equals(cars[i], name, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            return -1;
+        }
+
+        private static void SaveCarNames(List<string> cars)
+        {
+            List<string[]> rows = new List<string[]>();
+            for (int i = 0; i < cars.Count; i++)
+                rows.Add(new string[] { cars[i] });
+            SaveRows(CarsFile, rows);
         }
 
         private static void Append(string fileName, string[] values)

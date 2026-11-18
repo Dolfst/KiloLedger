@@ -153,13 +153,94 @@ internal static class ExpenseDataStore
 
     internal static void AddCar(string directory, string name)
     {
+        name = ValidateCarName(name);
         List<string> existing = LoadCarNames(directory);
-        for (int i = 0; i < existing.Count; i++)
-            if (String.Equals(existing[i], name, StringComparison.CurrentCultureIgnoreCase))
-                throw new InvalidOperationException("Такой автомобиль уже есть.");
+        if (FindCar(existing, name) >= 0)
+            throw new InvalidOperationException("Такой автомобиль уже есть.");
 
         List<string[]> rows = ExpenseDataCodec.ReadRows(Path.Combine(directory, "cars.dat"));
         rows.Add(new string[] { name });
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"), rows);
+    }
+
+    internal static void RenameCar(string directory, string oldName, string newName)
+    {
+        newName = ValidateCarName(newName);
+        List<string> cars = LoadCarNames(directory);
+        int carIndex = FindCar(cars, oldName);
+        if (carIndex < 0)
+            throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+        if (String.Equals(cars[carIndex], newName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Новое название совпадает с текущим.");
+        if (FindCar(cars, newName) >= 0)
+            throw new InvalidOperationException("Автомобиль с таким названием уже есть.");
+
+        string previousName = cars[carIndex];
+        List<string[]> fuel = Load(directory, "fuel.dat");
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < fuel.Count; i++)
+            if (String.Equals(fuel[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                fuel[i][1] = newName;
+        for (int i = 0; i < repairs.Count; i++)
+            if (String.Equals(repairs[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                repairs[i][1] = newName;
+
+        cars[carIndex] = newName;
+        SaveCarNames(directory, cars);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), fuel);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), repairs);
+    }
+
+    internal static void DeleteCar(string directory, string name)
+    {
+        List<string> cars = LoadCarNames(directory);
+        int carIndex = FindCar(cars, name);
+        if (carIndex < 0)
+            throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+        if (cars.Count <= 1)
+            throw new InvalidOperationException("Нельзя удалить единственный автомобиль.");
+
+        string carName = cars[carIndex];
+        List<string[]> fuel = Load(directory, "fuel.dat");
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        List<string[]> keptFuel = new List<string[]>();
+        List<string[]> keptRepairs = new List<string[]>();
+        for (int i = 0; i < fuel.Count; i++)
+            if (!String.Equals(fuel[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                keptFuel.Add(fuel[i]);
+        for (int i = 0; i < repairs.Count; i++)
+            if (!String.Equals(repairs[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                keptRepairs.Add(repairs[i]);
+
+        cars.RemoveAt(carIndex);
+        SaveCarNames(directory, cars);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), keptFuel);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), keptRepairs);
+    }
+
+    private static string ValidateCarName(string name)
+    {
+        name = (name ?? "").Trim();
+        if (name.Length == 0)
+            throw new InvalidOperationException("Введите название автомобиля.");
+        if (name.IndexOf('\n') >= 0 || name.IndexOf('\r') >= 0)
+            throw new InvalidOperationException("Название автомобиля не должно содержать перевод строки.");
+        return name;
+    }
+
+    private static int FindCar(List<string> cars, string name)
+    {
+        for (int i = 0; i < cars.Count; i++)
+            if (String.Equals(cars[i], name, StringComparison.OrdinalIgnoreCase))
+                return i;
+        return -1;
+    }
+
+    private static void SaveCarNames(string directory, List<string> cars)
+    {
+        List<string[]> rows = new List<string[]>();
+        for (int i = 0; i < cars.Count; i++)
+            rows.Add(new string[] { cars[i] });
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"), rows);
     }
 

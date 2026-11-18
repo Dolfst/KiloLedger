@@ -163,8 +163,8 @@ public sealed class MainActivity : Activity
         carSpinner.ItemSelected += CarSelected;
         carRow.AddView(carSpinner, new LinearLayout.LayoutParams(0,
             ViewGroup.LayoutParams.WrapContent, 1));
-        addCarButton = CreateButton("Добавить", ButtonIcons.Add, delegate { AddCar(); });
-        carRow.AddView(addCarButton, new LinearLayout.LayoutParams(Dp(100), ViewGroup.LayoutParams.WrapContent));
+        addCarButton = CreateButton("Авто", ButtonIcons.Menu, delegate { ManageCars(); });
+        carRow.AddView(addCarButton, new LinearLayout.LayoutParams(Dp(88), ViewGroup.LayoutParams.WrapContent));
         root.AddView(carRow);
 
         LinearLayout sectionRow1 = NewRow();
@@ -1048,6 +1048,54 @@ public sealed class MainActivity : Activity
         }
     }
 
+    private void ManageCars()
+    {
+        if (syncActive)
+        {
+            ShowMessage("Дождитесь окончания синхронизации.");
+            return;
+        }
+        if (!IsCompleteData(DataDirectory))
+        {
+            StartFromScratch();
+            return;
+        }
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+            .SetTitle("Автомобили")
+            .SetPositiveButton("Закрыть", delegate { })
+            .SetNeutralButton("Добавить", delegate { AddCar(); });
+        if (cars.Count > 0)
+        {
+            string[] names = cars.ToArray();
+            builder.SetItems(names, delegate(object sender, DialogClickEventArgs e)
+            {
+                ShowCarActions(names[e.Which]);
+            });
+        }
+        builder.Show();
+    }
+
+    private void ShowCarActions(string name)
+    {
+        new AlertDialog.Builder(this)
+            .SetTitle(name)
+            .SetItems(new string[] { "Выбрать", "Переименовать", "Удалить" },
+                delegate(object sender, DialogClickEventArgs e)
+                {
+                    if (e.Which == 0)
+                    {
+                        SetCurrentCar(name);
+                        RefreshRecords();
+                    }
+                    else if (e.Which == 1)
+                        RenameCar(name);
+                    else
+                        DeleteCar(name);
+                })
+            .Show();
+    }
+
     private void AddCar()
     {
         if (syncActive)
@@ -1067,13 +1115,40 @@ public sealed class MainActivity : Activity
         RenderEditor("Добавить автомобиль", fields,
             delegate(string[] values)
             {
-                string name = values[0].Trim();
-                if (name.Length == 0)
-                    throw new InvalidOperationException("Введите название автомобиля.");
-                ExpenseDataStore.AddCar(DataDirectory, name);
-                SetCurrentCar(name);
+                ExpenseDataStore.AddCar(DataDirectory, values[0]);
+                SetCurrentCar(values[0].Trim());
                 RefreshRecords();
             });
+    }
+
+    private void RenameCar(string oldName)
+    {
+        RenderEditor("Переименовать автомобиль", new List<EditorField>
+        {
+            EditorField.Text("Новое название", oldName, true)
+        }, delegate(string[] values)
+        {
+            string newName = values[0].Trim();
+            ExpenseDataStore.RenameCar(DataDirectory, oldName, newName);
+            if (String.Equals(currentCar, oldName, StringComparison.OrdinalIgnoreCase))
+                SetCurrentCar(newName);
+            RefreshRecords();
+        });
+    }
+
+    private void DeleteCar(string name)
+    {
+        try
+        {
+            ExpenseDataStore.DeleteCar(DataDirectory, name);
+            if (String.Equals(currentCar, name, StringComparison.OrdinalIgnoreCase))
+                SetCurrentCar(ExpenseDataStore.LoadCarNames(DataDirectory)[0]);
+            RefreshRecords();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Не удалось удалить автомобиль: " + ex.Message);
+        }
     }
 
     private void StartFromScratch()

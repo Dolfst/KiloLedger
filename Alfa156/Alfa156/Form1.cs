@@ -1333,6 +1333,8 @@ namespace CarExpenses
             MenuItem actions = CreateMenuItem("Действия");
             actions.MenuItems.Add(CreateMenuItem("Выбрать", new EventHandler(SelectCar)));
             actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCar)));
+            actions.MenuItems.Add(CreateMenuItem("Переименовать", new EventHandler(RenameCar)));
+            actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCar)));
             menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
@@ -1361,15 +1363,50 @@ namespace CarExpenses
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string name = editor.Values[0].Trim();
-                if (DataStore.ContainsCar(name))
-                {
-                    MessageBox.Show("Такой автомобиль уже есть.", "Учет");
-                    return;
-                }
                 if (!TrySave(delegate { DataStore.AddCar(name); }))
                     return;
                 currentCar = name;
             }
+            ShowCars(sender, e);
+        }
+
+        private void RenameCar(object sender, EventArgs e)
+        {
+            if (recordList.SelectedIndex < 0)
+            {
+                MessageBox.Show("Выберите автомобиль.", "Учет");
+                return;
+            }
+            string oldName = recordList.SelectedItem.ToString();
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Новое название", oldName, "text", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Переименовать автомобиль", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string newName = editor.Values[0].Trim();
+                if (!TrySave(delegate { DataStore.RenameCar(oldName, newName); }))
+                    return;
+                if (currentCar == oldName)
+                    currentCar = newName;
+            }
+            ShowCars(sender, e);
+        }
+
+        private void DeleteCar(object sender, EventArgs e)
+        {
+            if (recordList.SelectedIndex < 0)
+            {
+                MessageBox.Show("Выберите автомобиль.", "Учет");
+                return;
+            }
+            string name = recordList.SelectedItem.ToString();
+            if (!TrySave(delegate { DataStore.DeleteCar(name); }))
+                return;
+            if (currentCar == name)
+                currentCar = DataStore.LoadCarNames()[0];
             ShowCars(sender, e);
         }
 
