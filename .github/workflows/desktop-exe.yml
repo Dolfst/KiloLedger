@@ -1,0 +1,57 @@
+name: Desktop EXE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Alfa156.Desktop/**"
+      - ".github/workflows/desktop-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-exe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Desktop Release
+        run: >
+          msbuild Alfa156.Desktop/Alfa156.Desktop.csproj
+          /p:Configuration=Release
+          /p:Platform=AnyCPU
+          /t:Rebuild
+          /v:minimal
+
+      - name: Publish to dist/download
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "Alfa156.Desktop/bin/Release/Alfa156.Desktop.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Desktop exe not found" }
+          New-Item -ItemType Directory -Path dist/download -Force | Out-Null
+          Copy-Item $exe.FullName "dist/download/Alfa156.Desktop.exe" -Force
+          Copy-Item $exe.FullName "dist/Alfa156-Desktop/Alfa156.Desktop.exe" -Force -ErrorAction SilentlyContinue
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/download/Alfa156.Desktop.exe
+          if (Test-Path "dist/Alfa156-Desktop/Alfa156.Desktop.exe") {
+            git add dist/Alfa156-Desktop/Alfa156.Desktop.exe
+          }
+          if (git diff --cached --quiet) {
+            Write-Host "Desktop exe unchanged"
+            exit 0
+          }
+          git commit -m "Обновить Alfa156.Desktop.exe в dist/download (сборка #${{ github.run_number }})."
+          git push origin HEAD:main

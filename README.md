@@ -103,7 +103,14 @@
 
 ## Сборка приложения для КПК
 
-Нужны Visual Studio 2008, Windows Mobile 5.0 Pocket PC SDK и .NET Compact Framework 3.5. Откройте `Alfa156/Alfa156.sln` и соберите конфигурацию **Release**. Для установки на устройство используйте CAB-проект Visual Studio или скопируйте собранные файлы согласно настройке проекта.
+На GitHub Actions (workflow **KPK EXE**) или локально без полного WM SDK:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build/build-kpk.ps1 -Configuration Release
+```
+
+Нужны справочные сборки в `build/cf35/WindowsCE` (уже в репозитории) и `ResGen.exe` / `csc.exe` (.NET Framework).  
+Альтернатива: Visual Studio 2008 + Windows Mobile SDK + .NET CF 3.5, открыть `Alfa156/Alfa156.sln`, конфигурация **Release**.
 
 ## Сборка Android APK
 
@@ -133,7 +140,15 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): `Alfa156.apk` (Android), `Alfa156.Desktop.exe` (ПК), `Alfa156-KPK.exe` / `Alfa156-KPK.zip` (КПК).
 
-После изменений Android-проекта GitHub Actions также обновляет релиз [Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest). Вручную: **Actions → Android APK → Run workflow**.
+GitHub Actions собирает всё автоматически:
+
+| Workflow | Что кладёт в `dist/download` |
+|----------|------------------------------|
+| **Android APK** | `Alfa156.apk` |
+| **Desktop EXE** | `Alfa156.Desktop.exe` |
+| **KPK EXE** | `Alfa156-KPK.exe`, `Alfa156-KPK.zip` |
+
+Вручную: **Actions → нужный workflow → Run workflow**. APK также в [Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest).
 
 Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит Alfa 156 со **старой** (отладочной) подписью, Android откажет в обновлении: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый `Alfa156.apk` и при необходимости импортируйте ZIP.
 

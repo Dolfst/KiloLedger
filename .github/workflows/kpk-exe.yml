@@ -1,0 +1,79 @@
+name: KPK EXE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Alfa156/Alfa156/**"
+      - "build/cf35/**"
+      - "build/build-kpk.ps1"
+      - ".github/workflows/kpk-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kpk-exe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build KPK Release
+        shell: pwsh
+        run: |
+          ./build/build-kpk.ps1 -Configuration Release
+
+      - name: Publish to dist/download
+        shell: pwsh
+        run: |
+          $exe = "Alfa156/Alfa156/bin/Release/Alfa156.exe"
+          if (-not (Test-Path $exe)) { throw "KPK exe not found" }
+          New-Item -ItemType Directory -Path dist/download, dist/Alfa156-KPK -Force | Out-Null
+          Copy-Item $exe "dist/download/Alfa156-KPK.exe" -Force
+          Copy-Item $exe "dist/Alfa156-KPK/Alfa156.exe" -Force
+          Copy-Item $exe "Alfa156/Alfa156/bin/Release/Alfa156.exe" -Force
+
+          $cab = "build/cf35/NETCFv35.wm.armv4i.cab"
+          if (Test-Path $cab) {
+            Copy-Item $cab "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab" -Force
+          }
+          if (-not (Test-Path "dist/Alfa156-KPK/README-KPK.txt")) {
+            @"
+Alfa 156 для КПК (Windows Mobile, .NET CF 3.5)
+==============================================
+
+- Alfa156.exe — приложение
+- NETCFv35.wm.armv4i.cab — .NET CF 3.5 (если ещё не установлен)
+
+Скопируйте на КПК через ActiveSync / карту памяти и запустите.
+"@ | Set-Content "dist/Alfa156-KPK/README-KPK.txt" -Encoding UTF8
+          }
+
+          if (Test-Path "dist/Alfa156-KPK.zip") { Remove-Item "dist/Alfa156-KPK.zip" -Force }
+          Compress-Archive -Path "dist/Alfa156-KPK\*" -DestinationPath "dist/Alfa156-KPK.zip" -Force
+          Copy-Item "dist/Alfa156-KPK.zip" "dist/download/Alfa156-KPK.zip" -Force
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/download/Alfa156-KPK.exe dist/download/Alfa156-KPK.zip `
+            dist/Alfa156-KPK/Alfa156.exe dist/Alfa156-KPK.zip `
+            Alfa156/Alfa156/bin/Release/Alfa156.exe
+          if (Test-Path "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab") {
+            git add dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab
+          }
+          if (Test-Path "dist/Alfa156-KPK/README-KPK.txt") {
+            git add dist/Alfa156-KPK/README-KPK.txt
+          }
+          if (git diff --cached --quiet) {
+            Write-Host "KPK exe unchanged"
+            exit 0
+          }
+          git commit -m "Обновить Alfa156-KPK.exe в dist/download (сборка #${{ github.run_number }})."
+          git push origin HEAD:main
