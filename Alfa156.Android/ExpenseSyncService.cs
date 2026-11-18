@@ -172,13 +172,15 @@ internal static class ExpenseSyncService
     {
         string name = nic.Name == null ? "" : nic.Name.ToLowerInvariant();
         bool hotspotName = name.IndexOf("softap") >= 0 || name.IndexOf("ap0") >= 0 ||
-            name.IndexOf("swlan") >= 0;
+            name.IndexOf("swlan") >= 0 || name.IndexOf("tether") >= 0 ||
+            name.IndexOf("hotspot") >= 0 || name.IndexOf("wlan1") >= 0;
         bool hotspotIp = ip.EndsWith(".1") &&
             (ip.StartsWith("192.168.43.") || ip.StartsWith("192.168.44.") ||
              ip.StartsWith("192.168.49.") || ip.StartsWith("192.168.137.") ||
-             ip.StartsWith("192.168.165."));
+             ip.StartsWith("192.168.165.") || ip.StartsWith("192.168.75.") ||
+             ip.StartsWith("192.168.182.") || ip.StartsWith("192.168.150."));
         if (hotspotName || hotspotIp)
-            return "точка доступа";
+            return "точка доступа ← вводите этот IP на КПК";
         if (nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
             name.IndexOf("wlan") >= 0 || name.IndexOf("wifi") >= 0)
             return "Wi-Fi";
@@ -198,6 +200,16 @@ internal static class ExpenseSyncService
         if (ip.StartsWith("10."))
             return 3;
         return 4;
+    }
+
+    internal static void MergeFromIncoming(
+        string dataDirectory,
+        string incomingDirectory,
+        string stagingRoot,
+        SyncConflictResolver resolveConflict)
+    {
+        string mergedDirectory = Path.Combine(stagingRoot, "merged-" + Guid.NewGuid().ToString("N"));
+        MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, resolveConflict);
     }
 
     private static void MergeAndInstall(

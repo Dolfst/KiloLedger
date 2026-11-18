@@ -16,10 +16,10 @@ namespace CarExpenses
             AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             AutoScroll = false;
-            BackColor = System.Drawing.Color.FromArgb(232, 238, 244);
+            BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
             ClientSize = new System.Drawing.Size(240, 268);
             Name = "Form1";
-            Text = "Учет расходов";
+            Text = "Alfa 156";
             WindowState = System.Windows.Forms.FormWindowState.Maximized;
         }
     }

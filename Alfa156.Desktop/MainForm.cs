@@ -26,22 +26,34 @@ namespace Alfa156.Desktop
 
         public MainForm()
         {
-            Text = "Alfa156 Desktop";
+            Text = "Alfa 156";
             Width = 1100;
             Height = 720;
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(900, 560);
             Font = new Font("Segoe UI", 9F);
+            BackColor = Color.FromArgb(245, 247, 250);
+            ForeColor = Color.FromArgb(35, 51, 70);
+            try
+            {
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Alfa156.ico");
+                if (!File.Exists(iconPath))
+                    iconPath = Path.Combine(Application.StartupPath, "..", "..", "Alfa156.ico");
+                if (File.Exists(iconPath))
+                    Icon = new Icon(iconPath);
+            }
+            catch { }
 
             TableLayoutPanel root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 4,
-                Padding = new Padding(8)
+                Padding = new Padding(8),
+                BackColor = Color.FromArgb(245, 247, 250)
             };
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
 
@@ -63,7 +75,7 @@ namespace Alfa156.Desktop
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                WrapContents = false
+                WrapContents = true
             };
             exchange.Controls.Add(MakeButton("Экспорт Excel", ExportExcel));
             exchange.Controls.Add(MakeButton("Импорт Excel", ImportExcel));
@@ -82,6 +94,8 @@ namespace Alfa156.Desktop
             };
             exchange.Controls.Add(googleUrlBox);
             exchange.Controls.Add(MakeButton("Импорт Google", ImportGoogle));
+            exchange.Controls.Add(MakeButton("Google: настройка", ConfigureGoogleSync));
+            exchange.Controls.Add(MakeButton("Синхронизация Google", SyncGoogle));
 
             tabs.Dock = DockStyle.Fill;
             tabs.TabPages.Add(WrapGrid("Автомобили", carsGrid));
@@ -142,10 +156,74 @@ namespace Alfa156.Desktop
                 Text = text,
                 AutoSize = true,
                 Margin = new Padding(4, 4, 4, 4),
-                Padding = new Padding(8, 2, 8, 2)
+                Padding = new Padding(8, 2, 8, 2),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(225, 231, 237),
+                ForeColor = Color.FromArgb(35, 51, 70)
             };
+            button.FlatAppearance.BorderColor = Color.FromArgb(49, 77, 102);
             button.Click += click;
             return button;
+        }
+
+        private void ConfigureGoogleSync(object sender, EventArgs e)
+        {
+            GoogleSyncSettings settings = GoogleSyncSettings.Load();
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "Синхронизация Google";
+                dialog.Width = 640;
+                dialog.Height = 260;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.BackColor = Color.FromArgb(245, 247, 250);
+                Label urlLabel = new Label { Text = "URL веб-приложения Apps Script", Left = 12, Top = 12, Width = 600 };
+                TextBox urlBox = new TextBox { Left = 12, Top = 36, Width = 600, Text = settings.ScriptUrl ?? "" };
+                Label tokenLabel = new Label { Text = "SYNC_TOKEN", Left = 12, Top = 70, Width = 600 };
+                TextBox tokenBox = new TextBox { Left = 12, Top = 94, Width = 600, Text = settings.Token ?? "" };
+                Label sheetLabel = new Label { Text = "Ссылка на таблицу (для импорта CSV)", Left = 12, Top = 128, Width = 600 };
+                TextBox sheetBox = new TextBox { Left = 12, Top = 152, Width = 600, Text = settings.SpreadsheetUrl ?? "" };
+                Button ok = new Button { Text = "Сохранить", Left = 430, Top = 190, Width = 90, DialogResult = DialogResult.OK };
+                Button cancel = new Button { Text = "Отмена", Left = 530, Top = 190, Width = 80, DialogResult = DialogResult.Cancel };
+                dialog.Controls.AddRange(new Control[] { urlLabel, urlBox, tokenLabel, tokenBox, sheetLabel, sheetBox, ok, cancel });
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+                settings.ScriptUrl = urlBox.Text.Trim();
+                settings.Token = tokenBox.Text.Trim();
+                settings.SpreadsheetUrl = sheetBox.Text.Trim();
+                settings.Save();
+                if (!String.IsNullOrEmpty(settings.SpreadsheetUrl))
+                {
+                    googleUrlBox.Text = settings.SpreadsheetUrl;
+                    googleUrlBox.ForeColor = SystemColors.WindowText;
+                }
+                SetStatus("Настройки Google сохранены.");
+            }
+        }
+
+        private void SyncGoogle(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePathForImport();
+                PullAll();
+                GoogleSyncSettings settings = GoogleSyncSettings.Load();
+                Cursor = Cursors.WaitCursor;
+                string message = GoogleSyncClient.SyncBidirectional(repository, settings);
+                BindAll();
+                repository.Save();
+                dirty = false;
+                SetStatus(message);
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
         }
 
         private void SetupCarsGrid()

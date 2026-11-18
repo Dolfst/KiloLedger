@@ -18,6 +18,7 @@ namespace CarExpenses
         private const string RepairsFile = "repairs.dat";
         private const string UtilitiesFile = "utilities.dat";
         private const string RepairCategoriesFile = "repair-categories.dat";
+        private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
         private static readonly string[] CoreDataFiles = new string[]
         {
@@ -565,6 +566,28 @@ namespace CarExpenses
         private static string GetPath(string fileName)
         {
             return Path.Combine(DataDirectory, fileName);
+        }
+
+        internal static string LoadLastSyncAddress()
+        {
+            string path = GetPath(SyncAddressFile);
+            if (!File.Exists(path))
+                return "";
+            using (StreamReader reader = new StreamReader(path))
+            {
+                string line = reader.ReadLine();
+                return line == null ? "" : line.Trim();
+            }
+        }
+
+        internal static void SaveLastSyncAddress(string address)
+        {
+            if (address == null)
+                address = "";
+            address = address.Trim();
+            Directory.CreateDirectory(DataDirectory);
+            using (StreamWriter writer = new StreamWriter(GetPath(SyncAddressFile), false))
+                writer.WriteLine(address);
         }
 
         internal static List<string[]> LoadCars()

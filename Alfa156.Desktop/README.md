@@ -1,24 +1,18 @@
-# Alfa156 Desktop
+# Alfa 156 Desktop
 
-ПК-приложение для просмотра и правки данных Alfa156, с импортом/экспортом Excel и Google Sheets.
-
-## Требования
-
-- Windows с .NET Framework 4.8
+ПК-приложение с тем же логотипом и стилем, что КПК и Android.
 
 ## Запуск
 
-`Alfa156.Desktop\bin\Release\Alfa156.Desktop.exe`
+`dist/Alfa156-Desktop/Alfa156.Desktop.exe` (нужен .NET Framework 4.8)
 
 ## Возможности
 
-- Открыть папку с `cars.dat`, `fuel.dat`, `repairs.dat`, `utilities.dat` (и `repair-categories.dat`)
-- Открыть/сохранить ZIP (как на Android)
-- Редактирование таблиц прямо в окне
-- **Экспорт / импорт Excel** (`.xlsx`, листы: Автомобили, Заправки, Ремонт, Коммуналка, Категории)
-- **Экспорт CSV** для загрузки в Google Таблицы (`Файл → Импорт`)
-- **Импорт CSV-папки** (`cars.csv`, `fuel.csv`, …)
-- **Импорт Google Sheets** по ссылке (таблица должна быть «доступна по ссылке»; листы с именами как в Excel)
+- Папка `.dat` / ZIP Android↔КПК
+- Excel `.xlsx` импорт/экспорт
+- CSV для Google Sheets
+- Импорт Google по ссылке (формат «Деньги»)
+- **Синхронизация Google** через Apps Script (`../google-sync/`)
 
 ## Сборка
 

@@ -833,9 +833,12 @@ namespace CarExpenses
 
         private void SyncWithAndroidFromMenu(object sender, EventArgs e)
         {
+            string suggestedIp = DataStore.LoadLastSyncAddress();
+            if (suggestedIp == null || suggestedIp.Length == 0)
+                suggestedIp = "192.168.43.1";
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("IP-адрес Android (на экране синхронизации)", "", "text", true),
+                new EntryField("IP Android (точка доступа обычно 192.168.43.1)", suggestedIp, "text", true),
                 new EntryField("Код подключения", "", "text", true)
             };
             string address;
@@ -847,6 +850,7 @@ namespace CarExpenses
                 address = editor.Values[0].Trim();
                 pairingCode = editor.Values[1].Trim();
             }
+            DataStore.SaveLastSyncAddress(address);
 
             if (pairingCode.Length != 6 || !IsDigits(pairingCode))
             {

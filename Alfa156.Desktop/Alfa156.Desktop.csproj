@@ -11,6 +11,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <ApplicationIcon>Alfa156.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -43,12 +44,17 @@
   <ItemGroup>
     <Compile Include="Data\AlfaCodec.cs" />
     <Compile Include="Data\AlfaRepository.cs" />
+    <Compile Include="Data\SyncMerge.cs" />
     <Compile Include="Exchange\CsvExchange.cs" />
     <Compile Include="Exchange\DengiFormat.cs" />
+    <Compile Include="Exchange\GoogleSyncClient.cs" />
     <Compile Include="Exchange\XlsxExchange.cs" />
     <Compile Include="MainForm.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Alfa156.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

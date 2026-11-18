@@ -133,11 +133,15 @@ public sealed class MainActivity : Activity
 
         LinearLayout titleRow = NewRow();
         titleRow.SetGravity(GravityFlags.CenterVertical);
+        ImageView logo = new ImageView(this);
+        logo.SetImageResource(Resource.Drawable.Icon);
+        logo.SetScaleType(ImageView.ScaleType.FitCenter);
+        titleRow.AddView(logo, new LinearLayout.LayoutParams(Dp(36), Dp(36)));
         TextView title = new TextView(this);
-        title.Text = "Alfa 156";
+        title.Text = "  Alfa 156";
         title.TextSize = 22;
         title.SetTypeface(title.Typeface, AndroidTypefaceStyle.Bold);
-        title.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+        title.SetTextColor(AndroidColor.Rgb(180, 40, 40));
         titleRow.AddView(title, new LinearLayout.LayoutParams(0,
             ViewGroup.LayoutParams.WrapContent, 1));
         dataMenuButton = CreateButton("Данные", ButtonIcons.Menu, delegate { ShowDataMenu(); });
@@ -243,6 +247,10 @@ public sealed class MainActivity : Activity
             }
             labels.Add("Синхронизация по Wi-Fi");
             actions.Add(delegate { ToggleWiFiSync(); });
+            labels.Add("Синхронизация Google");
+            actions.Add(delegate { SyncGoogle(); });
+            labels.Add("Google: настройка");
+            actions.Add(delegate { ConfigureGoogleSync(); });
             if (hasData)
             {
                 labels.Add("Копия на телефоне");
@@ -602,6 +610,65 @@ public sealed class MainActivity : Activity
         base.OnDestroy();
     }
 
+    private void ConfigureGoogleSync()
+    {
+        string scriptUrl;
+        string token;
+        GoogleSyncService.LoadSettings(this, out scriptUrl, out token);
+        EditText urlInput = new EditText(this) { Hint = "URL Apps Script", Text = scriptUrl };
+        EditText tokenInput = new EditText(this) { Hint = "SYNC_TOKEN", Text = token };
+        LinearLayout box = new LinearLayout(this) { Orientation = Orientation.Vertical };
+        box.SetPadding(Dp(20), Dp(8), Dp(20), Dp(8));
+        box.AddView(urlInput);
+        box.AddView(tokenInput);
+        new AlertDialog.Builder(this)
+            .SetTitle("Google: настройка")
+            .SetView(box)
+            .SetPositiveButton("Сохранить", delegate
+            {
+                GoogleSyncService.SaveSettings(this, urlInput.Text, tokenInput.Text);
+                ShowMessage("Настройки Google сохранены.");
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
+    }
+
+    private void SyncGoogle()
+    {
+        if (syncActive)
+        {
+            ShowMessage("Сначала остановите синхронизацию по Wi-Fi.");
+            return;
+        }
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала создайте или импортируйте данные.");
+            return;
+        }
+        status.Text = "Синхронизация с Google…";
+        Task.Run(async delegate
+        {
+            try
+            {
+                string message = await GoogleSyncService.SyncAsync(this, DataDirectory).ConfigureAwait(false);
+                RunOnUiThread(delegate
+                {
+                    if (IsFinishing) return;
+                    RefreshRecords();
+                    ShowMessage(message);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(delegate
+                {
+                    if (!IsFinishing)
+                        ShowMessage("Google sync: " + ex.Message);
+                });
+            }
+        });
+    }
+
     private void ToggleWiFiSync()
     {
         if (syncActive)
@@ -614,8 +681,15 @@ public sealed class MainActivity : Activity
         {
             string[] addresses = ExpenseSyncService.GetLocalIpv4Addresses().ToArray();
             string addressText = addresses.Length == 0
-                ? "Не удалось определить IP телефона. Проверьте подключение к Wi-Fi."
+                ? "IP не найден. Включите точку доступа или Wi-Fi.\nЧастый адрес точки доступа: 192.168.43.1"
                 : String.Join("\n", addresses);
+            bool hasHotspot = false;
+            for (int i = 0; i < addresses.Length; i++)
+                if (addresses[i].IndexOf("точка доступа", StringComparison.OrdinalIgnoreCase) >= 0)
+                    hasHotspot = true;
+            if (!hasHotspot && addresses.Length > 0)
+                addressText += "\n\nЕсли раздаёте интернет с телефона, а в списке нет «точки доступа», " +
+                    "на КПК попробуйте 192.168.43.1 (Samsung/часто) или IP выше, оканчивающийся на .1";
             string pairingCode = System.Security.Cryptography.RandomNumberGenerator
                 .GetInt32(100000, 1000000).ToString(CultureInfo.InvariantCulture);
 
@@ -631,12 +705,13 @@ public sealed class MainActivity : Activity
             UpdateRecordActions();
 
             new AlertDialog.Builder(this)
-                .SetTitle("Офлайн-синхронизация")
-                .SetMessage("Подключите КПК и телефон к одной Wi-Fi сети " +
-                    "(интернет не нужен). Если КПК подключён к точке доступа телефона, " +
-                    "введите адрес с пометкой «точка доступа».\n\nIP телефона:\n" + addressText +
-                    "\n\nКод подключения: " + pairingCode +
-                    "\n\nНа КПК откройте Данные → Синхронизация по Wi-Fi.")
+                .SetTitle("Синхронизация с КПК")
+                .SetMessage("Вариант A: КПК подключается к точке доступа телефона " +
+                    "(мобильный интернет на КПК не нужен).\n" +
+                    "Вариант B: оба в одной Wi-Fi сети.\n\n" +
+                    "IP телефона:\n" + addressText +
+                    "\n\nКод: " + pairingCode +
+                    "\n\nНа КПК: Данные → Синхронизация по Wi-Fi → введите IP с пометкой «точка доступа» и код.")
                 .SetPositiveButton("Скрыть", delegate { })
                 .SetNegativeButton("Остановить", delegate { StopWiFiSync(); })
                 .Show();
