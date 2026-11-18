@@ -112,56 +112,9 @@ namespace CarExpenses
                 button.BackColor = Color.FromArgb(130, 88, 180);
             button.ForeColor = Color.White;
             button.Font = new Font("Arial", 11, FontStyle.Bold);
-            button.Image = CreateSectionIcon(section);
-            button.ImageAlign = ContentAlignment.MiddleLeft;
-            button.TextAlign = ContentAlignment.MiddleLeft;
             button.Click += new EventHandler(OpenSection);
             Controls.Add(button);
             homeButtons.Add(button);
-        }
-
-        private Bitmap CreateSectionIcon(string section)
-        {
-            Bitmap icon = new Bitmap(28, 28);
-            using (Graphics g = Graphics.FromImage(icon))
-            using (SolidBrush whiteBrush = new SolidBrush(Color.White))
-            using (Pen whitePen = new Pen(Color.White, 2))
-            {
-                g.Clear(Color.Transparent);
-
-                if (section == FuelSection)
-                {
-                    g.FillRectangle(whiteBrush, 6, 5, 10, 18);
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(23, 122, 86)), 8, 7, 6, 5);
-                    g.DrawLine(whitePen, 16, 8, 22, 12);
-                    g.FillRectangle(whiteBrush, 20, 12, 4, 6);
-                }
-                else if (section == RepairSection)
-                {
-                    g.DrawEllipse(whitePen, 4, 4, 10, 10);
-                    g.DrawLine(whitePen, 12, 12, 22, 22);
-                    g.FillRectangle(whiteBrush, 19, 19, 5, 4);
-                }
-                else if (section == UtilitiesSection)
-                {
-                    Point[] roof = new Point[]
-                    {
-                        new Point(14, 3),
-                        new Point(24, 12),
-                        new Point(4, 12)
-                    };
-                    g.FillPolygon(whiteBrush, roof);
-                    g.FillRectangle(whiteBrush, 7, 12, 14, 12);
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(79, 104, 179)), 11, 16, 6, 8);
-                }
-                else
-                {
-                    g.FillRectangle(whiteBrush, 4, 14, 5, 10);
-                    g.FillRectangle(whiteBrush, 11, 6, 5, 18);
-                    g.FillRectangle(whiteBrush, 18, 10, 5, 14);
-                }
-            }
-            return icon;
         }
 
         private void DrawLogo(object sender, PaintEventArgs e)
@@ -467,9 +420,9 @@ namespace CarExpenses
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string name = editor.Values[0];
-                if (MessageBox.Show(
+                if (!ConfirmAction("Подтверждение",
                     "Записи не удаляются. Если категория используется, сначала перенесите записи в другую. Удалить категорию?",
-                    "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                    "Удалить"))
                     return;
                 if (!TrySave(delegate { DataStore.DeleteRepairCategory(name); }))
                     return;
@@ -1641,13 +1594,39 @@ namespace CarExpenses
             return result;
         }
 
+        private static bool TryParseYearMonth(string value, out DateTime month)
+        {
+            month = DateTime.MinValue;
+            if (value == null || value.Length < 7 || value[4] != '-')
+                return false;
+            try
+            {
+                int year = int.Parse(value.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
+                int monthNumber = int.Parse(value.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                if (year < 1 || monthNumber < 1 || monthNumber > 12)
+                    return false;
+                month = new DateTime(year, monthNumber, 1);
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+            catch (OverflowException)
+            {
+                return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
+        }
+
         private static void AddMonthlyAmount(Dictionary<string, decimal[]> totals,
             string date, int category, decimal amount)
         {
             DateTime month;
-            if (date == null || date.Length < 7 ||
-                !DateTime.TryParseExact(date.Substring(0, 7), "yyyy-MM",
-                    CultureInfo.InvariantCulture, DateTimeStyles.None, out month))
+            if (date == null || date.Length < 7 || !TryParseYearMonth(date.Substring(0, 7), out month))
                 return;
 
             string key = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
