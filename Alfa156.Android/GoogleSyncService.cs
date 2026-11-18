@@ -28,7 +28,11 @@ internal static class GoogleSyncService
         token = prefs.GetString("token", "") ?? "";
     }
 
-    internal static async Task<string> SyncAsync(Context context, string dataDirectory)
+    internal static async Task<string> SyncAsync(
+        Context context,
+        string dataDirectory,
+        SyncPlanResolver resolvePlan,
+        SyncConflictResolver resolveConflict)
     {
         string scriptUrl;
         string token;
@@ -49,8 +53,14 @@ internal static class GoogleSyncService
         {
             WriteSnapshotFromJson(pullJson, incoming);
             ExpenseDataCodec.ValidateDirectory(incoming);
-            ExpenseSyncService.MergeFromIncoming(dataDirectory, incoming, staging,
-                delegate { return SyncConflictChoice.KeepIncoming; });
+
+            SyncPlan plan = resolvePlan(ExpenseSyncService.FormatSummary(
+                ExpenseSyncService.AnalyzeDirectories(dataDirectory, incoming),
+                "Android", "Google"));
+            if (plan == null || plan.Cancelled)
+                throw new OperationCanceledException("Синхронизация отменена.");
+
+            ExpenseSyncService.MergeFromIncoming(dataDirectory, incoming, staging, plan, resolveConflict);
             ExpenseDataCodec.ValidateDirectory(dataDirectory);
 
             string pushBody = BuildPushJson(token, dataDirectory);

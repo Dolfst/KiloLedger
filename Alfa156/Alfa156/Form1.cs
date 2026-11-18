@@ -910,7 +910,11 @@ namespace CarExpenses
                             if (status != 0)
                                 throw new IOException(DataStore.ReadSyncMessage(stream));
 
-                            DataStore.InstallSyncSnapshot(stream);
+                            Cursor.Current = Cursors.Default;
+                            DataStore.MergeSyncSnapshot(
+                                stream,
+                                new SyncPlanResolver(ResolveAndroidSyncPlan),
+                                new SyncConflictResolver(ResolveAndroidSyncConflict));
                             synced = true;
                         }
                         catch (Exception ex)
@@ -935,17 +939,51 @@ namespace CarExpenses
 
             if (!synced)
             {
-                MessageBox.Show("Синхронизация не выполнена: " +
-                    ExplainSyncFailure(lastError, address),
+                string detail = ExplainSyncFailure(lastError, address);
+                if (detail != null && detail.IndexOf("отменена") >= 0)
+                {
+                    MessageBox.Show("Синхронизация отменена.", "Синхронизация");
+                    return;
+                }
+                MessageBox.Show("Синхронизация не выполнена: " + detail,
                     "Ошибка синхронизации");
                 return;
             }
 
             currentCar = DataStore.LoadCarNames()[0];
             ShowHome();
-            MessageBox.Show("Синхронизация завершена. Добавленные записи объединены; " +
-                "совпадающие записи были разрешены на Android.",
-                "Синхронизация");
+            MessageBox.Show("Синхронизация завершена.", "Синхронизация");
+        }
+
+        private SyncPlan ResolveAndroidSyncPlan(string summary)
+        {
+            using (SyncOptionsForm form = new SyncOptionsForm(summary))
+            {
+                if (form.ShowDialog() != DialogResult.OK)
+                {
+                    SyncPlan cancelled = new SyncPlan();
+                    cancelled.Cancelled = true;
+                    return cancelled;
+                }
+                return form.Plan;
+            }
+        }
+
+        private SyncConflictChoice ResolveAndroidSyncConflict(
+            string title, string localRow, string incomingRow)
+        {
+            DialogResult result = MessageBox.Show(
+                "На КПК:\n" + localRow + "\n\nНа Android:\n" + incomingRow +
+                "\n\nДа = Android, Нет = КПК, Отмена = прервать.",
+                "Конфликт: " + title,
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+            if (result == DialogResult.Yes)
+                return SyncConflictChoice.KeepIncoming;
+            if (result == DialogResult.No)
+                return SyncConflictChoice.KeepLocal;
+            return SyncConflictChoice.Cancel;
         }
 
         private sealed class ConnectAttempt

@@ -9,6 +9,7 @@
 - `Alfa156.Desktop/Alfa156.Desktop.csproj` — ПК (.NET Framework 4.8): Excel, CSV, Google Sheets
 - `google-sync/` — Apps Script для двусторонней синхронизации с Google Таблицей
 - `branding/` — общий логотип и описание стиля (`BrandTheme.md`)
+- `dist/download/` — готовые сборки для скачивания: `Alfa156.apk`, `Alfa156.Desktop.exe`, `Alfa156-KPK.exe`
 - `dist/Alfa156-Desktop/` — готовый `Alfa156.Desktop.exe`
 
 На всех платформах: автомобили, заправки, ремонт/ТО, коммунальные, фильтры, категории, сводка. Android — ZIP и Wi‑Fi; КПК — резервные копии и Wi‑Fi; ПК — Excel/Google.
@@ -128,9 +129,11 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 Текущая ARM64-сборка также хранится в `Alfa156.Android/Alfa156.apk` и включается в ZIP-архив репозитория. При обновлении Android-приложения замените этот файл новой Release-сборкой.
 
-### Скачать последнюю Android-сборку
+### Скачать готовые сборки
 
-После изменений Android-проекта GitHub Actions автоматически собирает APK для ARM64 и обновляет отдельный релиз `Latest Android APK`. Откройте [Releases → Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest) и скачайте `Alfa156.apk`. Это отдельный способ скачать последнюю сборку; вручную запустить сборку можно через **Actions → Android APK → Run workflow**.
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): `Alfa156.apk` (Android), `Alfa156.Desktop.exe` (ПК), `Alfa156-KPK.exe` / `Alfa156-KPK.zip` (КПК).
+
+После изменений Android-проекта GitHub Actions также обновляет релиз [Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest). Вручную: **Actions → Android APK → Run workflow**.
 
 Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит Alfa 156 со **старой** (отладочной) подписью, Android откажет в обновлении: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый `Alfa156.apk` и при необходимости импортируйте ZIP.
 

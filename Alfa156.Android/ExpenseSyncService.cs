@@ -15,8 +15,35 @@ internal enum SyncConflictChoice
     Cancel
 }
 
+internal enum SyncConflictPolicy
+{
+    PreferLocal,
+    PreferIncoming,
+    AskEach
+}
+
+internal sealed class SyncPlan
+{
+    public bool AddIncoming = true;
+    public bool RemoveLocalOnly = false;
+    public SyncConflictPolicy ConflictPolicy = SyncConflictPolicy.PreferLocal;
+    public bool Cancelled;
+}
+
+internal sealed class SyncTableDiff
+{
+    public string Title;
+    public int LocalCount;
+    public int RemoteCount;
+    public int OnlyLocal;
+    public int OnlyRemote;
+    public int Conflicts;
+}
+
 internal delegate SyncConflictChoice SyncConflictResolver(
     string title, string localRow, string incomingRow);
+
+internal delegate SyncPlan SyncPlanResolver(string summary);
 
 internal static class ExpenseSyncService
 {
@@ -31,6 +58,7 @@ internal static class ExpenseSyncService
         string pairingCode,
         string dataDirectory,
         string stagingRoot,
+        SyncPlanResolver resolvePlan,
         SyncConflictResolver resolveConflict,
         Action<TcpClient> clientAccepted)
     {
@@ -42,7 +70,7 @@ internal static class ExpenseSyncService
             {
                 bool abandoned;
                 string error = ServeClient(client, pairingCode, dataDirectory, stagingRoot,
-                    resolveConflict, out abandoned);
+                    resolvePlan, resolveConflict, out abandoned);
                 if (!abandoned)
                     return error;
             }
@@ -54,6 +82,7 @@ internal static class ExpenseSyncService
         string pairingCode,
         string dataDirectory,
         string stagingRoot,
+        SyncPlanResolver resolvePlan,
         SyncConflictResolver resolveConflict,
         out bool abandoned)
     {
@@ -89,7 +118,17 @@ internal static class ExpenseSyncService
                 Directory.CreateDirectory(incomingDirectory);
                 ReceiveSnapshot(stream, incomingDirectory);
                 ExpenseDataCodec.ValidateDirectory(incomingDirectory);
-                MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, resolveConflict);
+
+                SyncPlan plan = resolvePlan(FormatSummary(
+                    AnalyzeDirectories(dataDirectory, incomingDirectory),
+                    "Android", "КПК"));
+                if (plan == null || plan.Cancelled)
+                {
+                    WriteResponse(stream, 1, "Синхронизация отменена на Android.");
+                    return "Синхронизация отменена.";
+                }
+
+                MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
                 finalResponseStarted = true;
                 WriteInt32(stream, 0);
                 SendSnapshot(stream, dataDirectory);
@@ -206,16 +245,92 @@ internal static class ExpenseSyncService
         string dataDirectory,
         string incomingDirectory,
         string stagingRoot,
+        SyncPlan plan,
         SyncConflictResolver resolveConflict)
     {
         string mergedDirectory = Path.Combine(stagingRoot, "merged-" + Guid.NewGuid().ToString("N"));
-        MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, resolveConflict);
+        MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
+    }
+
+    internal static List<SyncTableDiff> AnalyzeDirectories(string localDirectory, string remoteDirectory)
+    {
+        List<SyncTableDiff> diffs = new List<SyncTableDiff>();
+        diffs.Add(AnalyzeTable("Автомобили",
+            ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "cars.dat")),
+            ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "cars.dat")),
+            new int[] { 0 }, new bool[] { true }));
+        diffs.Add(AnalyzeTable("Заправки",
+            ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "fuel.dat")),
+            ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "fuel.dat")),
+            new int[] { 0, 1, 2 }, new bool[] { false, true, false }));
+        diffs.Add(AnalyzeTable("Ремонт",
+            ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "repairs.dat")),
+            ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "repairs.dat")),
+            new int[] { 0, 1, 2, 3, 4 }, new bool[] { false, true, false, true, false }));
+        diffs.Add(AnalyzeTable("Коммуналка",
+            ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "utilities.dat")),
+            ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "utilities.dat")),
+            new int[] { 0 }, new bool[] { false }));
+        string localCat = Path.Combine(localDirectory, ExpenseDataCodec.RepairCategoriesFile);
+        string remoteCat = Path.Combine(remoteDirectory, ExpenseDataCodec.RepairCategoriesFile);
+        diffs.Add(AnalyzeTable("Категории",
+            File.Exists(localCat) ? ExpenseDataCodec.ReadRows(localCat) : new List<string[]>(),
+            File.Exists(remoteCat) ? ExpenseDataCodec.ReadRows(remoteCat) : new List<string[]>(),
+            new int[] { 0 }, new bool[] { true }));
+        return diffs;
+    }
+
+    internal static string FormatSummary(List<SyncTableDiff> diffs, string localName, string remoteName)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append("Сравнение: ").Append(localName).Append(" ↔ ").Append(remoteName).Append('\n');
+        for (int i = 0; i < diffs.Count; i++)
+        {
+            SyncTableDiff d = diffs[i];
+            sb.Append('\n').Append(d.Title)
+                .Append(": ").Append(localName).Append(' ').Append(d.LocalCount)
+                .Append(", ").Append(remoteName).Append(' ').Append(d.RemoteCount)
+                .Append("\n  только ").Append(localName).Append(": ").Append(d.OnlyLocal)
+                .Append(", только ").Append(remoteName).Append(": ").Append(d.OnlyRemote)
+                .Append(", отличаются: ").Append(d.Conflicts);
+        }
+        return sb.ToString();
+    }
+
+    private static SyncTableDiff AnalyzeTable(
+        string title, List<string[]> localRows, List<string[]> remoteRows,
+        int[] keyColumns, bool[] ignoreCase)
+    {
+        SyncTableDiff diff = new SyncTableDiff
+        {
+            Title = title,
+            LocalCount = localRows.Count,
+            RemoteCount = remoteRows.Count
+        };
+        bool[] localMatched = new bool[localRows.Count];
+        for (int i = 0; i < remoteRows.Count; i++)
+        {
+            int match = FindIdentity(localRows, remoteRows[i], keyColumns, ignoreCase);
+            if (match < 0)
+            {
+                diff.OnlyRemote++;
+                continue;
+            }
+            localMatched[match] = true;
+            if (!RowsEqual(localRows[match], remoteRows[i]))
+                diff.Conflicts++;
+        }
+        for (int i = 0; i < localMatched.Length; i++)
+            if (!localMatched[i])
+                diff.OnlyLocal++;
+        return diff;
     }
 
     private static void MergeAndInstall(
         string dataDirectory,
         string incomingDirectory,
         string mergedDirectory,
+        SyncPlan plan,
         SyncConflictResolver resolveConflict)
     {
         bool hasLocalData = HasAnyDataFile(dataDirectory);
@@ -233,16 +348,16 @@ internal static class ExpenseSyncService
             ExpenseDataCodec.ValidateDirectory(dataDirectory);
             ExpenseDataStore.EnsureRepairCategories(dataDirectory);
             MergeRows("cars.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0 }, new bool[] { true }, resolveConflict);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict);
             MergeRows(ExpenseDataCodec.RepairCategoriesFile, dataDirectory, incomingDirectory,
-                mergedDirectory, new int[] { 0 }, new bool[] { true }, resolveConflict);
+                mergedDirectory, new int[] { 0 }, new bool[] { true }, plan, resolveConflict);
             MergeRows("fuel.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, resolveConflict);
+                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict);
             MergeRows("repairs.dat", dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1, 2, 3, 4 },
-                new bool[] { false, true, false, true, false }, resolveConflict);
+                new bool[] { false, true, false, true, false }, plan, resolveConflict);
             MergeRows("utilities.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0 }, new bool[] { false }, resolveConflict);
+                new int[] { 0 }, new bool[] { false }, plan, resolveConflict);
         }
 
         ExpenseDataStore.EnsureRepairCategories(mergedDirectory);
@@ -302,29 +417,54 @@ internal static class ExpenseSyncService
         string destinationDirectory,
         int[] keyColumns,
         bool[] ignoreCase,
+        SyncPlan plan,
         SyncConflictResolver resolveConflict)
     {
-        List<string[]> merged = ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, fileName));
+        List<string[]> localRows = ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, fileName));
         List<string[]> incoming = ExpenseDataCodec.ReadRows(Path.Combine(incomingDirectory, fileName));
+        List<string[]> merged = new List<string[]>();
+        bool[] localMatched = new bool[localRows.Count];
+
         for (int i = 0; i < incoming.Count; i++)
         {
             string[] row = incoming[i];
-            int matchIndex = FindIdentity(merged, row, keyColumns, ignoreCase);
+            int matchIndex = FindIdentity(localRows, row, keyColumns, ignoreCase);
             if (matchIndex < 0)
             {
-                merged.Add(row);
+                if (plan.AddIncoming)
+                    merged.Add(row);
                 continue;
             }
-            if (RowsEqual(merged[matchIndex], row))
-                continue;
 
-            SyncConflictChoice choice = resolveConflict(
-                ConflictTitle(fileName), FormatRow(merged[matchIndex]), FormatRow(row));
+            localMatched[matchIndex] = true;
+            string[] local = localRows[matchIndex];
+            if (RowsEqual(local, row))
+            {
+                merged.Add(local);
+                continue;
+            }
+
+            SyncConflictChoice choice;
+            if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                choice = SyncConflictChoice.KeepIncoming;
+            else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                choice = SyncConflictChoice.KeepLocal;
+            else
+                choice = resolveConflict(ConflictTitle(fileName), FormatRow(local), FormatRow(row));
+
             if (choice == SyncConflictChoice.Cancel)
                 throw new OperationCanceledException("Синхронизация отменена пользователем.");
-            if (choice == SyncConflictChoice.KeepIncoming)
-                merged[matchIndex] = row;
+            merged.Add(choice == SyncConflictChoice.KeepIncoming ? row : local);
         }
+
+        for (int i = 0; i < localRows.Count; i++)
+        {
+            if (localMatched[i])
+                continue;
+            if (!plan.RemoveLocalOnly)
+                merged.Add(localRows[i]);
+        }
+
         ExpenseDataCodec.SaveRows(Path.Combine(destinationDirectory, fileName), merged);
     }
 

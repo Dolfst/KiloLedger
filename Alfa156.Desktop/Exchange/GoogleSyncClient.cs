@@ -51,11 +51,18 @@ namespace Alfa156.Desktop.Exchange
 
     internal static class GoogleSyncClient
     {
-        internal static string SyncBidirectional(AlfaRepository local, GoogleSyncSettings settings)
+        internal static AlfaRepository PullRemote(GoogleSyncSettings settings)
         {
-            AlfaRepository remote = Pull(settings);
-            // Локальные уникальные записи сохраняем: неполная выгрузка из Google их не сотрёт.
-            SyncMerge.MergeInto(local, remote, SyncConflictPolicy.PreferLocal);
+            return Pull(settings);
+        }
+
+        internal static string ApplyAndPush(
+            AlfaRepository local,
+            AlfaRepository remote,
+            GoogleSyncSettings settings,
+            SyncPlan plan)
+        {
+            SyncMerge.ApplyPlan(local, remote, plan);
             CleanCurrencyInPlace(local);
             Push(settings, local);
             return "Синхронизация с Google: авто=" + local.Cars.Count +
@@ -63,6 +70,18 @@ namespace Alfa156.Desktop.Exchange
                 ", ремонт=" + local.Repairs.Count +
                 ", коммуналка=" + local.Utilities.Count +
                 " (из Google: ремонт " + remote.Repairs.Count + ", заправки " + remote.Fuel.Count + ")";
+        }
+
+        internal static string SyncBidirectional(AlfaRepository local, GoogleSyncSettings settings)
+        {
+            AlfaRepository remote = Pull(settings);
+            SyncPlan plan = new SyncPlan
+            {
+                AddFromGoogle = true,
+                RemoveMissingInGoogle = false,
+                ConflictPolicy = SyncConflictPolicy.PreferLocal
+            };
+            return ApplyAndPush(local, remote, settings, plan);
         }
 
         private static void CleanCurrencyInPlace(AlfaRepository repo)
@@ -212,7 +231,37 @@ namespace Alfa156.Desktop.Exchange
             using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
             using (Stream stream = response.GetResponseStream())
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
-                return reader.ReadToEnd();
+            {
+                string text = reader.ReadToEnd();
+                if (LooksLikeHtmlError(text))
+                    throw new InvalidDataException(
+                        "Google вернул HTML вместо JSON. Обычно это ошибка записи в таблицу " +
+                        "(проверки данных / data validation). Обновите Apps Script: clearDataValidations перед setValues. " +
+                        ExtractHtmlHint(text));
+                return text;
+            }
+        }
+
+        private static bool LooksLikeHtmlError(string text)
+        {
+            if (String.IsNullOrEmpty(text)) return false;
+            string t = text.TrimStart();
+            return t.StartsWith("<", StringComparison.Ordinal) ||
+                t.IndexOf("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                t.IndexOf("<html", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string ExtractHtmlHint(string html)
+        {
+            if (String.IsNullOrEmpty(html)) return "";
+            int idx = html.IndexOf("проверк", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) idx = html.IndexOf("validation", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) idx = html.IndexOf("Exception", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return "";
+            int start = Math.Max(0, idx - 40);
+            int len = Math.Min(180, html.Length - start);
+            string snippet = html.Substring(start, len).Replace('\n', ' ').Replace('\r', ' ');
+            return " Фрагмент: " + snippet;
         }
     }
 

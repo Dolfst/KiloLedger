@@ -52,6 +52,7 @@
     <Compile Include="MainForm.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SyncOptionsForm.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Alfa156.ico" />

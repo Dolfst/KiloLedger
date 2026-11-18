@@ -112,6 +112,7 @@ function importSnapshot_(data) {
     writeFuel_(ss, car, filterByCar_(data.fuel || [], car));
     writeRepairs_(ss, car, filterByCar_(data.repairs || [], car));
   }
+  pruneCarSheets_(ss, cars);
 }
 
 function readFuel_(sheet, car) {
@@ -200,7 +201,7 @@ function readCategories_(ss) {
 
 function writeFuel_(ss, car, rows) {
   var sheet = ensureSheet_(ss, FUEL_PREFIX + car);
-  sheet.clearContents();
+  clearSheetForWrite_(sheet);
   var out = [['Дата', 'Пробег (км)', 'Литры', 'Стоимость', 'Расход на 100км']];
   for (var i = 0; i < rows.length; i++) {
     out.push([rows[i][0], rows[i][2], rows[i][3], rows[i][4], '']);
@@ -210,7 +211,7 @@ function writeFuel_(ss, car, rows) {
 
 function writeRepairs_(ss, car, rows) {
   var sheet = ensureSheet_(ss, REPAIR_PREFIX + car);
-  sheet.clearContents();
+  clearSheetForWrite_(sheet);
   var out = [['Дата', 'Пробег', 'Категория', 'Товар', 'Наименование', 'Кол-во', 'Сумма', 'Комментарий']];
   for (var i = 0; i < rows.length; i++) {
     out.push([
@@ -223,7 +224,7 @@ function writeRepairs_(ss, car, rows) {
 
 function writeUtilities_(ss, rows) {
   var sheet = ensureSheet_(ss, UTILITIES_SHEET);
-  sheet.clearContents();
+  clearSheetForWrite_(sheet);
   var out = [[
     'Дата \\ Вид', 'Коммунальные платежи', 'Электроэнергия', 'Газ',
     'Стационарный телефон', 'Домашний интернет', 'Налог на аренду', 'Аренда жилья'
@@ -240,12 +241,38 @@ function writeUtilities_(ss, rows) {
 
 function writeCategories_(ss, rows) {
   var sheet = ensureSheet_(ss, CATEGORIES_SHEET);
-  sheet.clearContents();
+  clearSheetForWrite_(sheet);
   var out = [['Категория', 'Описание / Назначение']];
   for (var i = 0; i < rows.length; i++) {
     out.push([rows[i][0], '']);
   }
   sheet.getRange(1, 1, out.length, 2).setValues(out);
+}
+
+/** Снимаем data validation — иначе setValues падает (категории вне списка после restore). */
+function clearSheetForWrite_(sheet) {
+  try { sheet.clearDataValidations(); } catch (e) {}
+  try { sheet.clearContents(); } catch (e) { sheet.clear(); }
+}
+
+/** Удаляет пустые/лишние листы Заправки/Ремонт для машин не из списка. */
+function pruneCarSheets_(ss, cars) {
+  var keep = {};
+  for (var i = 0; i < cars.length; i++) {
+    var name = String(cars[i][0] || '').trim();
+    if (name) keep[name] = true;
+  }
+  var sheets = ss.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    var title = sheets[s].getName();
+    var car = null;
+    if (title.indexOf(FUEL_PREFIX) === 0) car = title.substring(FUEL_PREFIX.length).trim();
+    else if (title.indexOf(REPAIR_PREFIX) === 0) car = title.substring(REPAIR_PREFIX.length).trim();
+    else continue;
+    if (car && !keep[car]) {
+      try { ss.deleteSheet(sheets[s]); } catch (e) {}
+    }
+  }
 }
 
 function ensureSheet_(ss, name) {

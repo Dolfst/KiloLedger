@@ -210,11 +210,25 @@ namespace Alfa156.Desktop
                 PullAll();
                 GoogleSyncSettings settings = GoogleSyncSettings.Load();
                 Cursor = Cursors.WaitCursor;
-                string message = GoogleSyncClient.SyncBidirectional(repository, settings);
-                BindAll();
-                repository.Save();
-                dirty = false;
-                SetStatus(message);
+                AlfaRepository remote = GoogleSyncClient.PullRemote(settings);
+                Cursor = Cursors.Default;
+
+                List<SyncTableDiff> diffs = SyncMerge.Analyze(repository, remote);
+                using (SyncOptionsForm options = new SyncOptionsForm(diffs))
+                {
+                    if (options.ShowDialog(this) != DialogResult.OK)
+                    {
+                        SetStatus("Синхронизация отменена.");
+                        return;
+                    }
+                    Cursor = Cursors.WaitCursor;
+                    string message = GoogleSyncClient.ApplyAndPush(
+                        repository, remote, settings, options.Plan);
+                    BindAll();
+                    repository.Save();
+                    dirty = false;
+                    SetStatus(message);
+                }
             }
             catch (Exception ex)
             {

@@ -650,12 +650,27 @@ public sealed class MainActivity : Activity
         {
             try
             {
-                string message = await GoogleSyncService.SyncAsync(this, DataDirectory).ConfigureAwait(false);
+                string message = await GoogleSyncService.SyncAsync(
+                    this,
+                    DataDirectory,
+                    delegate(string summary) { return ResolveSyncPlan(summary, "Google", false); },
+                    delegate(string title, string localRow, string incomingRow)
+                    {
+                        return ResolveSyncConflict(title, localRow, incomingRow, "Google", false);
+                    }).ConfigureAwait(false);
                 RunOnUiThread(delegate
                 {
                     if (IsFinishing) return;
                     RefreshRecords();
                     ShowMessage(message);
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                RunOnUiThread(delegate
+                {
+                    if (!IsFinishing)
+                        ShowMessage("Синхронизация с Google отменена.");
                 });
             }
             catch (Exception ex)
@@ -721,8 +736,16 @@ public sealed class MainActivity : Activity
             {
                 try
                 {
-                    string error = ExpenseSyncService.Serve(listener, pairingCode, DataDirectory,
-                        CacheDir.AbsolutePath, ResolveSyncConflict,
+                    string error = ExpenseSyncService.Serve(
+                        listener,
+                        pairingCode,
+                        DataDirectory,
+                        CacheDir.AbsolutePath,
+                        delegate(string summary) { return ResolveSyncPlan(summary, "КПК", true); },
+                        delegate(string title, string localRow, string incomingRow)
+                        {
+                            return ResolveSyncConflict(title, localRow, incomingRow, "КПК", true);
+                        },
                         delegate(TcpClient client)
                         {
                             acceptedClient = client;
@@ -781,8 +804,110 @@ public sealed class MainActivity : Activity
         }
     }
 
+    private SyncPlan ResolveSyncPlan(string summary, string remoteName, bool requireSyncActive)
+    {
+        SyncPlan plan = new SyncPlan { Cancelled = true };
+        using (ManualResetEventSlim completed = new ManualResetEventSlim(false))
+        {
+            try
+            {
+                RunOnUiThread(delegate
+                {
+                    if (IsFinishing)
+                    {
+                        completed.Set();
+                        return;
+                    }
+
+                    LinearLayout root = new LinearLayout(this);
+                    root.Orientation = Orientation.Vertical;
+                    root.SetPadding(40, 24, 40, 8);
+
+                    TextView summaryView = new TextView(this);
+                    summaryView.Text = summary;
+                    summaryView.SetTextIsSelectable(true);
+                    ScrollView scroll = new ScrollView(this);
+                    scroll.AddView(summaryView);
+                    root.AddView(scroll, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MatchParent,
+                        (int)(220 * Resources.DisplayMetrics.Density)));
+
+                    CheckBox addBox = new CheckBox(this);
+                    addBox.Text = "Добавить записи, которые есть только на " + remoteName;
+                    addBox.Checked = true;
+                    root.AddView(addBox);
+
+                    CheckBox removeBox = new CheckBox(this);
+                    removeBox.Text = "Удалить локальные записи, которых нет на " + remoteName;
+                    removeBox.Checked = false;
+                    root.AddView(removeBox);
+
+                    TextView conflictLabel = new TextView(this);
+                    conflictLabel.Text = "Если одна и та же запись отличается:";
+                    conflictLabel.SetPadding(0, 16, 0, 0);
+                    root.AddView(conflictLabel);
+
+                    RadioGroup conflictGroup = new RadioGroup(this);
+                    RadioButton preferLocal = new RadioButton(this);
+                    preferLocal.Id = View.GenerateViewId();
+                    preferLocal.Text = "Оставить версию Android";
+                    RadioButton preferRemote = new RadioButton(this);
+                    preferRemote.Id = View.GenerateViewId();
+                    preferRemote.Text = "Взять версию с " + remoteName;
+                    RadioButton askEach = new RadioButton(this);
+                    askEach.Id = View.GenerateViewId();
+                    askEach.Text = "Спрашивать по каждой записи";
+                    conflictGroup.AddView(preferLocal);
+                    conflictGroup.AddView(preferRemote);
+                    conflictGroup.AddView(askEach);
+                    preferLocal.Checked = true;
+                    root.AddView(conflictGroup);
+
+                    new AlertDialog.Builder(this)
+                        .SetTitle("Синхронизация с " + remoteName)
+                        .SetView(root)
+                        .SetCancelable(false)
+                        .SetPositiveButton("Синхронизировать", delegate
+                        {
+                            plan.Cancelled = false;
+                            plan.AddIncoming = addBox.Checked;
+                            plan.RemoveLocalOnly = removeBox.Checked;
+                            if (preferRemote.Checked)
+                                plan.ConflictPolicy = SyncConflictPolicy.PreferIncoming;
+                            else if (askEach.Checked)
+                                plan.ConflictPolicy = SyncConflictPolicy.AskEach;
+                            else
+                                plan.ConflictPolicy = SyncConflictPolicy.PreferLocal;
+                            completed.Set();
+                        })
+                        .SetNegativeButton("Отмена", delegate
+                        {
+                            plan.Cancelled = true;
+                            completed.Set();
+                        })
+                        .Show();
+                });
+            }
+            catch
+            {
+                completed.Set();
+                throw;
+            }
+
+            while (!completed.Wait(1000))
+            {
+                if (requireSyncActive && !syncActive)
+                {
+                    plan.Cancelled = true;
+                    return plan;
+                }
+            }
+        }
+        return plan;
+    }
+
     private SyncConflictChoice ResolveSyncConflict(
-        string title, string localRow, string incomingRow)
+        string title, string localRow, string incomingRow, string remoteName, bool requireSyncActive)
     {
         SyncConflictChoice choice = SyncConflictChoice.Cancel;
         using (ManualResetEventSlim completed = new ManualResetEventSlim(false))
@@ -798,15 +923,15 @@ public sealed class MainActivity : Activity
                     }
                     new AlertDialog.Builder(this)
                         .SetTitle("Конфликт: " + title)
-                        .SetMessage("На Android:\n" + localRow + "\n\nНа КПК:\n" + incomingRow +
-                            "\n\nКакую запись оставить?")
+                        .SetMessage("На Android:\n" + localRow + "\n\nНа " + remoteName + ":\n" +
+                            incomingRow + "\n\nКакую запись оставить?")
                         .SetCancelable(false)
                         .SetNegativeButton("Оставить Android", delegate
                         {
                             choice = SyncConflictChoice.KeepLocal;
                             completed.Set();
                         })
-                        .SetPositiveButton("Оставить КПК", delegate
+                        .SetPositiveButton("Оставить " + remoteName, delegate
                         {
                             choice = SyncConflictChoice.KeepIncoming;
                             completed.Set();
@@ -825,8 +950,10 @@ public sealed class MainActivity : Activity
                 throw;
             }
             while (!completed.Wait(1000))
-                if (!syncActive)
+            {
+                if (requireSyncActive && !syncActive)
                     return SyncConflictChoice.Cancel;
+            }
         }
         return choice;
     }

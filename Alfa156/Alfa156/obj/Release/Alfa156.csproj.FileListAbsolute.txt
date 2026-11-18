@@ -6,3 +6,11 @@ C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\
 C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Release\Alfa156.csproj.GenerateResource.Cache
 C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Release\Alfa156.exe
 C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Release\Alfa156.pdb
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\bin\Release\Alfa156.exe
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\bin\Release\Alfa156.pdb
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\obj\Release\ResolveAssemblyReference.cache
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\obj\Release\CarExpenses.Form1.resources
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\obj\Release\Alfa156.Properties.Resources.resources
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\obj\Release\Alfa156.csproj.GenerateResource.Cache
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\obj\Release\Alfa156.exe
+c:\Users\DIGMA PRO\Projects\alfa\Alfa156\Alfa156\obj\Release\Alfa156.pdb

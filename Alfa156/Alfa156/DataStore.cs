@@ -177,10 +177,32 @@ namespace CarExpenses
             stream.Flush();
         }
 
-        internal static void InstallSyncSnapshot(NetworkStream stream)
+        internal static List<string[]> ReadSyncTable(string directory, string fileName)
+        {
+            string path = Path.Combine(directory, fileName);
+            if (!File.Exists(path))
+                return new List<string[]>();
+            return ReadRowsFromPath(path);
+        }
+
+        internal static void WriteSyncTable(string directory, string fileName, List<string[]> rows)
+        {
+            Directory.CreateDirectory(directory);
+            using (StreamWriter writer = new StreamWriter(Path.Combine(directory, fileName), false))
+            {
+                for (int i = 0; i < rows.Count; i++)
+                    writer.WriteLine(EncodeRow(rows[i]));
+            }
+        }
+
+        internal static void MergeSyncSnapshot(
+            NetworkStream stream,
+            SyncPlanResolver resolvePlan,
+            SyncConflictResolver resolveConflict)
         {
             string parent = Path.GetDirectoryName(DataDirectory);
             string staging = Path.Combine(parent, "Alfa156_Sync_" + Guid.NewGuid().ToString("N"));
+            string merged = Path.Combine(parent, "Alfa156_SyncMerged_" + Guid.NewGuid().ToString("N"));
             string safetyName = "Alfa156_SyncSafety_" +
                 DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             string safety = Path.Combine(parent, safetyName);
@@ -205,12 +227,21 @@ namespace CarExpenses
                 }
                 ValidateSyncDirectory(staging);
 
+                SyncPlan plan = resolvePlan(SyncMerge.FormatSummary(
+                    SyncMerge.AnalyzeDirectories(DataDirectory, staging)));
+                if (plan == null || plan.Cancelled)
+                    throw new InvalidOperationException("Синхронизация отменена.");
+
+                Directory.CreateDirectory(merged);
+                SyncMerge.ApplyPlan(DataDirectory, staging, merged, plan, resolveConflict);
+                ValidateSyncDirectory(merged);
+
                 Directory.CreateDirectory(safety);
                 for (int i = 0; i < DataFiles.Length; i++)
                     File.Copy(GetPath(DataFiles[i]), Path.Combine(safety, DataFiles[i]), true);
                 try
                 {
-                    CopyBackupFiles(staging);
+                    CopyBackupFiles(merged);
                     EnsureRepairCategories();
                     LoadCars();
                 }
@@ -231,17 +262,23 @@ namespace CarExpenses
             }
             finally
             {
-                try
-                {
-                    if (Directory.Exists(staging))
-                        Directory.Delete(staging, true);
-                }
-                catch (IOException)
-                {
-                }
-                catch (UnauthorizedAccessException)
-                {
-                }
+                TryDeleteDirectory(staging);
+                TryDeleteDirectory(merged);
+            }
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (path != null && Directory.Exists(path))
+                    Directory.Delete(path, true);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
             }
         }
 

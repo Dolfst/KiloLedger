@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Alfa156.Desktop.Data
 {
@@ -10,54 +11,159 @@ namespace Alfa156.Desktop.Data
         MergeFields
     }
 
+    internal sealed class SyncTableDiff
+    {
+        public string Title;
+        public int LocalCount;
+        public int RemoteCount;
+        public int OnlyLocal;
+        public int OnlyRemote;
+        public int Conflicts;
+        public int Identical;
+    }
+
+    internal sealed class SyncPlan
+    {
+        public bool AddFromGoogle = true;
+        public bool RemoveMissingInGoogle = false;
+        public SyncConflictPolicy ConflictPolicy = SyncConflictPolicy.PreferLocal;
+    }
+
     internal static class SyncMerge
     {
+        internal static List<SyncTableDiff> Analyze(AlfaRepository local, AlfaRepository remote)
+        {
+            List<SyncTableDiff> diffs = new List<SyncTableDiff>();
+            diffs.Add(AnalyzeTable("Автомобили", local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }));
+            diffs.Add(AnalyzeTable("Заправки", local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }));
+            diffs.Add(AnalyzeTable("Ремонт", local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
+                new bool[] { false, true, false, true, false }));
+            diffs.Add(AnalyzeTable("Коммуналка", local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }));
+            diffs.Add(AnalyzeTable("Категории", local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }));
+            return diffs;
+        }
+
+        internal static string FormatSummary(List<SyncTableDiff> diffs)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Сравнение локальных данных и Google:");
+            sb.AppendLine();
+            for (int i = 0; i < diffs.Count; i++)
+            {
+                SyncTableDiff d = diffs[i];
+                sb.AppendLine(d.Title + ": локально " + d.LocalCount + ", в Google " + d.RemoteCount +
+                    " | только локально " + d.OnlyLocal +
+                    ", только в Google " + d.OnlyRemote +
+                    ", отличаются " + d.Conflicts);
+            }
+            return sb.ToString();
+        }
+
+        internal static void ApplyPlan(AlfaRepository local, AlfaRepository remote, SyncPlan plan)
+        {
+            local.ReplaceAll(
+                ApplyList(local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }, plan),
+                ApplyList(local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan),
+                ApplyList(local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
+                    new bool[] { false, true, false, true, false }, plan),
+                ApplyList(local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }, plan),
+                ApplyList(local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }, plan));
+        }
+
         internal static void MergeInto(
             AlfaRepository local,
             AlfaRepository incoming,
             SyncConflictPolicy policy)
         {
-            local.ReplaceAll(
-                MergeList(local.Cars, incoming.Cars, new int[] { 0 }, new bool[] { true }, policy),
-                MergeList(local.Fuel, incoming.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }, policy),
-                MergeList(local.Repairs, incoming.Repairs, new int[] { 0, 1, 2, 3, 4 },
-                    new bool[] { false, true, false, true, false }, policy),
-                MergeList(local.Utilities, incoming.Utilities, new int[] { 0 }, new bool[] { false }, policy),
-                MergeList(local.Categories, incoming.Categories, new int[] { 0 }, new bool[] { true }, policy));
+            SyncPlan plan = new SyncPlan
+            {
+                AddFromGoogle = true,
+                RemoveMissingInGoogle = false,
+                ConflictPolicy = policy
+            };
+            ApplyPlan(local, incoming, plan);
         }
 
-        private static List<string[]> MergeList(
+        private static SyncTableDiff AnalyzeTable(
+            string title,
             List<string[]> localRows,
-            List<string[]> incomingRows,
+            List<string[]> remoteRows,
             int[] keyColumns,
-            bool[] ignoreCase,
-            SyncConflictPolicy policy)
+            bool[] ignoreCase)
         {
-            List<string[]> merged = new List<string[]>();
-            for (int i = 0; i < localRows.Count; i++)
-                merged.Add((string[])localRows[i].Clone());
-
-            for (int i = 0; i < incomingRows.Count; i++)
+            SyncTableDiff diff = new SyncTableDiff
             {
-                string[] row = incomingRows[i];
-                int match = FindIdentity(merged, row, keyColumns, ignoreCase);
+                Title = title,
+                LocalCount = localRows.Count,
+                RemoteCount = remoteRows.Count
+            };
+
+            bool[] localMatched = new bool[localRows.Count];
+            for (int i = 0; i < remoteRows.Count; i++)
+            {
+                int match = FindIdentity(localRows, remoteRows[i], keyColumns, ignoreCase);
                 if (match < 0)
                 {
-                    merged.Add((string[])row.Clone());
+                    diff.OnlyRemote++;
                     continue;
                 }
-                if (RowsEqual(merged[match], row))
-                    continue;
-
-                if (policy == SyncConflictPolicy.PreferIncoming)
-                    merged[match] = (string[])row.Clone();
-                else if (policy == SyncConflictPolicy.PreferLocal)
-                {
-                    // leave local
-                }
+                localMatched[match] = true;
+                if (RowsEqual(localRows[match], remoteRows[i]))
+                    diff.Identical++;
                 else
-                    merged[match] = MergeFields(merged[match], row);
+                    diff.Conflicts++;
             }
+            for (int i = 0; i < localMatched.Length; i++)
+                if (!localMatched[i])
+                    diff.OnlyLocal++;
+            return diff;
+        }
+
+        private static List<string[]> ApplyList(
+            List<string[]> localRows,
+            List<string[]> remoteRows,
+            int[] keyColumns,
+            bool[] ignoreCase,
+            SyncPlan plan)
+        {
+            List<string[]> merged = new List<string[]>();
+            bool[] localMatched = new bool[localRows.Count];
+
+            for (int i = 0; i < remoteRows.Count; i++)
+            {
+                string[] remote = remoteRows[i];
+                int match = FindIdentity(localRows, remote, keyColumns, ignoreCase);
+                if (match < 0)
+                {
+                    if (plan.AddFromGoogle)
+                        merged.Add((string[])remote.Clone());
+                    continue;
+                }
+
+                localMatched[match] = true;
+                string[] local = localRows[match];
+                if (RowsEqual(local, remote))
+                {
+                    merged.Add((string[])local.Clone());
+                    continue;
+                }
+
+                if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                    merged.Add((string[])remote.Clone());
+                else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                    merged.Add((string[])local.Clone());
+                else
+                    merged.Add(MergeFields(local, remote));
+            }
+
+            for (int i = 0; i < localRows.Count; i++)
+            {
+                if (localMatched[i])
+                    continue;
+                if (!plan.RemoveMissingInGoogle)
+                    merged.Add((string[])localRows[i].Clone());
+            }
+
             return merged;
         }
 
@@ -76,7 +182,7 @@ namespace Alfa156.Desktop.Data
                 else if (String.Equals(left, right, StringComparison.Ordinal))
                     result[i] = left;
                 else
-                    result[i] = right; // при расхождении берём входящее (Google/другой узел)
+                    result[i] = right;
             }
             return result;
         }

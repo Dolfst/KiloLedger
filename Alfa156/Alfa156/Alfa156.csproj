@@ -66,6 +66,10 @@
     </Compile>
     <Compile Include="DataStore.cs" />
     <Compile Include="EntryEditorForm.cs" />
+    <Compile Include="SyncMerge.cs" />
+    <Compile Include="SyncOptionsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Form1.resx">
