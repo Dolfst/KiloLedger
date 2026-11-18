@@ -968,8 +968,9 @@ namespace CarExpenses
 
                 try
                 {
-                    // CF: у TcpClient нет BeginConnect — только у Socket.
-                    client.Client.BeginConnect(parsed, port,
+                    // CF: BeginConnect только с EndPoint (не host/IP+port).
+                    IPEndPoint endPoint = new IPEndPoint(parsed, port);
+                    client.Client.BeginConnect(endPoint,
                         new AsyncCallback(FinishConnect), attempt);
                 }
                 catch (NotSupportedException)
