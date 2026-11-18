@@ -48,40 +48,74 @@ namespace Alfa156.Desktop.Exchange
             if (id == null)
                 throw new InvalidDataException("Не удалось распознать ссылку Google Sheets. Нужна ссылка вида https://docs.google.com/spreadsheets/d/ID/...");
 
-            // gid map: default first sheets by export of known names via CSV of whole export isn't multi-sheet.
-            // Strategy: try common gids 0..4 and also accept "export?format=csv" single sheet for fuel-like data.
-            // Better: download each sheet by name using /gviz/tq?tqx=out:csv&sheet=Name
-            List<string[]> cars = DownloadSheet(id, "Автомобили", "cars", 1);
-            List<string[]> fuel = DownloadSheet(id, "Заправки", "fuel", 5);
-            List<string[]> repairs = DownloadSheet(id, "Ремонт", "repairs", 9);
-            List<string[]> utilities = DownloadSheet(id, "Коммуналка", "utilities", 8);
-            List<string[]> categories = DownloadSheetOptional(id, "Категории", "repair-categories", 1);
-            if (cars.Count == 0)
-                throw new InvalidDataException("В таблице нет листа «Автомобили» (или «cars») с данными. Сделайте таблицу доступной по ссылке.");
-            repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
+            // Формат «Деньги»: Заправки Alfa Romeo 156 / Ремонт ... / Коммунальные / Справочник
+            string fuelSheet;
+            List<string[]> fuelRaw = DownloadFirstMatchingSheet(id, out fuelSheet,
+                new string[] { "Заправки Alfa Romeo 156", "Заправки", "fuel" }, 8, false);
+            string repairSheet;
+            List<string[]> repairRaw = DownloadFirstMatchingSheet(id, out repairSheet,
+                new string[] { "Ремонт Alfa Romeo 156", "Ремонт", "repairs" }, 10, false);
+            string utilitiesSheet;
+            List<string[]> utilitiesRaw = DownloadFirstMatchingSheet(id, out utilitiesSheet,
+                new string[] { "Коммунальные", "Коммуналка", "utilities" }, 10, false);
+            string categoriesSheet;
+            List<string[]> categoriesRaw = DownloadFirstMatchingSheet(id, out categoriesSheet,
+                new string[] { "Справочник", "Категории", "repair-categories" }, 3, false);
+
+            bool dengi = fuelRaw.Count > 0 || repairRaw.Count > 0 || utilitiesRaw.Count > 0;
+            if (dengi)
+            {
+                List<string> knownSheets = new List<string>();
+                if (fuelSheet != null) knownSheets.Add(fuelSheet);
+                if (repairSheet != null) knownSheets.Add(repairSheet);
+                if (utilitiesSheet != null) knownSheets.Add(utilitiesSheet);
+                if (categoriesSheet != null) knownSheets.Add(categoriesSheet);
+
+                List<string[]> cars = DengiFormat.BuildCars(knownSheets);
+                string car = cars[0][0];
+                List<string[]> fuel = DengiFormat.MapFuel(fuelRaw, DengiFormat.CarFromSheetName(fuelSheet, car));
+                List<string[]> repairs = DengiFormat.MapRepairs(repairRaw, DengiFormat.CarFromSheetName(repairSheet, car));
+                List<string[]> utilities = DengiFormat.MapUtilities(utilitiesRaw);
+                List<string[]> categories = DengiFormat.MapCategories(categoriesRaw);
+                repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
+                return;
+            }
+
+            // Канонический формат Alfa156 Desktop
+            List<string[]> canonicalCars = DownloadSheetOptional(id, new string[] { "Автомобили", "cars" }, 1, true);
+            if (DengiFormat.LooksLikeMonthList(canonicalCars))
+                throw new InvalidDataException(
+                    "Похоже, импортировался лист с месяцами вместо автомобилей. Для таблицы «Деньги» нужны листы «Заправки …», «Ремонт …», «Коммунальные», «Справочник» и доступ по ссылке.");
+
+            List<string[]> canonicalFuel = DownloadSheetOptional(id, new string[] { "Заправки", "fuel" }, 5, true);
+            List<string[]> canonicalRepairs = DownloadSheetOptional(id, new string[] { "Ремонт", "repairs" }, 9, true);
+            List<string[]> canonicalUtilities = DownloadSheetOptional(id, new string[] { "Коммуналка", "utilities" }, 8, true);
+            List<string[]> canonicalCategories = DownloadSheetOptional(id, new string[] { "Категории", "repair-categories" }, 1, true);
+            if (canonicalCars.Count == 0)
+                throw new InvalidDataException("Не найдены данные. Для «Деньги» откройте доступ по ссылке; либо используйте листы Автомобили/Заправки/Ремонт/Коммуналка.");
+            repo.ReplaceAll(canonicalCars, canonicalFuel, canonicalRepairs, canonicalUtilities, canonicalCategories);
         }
 
         internal static string ExtractSpreadsheetId(string url)
         {
             if (String.IsNullOrEmpty(url))
                 return null;
-            Match match = Regex.Match(url, @"/spreadsheets/d/([a-zA-Z0-9-_]+)");
+            string text = url.Trim();
+            Match match = Regex.Match(text, @"/spreadsheets/d/([a-zA-Z0-9-_]+)");
             if (match.Success)
                 return match.Groups[1].Value;
-            match = Regex.Match(url, @"^[a-zA-Z0-9-_]{20,}$");
-            return match.Success ? url.Trim() : null;
+            match = Regex.Match(text, @"^([a-zA-Z0-9-_]{20,})(?:/edit|/view|/?\?|$)");
+            if (match.Success)
+                return match.Groups[1].Value;
+            match = Regex.Match(text, @"([a-zA-Z0-9-_]{30,})");
+            return match.Success ? match.Groups[1].Value : null;
         }
 
-        private static List<string[]> DownloadSheet(string id, string ruName, string enName, int columns)
+        private static List<string[]> DownloadFirstMatchingSheet(
+            string id, out string matchedName, string[] names, int columns, bool hasHeader)
         {
-            List<string[]> rows = DownloadSheetOptional(id, ruName, enName, columns);
-            return rows;
-        }
-
-        private static List<string[]> DownloadSheetOptional(string id, string ruName, string enName, int columns)
-        {
+            matchedName = null;
             Exception lastError = null;
-            string[] names = new string[] { ruName, enName };
             for (int i = 0; i < names.Length; i++)
             {
                 try
@@ -89,22 +123,25 @@ namespace Alfa156.Desktop.Exchange
                     string url = "https://docs.google.com/spreadsheets/d/" + id +
                         "/gviz/tq?tqx=out:csv&sheet=" + Uri.EscapeDataString(names[i]);
                     string csv = DownloadText(url);
-                    if (LooksLikeHtmlError(csv))
+                    if (LooksLikeHtmlError(csv) || LooksLikeGvizError(csv))
                         continue;
-                    return ParseCsv(csv, columns, true);
+                    matchedName = names[i];
+                    return ParseCsv(csv, columns, hasHeader);
                 }
                 catch (Exception ex)
                 {
                     lastError = ex;
                 }
             }
-
-            if (columns == 1 && String.Equals(enName, "repair-categories", StringComparison.OrdinalIgnoreCase))
-                return new List<string[]>();
-
-            if (lastError != null)
-                throw new InvalidDataException("Не удалось скачать лист «" + ruName + "»: " + lastError.Message, lastError);
+            if (lastError != null && names.Length == 1)
+                throw new InvalidDataException("Не удалось скачать лист «" + names[0] + "»: " + lastError.Message, lastError);
             return new List<string[]>();
+        }
+
+        private static List<string[]> DownloadSheetOptional(string id, string[] names, int columns, bool hasHeader)
+        {
+            string matched;
+            return DownloadFirstMatchingSheet(id, out matched, names, columns, hasHeader);
         }
 
         private static string DownloadText(string url)
@@ -127,6 +164,16 @@ namespace Alfa156.Desktop.Exchange
                 return true;
             string sample = text.TrimStart().ToLowerInvariant();
             return sample.StartsWith("<!doctype") || sample.StartsWith("<html") || sample.Contains("sign in");
+        }
+
+        private static bool LooksLikeGvizError(string text)
+        {
+            string sample = (text ?? "").TrimStart();
+            if (sample.StartsWith("/*", StringComparison.Ordinal) ||
+                sample.StartsWith("google.visualization", StringComparison.OrdinalIgnoreCase))
+                return sample.IndexOf("\"errors\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                       sample.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0;
+            return false;
         }
 
         private static string[] BuildUtilityHeaders()

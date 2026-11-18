@@ -44,6 +44,13 @@ namespace Alfa156.Desktop.Exchange
             using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
             {
                 Dictionary<string, string> sheetMap = ReadSheetMap(zip);
+                List<string> names = new List<string>(sheetMap.Keys);
+                if (DengiFormat.LooksLikeDengiSheetNames(names))
+                {
+                    ImportDengi(repo, zip, sheetMap, names);
+                    return;
+                }
+
                 List<string[]> cars = ReadNamedSheet(zip, sheetMap, new string[] { "Автомобили", "cars", "Sheet1" }, 1);
                 List<string[]> fuel = ReadNamedSheet(zip, sheetMap, new string[] { "Заправки", "fuel", "Sheet2" }, 5);
                 List<string[]> repairs = ReadNamedSheet(zip, sheetMap, new string[] { "Ремонт", "repairs", "Sheet3" }, 9);
@@ -52,8 +59,63 @@ namespace Alfa156.Desktop.Exchange
                     new string[] { "Категории", "repair-categories", "Sheet5" }, 1);
                 if (cars.Count == 0)
                     throw new InvalidDataException("В Excel нет данных на листе «Автомобили».");
+                if (DengiFormat.LooksLikeMonthList(cars))
+                    throw new InvalidDataException("На листе «Автомобили» похоже месяцы. Для файла «Деньги» нужны листы Заправки/Ремонт/Коммунальные/Справочник.");
                 repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
             }
+        }
+
+        private static void ImportDengi(AlfaRepository repo, ZipArchive zip, Dictionary<string, string> sheetMap, List<string> names)
+        {
+            List<string[]> cars = DengiFormat.BuildCars(names);
+            string defaultCar = cars[0][0];
+
+            string fuelName = FindSheet(names, "Заправки Alfa Romeo 156", "Заправки");
+            string repairName = FindSheet(names, "Ремонт Alfa Romeo 156", "Ремонт");
+            string utilitiesName = FindSheet(names, "Коммунальные", "Коммуналка");
+            string categoriesName = FindSheet(names, "Справочник", "Категории");
+
+            List<string[]> fuelRaw = fuelName == null ? new List<string[]>() :
+                ReadNamedSheetOptional(zip, sheetMap, new string[] { fuelName }, 8);
+            List<string[]> repairRaw = repairName == null ? new List<string[]>() :
+                ReadNamedSheetOptional(zip, sheetMap, new string[] { repairName }, 10);
+            List<string[]> utilitiesRaw = utilitiesName == null ? new List<string[]>() :
+                ReadNamedSheetOptional(zip, sheetMap, new string[] { utilitiesName }, 10);
+            List<string[]> categoriesRaw = categoriesName == null ? new List<string[]>() :
+                ReadNamedSheetOptional(zip, sheetMap, new string[] { categoriesName }, 3);
+
+            // ReadNamedSheetOptional skips header row (starts at Excel row 2). For Dengi header is row 1 — OK.
+            // But categories may start at row 1 without header in live sheets; xlsx export has header.
+            List<string[]> fuel = DengiFormat.MapFuel(PrependIfNeeded(fuelRaw, false), DengiFormat.CarFromSheetName(fuelName, defaultCar));
+            List<string[]> repairs = DengiFormat.MapRepairs(PrependIfNeeded(repairRaw, false), DengiFormat.CarFromSheetName(repairName, defaultCar));
+            List<string[]> utilities = DengiFormat.MapUtilities(PrependIfNeeded(utilitiesRaw, false));
+            List<string[]> categories = DengiFormat.MapCategories(PrependIfNeeded(categoriesRaw, false));
+            repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
+        }
+
+        private static string FindSheet(List<string> names, params string[] candidates)
+        {
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                for (int j = 0; j < names.Count; j++)
+                {
+                    if (String.Equals(names[j], candidates[i], StringComparison.OrdinalIgnoreCase))
+                        return names[j];
+                    if (candidates[i].StartsWith("Заправки", StringComparison.OrdinalIgnoreCase) &&
+                        names[j].StartsWith("Заправки", StringComparison.OrdinalIgnoreCase))
+                        return names[j];
+                    if (candidates[i].StartsWith("Ремонт", StringComparison.OrdinalIgnoreCase) &&
+                        names[j].StartsWith("Ремонт", StringComparison.OrdinalIgnoreCase) &&
+                        !names[j].StartsWith("Ремонтн", StringComparison.OrdinalIgnoreCase))
+                        return names[j];
+                }
+            }
+            return null;
+        }
+
+        private static List<string[]> PrependIfNeeded(List<string[]> rows, bool unused)
+        {
+            return rows ?? new List<string[]>();
         }
 
         private static string[] UtilityHeaders()
