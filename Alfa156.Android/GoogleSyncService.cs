@@ -58,7 +58,7 @@ internal static class GoogleSyncService
                 ExpenseSyncService.AnalyzeDirectories(dataDirectory, incoming),
                 "Android", "Google"));
             if (plan == null || plan.Cancelled)
-                throw new OperationCanceledException("Синхронизация отменена.");
+                throw new System.OperationCanceledException("Синхронизация отменена.");
 
             ExpenseSyncService.MergeFromIncoming(dataDirectory, incoming, staging, plan, resolveConflict);
             ExpenseDataCodec.ValidateDirectory(dataDirectory);

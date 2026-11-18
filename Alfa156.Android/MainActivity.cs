@@ -134,7 +134,7 @@ public sealed class MainActivity : Activity
         LinearLayout titleRow = NewRow();
         titleRow.SetGravity(GravityFlags.CenterVertical);
         ImageView logo = new ImageView(this);
-        logo.SetImageResource(Resource.Drawable.Icon);
+        logo.SetImageResource(Resource.Drawable.icon);
         logo.SetScaleType(ImageView.ScaleType.FitCenter);
         titleRow.AddView(logo, new LinearLayout.LayoutParams(Dp(36), Dp(36)));
         TextView title = new TextView(this);
@@ -665,7 +665,7 @@ public sealed class MainActivity : Activity
                     ShowMessage(message);
                 });
             }
-            catch (OperationCanceledException)
+            catch (System.OperationCanceledException)
             {
                 RunOnUiThread(delegate
                 {

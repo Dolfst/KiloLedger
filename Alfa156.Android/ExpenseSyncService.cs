@@ -453,7 +453,7 @@ internal static class ExpenseSyncService
                 choice = resolveConflict(ConflictTitle(fileName), FormatRow(local), FormatRow(row));
 
             if (choice == SyncConflictChoice.Cancel)
-                throw new OperationCanceledException("Синхронизация отменена пользователем.");
+                throw new System.OperationCanceledException("Синхронизация отменена пользователем.");
             merged.Add(choice == SyncConflictChoice.KeepIncoming ? row : local);
         }
 
