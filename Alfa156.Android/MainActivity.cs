@@ -15,7 +15,6 @@ using Android.OS;
 using Android.Provider;
 using Android.Views;
 using Android.Widget;
-using AndroidX.Core.Content;
 using AndroidColor = global::Android.Graphics.Color;
 using AndroidTypefaceStyle = global::Android.Graphics.TypefaceStyle;
 using AndroidLayout = global::Android.Resource.Layout;
@@ -1723,15 +1722,10 @@ public sealed class MainActivity : Activity
                 }
 #pragma warning restore CA1416
             }
-            Java.IO.File captureDir = new Java.IO.File(CacheDir, "receipt_capture");
-            if (!captureDir.Exists())
-                captureDir.Mkdirs();
-            cameraCaptureFile = new Java.IO.File(captureDir, "capture.jpg");
-            Uri uri = FileProvider.GetUriForFile(this, "com.alfa156.mobile.fileprovider",
-                cameraCaptureFile);
+            // Without FileProvider/AndroidX: camera returns a thumbnail in Intent extras.
+            // Gallery path still saves a full downscaled JPEG.
+            cameraCaptureFile = null;
             Intent intent = new Intent(MediaStore.ActionImageCapture);
-            intent.PutExtra(MediaStore.ExtraOutput, uri);
-            intent.AddFlags(ActivityFlags.GrantWriteUriPermission | ActivityFlags.GrantReadUriPermission);
             StartActivityForResult(intent, PhotoCameraRequest);
         }
         catch (Exception ex)
