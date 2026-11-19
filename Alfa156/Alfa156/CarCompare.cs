@@ -206,13 +206,12 @@ namespace CarExpenses
 
         private static bool TryNumber(string value, out decimal number)
         {
-            return Decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out number);
+            return DataStore.TryNumber(value, out number);
         }
 
         private static decimal NumberOrZero(string value)
         {
-            decimal n;
-            return TryNumber(value, out n) ? n : 0;
+            return DataStore.NumberOrZero(value);
         }
 
         private static string Money(decimal value)

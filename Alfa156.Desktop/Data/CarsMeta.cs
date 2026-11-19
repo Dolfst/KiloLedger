@@ -167,7 +167,11 @@ namespace Alfa156.Desktop.Data
                 if (String.Equals(meta.CarName, carName, StringComparison.OrdinalIgnoreCase))
                 {
                     if (!String.IsNullOrEmpty(meta.Id))
-                        RecordIds.AddTombstone(directory, FileName, meta.Id);
+                    {
+                        List<Tombstone> tombs = RecordIds.ReadTombstones(directory);
+                        RecordIds.AddTombstone(tombs, FileName, meta.Id);
+                        RecordIds.WriteTombstones(directory, tombs);
+                    }
                     continue;
                 }
                 kept.Add(rows[i]);
