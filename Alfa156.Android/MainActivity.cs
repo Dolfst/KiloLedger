@@ -80,6 +80,7 @@ public sealed class MainActivity : Activity
     private string fuelFilterDateFrom = "";
     private string fuelFilterDateTo = "";
     private string fuelFilterText = "";
+    private string fuelFilterPurpose = "";
     private bool updatingCarSpinner;
     private int selectedRecordPosition = -1;
     private List<string[]> allRows = new List<string[]>();
@@ -111,10 +112,41 @@ public sealed class MainActivity : Activity
             EnsureNotificationChannel();
             RefreshRecords();
             RefreshServiceNotifications();
+            MaybeShowOnboardingTip();
         }
         catch (Exception ex)
         {
             ShowStartupError(ex);
+        }
+    }
+
+    private void MaybeShowOnboardingTip()
+    {
+        try
+        {
+            Directory.CreateDirectory(DataDirectory);
+            if (ToSettings.IsOnboardingSeen(DataDirectory))
+                return;
+            if (IsCompleteData(DataDirectory))
+            {
+                ToSettings.SetOnboardingSeen(DataDirectory, true);
+                return;
+            }
+            ToSettings.SetOnboardingSeen(DataDirectory, true);
+            new AlertDialog.Builder(this)
+                .SetTitle("Добро пожаловать")
+                .SetMessage(
+                    "Кратко:\n" +
+                    "• Wi‑Fi sync — обмен .dat с КПК/ПК в одной сети\n" +
+                    "• ZIP — полная копия, включая фото чеков\n" +
+                    "• Сводка и ТО — итоги, график и напоминания\n\n" +
+                    "Начните с «Данные → Начать с нуля» или «Импорт копии».")
+                .SetPositiveButton("ОК", delegate { })
+                .Show();
+        }
+        catch
+        {
+            // подсказка не должна мешать запуску
         }
     }
 
@@ -1111,6 +1143,9 @@ public sealed class MainActivity : Activity
         {
             string formatted = row[0] + " · " + row[2] + " км · " + row[3] +
                 " л · " + row[4] + " " + Cur();
+            string purpose = ExpenseDataCodec.GetPurpose(row);
+            if (purpose.Length > 0)
+                formatted += " · " + purpose;
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
                 formatted += " · " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
@@ -1182,6 +1217,9 @@ public sealed class MainActivity : Activity
             if (comment.Length > 0)
                 details.Append("\nАЗС / комментарий: ").Append(comment);
             details.Append("\nПолный бак: ").Append(ExpenseDataCodec.IsFullTank(row) ? "да" : "нет");
+            string purpose = ExpenseDataCodec.GetPurpose(row);
+            if (purpose.Length > 0)
+                details.Append("\nЦель: ").Append(purpose);
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
                 details.Append("\nРасход: ")
@@ -1344,6 +1382,9 @@ public sealed class MainActivity : Activity
             if (fullTank.Length == 0)
                 fullTank = "1";
             fields.Add(EditorField.Check("Полный бак", fullTank != "0"));
+            string purpose = ExpenseDataCodec.GetPurpose(row);
+            fields.Add(EditorField.Option("Цель (Личный/Работа)", purpose,
+                PurposeFieldOptions(purpose), false));
         }
         else if (selectedSection == Repairs)
         {
@@ -1425,11 +1466,12 @@ public sealed class MainActivity : Activity
     {
         if (values == null || values.Length < 5)
             return values;
+        // date|car|km|liters|cost|price|comment|fullTank|purpose  (id added separately)
         string[] row = values;
-        if (row.Length > 8)
+        if (row.Length > 9)
         {
-            row = new string[8];
-            Array.Copy(values, row, 8);
+            row = new string[9];
+            Array.Copy(values, row, 9);
         }
         if (row.Length > 5)
         {
@@ -1445,6 +1487,8 @@ public sealed class MainActivity : Activity
         }
         if (row.Length > 7)
             row[7] = ExpenseDataCodec.NormalizeFullTankFlag(row[7]);
+        if (row.Length > 8)
+            row[8] = ExpenseDataCodec.NormalizePurpose(row[8]);
         int length = row.Length;
         while (length > 5)
         {
@@ -1457,6 +1501,15 @@ public sealed class MainActivity : Activity
         string[] trimmed = new string[length];
         Array.Copy(row, trimmed, length);
         return trimmed;
+    }
+
+    private static string[] PurposeFieldOptions(string current)
+    {
+        List<string> options = new List<string> { "", "Личный", "Работа" };
+        string value = ExpenseDataCodec.NormalizePurpose(current);
+        if (value.Length > 0 && options.IndexOf(value) < 0)
+            options.Add(value);
+        return options.ToArray();
     }
 
     private string LastCarMileage(string car)
@@ -1617,7 +1670,7 @@ public sealed class MainActivity : Activity
         List<SearchHit> hits = new List<SearchHit>();
         CollectSearchHits(hits, Fuel, "fuel.dat", "Заправка", q, delegate(string[] row)
         {
-            return FieldAt(row, 6) + " " + FieldAt(row, 1);
+            return FieldAt(row, 6) + " " + ExpenseDataCodec.GetPurpose(row) + " " + FieldAt(row, 1);
         });
         CollectSearchHits(hits, Repairs, "repairs.dat", "Ремонт", q, delegate(string[] row)
         {
@@ -2383,7 +2436,9 @@ public sealed class MainActivity : Activity
         {
             EditorField.Date("Дата с", fuelFilterDateFrom, false),
             EditorField.Date("Дата по", fuelFilterDateTo, false),
-            EditorField.Text("Пробег / литры / стоимость", fuelFilterText, false)
+            EditorField.Text("Пробег / литры / стоимость", fuelFilterText, false),
+            EditorField.Option("Цель", fuelFilterPurpose,
+                PurposeFieldOptions(fuelFilterPurpose), false)
         };
         RenderEditor("Фильтр заправок", fields,
             delegate(string[] values)
@@ -2394,6 +2449,7 @@ public sealed class MainActivity : Activity
                 fuelFilterDateFrom = values[0];
                 fuelFilterDateTo = values[1];
                 fuelFilterText = values[2];
+                fuelFilterPurpose = values[3];
                 RefreshRecords();
             });
     }
@@ -2500,6 +2556,7 @@ public sealed class MainActivity : Activity
             fuelFilterDateFrom = "";
             fuelFilterDateTo = "";
             fuelFilterText = "";
+            fuelFilterPurpose = "";
         }
         else if (selectedSection == Repairs)
         {
@@ -2520,7 +2577,7 @@ public sealed class MainActivity : Activity
     private bool HasFuelFilter()
     {
         return fuelFilterDateFrom.Length > 0 || fuelFilterDateTo.Length > 0 ||
-            fuelFilterText.Length > 0;
+            fuelFilterText.Length > 0 || fuelFilterPurpose.Length > 0;
     }
 
     private bool HasRepairFilter()
@@ -2555,10 +2612,15 @@ public sealed class MainActivity : Activity
         if (fuelFilterDateTo.Length > 0 &&
             String.CompareOrdinal(row[0], fuelFilterDateTo) > 0)
             return false;
+        if (fuelFilterPurpose.Length > 0 &&
+            !String.Equals(ExpenseDataCodec.GetPurpose(row), fuelFilterPurpose,
+                StringComparison.OrdinalIgnoreCase))
+            return false;
         if (fuelFilterText.Length > 0)
         {
             string text = (row[2] + " " + row[3] + " " + row[4] + " " +
-                FieldAt(row, 5) + " " + FieldAt(row, 6)).ToLowerInvariant();
+                FieldAt(row, 5) + " " + FieldAt(row, 6) + " " +
+                ExpenseDataCodec.GetPurpose(row)).ToLowerInvariant();
             if (text.IndexOf(fuelFilterText.Trim().ToLowerInvariant(),
                 StringComparison.Ordinal) < 0)
                 return false;
@@ -2697,6 +2759,15 @@ public sealed class MainActivity : Activity
         decimal repairTotal = 0;
         decimal expenseTotal = 0;
         decimal utilityTotal = 0;
+        decimal yearFuel = 0;
+        decimal yearRepair = 0;
+        decimal yearExpense = 0;
+        decimal yearUtility = 0;
+        decimal purposePersonal = 0;
+        decimal purposeWork = 0;
+        decimal purposeOther = 0;
+        bool anyPurpose = false;
+        string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
         decimal currentMileage = 0;
         decimal minimumMileage = Decimal.MaxValue;
         decimal maximumMileage = 0;
@@ -2721,6 +2792,19 @@ public sealed class MainActivity : Activity
             if (row[1] != currentCar)
                 continue;
             fuelTotal += amount;
+            if (row[0] != null && row[0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                yearFuel += amount;
+            string purpose = ExpenseDataCodec.GetPurpose(row);
+            if (purpose.Length > 0)
+            {
+                anyPurpose = true;
+                if (String.Equals(purpose, "Личный", StringComparison.OrdinalIgnoreCase))
+                    purposePersonal += amount;
+                else if (String.Equals(purpose, "Работа", StringComparison.OrdinalIgnoreCase))
+                    purposeWork += amount;
+                else
+                    purposeOther += amount;
+            }
             AddMileageReading(row[2], ref currentMileage, ref minimumMileage, ref maximumMileage);
         }
         for (int i = 0; i < repairs.Count; i++)
@@ -2733,6 +2817,8 @@ public sealed class MainActivity : Activity
             if (row[1] != currentCar)
                 continue;
             repairTotal += amount;
+            if (row[0] != null && row[0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                yearRepair += amount;
             decimal mileage;
             if (TryNumber(row[2], out mileage) && mileage >= 0)
                 AddMileageReading(row[2], ref currentMileage, ref minimumMileage, ref maximumMileage);
@@ -2769,20 +2855,35 @@ public sealed class MainActivity : Activity
             if (carTotals.ContainsKey(row[1]))
                 carTotals[row[1]] += amount;
             if (row[1] == currentCar)
+            {
                 expenseTotal += amount;
+                if (row[0] != null && row[0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                    yearExpense += amount;
+            }
         }
         for (int i = 0; i < utilities.Count; i++)
         {
             decimal amount = ExpenseDataCodec.Sum(utilities[i], 1);
             utilityTotal += amount;
             AddMonthlyAmount(monthlyTotals, utilities[i][0], 2, amount);
+            if (utilities[i][0] != null &&
+                utilities[i][0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                yearUtility += amount;
         }
 
         StringBuilder result = new StringBuilder(currentCar);
         result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" " + Cur())
             .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur())
-            .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur())
-            .Append("\nУчтённые расходы на км (примерно): ")
+            .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur());
+        if (anyPurpose)
+        {
+            result.Append("\n\nЗаправки по цели:")
+                .Append("\nЛичный: ").Append(Money(purposePersonal)).Append(" " + Cur())
+                .Append("\nРабота: ").Append(Money(purposeWork)).Append(" " + Cur());
+            if (purposeOther > 0)
+                result.Append("\nДругое: ").Append(Money(purposeOther)).Append(" " + Cur());
+        }
+        result.Append("\nУчтённые расходы на км (примерно): ")
             .Append(minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage
                 ? Money((fuelTotal + repairTotal + expenseTotal) / (maximumMileage - minimumMileage)) + " " + Cur() + "/км"
                 : "недостаточно данных о пробеге")
@@ -2790,6 +2891,13 @@ public sealed class MainActivity : Activity
         foreach (KeyValuePair<string, decimal> pair in byCategory)
             result.Append("\n").Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur());
         result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" " + Cur())
+            .Append("\n\nИтого за год ").Append(yearPrefix).Append(":")
+            .Append("\nТопливо: ").Append(Money(yearFuel)).Append(" " + Cur())
+            .Append("\nРемонт: ").Append(Money(yearRepair)).Append(" " + Cur())
+            .Append("\nПрочие: ").Append(Money(yearExpense)).Append(" " + Cur())
+            .Append("\nКоммунальные: ").Append(Money(yearUtility)).Append(" " + Cur())
+            .Append("\nВсего: ").Append(Money(yearFuel + yearRepair + yearExpense + yearUtility))
+            .Append(" " + Cur())
             .Append("\n\nРасходы по месяцам (последние 12):");
         List<string> months = new List<string>(monthlyTotals.Keys);
         months.Sort(StringComparer.Ordinal);

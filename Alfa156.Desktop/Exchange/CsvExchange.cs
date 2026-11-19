@@ -18,7 +18,7 @@ namespace Alfa156.Desktop.Exchange
             string money = "Сумма_" + ToSettings.GetCurrency(repo.Settings);
             WriteCsv(Path.Combine(folder, "cars.csv"), new string[] { "Автомобиль" }, repo.Cars);
             WriteCsv(Path.Combine(folder, "fuel.csv"),
-                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак" },
+                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак", "Цель" },
                 repo.Fuel);
             WriteCsv(Path.Combine(folder, "repairs.csv"),
                 new string[]
@@ -39,7 +39,7 @@ namespace Alfa156.Desktop.Exchange
         internal static void ImportFolder(AlfaRepository repo, string folder)
         {
             List<string[]> cars = ReadCsv(Path.Combine(folder, "cars.csv"), 1, true);
-            List<string[]> fuel = ReadCsvFlexible(Path.Combine(folder, "fuel.csv"), 7, 8);
+            List<string[]> fuel = ReadCsvFlexible(Path.Combine(folder, "fuel.csv"), 7, 9);
             List<string[]> repairs = ReadCsv(Path.Combine(folder, "repairs.csv"), 9, true);
             List<string[]> utilities = ReadCsv(Path.Combine(folder, "utilities.csv"), 8, true);
             string categoriesPath = Path.Combine(folder, "repair-categories.csv");

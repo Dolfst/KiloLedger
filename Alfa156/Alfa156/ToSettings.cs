@@ -23,6 +23,7 @@ namespace CarExpenses
         internal const string BeltWarnKey = "belt_warn";
         internal const string CurrencyKey = "currency";
         internal const string DefaultCurrency = "BYN";
+        internal const string OnboardingSeenKey = "onboarding_seen";
         private const string DataDirectory = @"\My Documents\Alfa156";
 
         internal static bool IsValidRow(string[] row)
@@ -94,6 +95,33 @@ namespace CarExpenses
             LoadInto(map, directory);
             ApplyDefaults(map);
             map[CurrencyKey] = normalized;
+            WriteMap(directory, map);
+        }
+
+        internal static bool IsOnboardingSeen()
+        {
+            return IsOnboardingSeenInDirectory(DataDirectory);
+        }
+
+        internal static bool IsOnboardingSeenInDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string value;
+            return map.TryGetValue(OnboardingSeenKey, out value) && value == "1";
+        }
+
+        internal static void SetOnboardingSeen(bool seen)
+        {
+            SetOnboardingSeenInDirectory(DataDirectory, seen);
+        }
+
+        internal static void SetOnboardingSeenInDirectory(string directory, bool seen)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[OnboardingSeenKey] = seen ? "1" : "0";
             WriteMap(directory, map);
         }
 

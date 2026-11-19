@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.18.0";
+        private const string AppVersion = "1.19.0";
 
         private string Cur()
         {
@@ -48,9 +48,11 @@ namespace Alfa156.Desktop
         private readonly TextBox fuelFilterFrom = new TextBox();
         private readonly TextBox fuelFilterTo = new TextBox();
         private readonly TextBox fuelFilterText = new TextBox();
+        private readonly ComboBox fuelFilterPurpose = new ComboBox();
         private string fuelFilterFromValue = "";
         private string fuelFilterToValue = "";
         private string fuelFilterTextValue = "";
+        private string fuelFilterPurposeValue = "";
 
         private readonly TextBox repairFilterFrom = new TextBox();
         private readonly TextBox repairFilterTo = new TextBox();
@@ -250,6 +252,11 @@ namespace Alfa156.Desktop
             WireDirty(expenseCategoriesGrid);
             fuelGrid.DefaultValuesNeeded += FuelGridDefaultValuesNeeded;
             fuelGrid.CellEndEdit += MileageCellEndEdit;
+            fuelGrid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
+            {
+                // ComboBox «Цель» may briefly hold a custom value not yet in Items.
+                e.ThrowException = false;
+            };
             repairsGrid.CellEndEdit += MileageCellEndEdit;
             WireDirty(utilitiesGrid);
             WireDirty(categoriesGrid);
@@ -312,10 +319,40 @@ namespace Alfa156.Desktop
 
         private FlowLayoutPanel BuildFuelFilterBar()
         {
-            return BuildPeriodTextFilterBar(
+            FlowLayoutPanel bar = BuildPeriodTextFilterBar(
                 fuelFilterFrom, fuelFilterTo, fuelFilterText,
                 delegate { ApplyFuelFilterFromUi(); },
                 delegate { ResetFuelFilter(); });
+            fuelFilterPurpose.DropDownStyle = ComboBoxStyle.DropDownList;
+            fuelFilterPurpose.Width = 110;
+            fuelFilterPurpose.Items.Clear();
+            fuelFilterPurpose.Items.Add("Все цели");
+            fuelFilterPurpose.Items.Add("Личный");
+            fuelFilterPurpose.Items.Add("Работа");
+            fuelFilterPurpose.SelectedIndex = 0;
+            bar.Controls.Add(FilterLabel("Цель"));
+            bar.Controls.Add(fuelFilterPurpose);
+            // Move apply/reset after purpose: rebuild order by bringing buttons to end.
+            Control apply = null;
+            Control reset = null;
+            for (int i = bar.Controls.Count - 1; i >= 0; i--)
+            {
+                Button button = bar.Controls[i] as Button;
+                if (button == null)
+                    continue;
+                if (reset == null)
+                    reset = button;
+                else if (apply == null)
+                {
+                    apply = button;
+                    break;
+                }
+            }
+            if (apply != null)
+                bar.Controls.SetChildIndex(apply, bar.Controls.Count - 1);
+            if (reset != null)
+                bar.Controls.SetChildIndex(reset, bar.Controls.Count - 1);
+            return bar;
         }
 
         private FlowLayoutPanel BuildRepairFilterBar()
@@ -410,6 +447,8 @@ namespace Alfa156.Desktop
         {
             if (e.Row.Cells.Count > 7)
                 e.Row.Cells[7].Value = true;
+            if (e.Row.Cells.Count > 8)
+                e.Row.Cells[8].Value = "";
             // Liters stay empty; pre-fill last known price/l when available.
             if (e.Row.Cells.Count > 5)
             {
@@ -587,6 +626,18 @@ namespace Alfa156.Desktop
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
             };
             fuelGrid.Columns.Add(fullTank);
+            DataGridViewComboBoxColumn purpose = new DataGridViewComboBoxColumn
+            {
+                Name = "purpose",
+                HeaderText = "Цель",
+                FlatStyle = FlatStyle.Flat,
+                Width = 90,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
+            };
+            purpose.Items.Add("");
+            purpose.Items.Add("Личный");
+            purpose.Items.Add("Работа");
+            fuelGrid.Columns.Add(purpose);
         }
 
         private void SetupRepairsGrid()
@@ -740,6 +791,7 @@ namespace Alfa156.Desktop
                     pathBox.Text = dialog.SelectedPath;
                     dirty = false;
                     SetStatus("Открыта папка данных.");
+                    MaybeShowOnboardingTip();
                 }
                 catch (Exception ex)
                 {
@@ -787,11 +839,47 @@ namespace Alfa156.Desktop
                     pathBox.Text = target;
                     dirty = false;
                     SetStatus("Создана новая папка данных: " + target);
+                    MaybeShowOnboardingTip();
                 }
                 catch (Exception ex)
                 {
                     ShowError(ex);
                 }
+            }
+        }
+
+        private void MaybeShowOnboardingTip()
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(repository.DirectoryPath))
+                    return;
+                if (ToSettings.IsOnboardingSeen(repository.Settings))
+                    return;
+                bool empty = repository.Fuel.Count == 0 && repository.Repairs.Count == 0 &&
+                    repository.Expenses.Count == 0 && repository.Utilities.Count == 0;
+                repository.Settings = ToSettings.SetOnboardingSeen(repository.Settings, true);
+                try
+                {
+                    repository.Save();
+                }
+                catch
+                {
+                    dirty = true;
+                }
+                if (!empty)
+                    return;
+                string tip =
+                    "Подсказка Alfa 156:\r\n" +
+                    "• Синхронизация по Wi‑Fi — обмен .dat с телефоном/КПК\r\n" +
+                    "• ZIP — полная копия, включая фото чеков\r\n" +
+                    "• Вкладка «Сводка» — итоги, график и ТО";
+                MessageBox.Show(this, tip, "Alfa 156", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetStatus("Подсказка показана один раз (onboarding_seen).");
+            }
+            catch
+            {
+                // tip must not block folder open
             }
         }
 
@@ -1064,13 +1152,29 @@ namespace Alfa156.Desktop
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] content = RecordIds.StripId(rows[i]);
-                object[] values = new object[8];
+                object[] values = new object[9];
                 for (int c = 0; c < 7; c++)
                     values[c] = c < content.Length ? content[c] : "";
                 values[7] = AlfaCodec.IsFullTank(rows[i]);
+                string purpose = AlfaCodec.GetPurpose(rows[i]);
+                EnsurePurposeComboItem(purpose);
+                values[8] = purpose;
                 int index = fuelGrid.Rows.Add(values);
                 fuelGrid.Rows[index].Tag = RecordIds.GetId(rows[i]);
             }
+        }
+
+        private void EnsurePurposeComboItem(string purpose)
+        {
+            if (String.IsNullOrEmpty(purpose) || fuelGrid.Columns.Count < 9)
+                return;
+            DataGridViewComboBoxColumn column = fuelGrid.Columns[8] as DataGridViewComboBoxColumn;
+            if (column == null)
+                return;
+            for (int i = 0; i < column.Items.Count; i++)
+                if (String.Equals(Convert.ToString(column.Items[i]), purpose, StringComparison.Ordinal))
+                    return;
+            column.Items.Add(purpose);
         }
 
         private void PullAll()
@@ -1109,7 +1213,7 @@ namespace Alfa156.Desktop
                 DataGridViewRow row = fuelGrid.Rows[i];
                 if (row.IsNewRow)
                     continue;
-                string[] values = new string[8];
+                string[] values = new string[9];
                 bool empty = true;
                 for (int c = 0; c < 7; c++)
                 {
@@ -1131,6 +1235,20 @@ namespace Alfa156.Desktop
                         String.Equals(text, "true", StringComparison.OrdinalIgnoreCase);
                 }
                 values[7] = full ? "1" : "0";
+                values[8] = AlfaCodec.NormalizePurpose(CellText(row, 8));
+                int length = 9;
+                while (length > 5)
+                {
+                    if ((values[length - 1] ?? "").Trim().Length > 0)
+                        break;
+                    length--;
+                }
+                if (length < values.Length)
+                {
+                    string[] trimmed = new string[length];
+                    Array.Copy(values, trimmed, length);
+                    values = trimmed;
+                }
                 string id = row.Tag as string;
                 if (!String.IsNullOrEmpty(id) && RecordIds.LooksLikeId(id))
                     values = RecordIds.WithId(values, id);
@@ -1258,6 +1376,15 @@ namespace Alfa156.Desktop
         private string BuildSummary(string currentCar)
         {
             decimal fuelTotal = 0;
+            decimal yearFuel = 0;
+            decimal yearRepair = 0;
+            decimal yearExpense = 0;
+            decimal yearUtility = 0;
+            decimal purposePersonal = 0;
+            decimal purposeWork = 0;
+            decimal purposeOther = 0;
+            bool anyPurpose = false;
+            string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
             List<string[]> fuels = repository.Fuel;
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
             Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
@@ -1284,7 +1411,22 @@ namespace Alfa156.Desktop
                 if (carTotals.ContainsKey(row[1]))
                     carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
+                {
                     fuelTotal += amount;
+                    if (row[0] != null && row[0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                        yearFuel += amount;
+                    string purpose = AlfaCodec.GetPurpose(row);
+                    if (purpose.Length > 0)
+                    {
+                        anyPurpose = true;
+                        if (String.Equals(purpose, "Личный", StringComparison.OrdinalIgnoreCase))
+                            purposePersonal += amount;
+                        else if (String.Equals(purpose, "Работа", StringComparison.OrdinalIgnoreCase))
+                            purposeWork += amount;
+                        else
+                            purposeOther += amount;
+                    }
+                }
             }
 
             decimal repairTotal = 0;
@@ -1302,6 +1444,8 @@ namespace Alfa156.Desktop
                 if (row[1] != currentCar)
                     continue;
                 repairTotal += amount;
+                if (row[0] != null && row[0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                    yearRepair += amount;
                 string category = row[3];
                 if (!byCategory.ContainsKey(category))
                     byCategory.Add(category, 0);
@@ -1320,7 +1464,11 @@ namespace Alfa156.Desktop
                 if (carTotals.ContainsKey(row[1]))
                     carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
+                {
                     expenseTotal += amount;
+                    if (row[0] != null && row[0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                        yearExpense += amount;
+                }
             }
 
             decimal utilityTotal = 0;
@@ -1330,11 +1478,22 @@ namespace Alfa156.Desktop
                 decimal amount = UtilityTotal(utilities[i]);
                 utilityTotal += amount;
                 AddMonthlyAmount(monthlyTotals, utilities[i][0], 2, amount);
+                if (utilities[i][0] != null &&
+                    utilities[i][0].StartsWith(yearPrefix, StringComparison.Ordinal))
+                    yearUtility += amount;
             }
 
             StringBuilder result = new StringBuilder();
             result.Append(currentCar).Append("\r\n\r\nЗаправки: ").Append(Money(fuelTotal))
                 .Append(" " + Cur() + "\r\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur() + "\r\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur() + "\r\n");
+            if (anyPurpose)
+            {
+                result.Append("\r\nЗаправки по цели:\r\nЛичный: ").Append(Money(purposePersonal))
+                    .Append(" " + Cur() + "\r\nРабота: ").Append(Money(purposeWork)).Append(" " + Cur());
+                if (purposeOther > 0)
+                    result.Append("\r\nДругое: ").Append(Money(purposeOther)).Append(" " + Cur());
+                result.Append("\r\n");
+            }
 
             decimal minimumMileage = Decimal.MaxValue;
             decimal maximumMileage = 0;
@@ -1384,6 +1543,12 @@ namespace Alfa156.Desktop
             foreach (KeyValuePair<string, decimal> pair in byCategory)
                 result.Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur() + "\r\n");
             result.Append("\r\nКоммунальные за весь период:\r\n").Append(Money(utilityTotal))
+                .Append(" " + Cur() + "\r\n\r\nИтого за год ").Append(yearPrefix).Append(":\r\n")
+                .Append("Топливо: ").Append(Money(yearFuel)).Append(" " + Cur() + "\r\n")
+                .Append("Ремонт: ").Append(Money(yearRepair)).Append(" " + Cur() + "\r\n")
+                .Append("Прочие: ").Append(Money(yearExpense)).Append(" " + Cur() + "\r\n")
+                .Append("Коммунальные: ").Append(Money(yearUtility)).Append(" " + Cur() + "\r\n")
+                .Append("Всего: ").Append(Money(yearFuel + yearRepair + yearExpense + yearUtility))
                 .Append(" " + Cur() + "\r\n\r\nРасходы по месяцам (последние 12):\r\n");
             List<string> months = new List<string>(monthlyTotals.Keys);
             months.Sort(StringComparer.Ordinal);
@@ -1580,14 +1745,20 @@ namespace Alfa156.Desktop
             fuelFilterFromValue = (fuelFilterFrom.Text ?? "").Trim();
             fuelFilterToValue = (fuelFilterTo.Text ?? "").Trim();
             fuelFilterTextValue = (fuelFilterText.Text ?? "").Trim();
+            string purpose = fuelFilterPurpose.SelectedItem == null
+                ? "" : fuelFilterPurpose.SelectedItem.ToString();
+            fuelFilterPurposeValue = String.Equals(purpose, "Все цели", StringComparison.OrdinalIgnoreCase)
+                ? "" : (purpose ?? "").Trim();
             ApplyFuelFilterVisibility();
             SetStatus("Фильтр заправок применён (данные не удаляются).");
         }
 
         private void ResetFuelFilter()
         {
-            fuelFilterFromValue = fuelFilterToValue = fuelFilterTextValue = "";
+            fuelFilterFromValue = fuelFilterToValue = fuelFilterTextValue = fuelFilterPurposeValue = "";
             fuelFilterFrom.Text = fuelFilterTo.Text = fuelFilterText.Text = "";
+            if (fuelFilterPurpose.Items.Count > 0)
+                fuelFilterPurpose.SelectedIndex = 0;
             ApplyFuelFilterVisibility();
             SetStatus("Фильтр заправок сброшен.");
         }
@@ -1662,10 +1833,14 @@ namespace Alfa156.Desktop
                     return false;
                 if (fuelFilterToValue.Length > 0 && String.CompareOrdinal(date, fuelFilterToValue) > 0)
                     return false;
+                if (fuelFilterPurposeValue.Length > 0 &&
+                    !String.Equals(CellText(row, 8), fuelFilterPurposeValue, StringComparison.OrdinalIgnoreCase))
+                    return false;
                 if (fuelFilterTextValue.Length > 0)
                 {
                     string hay = (CellText(row, 2) + " " + CellText(row, 3) + " " + CellText(row, 4) +
-                        " " + CellText(row, 5) + " " + CellText(row, 6)).ToLowerInvariant();
+                        " " + CellText(row, 5) + " " + CellText(row, 6) + " " + CellText(row, 8))
+                        .ToLowerInvariant();
                     if (hay.IndexOf(fuelFilterTextValue.ToLowerInvariant(), StringComparison.Ordinal) < 0)
                         return false;
                 }
@@ -2157,7 +2332,7 @@ namespace Alfa156.Desktop
             List<DesktopSearchHit> hits = new List<DesktopSearchHit>();
             CollectDesktopHits(hits, "Заправки", fuelGrid, q, delegate(DataGridViewRow row)
             {
-                return CellText(row, 6) + " " + CellText(row, 1);
+                return CellText(row, 6) + " " + CellText(row, 8) + " " + CellText(row, 1);
             });
             CollectDesktopHits(hits, "Ремонт", repairsGrid, q, delegate(DataGridViewRow row)
             {

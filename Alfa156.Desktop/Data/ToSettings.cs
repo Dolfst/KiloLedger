@@ -21,6 +21,7 @@ namespace Alfa156.Desktop.Data
         internal const string BeltWarnKey = "belt_warn";
         internal const string CurrencyKey = "currency";
         internal const string DefaultCurrency = "BYN";
+        internal const string OnboardingSeenKey = "onboarding_seen";
 
         internal static bool IsValidRow(string[] row)
         {
@@ -116,6 +117,23 @@ namespace Alfa156.Desktop.Data
             ApplyRows(map, existing);
             ApplyDefaults(map);
             map[CurrencyKey] = normalized;
+            return MapToRows(map);
+        }
+
+        internal static bool IsOnboardingSeen(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string value;
+            return map.TryGetValue(OnboardingSeenKey, out value) && value == "1";
+        }
+
+        internal static List<string[]> SetOnboardingSeen(List<string[]> existing, bool seen)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[OnboardingSeenKey] = seen ? "1" : "0";
             return MapToRows(map);
         }
 

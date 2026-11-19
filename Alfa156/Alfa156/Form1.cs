@@ -52,6 +52,34 @@ namespace CarExpenses
             currentCar = DataStore.LoadCarNames()[0];
             Resize += new EventHandler(FormResized);
             ShowHome();
+            MaybeShowOnboardingTip();
+        }
+
+        private void MaybeShowOnboardingTip()
+        {
+            try
+            {
+                if (ToSettings.IsOnboardingSeen())
+                    return;
+                List<string[]> fuels = DataStore.LoadFuel();
+                List<string[]> repairs = DataStore.LoadRepairs();
+                List<string[]> expenses = DataStore.LoadExpenses();
+                List<string[]> utilities = DataStore.LoadUtilities();
+                bool empty = fuels.Count == 0 && repairs.Count == 0 &&
+                    expenses.Count == 0 && utilities.Count == 0;
+                ToSettings.SetOnboardingSeen(true);
+                if (!empty)
+                    return;
+                MessageBox.Show(
+                    "Кратко:\r\n" +
+                    "• Wi‑Fi sync — обмен с телефоном\r\n" +
+                    "• Копии на SD / в памяти\r\n" +
+                    "• Сводка и ТО — итоги и напоминания",
+                    "Alfa 156");
+            }
+            catch
+            {
+            }
         }
 
         private void ShowHome()
@@ -460,6 +488,9 @@ namespace CarExpenses
         private string FormatFuel(string[] row, List<string[]> allRows)
         {
             string result = row[0] + "  " + row[2] + " км  " + row[3] + " л  " + row[4] + " " + Cur();
+            string purpose = GetPurpose(row);
+            if (purpose.Length > 0)
+                result += "  " + purpose;
             decimal consumption = FuelConsumption(row, allRows);
             if (consumption > 0)
                 result += "  " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
@@ -550,6 +581,9 @@ namespace CarExpenses
                 if (comment.Length > 0)
                     details += "\r\nАЗС / комментарий: " + comment;
                 details += "\r\nПолный бак: " + (IsFullTank(row) ? "да" : "нет");
+                string purpose = GetPurpose(row);
+                if (purpose.Length > 0)
+                    details += "\r\nЦель: " + purpose;
                 decimal consumption = FuelConsumption(row, DataStore.LoadFuel());
                 if (consumption > 0)
                     details += "\r\nРасход: " +
@@ -597,7 +631,8 @@ namespace CarExpenses
                     new EntryField("Стоимость, " + Cur(), row[4], "number", true),
                     new EntryField("Цена за литр, " + Cur(), FieldAt(row, 5), "number", false),
                     new EntryField("АЗС / комментарий", FieldAt(row, 6), "text", false),
-                    new EntryField("Полный бак", FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false)
+                    new EntryField("Полный бак", FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false),
+                    new EntryField("Цель (Личный/Работа)", GetPurpose(row), PurposeOptions(GetPurpose(row)), false)
                 };
                 using (EntryEditorForm editor = new EntryEditorForm("Изменить заправку", fields))
                 {
@@ -1302,7 +1337,8 @@ namespace CarExpenses
                 new EntryField("Стоимость, " + Cur(), "", "number", true),
                 new EntryField("Цена за литр, " + Cur(), LastFuelPricePerLiter(currentCar), "number", false),
                 new EntryField("АЗС / комментарий", "", "text", false),
-                new EntryField("Полный бак", "1", "check", false)
+                new EntryField("Полный бак", "1", "check", false),
+                new EntryField("Цель (Личный/Работа)", "", PurposeOptions(""), false)
             };
             using (EntryEditorForm editor = new EntryEditorForm("Новая заправка", fields))
             {
@@ -1714,6 +1750,15 @@ namespace CarExpenses
         private string BuildSummary()
         {
             decimal fuelTotal = 0;
+            decimal yearFuel = 0;
+            decimal yearRepair = 0;
+            decimal yearExpense = 0;
+            decimal yearUtility = 0;
+            decimal purposePersonal = 0;
+            decimal purposeWork = 0;
+            decimal purposeOther = 0;
+            bool anyPurpose = false;
+            string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
             List<string[]> fuels = DataStore.LoadFuel();
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
             Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
@@ -1729,7 +1774,22 @@ namespace CarExpenses
                 if (carTotals.ContainsKey(row[1]))
                     carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
+                {
                     fuelTotal += amount;
+                    if (row[0] != null && row[0].StartsWith(yearPrefix))
+                        yearFuel += amount;
+                    string purpose = GetPurpose(row);
+                    if (purpose.Length > 0)
+                    {
+                        anyPurpose = true;
+                        if (String.Compare(purpose, "Личный", StringComparison.OrdinalIgnoreCase) == 0)
+                            purposePersonal += amount;
+                        else if (String.Compare(purpose, "Работа", StringComparison.OrdinalIgnoreCase) == 0)
+                            purposeWork += amount;
+                        else
+                            purposeOther += amount;
+                    }
+                }
             }
 
             decimal repairTotal = 0;
@@ -1745,6 +1805,8 @@ namespace CarExpenses
                 if (row[1] != currentCar)
                     continue;
                 repairTotal += amount;
+                if (row[0] != null && row[0].StartsWith(yearPrefix))
+                    yearRepair += amount;
                 string category = row[3];
                 if (!byCategory.ContainsKey(category))
                     byCategory.Add(category, 0);
@@ -1763,7 +1825,11 @@ namespace CarExpenses
                 if (carTotals.ContainsKey(row[1]))
                     carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
+                {
                     expenseTotal += amount;
+                    if (row[0] != null && row[0].StartsWith(yearPrefix))
+                        yearExpense += amount;
+                }
             }
 
             decimal utilityTotal = 0;
@@ -1773,11 +1839,21 @@ namespace CarExpenses
                 decimal amount = UtilityTotal(utilities[i]);
                 utilityTotal += amount;
                 AddMonthlyAmount(monthlyTotals, utilities[i][0], 2, amount);
+                if (utilities[i][0] != null && utilities[i][0].StartsWith(yearPrefix))
+                    yearUtility += amount;
             }
 
             string result = currentCar + "\r\n\r\nЗаправки: " + Money(fuelTotal) +
                 " " + Cur() + "\r\nРемонт и ТО: " + Money(repairTotal) +
                 " " + Cur() + "\r\nПрочие расходы: " + Money(expenseTotal) + " " + Cur() + "\r\n";
+            if (anyPurpose)
+            {
+                result += "\r\nЗаправки по цели:\r\nЛичный: " + Money(purposePersonal) +
+                    " " + Cur() + "\r\nРабота: " + Money(purposeWork) + " " + Cur();
+                if (purposeOther > 0)
+                    result += "\r\nДругое: " + Money(purposeOther) + " " + Cur();
+                result += "\r\n";
+            }
 
             decimal minimumMileage = Decimal.MaxValue;
             decimal maximumMileage = 0;
@@ -1827,6 +1903,12 @@ namespace CarExpenses
             foreach (KeyValuePair<string, decimal> pair in byCategory)
                 result += pair.Key + ": " + Money(pair.Value) + " " + Cur() + "\r\n";
             result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) +
+                " " + Cur() + "\r\n\r\nИтого за год " + yearPrefix + ":\r\n" +
+                "Топливо: " + Money(yearFuel) + " " + Cur() + "\r\n" +
+                "Ремонт: " + Money(yearRepair) + " " + Cur() + "\r\n" +
+                "Прочие: " + Money(yearExpense) + " " + Cur() + "\r\n" +
+                "Коммунальные: " + Money(yearUtility) + " " + Cur() + "\r\n" +
+                "Всего: " + Money(yearFuel + yearRepair + yearExpense + yearUtility) +
                 " " + Cur() + "\r\n\r\nРасходы по месяцам (последние 12):\r\n";
             List<string> months = new List<string>(monthlyTotals.Keys);
             months.Sort(StringComparer.Ordinal);
@@ -1964,11 +2046,12 @@ namespace CarExpenses
         {
             if (values == null || values.Length < 5)
                 return values;
+            // date|car|km|liters|cost|price|comment|fullTank|purpose  (id added separately)
             string[] row = values;
-            if (row.Length > 8)
+            if (row.Length > 9)
             {
-                row = new string[8];
-                for (int i = 0; i < 8; i++)
+                row = new string[9];
+                for (int i = 0; i < 9; i++)
                     row[i] = i < values.Length ? values[i] : "";
             }
             if (row.Length > 5)
@@ -1985,6 +2068,8 @@ namespace CarExpenses
             }
             if (row.Length > 7)
                 row[7] = NormalizeFullTankFlag(row[7]);
+            if (row.Length > 8)
+                row[8] = NormalizePurpose(row[8]);
             int length = row.Length;
             while (length > 5)
             {
@@ -1998,6 +2083,37 @@ namespace CarExpenses
             for (int i = 0; i < length; i++)
                 trimmed[i] = row[i];
             return trimmed;
+        }
+
+        private static string GetPurpose(string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            if (content == null || content.Length <= 8)
+                return "";
+            return NormalizePurpose(content[8]);
+        }
+
+        private static string NormalizePurpose(string value)
+        {
+            string text = value == null ? "" : value.Trim().Replace("\r", " ").Replace("\n", " ");
+            if (text.Length > 32)
+                text = text.Substring(0, 32).Trim();
+            return text;
+        }
+
+        private static string[] PurposeOptions(string current)
+        {
+            System.Collections.ArrayList list = new System.Collections.ArrayList();
+            list.Add("");
+            list.Add("Личный");
+            list.Add("Работа");
+            string value = NormalizePurpose(current);
+            if (value.Length > 0 && list.IndexOf(value) < 0)
+                list.Add(value);
+            string[] result = new string[list.Count];
+            for (int i = 0; i < list.Count; i++)
+                result[i] = (string)list[i];
+            return result;
         }
 
         private bool TrySave(Action saveAction)
@@ -2022,9 +2138,9 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.18.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
-                "Экспорт сводки (Данные → Экспорт сводки); дубликаты (Действия → Дубликаты).\r\n" +
-                "Проверка пробега; поиск; фото чеков (Receipts/) — ZIP и Wi‑Fi.\r\n" +
+                "Alfa 156\r\nВерсия 1.19.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
+                "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
                 "Полный бак: частичные заправки не входят в расчёт л/100 км.",
                 "О программе");
         }
@@ -2196,7 +2312,7 @@ namespace CarExpenses
                     CollectKpkHits(results, hitSections, hitCars, hitIndexes, FuelSection, "fuel.dat",
                         q, DataStore.LoadFuel(), delegate(string[] row)
                         {
-                            return FieldAt(row, 6) + " " + FieldAt(row, 1);
+                            return FieldAt(row, 6) + " " + GetPurpose(row) + " " + FieldAt(row, 1);
                         });
                     CollectKpkHits(results, hitSections, hitCars, hitIndexes, RepairSection, "repairs.dat",
                         q, DataStore.LoadRepairs(), delegate(string[] row)

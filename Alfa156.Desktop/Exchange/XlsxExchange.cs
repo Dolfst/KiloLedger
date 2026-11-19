@@ -27,7 +27,7 @@ namespace Alfa156.Desktop.Exchange
                 WriteEntry(zip, "xl/styles.xml", StylesXml());
                 WriteSheet(zip, "xl/worksheets/sheet1.xml", new string[] { "Автомобиль" }, repo.Cars);
                 WriteSheet(zip, "xl/worksheets/sheet2.xml",
-                    new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак" },
+                    new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак", "Цель" },
                     repo.Fuel);
                 WriteSheet(zip, "xl/worksheets/sheet3.xml",
                     new string[]
@@ -58,7 +58,7 @@ namespace Alfa156.Desktop.Exchange
                 }
 
                 List<string[]> cars = ReadNamedSheet(zip, sheetMap, new string[] { "Автомобили", "cars", "Sheet1" }, 1);
-                List<string[]> fuel = ReadNamedSheet(zip, sheetMap, new string[] { "Заправки", "fuel", "Sheet2" }, 8);
+                List<string[]> fuel = ReadNamedSheet(zip, sheetMap, new string[] { "Заправки", "fuel", "Sheet2" }, 9);
                 List<string[]> repairs = ReadNamedSheet(zip, sheetMap, new string[] { "Ремонт", "repairs", "Sheet3" }, 9);
                 List<string[]> utilities = ReadNamedSheet(zip, sheetMap, new string[] { "Коммуналка", "utilities", "Sheet4" }, 8);
                 List<string[]> categories = ReadNamedSheetOptional(zip, sheetMap,

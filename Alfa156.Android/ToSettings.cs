@@ -21,6 +21,7 @@ internal static class ToSettings
     internal const string BeltWarnKey = "belt_warn";
     internal const string CurrencyKey = "currency";
     internal const string DefaultCurrency = "BYN";
+    internal const string OnboardingSeenKey = "onboarding_seen";
 
     internal static bool IsValidRow(string[] row)
     {
@@ -76,6 +77,23 @@ internal static class ToSettings
         LoadInto(map, directory);
         ApplyDefaults(map);
         map[CurrencyKey] = normalized;
+        WriteMap(directory, map);
+    }
+
+    internal static bool IsOnboardingSeen(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string value;
+        return map.TryGetValue(OnboardingSeenKey, out value) && value == "1";
+    }
+
+    internal static void SetOnboardingSeen(string directory, bool seen)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[OnboardingSeenKey] = seen ? "1" : "0";
         WriteMap(directory, map);
     }
 

@@ -206,9 +206,9 @@ namespace Alfa156.Desktop.Data
         internal static bool IsValidColumnCount(string fileName, int length)
         {
             // Content fields, optionally + trailing stable id.
-            // fuel: date|car|km|liters|cost|[price]|[comment]|[fullTank]|[id] — max 9
+            // fuel: date|car|km|liters|cost|[price]|[comment]|[fullTank]|[purpose]|[id] — max 10
             if (fileName == "fuel.dat")
-                return length >= 5 && length <= 9;
+                return length >= 5 && length <= 10;
             if (fileName == "cars.dat")
                 return length == 1 || length == 2;
             if (fileName == "repairs.dat")
@@ -299,6 +299,8 @@ namespace Alfa156.Desktop.Data
 
         /// <summary>
         /// fullTank flag at content index 7: empty/missing/"1" = full, "0" = partial.
+        /// purpose at content index 8 (before trailing id). Layout:
+        /// date|car|km|liters|cost|price|comment|fullTank|purpose|id
         /// </summary>
         internal static bool IsFullTank(string[] row)
         {
@@ -318,6 +320,23 @@ namespace Alfa156.Desktop.Data
             if (flag.Length == 0)
                 return "1";
             return "1";
+        }
+
+        /// <summary>purpose at content index 8; missing/empty is OK (old rows).</summary>
+        internal static string GetPurpose(string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            if (content == null || content.Length <= 8)
+                return "";
+            return NormalizePurpose(content[8]);
+        }
+
+        internal static string NormalizePurpose(string value)
+        {
+            string text = (value ?? "").Trim().Replace("\r", " ").Replace("\n", " ");
+            if (text.Length > 32)
+                text = text.Substring(0, 32).Trim();
+            return text;
         }
     }
 }
