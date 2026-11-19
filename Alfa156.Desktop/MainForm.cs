@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.16.0";
+        private const string AppVersion = "1.17.0";
 
         private string Cur()
         {
@@ -77,6 +77,9 @@ namespace Alfa156.Desktop
         private string utilityFilterToValue = "";
         private string utilityFilterTextValue = "";
 
+        private readonly TextBox globalSearchBox = new TextBox();
+        private bool suppressingMileagePrompt;
+
         public MainForm()
         {
             Text = "Alfa 156 " + ResolveVersion();
@@ -125,6 +128,20 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Сохранить .dat", SaveData));
             toolbar.Controls.Add(MakeButton("Сохранить ZIP", SaveZip));
             toolbar.Controls.Add(MakeButton("Фото чека", AttachReceiptPhoto));
+            globalSearchBox.Width = 140;
+            globalSearchBox.Text = "Поиск…";
+            globalSearchBox.ForeColor = Color.Gray;
+            globalSearchBox.GotFocus += delegate
+            {
+                if (globalSearchBox.ForeColor == Color.Gray)
+                {
+                    globalSearchBox.Text = "";
+                    globalSearchBox.ForeColor = SystemColors.WindowText;
+                }
+            };
+            globalSearchBox.KeyDown += GlobalSearchKeyDown;
+            toolbar.Controls.Add(globalSearchBox);
+            toolbar.Controls.Add(MakeButton("Найти", OpenGlobalSearch));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -230,6 +247,8 @@ namespace Alfa156.Desktop
             WireDirty(expensesGrid);
             WireDirty(expenseCategoriesGrid);
             fuelGrid.DefaultValuesNeeded += FuelGridDefaultValuesNeeded;
+            fuelGrid.CellEndEdit += MileageCellEndEdit;
+            repairsGrid.CellEndEdit += MileageCellEndEdit;
             WireDirty(utilitiesGrid);
             WireDirty(categoriesGrid);
         }
@@ -748,6 +767,11 @@ namespace Alfa156.Desktop
             {
                 EnsurePath();
                 PullAll();
+                if (!ConfirmAllMileageWarnings())
+                {
+                    SetStatus("Сохранение отменено: проверка пробега.");
+                    return;
+                }
                 repository.Save();
                 dirty = false;
                 SetStatus("Сохранено в .dat: " + repository.DirectoryPath);
@@ -770,6 +794,11 @@ namespace Alfa156.Desktop
                 {
                     EnsurePath();
                     PullAll();
+                    if (!ConfirmAllMileageWarnings())
+                    {
+                        SetStatus("Сохранение ZIP отменено: проверка пробега.");
+                        return;
+                    }
                     repository.SaveZip(dialog.FileName);
                     dirty = false;
                     SetStatus("ZIP сохранён: " + dialog.FileName);
@@ -1714,6 +1743,289 @@ namespace Alfa156.Desktop
         {
             MessageBox.Show(this, ex.Message, "Alfa156 Desktop", MessageBoxButtons.OK, MessageBoxIcon.Error);
             SetStatus("Ошибка: " + ex.Message);
+        }
+
+        private void MileageCellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            if (suppressingMileagePrompt || e.RowIndex < 0 || e.ColumnIndex != 2)
+                return;
+            DataGridView grid = sender as DataGridView;
+            if (grid == null)
+                return;
+            DataGridViewRow row = grid.Rows[e.RowIndex];
+            if (row.IsNewRow)
+                return;
+            string car = CellText(row, 1);
+            string kmText = CellText(row, 2);
+            if (Object.ReferenceEquals(grid, repairsGrid) && kmText.Length == 0)
+                return;
+            decimal newKm;
+            if (!AlfaCodec.TryNumber(kmText, out newKm) || newKm < 0)
+                return;
+            string fileName = Object.ReferenceEquals(grid, fuelGrid) ? "fuel.dat" : "repairs.dat";
+            decimal last = LastKnownMileageFromGrids(car, grid, e.RowIndex);
+            string warning = FormatMileageWarning(newKm, last);
+            if (warning == null)
+                return;
+            if (MessageBox.Show(this, warning, "Пробег", MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
+                return;
+            suppressingMileagePrompt = true;
+            try
+            {
+                // Revert to last known when user declines (or clear if none).
+                row.Cells[2].Value = last >= 0
+                    ? last.ToString("0.##", CultureInfo.InvariantCulture)
+                    : "";
+            }
+            finally
+            {
+                suppressingMileagePrompt = false;
+            }
+        }
+
+        private bool ConfirmAllMileageWarnings()
+        {
+            if (!ConfirmGridMileage(fuelGrid, "fuel.dat"))
+                return false;
+            if (!ConfirmGridMileage(repairsGrid, "repairs.dat"))
+                return false;
+            return true;
+        }
+
+        private bool ConfirmGridMileage(DataGridView grid, string fileName)
+        {
+            for (int i = 0; i < grid.Rows.Count; i++)
+            {
+                DataGridViewRow row = grid.Rows[i];
+                if (row.IsNewRow)
+                    continue;
+                string car = CellText(row, 1);
+                string kmText = CellText(row, 2);
+                if (fileName == "repairs.dat" && kmText.Length == 0)
+                    continue;
+                decimal newKm;
+                if (car.Length == 0 || !AlfaCodec.TryNumber(kmText, out newKm) || newKm < 0)
+                    continue;
+                decimal lastExcluding = LastKnownMileageFromGrids(car, grid, i);
+                string warning = FormatMileageWarning(newKm, lastExcluding);
+                if (warning == null)
+                    continue;
+                string context = fileName == "fuel.dat" ? "Заправка" : "Ремонт";
+                string message = context + " " + CellText(row, 0) + " / " + car + ":\r\n" + warning;
+                if (MessageBox.Show(this, message, "Пробег", MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                    return false;
+            }
+            return true;
+        }
+
+        private decimal LastKnownMileageFromGrids(string car, DataGridView excludeGrid, int excludeRow)
+        {
+            decimal best = -1;
+            ScanMileageGrid(fuelGrid, car, Object.ReferenceEquals(excludeGrid, fuelGrid) ? excludeRow : -1, ref best);
+            ScanMileageGrid(repairsGrid, car, Object.ReferenceEquals(excludeGrid, repairsGrid) ? excludeRow : -1, ref best);
+            return best;
+        }
+
+        private static void ScanMileageGrid(DataGridView grid, string car, int excludeRow, ref decimal best)
+        {
+            for (int i = 0; i < grid.Rows.Count; i++)
+            {
+                if (i == excludeRow)
+                    continue;
+                DataGridViewRow row = grid.Rows[i];
+                if (row.IsNewRow)
+                    continue;
+                if (!String.Equals(CellText(row, 1), car, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                decimal km;
+                if (!AlfaCodec.TryNumber(CellText(row, 2), out km) || km < 0)
+                    continue;
+                if (km >= best)
+                    best = km;
+            }
+        }
+
+        private static string FormatMileageWarning(decimal newKm, decimal lastKnown)
+        {
+            if (lastKnown < 0)
+                return null;
+            string x = lastKnown.ToString("0.##", CultureInfo.InvariantCulture);
+            if (newKm < lastKnown)
+                return "Пробег меньше предыдущего (" + x + "). Сохранить всё равно?";
+            if (newKm - lastKnown > 5000m)
+                return "Пробег вырос более чем на 5000 км с предыдущего (" + x +
+                    "). Сохранить всё равно?";
+            return null;
+        }
+
+        private void GlobalSearchKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                OpenGlobalSearch(sender, e);
+            }
+        }
+
+        private void OpenGlobalSearch(object sender, EventArgs e)
+        {
+            string preset = globalSearchBox.ForeColor == Color.Gray ? "" : (globalSearchBox.Text ?? "").Trim();
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "Поиск по записям";
+                dialog.Width = 640;
+                dialog.Height = 480;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowIcon = false;
+
+                TextBox query = new TextBox { Left = 12, Top = 12, Width = 480 };
+                query.Text = preset;
+                Button find = new Button { Text = "Найти", Left = 500, Top = 10, Width = 100 };
+                ListBox list = new ListBox { Left = 12, Top = 48, Width = 588, Height = 340 };
+                Button open = new Button { Text = "Открыть", Left = 400, Top = 400, Width = 100 };
+                Button close = new Button { Text = "Закрыть", Left = 510, Top = 400, Width = 90 };
+                dialog.Controls.Add(query);
+                dialog.Controls.Add(find);
+                dialog.Controls.Add(list);
+                dialog.Controls.Add(open);
+                dialog.Controls.Add(close);
+
+                List<DesktopSearchHit> hits = new List<DesktopSearchHit>();
+                Action run = delegate
+                {
+                    hits.Clear();
+                    list.Items.Clear();
+                    string q = (query.Text ?? "").Trim();
+                    if (q.Length == 0)
+                        return;
+                    hits.AddRange(FindDesktopHits(q));
+                    for (int i = 0; i < hits.Count; i++)
+                        list.Items.Add(hits[i].Label);
+                    if (list.Items.Count == 0)
+                        list.Items.Add("Ничего не найдено");
+                };
+                find.Click += delegate { run(); };
+                query.KeyDown += delegate(object s, KeyEventArgs ke)
+                {
+                    if (ke.KeyCode == Keys.Enter)
+                    {
+                        ke.Handled = true;
+                        ke.SuppressKeyPress = true;
+                        run();
+                    }
+                };
+                Action openSelected = delegate
+                {
+                    int index = list.SelectedIndex;
+                    if (index < 0 || index >= hits.Count)
+                        return;
+                    DesktopSearchHit hit = hits[index];
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                    JumpToSearchHit(hit);
+                };
+                open.Click += delegate { openSelected(); };
+                list.DoubleClick += delegate { openSelected(); };
+                close.Click += delegate { dialog.Close(); };
+                dialog.AcceptButton = find;
+                dialog.CancelButton = close;
+                if (preset.Length > 0)
+                    run();
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private sealed class DesktopSearchHit
+        {
+            public string Tab;
+            public string Label;
+            public int RowIndex;
+            public string Car;
+        }
+
+        private List<DesktopSearchHit> FindDesktopHits(string query)
+        {
+            string q = query.ToLowerInvariant();
+            List<DesktopSearchHit> hits = new List<DesktopSearchHit>();
+            CollectDesktopHits(hits, "Заправки", fuelGrid, q, delegate(DataGridViewRow row)
+            {
+                return CellText(row, 6) + " " + CellText(row, 1);
+            });
+            CollectDesktopHits(hits, "Ремонт", repairsGrid, q, delegate(DataGridViewRow row)
+            {
+                return CellText(row, 3) + " " + CellText(row, 4) + " " + CellText(row, 5) + " " +
+                    CellText(row, 8) + " " + CellText(row, 1);
+            });
+            CollectDesktopHits(hits, "Прочие", expensesGrid, q, delegate(DataGridViewRow row)
+            {
+                return CellText(row, 2) + " " + CellText(row, 3) + " " + CellText(row, 5) + " " +
+                    CellText(row, 1);
+            });
+            CollectDesktopHits(hits, "Коммуналка", utilitiesGrid, q, delegate(DataGridViewRow row)
+            {
+                StringBuilder sb = new StringBuilder(CellText(row, 0));
+                for (int c = 1; c < row.Cells.Count; c++)
+                    sb.Append(' ').Append(CellText(row, c));
+                return sb.ToString();
+            });
+            return hits;
+        }
+
+        private static void CollectDesktopHits(List<DesktopSearchHit> hits, string tab,
+            DataGridView grid, string queryLower, Func<DataGridViewRow, string> haystack)
+        {
+            for (int i = 0; i < grid.Rows.Count; i++)
+            {
+                DataGridViewRow row = grid.Rows[i];
+                if (row.IsNewRow)
+                    continue;
+                string text = haystack(row) ?? "";
+                if (text.ToLowerInvariant().IndexOf(queryLower, StringComparison.Ordinal) < 0)
+                    continue;
+                DesktopSearchHit hit = new DesktopSearchHit();
+                hit.Tab = tab;
+                hit.RowIndex = i;
+                hit.Car = tab == "Коммуналка" ? "" : CellText(row, 1);
+                string date = CellText(row, 0);
+                string detail = text.Trim();
+                if (detail.Length > 48)
+                    detail = detail.Substring(0, 48) + "…";
+                hit.Label = tab + " · " + date +
+                    (hit.Car.Length > 0 ? " · " + hit.Car : "") + " — " + detail;
+                hits.Add(hit);
+            }
+        }
+
+        private void JumpToSearchHit(DesktopSearchHit hit)
+        {
+            for (int i = 0; i < tabs.TabPages.Count; i++)
+            {
+                if (tabs.TabPages[i].Text != hit.Tab)
+                    continue;
+                tabs.SelectedIndex = i;
+                break;
+            }
+            DataGridView grid = hit.Tab == "Заправки" ? fuelGrid
+                : hit.Tab == "Ремонт" ? repairsGrid
+                : hit.Tab == "Прочие" ? expensesGrid
+                : hit.Tab == "Коммуналка" ? utilitiesGrid
+                : null;
+            if (grid == null || hit.RowIndex < 0 || hit.RowIndex >= grid.Rows.Count)
+                return;
+            DataGridViewRow row = grid.Rows[hit.RowIndex];
+            if (!row.Visible)
+                row.Visible = true;
+            grid.ClearSelection();
+            row.Selected = true;
+            if (row.Cells.Count > 0 && row.Cells[0].Visible)
+                grid.CurrentCell = row.Cells[0];
+            try { grid.FirstDisplayedScrollingRowIndex = hit.RowIndex; } catch { }
+            SetStatus("Найдено: " + hit.Label);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

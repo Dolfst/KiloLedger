@@ -66,8 +66,10 @@ namespace Alfa156.Desktop.Exchange
                 "Автомобили: " + remote.Cars.Count + "\r\n" +
                 "Заправки: " + remote.Fuel.Count + "\r\n" +
                 "Ремонт: " + remote.Repairs.Count + "\r\n" +
+                "Прочие: " + remote.Expenses.Count + "\r\n" +
                 "Коммуналка: " + remote.Utilities.Count + "\r\n" +
-                "Категории: " + remote.Categories.Count;
+                "Категории: " + remote.Categories.Count + "\r\n" +
+                "Кат. прочих: " + remote.ExpenseCategories.Count;
         }
 
         internal static string ApplyAndPush(
@@ -82,8 +84,11 @@ namespace Alfa156.Desktop.Exchange
             string counts = "Синхронизация с Google: авто=" + local.Cars.Count +
                 ", заправки=" + local.Fuel.Count +
                 ", ремонт=" + local.Repairs.Count +
+                ", прочие=" + local.Expenses.Count +
                 ", коммуналка=" + local.Utilities.Count +
-                " (из Google: ремонт " + remote.Repairs.Count + ", заправки " + remote.Fuel.Count + ")";
+                " (из Google: ремонт " + remote.Repairs.Count +
+                ", заправки " + remote.Fuel.Count +
+                ", прочие " + remote.Expenses.Count + ")";
             if (journal != null)
                 return counts + "\r\n\r\n" + journal.FormatSummary() +
                     "\r\n\r\nПримечание: Google Sheets по-прежнему сопоставляет записи по естественным ключам; " +
@@ -138,6 +143,14 @@ namespace Alfa156.Desktop.Exchange
                 for (int c = 1; c < content.Length && c < 8; c++)
                     content[c] = StripMoney(content[c]);
                 repo.Utilities[i] = id != null ? RecordIds.WithId(content, id) : content;
+            }
+            for (int i = 0; i < repo.Expenses.Count; i++)
+            {
+                string id = RecordIds.GetId(repo.Expenses[i]);
+                string[] content = RecordIds.StripId(repo.Expenses[i]);
+                if (content.Length > 4)
+                    content[4] = StripMoney(content[4]);
+                repo.Expenses[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
         }
 
@@ -210,7 +223,10 @@ namespace Alfa156.Desktop.Exchange
                 JsonUtil.GetTable(data, "fuel"),
                 JsonUtil.GetTable(data, "repairs"),
                 JsonUtil.GetTable(data, "utilities"),
-                JsonUtil.GetTable(data, "categories"));
+                JsonUtil.GetTable(data, "categories"),
+                JsonUtil.GetTable(data, "expenses"),
+                JsonUtil.GetTable(data, "expenseCategories"),
+                null);
             if (repo.Cars.Count == 0)
                 throw new InvalidDataException("Из Google пришёл пустой список автомобилей.");
             return repo;
@@ -225,7 +241,9 @@ namespace Alfa156.Desktop.Exchange
             sb.Append("\"fuel\":").Append(JsonUtil.Table(StripIds(repo.Fuel))).Append(",");
             sb.Append("\"repairs\":").Append(JsonUtil.Table(StripIds(repo.Repairs))).Append(",");
             sb.Append("\"utilities\":").Append(JsonUtil.Table(StripIds(repo.Utilities))).Append(",");
-            sb.Append("\"categories\":").Append(JsonUtil.Table(StripIds(repo.Categories)));
+            sb.Append("\"categories\":").Append(JsonUtil.Table(StripIds(repo.Categories))).Append(",");
+            sb.Append("\"expenses\":").Append(JsonUtil.Table(StripIds(repo.Expenses))).Append(",");
+            sb.Append("\"expenseCategories\":").Append(JsonUtil.Table(StripIds(repo.ExpenseCategories)));
             sb.Append("}");
             return sb.ToString();
         }

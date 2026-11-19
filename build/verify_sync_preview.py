@@ -16,7 +16,7 @@ def must_contain(path: Path, needle: str) -> None:
 
 
 def main() -> int:
-    must_contain(ROOT / "VERSION", "1.16.0")
+    must_contain(ROOT / "VERSION", "1.17.0")
     must_contain(ROOT / "Alfa156" / "Alfa156" / "SyncMerge.cs", "BuildPreview")
     must_contain(ROOT / "Alfa156.Desktop" / "Data" / "SyncMerge.cs", "BuildPreview")
     must_contain(ROOT / "Alfa156.Android" / "ExpenseSyncService.cs", "BuildPreview")
@@ -29,6 +29,9 @@ def main() -> int:
     must_contain(ROOT / "Alfa156" / "Alfa156" / "RecordIds.cs", "FormatPreview")
     must_contain(ROOT / "Alfa156.Android" / "RecordIds.cs", "MaxExamples = 15")
     must_contain(ROOT / "README.md", "Что нового в 1.16.0")
+    must_contain(ROOT / "README.md", "Что нового в 1.17.0")
+    must_contain(ROOT / "Alfa156.Android" / "MainActivity.cs", "ShowGlobalSearch")
+    must_contain(ROOT / "google-sync" / "Alfa156Sync.gs", "EXPENSE_PREFIX")
 
     safety_re = re.compile(r'Safety_"\s*\+\s*\n?\s*DateTime\.Now\.ToString\("yyyyMMdd_HHmmss"')
     for rel in (

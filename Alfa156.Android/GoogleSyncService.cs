@@ -96,6 +96,9 @@ internal static class GoogleSyncService
         WriteTable(directory, "repairs.dat", ExtractTable(json, "repairs"), 9);
         WriteTable(directory, "utilities.dat", ExtractTable(json, "utilities"), 8);
         WriteTable(directory, ExpenseDataCodec.RepairCategoriesFile, ExtractTable(json, "categories"), 1);
+        WriteTable(directory, ExpenseDataCodec.ExpensesFile, ExtractTable(json, "expenses"), 6);
+        WriteTable(directory, ExpenseDataCodec.ExpenseCategoriesFile,
+            ExtractTable(json, "expenseCategories"), 1);
     }
 
     private static void WriteTable(string directory, string fileName, List<string[]> rows, int columns)
@@ -155,7 +158,17 @@ internal static class GoogleSyncService
         List<string[]> categories = File.Exists(categoriesPath)
             ? ExpenseDataCodec.ReadRows(categoriesPath)
             : new List<string[]>();
-        sb.Append("\"categories\":").Append(TableJson(StripIds(categories)));
+        sb.Append("\"categories\":").Append(TableJson(StripIds(categories))).Append(',');
+        string expensesPath = Path.Combine(dataDirectory, ExpenseDataCodec.ExpensesFile);
+        List<string[]> expenses = File.Exists(expensesPath)
+            ? ExpenseDataCodec.ReadRows(expensesPath)
+            : new List<string[]>();
+        sb.Append("\"expenses\":").Append(TableJson(StripIds(expenses))).Append(',');
+        string expenseCategoriesPath = Path.Combine(dataDirectory, ExpenseDataCodec.ExpenseCategoriesFile);
+        List<string[]> expenseCategories = File.Exists(expenseCategoriesPath)
+            ? ExpenseDataCodec.ReadRows(expenseCategoriesPath)
+            : new List<string[]>();
+        sb.Append("\"expenseCategories\":").Append(TableJson(StripIds(expenseCategories)));
         sb.Append('}');
         return sb.ToString();
     }

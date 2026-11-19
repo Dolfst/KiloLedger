@@ -78,6 +78,7 @@ namespace CarExpenses
             data.MenuItems.Add(CreateMenuItem("О программе", new EventHandler(ShowAbout)));
             menu.MenuItems.Add(data);
             MenuItem actionsHome = CreateMenuItem("Действия");
+            actionsHome.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             menu.MenuItems.Add(actionsHome);
@@ -241,6 +242,7 @@ namespace CarExpenses
             actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
             actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
+            actions.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
             if (section == FuelSection)
             {
                 actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditFuelFilter)));
@@ -600,6 +602,8 @@ namespace CarExpenses
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
                     string[] values = NormalizeFuelValues(editor.Values);
+                    if (!ConfirmMileageIfNeeded(values, "fuel.dat", sourceIndex))
+                        return;
                     if (!TrySave(delegate { DataStore.UpdateFuelAt(sourceIndex, values); }))
                         return;
                     currentCar = values[1];
@@ -624,6 +628,8 @@ namespace CarExpenses
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
                     string[] values = editor.Values;
+                    if (!ConfirmMileageIfNeeded(values, "repairs.dat", sourceIndex))
+                        return;
                     if (!TrySave(delegate { DataStore.UpdateRepairAt(sourceIndex, values); }))
                         return;
                     currentCar = values[1];
@@ -1301,6 +1307,8 @@ namespace CarExpenses
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string[] values = NormalizeFuelValues(editor.Values);
+                if (!ConfirmMileageIfNeeded(values, "fuel.dat", -1))
+                    return;
                 if (!TrySave(delegate { DataStore.AddFuel(values); }))
                     return;
                 currentCar = values[1];
@@ -1310,29 +1318,65 @@ namespace CarExpenses
 
         private static string LastCarMileage(string car)
         {
+            decimal best = LastKnownMileage(car, null, -1);
+            return best < 0 ? "" : best.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private bool ConfirmMileageIfNeeded(string[] values, string fileName, int excludeIndex)
+        {
+            if (values == null || values.Length < 3)
+                return true;
+            if (fileName == "repairs.dat" && (values[2] ?? "").Trim().Length == 0)
+                return true;
+            decimal newKm;
+            if (!DataStore.TryNumber(values[2], out newKm) || newKm < 0)
+                return true;
+            decimal last = LastKnownMileage(values[1] ?? "", fileName, excludeIndex);
+            string warning = FormatMileageWarning(newKm, last);
+            if (warning == null)
+                return true;
+            return MessageBox.Show(warning, "Пробег", MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+        }
+
+        private static decimal LastKnownMileage(string car, string excludeFile, int excludeIndex)
+        {
             decimal best = -1;
-            string bestText = "";
-            RememberLatestMileage(DataStore.LoadFuel(), car, ref best, ref bestText);
-            RememberLatestMileage(DataStore.LoadRepairs(), car, ref best, ref bestText);
-            return bestText;
+            RememberLatestMileage(DataStore.LoadFuel(), car,
+                excludeFile == "fuel.dat" ? excludeIndex : -1, ref best);
+            RememberLatestMileage(DataStore.LoadRepairs(), car,
+                excludeFile == "repairs.dat" ? excludeIndex : -1, ref best);
+            return best;
         }
 
         private static void RememberLatestMileage(List<string[]> rows, string car,
-            ref decimal best, ref string bestText)
+            int excludeIndex, ref decimal best)
         {
             for (int i = 0; i < rows.Count; i++)
             {
+                if (i == excludeIndex)
+                    continue;
                 if (rows[i].Length < 3 || rows[i][1] != car)
                     continue;
                 decimal mileage;
                 if (!DataStore.TryNumber(rows[i][2], out mileage) || mileage < 0)
                     continue;
                 if (mileage >= best)
-                {
                     best = mileage;
-                    bestText = rows[i][2];
-                }
             }
+        }
+
+        private static string FormatMileageWarning(decimal newKm, decimal lastKnown)
+        {
+            if (lastKnown < 0)
+                return null;
+            string x = lastKnown.ToString("0.##", CultureInfo.InvariantCulture);
+            if (newKm < lastKnown)
+                return "Пробег меньше предыдущего (" + x + "). Сохранить всё равно?";
+            if (newKm - lastKnown > 5000m)
+                return "Пробег вырос более чем на 5000 км с предыдущего (" + x +
+                    "). Сохранить всё равно?";
+            return null;
         }
 
         private void AddRepair()
@@ -1364,6 +1408,8 @@ namespace CarExpenses
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string[] values = editor.Values;
+                if (!ConfirmMileageIfNeeded(values, "repairs.dat", -1))
+                    return;
                 if (!TrySave(delegate { DataStore.AddRepair(values); }))
                     return;
                 currentCar = values[1];
@@ -1946,10 +1992,132 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.16.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.17.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Проверка пробега при сохранении; поиск по записям (Действия → Поиск).\r\n" +
                 "Фото чеков (Receipts/) — ZIP и Wi‑Fi sync (до 50 файлов ≤2 МБ); камеры на КПК нет.\r\n" +
                 "Полный бак: частичные заправки не входят в расчёт л/100 км.",
                 "О программе");
+        }
+
+        private void ShowGlobalSearch(object sender, EventArgs e)
+        {
+            using (Form searchForm = new Form())
+            {
+                searchForm.Text = "Поиск";
+                searchForm.WindowState = FormWindowState.Maximized;
+                searchForm.MinimizeBox = false;
+
+                Label hint = new Label();
+                hint.Text = "Текст (комментарий, название…):";
+                hint.Location = new Point(8, 8);
+                hint.Size = new Size(220, 20);
+                searchForm.Controls.Add(hint);
+
+                TextBox queryBox = new TextBox();
+                queryBox.Location = new Point(8, 30);
+                queryBox.Size = new Size(224, 22);
+                searchForm.Controls.Add(queryBox);
+
+                Button findButton = new Button();
+                findButton.Text = "Найти";
+                findButton.Location = new Point(8, 58);
+                findButton.Size = new Size(100, 28);
+                searchForm.Controls.Add(findButton);
+
+                ListBox results = new ListBox();
+                results.Location = new Point(8, 92);
+                results.Size = new Size(224, 160);
+                searchForm.Controls.Add(results);
+
+                List<string> hitSections = new List<string>();
+                List<string> hitCars = new List<string>();
+                List<int> hitIndexes = new List<int>();
+
+                findButton.Click += delegate
+                {
+                    results.Items.Clear();
+                    hitSections.Clear();
+                    hitCars.Clear();
+                    hitIndexes.Clear();
+                    string q = (queryBox.Text ?? "").Trim().ToLower();
+                    if (q.Length == 0)
+                        return;
+                    CollectKpkHits(results, hitSections, hitCars, hitIndexes, FuelSection, "fuel.dat",
+                        q, DataStore.LoadFuel(), delegate(string[] row)
+                        {
+                            return FieldAt(row, 6) + " " + FieldAt(row, 1);
+                        });
+                    CollectKpkHits(results, hitSections, hitCars, hitIndexes, RepairSection, "repairs.dat",
+                        q, DataStore.LoadRepairs(), delegate(string[] row)
+                        {
+                            return FieldAt(row, 3) + " " + FieldAt(row, 4) + " " + FieldAt(row, 5) +
+                                " " + FieldAt(row, 8) + " " + FieldAt(row, 1);
+                        });
+                    CollectKpkHits(results, hitSections, hitCars, hitIndexes, ExpensesSection,
+                        "expenses.dat", q, DataStore.LoadExpenses(), delegate(string[] row)
+                        {
+                            return FieldAt(row, 2) + " " + FieldAt(row, 3) + " " + FieldAt(row, 5) +
+                                " " + FieldAt(row, 1);
+                        });
+                    CollectKpkHits(results, hitSections, hitCars, hitIndexes, UtilitiesSection,
+                        "utilities.dat", q, DataStore.LoadUtilities(), delegate(string[] row)
+                        {
+                            StringBuilder sb = new StringBuilder(FieldAt(row, 0));
+                            for (int i = 0; i < DataStore.UtilityLabels.Length && i + 1 < row.Length; i++)
+                                sb.Append(' ').Append(DataStore.UtilityLabels[i]).Append(' ')
+                                    .Append(row[i + 1]);
+                            return sb.ToString();
+                        });
+                    if (results.Items.Count == 0)
+                        results.Items.Add("Ничего не найдено");
+                };
+
+                results.SelectedIndexChanged += delegate
+                {
+                    int index = results.SelectedIndex;
+                    if (index < 0 || index >= hitSections.Count)
+                        return;
+                    string section = hitSections[index];
+                    string car = hitCars[index];
+                    if (car != null && car.Length > 0)
+                        currentCar = car;
+                    searchForm.DialogResult = DialogResult.OK;
+                    searchForm.Close();
+                    ShowRecords(section);
+                };
+
+                Button closeButton = new Button();
+                closeButton.Text = "Закрыть";
+                closeButton.Location = new Point(120, 58);
+                closeButton.Size = new Size(100, 28);
+                closeButton.Click += delegate { searchForm.Close(); };
+                searchForm.Controls.Add(closeButton);
+
+                searchForm.ShowDialog();
+            }
+        }
+
+        private delegate string SearchHaystack(string[] row);
+
+        private static void CollectKpkHits(ListBox results, List<string> sections, List<string> cars,
+            List<int> indexes, string section, string fileName, string queryLower,
+            List<string[]> rows, SearchHaystack haystack)
+        {
+            string label = section;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                string text = haystack(rows[i]) ?? "";
+                if (text.ToLower().IndexOf(queryLower) < 0)
+                    continue;
+                string date = FieldAt(rows[i], 0);
+                string car = section == UtilitiesSection ? "" : FieldAt(rows[i], 1);
+                string line = label + " · " + date +
+                    (car.Length > 0 ? " · " + car : "") + " — " + ShortText(text.Trim(), 28);
+                results.Items.Add(line);
+                sections.Add(section);
+                cars.Add(car);
+                indexes.Add(i);
+            }
         }
 
         private static MenuItem CreateMenuItem(string text)
