@@ -25,6 +25,12 @@ namespace Alfa156.Desktop.Data
         internal const string BudgetMonthKey = "budget_month";
         internal const string BudgetWarnPctKey = "budget_warn_pct";
         internal const decimal DefaultBudgetWarnPct = 80;
+        internal const string BackupRemindDaysKey = "backup_remind_days";
+        internal const string LastBackupUtcKey = "last_backup_utc";
+        internal const string LastBackupNagDateKey = "last_backup_nag_date";
+        internal const int DefaultBackupRemindDays = 7;
+        private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
+        private const string NagDateFormat = "yyyy-MM-dd";
 
         internal static bool IsValidRow(string[] row)
         {
@@ -181,6 +187,94 @@ namespace Alfa156.Desktop.Data
             return MapToRows(map);
         }
 
+        /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>
+        internal static int GetBackupRemindDays(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string raw;
+            if (!map.TryGetValue(BackupRemindDaysKey, out raw))
+                return DefaultBackupRemindDays;
+            decimal value;
+            if (!AlfaCodec.TryNumber(raw, out value) || value < 0 || value > 3650)
+                return DefaultBackupRemindDays;
+            return (int)value;
+        }
+
+        internal static List<string[]> SetBackupRemindDays(List<string[]> existing, int days)
+        {
+            if (days < 0 || days > 3650)
+                throw new InvalidOperationException("Интервал напоминания: 0 (выкл.) или 1–3650 дней.");
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[BackupRemindDaysKey] = days.ToString(CultureInfo.InvariantCulture);
+            return MapToRows(map);
+        }
+
+        internal static List<string[]> MarkBackupDone(List<string[]> existing)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[LastBackupUtcKey] = DateTime.UtcNow.ToString(BackupUtcFormat, CultureInfo.InvariantCulture);
+            return MapToRows(map);
+        }
+
+        internal static bool ShouldShowBackupReminder(List<string[]> rows)
+        {
+            int remindDays = GetBackupRemindDays(rows);
+            if (remindDays <= 0)
+                return false;
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string nag;
+            string today = DateTime.Now.ToString(NagDateFormat, CultureInfo.InvariantCulture);
+            if (map.TryGetValue(LastBackupNagDateKey, out nag) && nag == today)
+                return false;
+            string lastRaw;
+            int daysSince;
+            if (!map.TryGetValue(LastBackupUtcKey, out lastRaw) || String.IsNullOrEmpty(lastRaw))
+                daysSince = remindDays;
+            else
+            {
+                DateTime lastUtc;
+                if (!DateTime.TryParseExact(lastRaw.Trim(), BackupUtcFormat, CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out lastUtc))
+                    daysSince = remindDays;
+                else
+                {
+                    double total = (DateTime.UtcNow - lastUtc).TotalDays;
+                    daysSince = total < 0 ? 0 : (int)total;
+                }
+            }
+            return daysSince >= remindDays;
+        }
+
+        internal static int DaysSinceLastBackup(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string lastRaw;
+            if (!map.TryGetValue(LastBackupUtcKey, out lastRaw) || String.IsNullOrEmpty(lastRaw))
+                return -1;
+            DateTime lastUtc;
+            if (!DateTime.TryParseExact(lastRaw.Trim(), BackupUtcFormat, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out lastUtc))
+                return -1;
+            double total = (DateTime.UtcNow - lastUtc).TotalDays;
+            return total < 0 ? 0 : (int)total;
+        }
+
+        internal static List<string[]> MarkBackupNagShown(List<string[]> existing)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[LastBackupNagDateKey] = DateTime.Now.ToString(NagDateFormat, CultureInfo.InvariantCulture);
+            return MapToRows(map);
+        }
+
         /// <summary>Ensure defaults without dropping unknown keys.</summary>
         internal static List<string[]> Normalize(List<string[]> rows)
         {
@@ -257,6 +351,8 @@ namespace Alfa156.Desktop.Data
                 string normalized = NormalizeCurrency(map[CurrencyKey]);
                 map[CurrencyKey] = normalized != null ? normalized : DefaultCurrency;
             }
+            if (!map.ContainsKey(BackupRemindDaysKey))
+                map[BackupRemindDaysKey] = DefaultBackupRemindDays.ToString(CultureInfo.InvariantCulture);
         }
 
         private static List<string[]> MapToRows(Dictionary<string, string> map)

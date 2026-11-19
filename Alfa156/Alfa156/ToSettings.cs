@@ -27,6 +27,12 @@ namespace CarExpenses
         internal const string BudgetMonthKey = "budget_month";
         internal const string BudgetWarnPctKey = "budget_warn_pct";
         internal const decimal DefaultBudgetWarnPct = 80;
+        internal const string BackupRemindDaysKey = "backup_remind_days";
+        internal const string LastBackupUtcKey = "last_backup_utc";
+        internal const string LastBackupNagDateKey = "last_backup_nag_date";
+        internal const int DefaultBackupRemindDays = 7;
+        private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
+        private const string NagDateFormat = "yyyy-MM-dd";
         private const string DataDirectory = @"\My Documents\Alfa156";
 
         internal static bool IsValidRow(string[] row)
@@ -184,6 +190,139 @@ namespace CarExpenses
             WriteMap(directory, map);
         }
 
+        /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>
+        internal static int GetBackupRemindDays()
+        {
+            return GetBackupRemindDaysFromDirectory(DataDirectory);
+        }
+
+        internal static int GetBackupRemindDaysFromDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string raw;
+            if (!map.TryGetValue(BackupRemindDaysKey, out raw))
+                return DefaultBackupRemindDays;
+            decimal value;
+            if (!TryDecimal(raw, out value) || value < 0 || value > 3650)
+                return DefaultBackupRemindDays;
+            return (int)value;
+        }
+
+        internal static void SetBackupRemindDays(int days)
+        {
+            SetBackupRemindDaysInDirectory(DataDirectory, days);
+        }
+
+        internal static void SetBackupRemindDaysInDirectory(string directory, int days)
+        {
+            if (days < 0 || days > 3650)
+                throw new InvalidOperationException("Интервал напоминания: 0 (выкл.) или 1–3650 дней.");
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[BackupRemindDaysKey] = days.ToString(CultureInfo.InvariantCulture);
+            WriteMap(directory, map);
+        }
+
+        internal static void MarkBackupDone()
+        {
+            MarkBackupDoneInDirectory(DataDirectory);
+        }
+
+        internal static void MarkBackupDoneInDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[LastBackupUtcKey] = DateTime.UtcNow.ToString(BackupUtcFormat, CultureInfo.InvariantCulture);
+            WriteMap(directory, map);
+        }
+
+        internal static bool ShouldShowBackupReminder()
+        {
+            return ShouldShowBackupReminderInDirectory(DataDirectory);
+        }
+
+        internal static bool ShouldShowBackupReminderInDirectory(string directory)
+        {
+            int remindDays = GetBackupRemindDaysFromDirectory(directory);
+            if (remindDays <= 0)
+                return false;
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string nag;
+            string today = DateTime.Now.ToString(NagDateFormat, CultureInfo.InvariantCulture);
+            if (map.TryGetValue(LastBackupNagDateKey, out nag) && nag == today)
+                return false;
+            string lastRaw;
+            int daysSince;
+            if (!map.TryGetValue(LastBackupUtcKey, out lastRaw) || lastRaw == null || lastRaw.Length == 0)
+                daysSince = remindDays;
+            else
+            {
+                DateTime lastUtc;
+                if (!TryParseBackupUtc(lastRaw, out lastUtc))
+                    daysSince = remindDays;
+                else
+                {
+                    double total = (DateTime.UtcNow - lastUtc).TotalDays;
+                    daysSince = total < 0 ? 0 : (int)total;
+                }
+            }
+            return daysSince >= remindDays;
+        }
+
+        internal static int DaysSinceLastBackup()
+        {
+            return DaysSinceLastBackupInDirectory(DataDirectory);
+        }
+
+        internal static int DaysSinceLastBackupInDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string lastRaw;
+            if (!map.TryGetValue(LastBackupUtcKey, out lastRaw) || lastRaw == null || lastRaw.Length == 0)
+                return -1;
+            DateTime lastUtc;
+            if (!TryParseBackupUtc(lastRaw, out lastUtc))
+                return -1;
+            double total = (DateTime.UtcNow - lastUtc).TotalDays;
+            return total < 0 ? 0 : (int)total;
+        }
+
+        internal static void MarkBackupNagShown()
+        {
+            MarkBackupNagShownInDirectory(DataDirectory);
+        }
+
+        internal static void MarkBackupNagShownInDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[LastBackupNagDateKey] = DateTime.Now.ToString(NagDateFormat, CultureInfo.InvariantCulture);
+            WriteMap(directory, map);
+        }
+
+        /// <summary>CF-safe parse of backup UTC stamp (no DateTimeStyles.AssumeUniversal).</summary>
+        private static bool TryParseBackupUtc(string raw, out DateTime utc)
+        {
+            utc = DateTime.MinValue;
+            if (raw == null)
+                return false;
+            string trimmed = raw.Trim();
+            DateTime parsed;
+            if (!DateTime.TryParseExact(trimmed, BackupUtcFormat, CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out parsed))
+                return false;
+            // Treat parsed wall-clock as UTC; CF DateTimeKind ctor is unreliable.
+            utc = new DateTime(parsed.Year, parsed.Month, parsed.Day,
+                parsed.Hour, parsed.Minute, parsed.Second);
+            return true;
+        }
+
         /// <summary>Null if invalid; otherwise trimmed uppercase code.</summary>
         internal static string NormalizeCurrency(string code)
         {
@@ -277,6 +416,8 @@ namespace CarExpenses
                 string normalized = NormalizeCurrency(map[CurrencyKey]);
                 map[CurrencyKey] = normalized != null ? normalized : DefaultCurrency;
             }
+            if (!map.ContainsKey(BackupRemindDaysKey))
+                map[BackupRemindDaysKey] = DefaultBackupRemindDays.ToString(CultureInfo.InvariantCulture);
         }
 
         private static void WriteMap(string directory, Dictionary<string, string> map)

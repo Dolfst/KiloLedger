@@ -25,6 +25,12 @@ internal static class ToSettings
     internal const string BudgetMonthKey = "budget_month";
     internal const string BudgetWarnPctKey = "budget_warn_pct";
     internal const decimal DefaultBudgetWarnPct = 80;
+    internal const string BackupRemindDaysKey = "backup_remind_days";
+    internal const string LastBackupUtcKey = "last_backup_utc";
+    internal const string LastBackupNagDateKey = "last_backup_nag_date";
+    internal const int DefaultBackupRemindDays = 7;
+    private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
+    private const string NagDateFormat = "yyyy-MM-dd";
 
     internal static bool IsValidRow(string[] row)
     {
@@ -141,6 +147,98 @@ internal static class ToSettings
         WriteMap(directory, map);
     }
 
+    /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>
+    internal static int GetBackupRemindDays(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string raw;
+        if (!map.TryGetValue(BackupRemindDaysKey, out raw))
+            return DefaultBackupRemindDays;
+        decimal value;
+        if (!TryDecimal(raw, out value) || value < 0 || value > 3650)
+            return DefaultBackupRemindDays;
+        return (int)value;
+    }
+
+    internal static void SetBackupRemindDays(string directory, int days)
+    {
+        if (days < 0 || days > 3650)
+            throw new InvalidOperationException("Интервал напоминания: 0 (выкл.) или 1–3650 дней.");
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[BackupRemindDaysKey] = days.ToString(CultureInfo.InvariantCulture);
+        WriteMap(directory, map);
+    }
+
+    internal static void MarkBackupDone(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[LastBackupUtcKey] = DateTime.UtcNow.ToString(BackupUtcFormat, CultureInfo.InvariantCulture);
+        WriteMap(directory, map);
+    }
+
+    /// <summary>
+    /// Soft reminder once per calendar day when days since last_backup_utc &gt;= remind days.
+    /// Missing last_backup_utc counts as overdue.
+    /// </summary>
+    internal static bool ShouldShowBackupReminder(string directory)
+    {
+        int remindDays = GetBackupRemindDays(directory);
+        if (remindDays <= 0)
+            return false;
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string nag;
+        string today = DateTime.Now.ToString(NagDateFormat, CultureInfo.InvariantCulture);
+        if (map.TryGetValue(LastBackupNagDateKey, out nag) && nag == today)
+            return false;
+        string lastRaw;
+        int daysSince;
+        if (!map.TryGetValue(LastBackupUtcKey, out lastRaw) || String.IsNullOrEmpty(lastRaw))
+            daysSince = remindDays;
+        else
+        {
+            DateTime lastUtc;
+            if (!DateTime.TryParseExact(lastRaw.Trim(), BackupUtcFormat, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out lastUtc))
+                daysSince = remindDays;
+            else
+            {
+                double total = (DateTime.UtcNow - lastUtc).TotalDays;
+                daysSince = total < 0 ? 0 : (int)total;
+            }
+        }
+        return daysSince >= remindDays;
+    }
+
+    internal static int DaysSinceLastBackup(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string lastRaw;
+        if (!map.TryGetValue(LastBackupUtcKey, out lastRaw) || String.IsNullOrEmpty(lastRaw))
+            return -1;
+        DateTime lastUtc;
+        if (!DateTime.TryParseExact(lastRaw.Trim(), BackupUtcFormat, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out lastUtc))
+            return -1;
+        double total = (DateTime.UtcNow - lastUtc).TotalDays;
+        return total < 0 ? 0 : (int)total;
+    }
+
+    internal static void MarkBackupNagShown(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[LastBackupNagDateKey] = DateTime.Now.ToString(NagDateFormat, CultureInfo.InvariantCulture);
+        WriteMap(directory, map);
+    }
+
     internal static string NormalizeCurrency(string code)
     {
         if (code == null)
@@ -238,6 +336,8 @@ internal static class ToSettings
             string normalized = NormalizeCurrency(map[CurrencyKey]);
             map[CurrencyKey] = normalized != null ? normalized : DefaultCurrency;
         }
+        if (!map.ContainsKey(BackupRemindDaysKey))
+            map[BackupRemindDaysKey] = DefaultBackupRemindDays.ToString(CultureInfo.InvariantCulture);
     }
 
     private static bool TryDecimal(string text, out decimal value)

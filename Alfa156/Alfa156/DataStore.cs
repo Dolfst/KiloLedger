@@ -99,7 +99,27 @@ namespace CarExpenses
             for (int i = 0; i < DataFiles.Length; i++)
                 File.Copy(GetPath(DataFiles[i]), Path.Combine(backupPath, DataFiles[i]), false);
             CopyReceiptsFolder(DataDirectory, backupPath);
+            try { ToSettings.MarkBackupDone(); }
+            catch { /* reminder stamp must not fail backup */ }
             return backupPath;
+        }
+
+        /// <summary>Count .dat + Receipts files that a full backup will include.</summary>
+        internal static int CountBackupFiles()
+        {
+            int count = 0;
+            for (int i = 0; i < DataFiles.Length; i++)
+            {
+                if (File.Exists(GetPath(DataFiles[i])))
+                    count++;
+            }
+            string receipts = Path.Combine(DataDirectory, ReceiptsFolderName);
+            if (Directory.Exists(receipts))
+            {
+                string[] files = Directory.GetFiles(receipts);
+                count += files.Length;
+            }
+            return count;
         }
 
         private const string ReceiptsFolderName = "Receipts";
@@ -200,6 +220,8 @@ namespace CarExpenses
                     File.Copy(sourcePath, Path.Combine(safetyBackup, DataFiles[i]), true);
             }
             CopyReceiptsFolder(DataDirectory, safetyBackup);
+            try { ToSettings.MarkBackupDone(); }
+            catch { }
             try
             {
                 CopyBackupFiles(backupPath);
@@ -326,6 +348,8 @@ namespace CarExpenses
                     File.Copy(sourcePath, Path.Combine(safety, DataFiles[i]), true);
                 }
                 CopyReceiptsFolder(DataDirectory, safety);
+                try { ToSettings.MarkBackupDone(); }
+                catch { }
                 try
                 {
                     CopyBackupFiles(merged);

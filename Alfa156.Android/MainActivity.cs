@@ -142,7 +142,7 @@ public sealed class MainActivity : Activity
                 .SetMessage(
                     "Кратко:\n" +
                     "• Wi‑Fi sync — обмен .dat с КПК/ПК в одной сети\n" +
-                    "• ZIP — полная копия, включая фото чеков\n" +
+                    "• Полный экспорт ZIP — .dat + Receipts/ + settings\n" +
                     "• Сводка и ТО — итоги, график и напоминания\n\n" +
                     "Начните с «Данные → Начать с нуля» или «Импорт копии».")
                 .SetPositiveButton("ОК", delegate { })
@@ -161,6 +161,7 @@ public sealed class MainActivity : Activity
         {
             RefreshServiceNotifications();
             RefreshBudgetNotification();
+            MaybeShowBackupReminder();
         }
         catch
         {
@@ -187,7 +188,7 @@ public sealed class MainActivity : Activity
                 if (data == null)
                     return;
                 ExportTo(data.Data);
-                ShowMessage("Резервная копия ZIP сохранена.");
+                ShowMessage("Полный экспорт ZIP сохранён (.dat + Receipts/ + settings).");
             }
             else if (requestCode == SummaryExportRequest)
             {
@@ -350,7 +351,7 @@ public sealed class MainActivity : Activity
             actions.Add(delegate { ChooseImportFiles(); });
             if (hasData)
             {
-                labels.Add("Экспорт ZIP");
+                labels.Add("Полный экспорт ZIP");
                 actions.Add(delegate { ChooseExportFile(); });
             }
             labels.Add("Синхронизация по Wi-Fi");
@@ -373,6 +374,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditCurrency(); });
                 labels.Add("Бюджет месяца");
                 actions.Add(delegate { EditBudget(); });
+                labels.Add("Напоминание о копии");
+                actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Копия на телефоне");
                 actions.Add(delegate { CreateLocalBackup(); });
                 labels.Add("Восстановить копию");
@@ -3091,7 +3094,7 @@ public sealed class MainActivity : Activity
         {
             string name = ExpenseDataStore.CreateBackup(DataDirectory);
             ShowMessage("Резервная копия создана в приложении: " + name +
-                "\nДля защиты от потери телефона дополнительно используйте «Экспорт ZIP».");
+                "\nДля защиты от потери телефона дополнительно используйте «Полный экспорт ZIP».");
         }
         catch (Exception ex)
         {
@@ -3383,6 +3386,8 @@ public sealed class MainActivity : Activity
             }
             ReceiptStore.AddFolderToZip(archive, DataDirectory);
         }
+        try { ToSettings.MarkBackupDone(DataDirectory); }
+        catch { /* reminder stamp must not fail ZIP export */ }
     }
 
     private static void CopyData(string source, string destination)
@@ -3727,7 +3732,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.22.0";
+        string version = "1.23.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -3976,6 +3981,51 @@ public sealed class MainActivity : Activity
                 ShowMessage("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
                     ", предупреждение с " + Money(pct) + "%.");
         }, false);
+    }
+
+    private void EditBackupReminder()
+    {
+        int days = ToSettings.GetBackupRemindDays(DataDirectory);
+        RenderEditor("Напоминание о копии", new List<EditorField>
+        {
+            EditorField.Number("Дней (0 = выкл., по умолч. 7)",
+                days.ToString(CultureInfo.InvariantCulture), true)
+        }, delegate(string[] raw)
+        {
+            decimal value;
+            if (!TryNumber(raw[0], out value) || value < 0 || value > 3650 || value != Math.Floor(value))
+                throw new InvalidOperationException("Интервал: 0 (выкл.) или целое 1–3650.");
+            ToSettings.SetBackupRemindDays(DataDirectory, (int)value);
+            if (value <= 0)
+                ShowMessage("Напоминание о резервной копии выключено.");
+            else
+                ShowMessage("Напоминание: если копии нет " + ((int)value) + " дн. и дольше.");
+        }, false);
+    }
+
+    private void MaybeShowBackupReminder()
+    {
+        try
+        {
+            if (!IsCompleteData(DataDirectory))
+                return;
+            if (!ToSettings.ShouldShowBackupReminder(DataDirectory))
+                return;
+            ToSettings.MarkBackupNagShown(DataDirectory);
+            int days = ToSettings.DaysSinceLastBackup(DataDirectory);
+            string age = days < 0 ? "копии ещё не было" : ("прошло " + days + " дн.");
+            new AlertDialog.Builder(this)
+                .SetTitle("Резервная копия")
+                .SetMessage("Давно не было резервной копии (" + age + ").\n" +
+                    "Рекомендуем «Полный экспорт ZIP» (.dat + Receipts/ + settings) или «Копия на телефоне».")
+                .SetPositiveButton("Экспорт ZIP", (sender, args) => { ChooseExportFile(); })
+                .SetNeutralButton("Позже", delegate { })
+                .Show();
+        }
+        catch
+        {
+            // soft reminder must not break resume
+        }
     }
 
 }
