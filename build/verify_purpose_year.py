@@ -24,7 +24,7 @@ def get_purpose(row: list[str]) -> str:
 
 
 def is_valid_fuel_count(length: int) -> bool:
-    return 5 <= length <= 10
+    return 5 <= length <= 11
 
 
 def year_total(rows: list[list[str]], amount_idx: int, year: str) -> float:

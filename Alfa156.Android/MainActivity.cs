@@ -85,6 +85,7 @@ public sealed class MainActivity : Activity
     private string fuelFilterDateTo = "";
     private string fuelFilterText = "";
     private string fuelFilterPurpose = "";
+    private string fuelFilterStation = "";
     private bool updatingCarSpinner;
     private int selectedRecordPosition = -1;
     private List<string[]> allRows = new List<string[]>();
@@ -1171,6 +1172,9 @@ public sealed class MainActivity : Activity
         {
             string formatted = row[0] + " · " + row[2] + " км · " + row[3] +
                 " л · " + row[4] + " " + Cur();
+            string station = ExpenseDataCodec.GetStation(row);
+            if (station.Length > 0)
+                formatted += " · " + station;
             string purpose = ExpenseDataCodec.GetPurpose(row);
             if (purpose.Length > 0)
                 formatted += " · " + purpose;
@@ -1241,9 +1245,12 @@ public sealed class MainActivity : Activity
                 details.Append("\nЦена за литр: ")
                     .Append((cost / liters).ToString("0.00", CultureInfo.InvariantCulture))
                     .Append(" " + Cur());
+            string station = ExpenseDataCodec.GetStation(row);
+            if (station.Length > 0)
+                details.Append("\nАЗС / бренд: ").Append(station);
             string comment = FieldAt(row, 6).Trim();
             if (comment.Length > 0)
-                details.Append("\nАЗС / комментарий: ").Append(comment);
+                details.Append("\nКомментарий: ").Append(comment);
             details.Append("\nПолный бак: ").Append(ExpenseDataCodec.IsFullTank(row) ? "да" : "нет");
             string purpose = ExpenseDataCodec.GetPurpose(row);
             if (purpose.Length > 0)
@@ -1669,7 +1676,7 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Number("Литры", row[3], true));
             fields.Add(EditorField.Number("Стоимость, " + Cur(), row[4], true));
             fields.Add(EditorField.Number("Цена за литр, " + Cur(), FieldAt(row, 5), false));
-            fields.Add(EditorField.Text("АЗС / комментарий", FieldAt(row, 6), false));
+            fields.Add(EditorField.Text("Комментарий", FieldAt(row, 6), false));
             string fullTank = FieldAt(row, 7);
             if (fullTank.Length == 0)
                 fullTank = "1";
@@ -1677,6 +1684,9 @@ public sealed class MainActivity : Activity
             string purpose = ExpenseDataCodec.GetPurpose(row);
             fields.Add(EditorField.Option("Цель (Личный/Работа)", purpose,
                 PurposeFieldOptions(purpose), false));
+            string station = ExpenseDataCodec.GetStation(row);
+            fields.Add(EditorField.Suggest("АЗС / бренд", station,
+                StationFieldOptions(station), false));
         }
         else if (selectedSection == Repairs)
         {
@@ -1768,12 +1778,12 @@ public sealed class MainActivity : Activity
     {
         if (values == null || values.Length < 5)
             return values;
-        // date|car|km|liters|cost|price|comment|fullTank|purpose  (id added separately)
+        // date|car|km|liters|cost|price|comment|fullTank|purpose|station  (id added separately)
         string[] row = values;
-        if (row.Length > 9)
+        if (row.Length > 10)
         {
-            row = new string[9];
-            Array.Copy(values, row, 9);
+            row = new string[10];
+            Array.Copy(values, row, 10);
         }
         if (row.Length > 5)
         {
@@ -1791,6 +1801,8 @@ public sealed class MainActivity : Activity
             row[7] = ExpenseDataCodec.NormalizeFullTankFlag(row[7]);
         if (row.Length > 8)
             row[8] = ExpenseDataCodec.NormalizePurpose(row[8]);
+        if (row.Length > 9)
+            row[9] = ExpenseDataCodec.NormalizeStation(row[9]);
         int length = row.Length;
         while (length > 5)
         {
@@ -1811,6 +1823,31 @@ public sealed class MainActivity : Activity
         string value = ExpenseDataCodec.NormalizePurpose(current);
         if (value.Length > 0 && options.IndexOf(value) < 0)
             options.Add(value);
+        return options.ToArray();
+    }
+
+    private string[] StationFieldOptions(string current)
+    {
+        List<string> options = new List<string>();
+        string[] known = ExpenseDataCodec.CollectStationSuggestions(
+            ExpenseDataStore.Load(DataDirectory, "fuel.dat"));
+        for (int i = 0; i < known.Length; i++)
+            options.Add(known[i]);
+        string value = ExpenseDataCodec.NormalizeStation(current);
+        if (value.Length > 0)
+        {
+            bool found = false;
+            for (int i = 0; i < options.Count; i++)
+            {
+                if (String.Equals(options[i], value, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                options.Insert(0, value);
+        }
         return options.ToArray();
     }
 
@@ -1972,7 +2009,8 @@ public sealed class MainActivity : Activity
         List<SearchHit> hits = new List<SearchHit>();
         CollectSearchHits(hits, Fuel, "fuel.dat", "Заправка", q, delegate(string[] row)
         {
-            return FieldAt(row, 6) + " " + ExpenseDataCodec.GetPurpose(row) + " " + FieldAt(row, 1);
+            return FieldAt(row, 6) + " " + ExpenseDataCodec.GetPurpose(row) + " " +
+                ExpenseDataCodec.GetStation(row) + " " + FieldAt(row, 1);
         });
         CollectSearchHits(hits, Repairs, "repairs.dat", "Ремонт", q, delegate(string[] row)
         {
@@ -2660,7 +2698,23 @@ public sealed class MainActivity : Activity
         form.AddView(label, MatchWrap());
 
 
-        if (field.Options != null)
+        if (field.Kind == "suggest")
+        {
+            AutoCompleteTextView input = new AutoCompleteTextView(this);
+            input.Text = field.Value;
+            input.SetSingleLine(true);
+            input.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+            if (field.Options != null && field.Options.Length > 0)
+            {
+                ArrayAdapter<string> adapter = new ArrayAdapter<string>(
+                    this, AndroidLayout.SimpleDropDownItem1Line, field.Options);
+                input.Adapter = adapter;
+                input.Threshold = 1;
+            }
+            field.TextInput = input;
+            form.AddView(input, MatchWrap());
+        }
+        else if (field.Options != null)
         {
             Spinner spinner = new Spinner(this);
             ArrayAdapter<string> adapter = new ArrayAdapter<string>(
@@ -2857,13 +2911,22 @@ public sealed class MainActivity : Activity
 
     private void EditFuelFilter()
     {
+        List<string> stationFilterOptions = new List<string> { "" };
+        string[] knownStations = StationFieldOptions(fuelFilterStation);
+        for (int i = 0; i < knownStations.Length; i++)
+        {
+            if (knownStations[i].Length > 0)
+                stationFilterOptions.Add(knownStations[i]);
+        }
         List<EditorField> fields = new List<EditorField>
         {
             EditorField.Date("Дата с", fuelFilterDateFrom, false),
             EditorField.Date("Дата по", fuelFilterDateTo, false),
             EditorField.Text("Пробег / литры / стоимость", fuelFilterText, false),
             EditorField.Option("Цель", fuelFilterPurpose,
-                PurposeFieldOptions(fuelFilterPurpose), false)
+                PurposeFieldOptions(fuelFilterPurpose), false),
+            EditorField.Option("АЗС / бренд", fuelFilterStation,
+                stationFilterOptions.ToArray(), false)
         };
         RenderEditor("Фильтр заправок", fields,
             delegate(string[] values)
@@ -2875,6 +2938,7 @@ public sealed class MainActivity : Activity
                 fuelFilterDateTo = values[1];
                 fuelFilterText = values[2];
                 fuelFilterPurpose = values[3];
+                fuelFilterStation = values.Length > 4 ? values[4] : "";
                 RefreshRecords();
             });
     }
@@ -2982,6 +3046,7 @@ public sealed class MainActivity : Activity
             fuelFilterDateTo = "";
             fuelFilterText = "";
             fuelFilterPurpose = "";
+            fuelFilterStation = "";
         }
         else if (selectedSection == Repairs)
         {
@@ -3002,7 +3067,8 @@ public sealed class MainActivity : Activity
     private bool HasFuelFilter()
     {
         return fuelFilterDateFrom.Length > 0 || fuelFilterDateTo.Length > 0 ||
-            fuelFilterText.Length > 0 || fuelFilterPurpose.Length > 0;
+            fuelFilterText.Length > 0 || fuelFilterPurpose.Length > 0 ||
+            fuelFilterStation.Length > 0;
     }
 
     private bool HasRepairFilter()
@@ -3041,11 +3107,16 @@ public sealed class MainActivity : Activity
             !String.Equals(ExpenseDataCodec.GetPurpose(row), fuelFilterPurpose,
                 StringComparison.OrdinalIgnoreCase))
             return false;
+        if (fuelFilterStation.Length > 0 &&
+            !String.Equals(ExpenseDataCodec.GetStation(row), fuelFilterStation,
+                StringComparison.OrdinalIgnoreCase))
+            return false;
         if (fuelFilterText.Length > 0)
         {
             string text = (row[2] + " " + row[3] + " " + row[4] + " " +
                 FieldAt(row, 5) + " " + FieldAt(row, 6) + " " +
-                ExpenseDataCodec.GetPurpose(row)).ToLowerInvariant();
+                ExpenseDataCodec.GetPurpose(row) + " " +
+                ExpenseDataCodec.GetStation(row)).ToLowerInvariant();
             if (text.IndexOf(fuelFilterText.Trim().ToLowerInvariant(),
                 StringComparison.Ordinal) < 0)
                 return false;
@@ -3279,6 +3350,8 @@ public sealed class MainActivity : Activity
         decimal purposeWork = 0;
         decimal purposeOther = 0;
         bool anyPurpose = false;
+        Dictionary<string, decimal[]> stationStats = new Dictionary<string, decimal[]>(
+            StringComparer.OrdinalIgnoreCase);
         string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
         decimal currentMileage = 0;
         decimal minimumMileage = Decimal.MaxValue;
@@ -3311,6 +3384,25 @@ public sealed class MainActivity : Activity
                     purposeWork += amount;
                 else
                     purposeOther += amount;
+            }
+            string station = ExpenseDataCodec.GetStation(row);
+            if (station.Length > 0)
+            {
+                decimal price = NumberOrZero(FieldAt(row, 5));
+                if (price <= 0)
+                {
+                    decimal liters = NumberOrZero(row[3]);
+                    if (liters > 0)
+                        price = amount / liters;
+                }
+                decimal[] bucket;
+                if (!stationStats.TryGetValue(station, out bucket))
+                {
+                    bucket = new decimal[2];
+                    stationStats[station] = bucket;
+                }
+                bucket[0] += 1;
+                bucket[1] += price;
             }
             AddMileageReading(row[2], ref currentMileage, ref minimumMileage, ref maximumMileage);
         }
@@ -3401,6 +3493,21 @@ public sealed class MainActivity : Activity
                 .Append("\nРабота: ").Append(Money(purposeWork)).Append(" " + Cur());
             if (purposeOther > 0)
                 result.Append("\nДругое: ").Append(Money(purposeOther)).Append(" " + Cur());
+        }
+        if (stationStats.Count > 0)
+        {
+            result.Append("\n\nАЗС / бренд:");
+            List<string> stationNames = new List<string>(stationStats.Keys);
+            stationNames.Sort(StringComparer.OrdinalIgnoreCase);
+            for (int s = 0; s < stationNames.Count; s++)
+            {
+                decimal[] bucket = stationStats[stationNames[s]];
+                int count = (int)bucket[0];
+                decimal avg = count > 0 ? bucket[1] / count : 0;
+                result.Append("\n").Append(stationNames[s])
+                    .Append(": ").Append(count.ToString(CultureInfo.InvariantCulture))
+                    .Append(" · ср. ").Append(Money(avg)).Append(" " + Cur()).Append("/л");
+            }
         }
         result.Append("\nУчтённые расходы на км (примерно): ")
             .Append(minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage
@@ -4233,7 +4340,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.31.0";
+        string version = "1.32.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -4249,6 +4356,7 @@ public sealed class MainActivity : Activity
                 "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), избранный авто (default_car)." +
                 "\nНапоминания по дате (reminders.dat): страховка / техосмотр / своё." +
                 "\nЗаметки по авто (notes.dat): свободный журнал date|car|text|id." +
+                "\nАЗС / бренд у заправок: автодополнение и средняя цена/л в сводке." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +
                 "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
@@ -4507,6 +4615,13 @@ public sealed class MainActivity : Activity
         {
             EditorField field = new EditorField(label, value, "option", required);
             field.Options = options;
+            return field;
+        }
+
+        internal static EditorField Suggest(string label, string value, string[] options, bool required)
+        {
+            EditorField field = new EditorField(label, value, "suggest", required);
+            field.Options = options ?? Array.Empty<string>();
             return field;
         }
 

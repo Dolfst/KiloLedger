@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify fuel.dat field layout: date|car|km|liters|cost|price|comment|fullTank|purpose|id."""
+"""Verify fuel.dat field layout: date|car|km|liters|cost|price|comment|fullTank|purpose|station|id."""
 from __future__ import annotations
 
 import re
@@ -19,7 +19,7 @@ def strip_id(row: list[str]) -> list[str]:
 
 
 def is_valid_fuel_len(n: int) -> bool:
-    return 5 <= n <= 10
+    return 5 <= n <= 11
 
 
 def is_full_tank(row: list[str]) -> bool:
@@ -35,6 +35,13 @@ def get_purpose(row: list[str]) -> str:
     if len(content) <= 8:
         return ""
     return (content[8] or "").strip()[:32]
+
+
+def get_station(row: list[str]) -> str:
+    content = strip_id(row)
+    if len(content) <= 9:
+        return ""
+    return (content[9] or "").strip()[:48]
 
 
 def encode_row(values: list[str]) -> str:
@@ -83,7 +90,8 @@ def main() -> int:
         for needle in (
             "fullTank",
             "purpose",
-            "length >= 5 && length <= 10",
+            "station",
+            "length >= 5 && length <= 11",
             "date|car|km|liters|cost",
         ):
             if needle not in text:
@@ -94,20 +102,35 @@ def main() -> int:
         "Alfa156.Desktop/Data/AlfaCodec.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
-        for needle in ("IsFullTank", "GetPurpose", "NormalizePurpose"):
+        for needle in (
+            "IsFullTank",
+            "GetPurpose",
+            "NormalizePurpose",
+            "GetStation",
+            "NormalizeStation",
+            "CollectStationSuggestions",
+        ):
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
 
+    # Desktop must keep purpose+station on normalize (not truncate at 8)
+    repo = (ROOT / "Alfa156.Desktop/Data/AlfaRepository.cs").read_text(encoding="utf-8")
+    if "if (length > 10)" not in repo and "length > 10" not in repo:
+        errors.append("AlfaRepository.NormalizeFuelRow: expected max content length 10")
+    if "NormalizeStation" not in repo:
+        errors.append("AlfaRepository.NormalizeFuelRow: missing NormalizeStation")
+
     # Sample rows covering legacy → modern layouts
     samples = [
-        (["2024-01-01", "Alfa", "100000", "40", "100"], True, ""),
-        (["2024-01-01", "Alfa", "100000", "40", "100", "2.5", "Shell"], True, ""),
-        (["2024-01-01", "Alfa", "100000", "40", "100", "2.5", "Shell", "1"], True, ""),
-        (["2024-01-01", "Alfa", "100000", "20", "50", "2.5", "Shell", "0"], False, ""),
+        (["2024-01-01", "Alfa", "100000", "40", "100"], True, "", ""),
+        (["2024-01-01", "Alfa", "100000", "40", "100", "2.5", "Shell"], True, "", ""),
+        (["2024-01-01", "Alfa", "100000", "40", "100", "2.5", "note", "1"], True, "", ""),
+        (["2024-01-01", "Alfa", "100000", "20", "50", "2.5", "note", "0"], False, "", ""),
         (
-            ["2024-01-01", "Alfa", "100000", "40", "100", "2.5", "Shell", "1", "Личный"],
+            ["2024-01-01", "Alfa", "100000", "40", "100", "2.5", "note", "1", "Личный"],
             True,
             "Личный",
+            "",
         ),
         (
             [
@@ -117,48 +140,84 @@ def main() -> int:
                 "40",
                 "100",
                 "2.5",
-                "Shell",
+                "note",
                 "0",
                 "Работа",
                 "f_aabbccdd",
             ],
             False,
             "Работа",
+            "",
+        ),
+        (
+            [
+                "2024-01-01",
+                "Alfa",
+                "100000",
+                "40",
+                "100",
+                "2.5",
+                "note",
+                "1",
+                "Личный",
+                "Shell",
+                "f_11223344",
+            ],
+            True,
+            "Личный",
+            "Shell",
         ),
     ]
-    for row, expect_full, expect_purpose in samples:
+    for row, expect_full, expect_purpose, expect_station in samples:
         if not is_valid_fuel_len(len(row)):
             errors.append(f"invalid length for sample {row}")
         if is_full_tank(row) != expect_full:
             errors.append(f"fullTank mismatch for {row}")
         if get_purpose(row) != expect_purpose:
             errors.append(f"purpose mismatch for {row}: {get_purpose(row)!r}")
-        # id must not be confused with purpose/fullTank
+        if get_station(row) != expect_station:
+            errors.append(f"station mismatch for {row}: {get_station(row)!r}")
         content = strip_id(row)
         if looks_like_id(content[-1] if content else ""):
             errors.append(f"id leaked into content: {row}")
 
-    # Escaping round-trip for purpose with pipes
-    tricky = ["2024-01-01", "Alfa", "1", "1", "1", "", "A|B", "1", "Цель\\|X", "f_11223344"]
+    # Escaping round-trip for purpose/station with pipes
+    tricky = [
+        "2024-01-01",
+        "Alfa",
+        "1",
+        "1",
+        "1",
+        "",
+        "A|B",
+        "1",
+        "Цель\\|X",
+        "Shell|East",
+        "f_11223344",
+    ]
     encoded = encode_row(tricky)
     decoded = decode_row(encoded)
     if decoded != tricky:
         errors.append(f"encode/decode mismatch: {decoded}")
-    if get_purpose(decoded) != "Цель\\|X"[:32] and get_purpose(decoded) != "Цель\\X":
-        # after decode, backslash-pipe becomes literal |\  wait: encode doubles \ before | and \
-        # "Цель\\|X" in source is Цель\|X → encode → Цель\\\|X in file... keep simple:
-        pass
     if not looks_like_id(decoded[-1]):
         errors.append("id lost after round-trip")
 
-    # Pipe-escape: purpose containing |
-    row2 = ["2024-01-01", "Alfa", "1", "1", "1", "", "AZS", "1", "A|B", "f_99887766"]
+    row2 = ["2024-01-01", "Alfa", "1", "1", "1", "", "note", "1", "A|B", "B|C", "f_99887766"]
     enc2 = encode_row(row2)
     dec2 = decode_row(enc2)
     if dec2 != row2:
-        errors.append(f"pipe in purpose broke decode: {dec2}")
+        errors.append(f"pipe in purpose/station broke decode: {dec2}")
     if get_purpose(dec2) != "A|B":
         errors.append(f"purpose with pipe wrong: {get_purpose(dec2)!r}")
+    if get_station(dec2) != "B|C":
+        errors.append(f"station with pipe wrong: {get_station(dec2)!r}")
+
+    # Old purpose+id row must not treat id as station
+    old = ["2026-03-01", "Car", "1100", "40", "120", "3", "AZS", "1", "Личный", "f_abcd1234"]
+    if get_station(old) != "":
+        errors.append(f"legacy purpose+id mistaken for station: {get_station(old)!r}")
+    if get_purpose(old) != "Личный":
+        errors.append("legacy purpose broken")
 
     if errors:
         print("FAIL:")

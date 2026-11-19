@@ -71,7 +71,7 @@ internal static class RecordTemplates
             return false;
         int payloadLen = content.Length - 2;
         string type = NormalizeType(content[0]);
-        if (type == TypeFuel && payloadLen > 8)
+        if (type == TypeFuel && payloadLen > 9)
             return false;
         if (type == TypeRepair && payloadLen > 8)
             return false;
@@ -126,8 +126,8 @@ internal static class RecordTemplates
         if (content == null || content.Length <= 1)
             return Array.Empty<string>();
         int len = content.Length - 1;
-        if (type == TypeFuel && len > 8)
-            len = 8;
+        if (type == TypeFuel && len > 9)
+            len = 9;
         if (type == TypeRepair && len > 8)
             len = 8;
         if (type == TypeExpense && len > 5)

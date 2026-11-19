@@ -245,9 +245,9 @@ internal static class ExpenseDataCodec
     internal static bool IsValidColumnCount(string fileName, int length)
     {
         // Content fields, optionally + trailing stable id.
-        // fuel: date|car|km|liters|cost|[price]|[comment]|[fullTank]|[purpose]|[id] — max 10
+        // fuel: date|car|km|liters|cost|[price]|[comment]|[fullTank]|[purpose]|[station]|[id] — max 11
         if (fileName == "fuel.dat")
-            return length >= 5 && length <= 10;
+            return length >= 5 && length <= 11;
         if (fileName == "cars.dat")
             return length == 1 || length == 2;
         if (fileName == "repairs.dat")
@@ -259,8 +259,8 @@ internal static class ExpenseDataCodec
         if (fileName == CarsMetaFile)
             return length >= 1 && length <= 7;
         // templates: type|name|payload...|id — fuel/repair max 11, expense max 8
-        if (fileName == TemplatesFile)
-            return length >= 3 && length <= 11;
+            if (fileName == TemplatesFile)
+            return length >= 3 && length <= 12;
         // reminders: date|car|title|type|[id]
         if (fileName == RemindersFile)
             return length == 4 || length == 5;
@@ -285,8 +285,8 @@ internal static class ExpenseDataCodec
 
     /// <summary>
     /// fullTank at content index 7: empty/missing/"1" = full, "0" = partial.
-    /// purpose at content index 8 (before trailing id). Layout:
-    /// date|car|km|liters|cost|price|comment|fullTank|purpose|id
+    /// purpose at content index 8; station/brand at content index 9 (before trailing id). Layout:
+    /// date|car|km|liters|cost|price|comment|fullTank|purpose|station|id
     /// </summary>
     internal static bool IsFullTank(string[] row)
     {
@@ -323,5 +323,51 @@ internal static class ExpenseDataCodec
         if (text.Length > 32)
             text = text.Substring(0, 32).Trim();
         return text;
+    }
+
+    /// <summary>station/brand at content index 9; missing/empty is OK (old rows).</summary>
+    internal static string GetStation(string[] row)
+    {
+        string[] content = RecordIds.StripId(row);
+        if (content == null || content.Length <= 9)
+            return "";
+        return NormalizeStation(content[9]);
+    }
+
+    internal static string NormalizeStation(string value)
+    {
+        string text = (value ?? "").Trim().Replace("\r", " ").Replace("\n", " ");
+        if (text.Length > 48)
+            text = text.Substring(0, 48).Trim();
+        return text;
+    }
+
+    /// <summary>
+    /// Unique station suggestions: dedicated station field, plus legacy comment values
+    /// (pre-1.32 «АЗС/коммент») when station is empty.
+    /// </summary>
+    internal static string[] CollectStationSuggestions(List<string[]> fuels)
+    {
+        List<string> result = new List<string>();
+        System.Collections.Generic.HashSet<string> seen =
+            new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (fuels == null)
+            return result.ToArray();
+        for (int i = 0; i < fuels.Count; i++)
+        {
+            string station = GetStation(fuels[i]);
+            if (station.Length == 0)
+            {
+                string[] content = RecordIds.StripId(fuels[i]);
+                if (content != null && content.Length > 6)
+                    station = NormalizeStation(content[6]);
+            }
+            if (station.Length == 0 || seen.Contains(station))
+                continue;
+            seen.Add(station);
+            result.Add(station);
+        }
+        result.Sort(StringComparer.OrdinalIgnoreCase);
+        return result.ToArray();
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -525,6 +526,9 @@ namespace CarExpenses
         private string FormatFuel(string[] row, List<string[]> allRows)
         {
             string result = row[0] + "  " + row[2] + " км  " + row[3] + " л  " + row[4] + " " + Cur();
+            string station = GetStation(row);
+            if (station.Length > 0)
+                result += "  " + station;
             string purpose = GetPurpose(row);
             if (purpose.Length > 0)
                 result += "  " + purpose;
@@ -614,9 +618,12 @@ namespace CarExpenses
                     DataStore.TryNumber(row[4], out cost))
                     details += "\r\nЦена за литр: " +
                         (cost / liters).ToString("0.00", CultureInfo.InvariantCulture) + " " + Cur();
+                string station = GetStation(row);
+                if (station.Length > 0)
+                    details += "\r\nАЗС / бренд: " + station;
                 string comment = FieldAt(row, 6).Trim();
                 if (comment.Length > 0)
-                    details += "\r\nАЗС / комментарий: " + comment;
+                    details += "\r\nКомментарий: " + comment;
                 details += "\r\nПолный бак: " + (IsFullTank(row) ? "да" : "нет");
                 string purpose = GetPurpose(row);
                 if (purpose.Length > 0)
@@ -667,9 +674,10 @@ namespace CarExpenses
                     new EntryField("Литры", row[3], "number", true),
                     new EntryField("Стоимость, " + Cur(), row[4], "number", true),
                     new EntryField("Цена за литр, " + Cur(), FieldAt(row, 5), "number", false),
-                    new EntryField("АЗС / комментарий", FieldAt(row, 6), "text", false),
+                    new EntryField("Комментарий", FieldAt(row, 6), "text", false),
                     new EntryField("Полный бак", FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false),
-                    new EntryField("Цель (Личный/Работа)", GetPurpose(row), PurposeOptions(GetPurpose(row)), false)
+                    new EntryField("Цель (Личный/Работа)", GetPurpose(row), PurposeOptions(GetPurpose(row)), false),
+                    EntryField.Suggest("АЗС / бренд", GetStation(row), StationOptions(GetStation(row)), false)
                 };
                 using (EntryEditorForm editor = new EntryEditorForm("Изменить заправку", fields))
                 {
@@ -1485,9 +1493,10 @@ namespace CarExpenses
                 new EntryField("Литры", "", "number", true),
                 new EntryField("Стоимость, " + Cur(), "", "number", true),
                 new EntryField("Цена за литр, " + Cur(), LastFuelPricePerLiter(currentCar), "number", false),
-                new EntryField("АЗС / комментарий", "", "text", false),
+                new EntryField("Комментарий", "", "text", false),
                 new EntryField("Полный бак", "1", "check", false),
-                new EntryField("Цель (Личный/Работа)", "", PurposeOptions(""), false)
+                new EntryField("Цель (Личный/Работа)", "", PurposeOptions(""), false),
+                EntryField.Suggest("АЗС / бренд", "", StationOptions(""), false)
             };
             using (EntryEditorForm editor = new EntryEditorForm("Новая заправка", fields))
             {
@@ -2023,6 +2032,7 @@ namespace CarExpenses
             decimal purposeWork = 0;
             decimal purposeOther = 0;
             bool anyPurpose = false;
+            Dictionary<string, decimal[]> stationStats = new Dictionary<string, decimal[]>();
             string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
             List<string[]> fuels = DataStore.LoadFuel();
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
@@ -2048,6 +2058,46 @@ namespace CarExpenses
                             purposeWork += amount;
                         else
                             purposeOther += amount;
+                    }
+                    string station = GetStation(row);
+                    if (station.Length > 0)
+                    {
+                        decimal price = DataStore.NumberOrZero(FieldAt(row, 5));
+                        if (price <= 0)
+                        {
+                            decimal liters = DataStore.NumberOrZero(row[3]);
+                            if (liters > 0)
+                                price = amount / liters;
+                        }
+                        string key = station;
+                        decimal[] bucket = null;
+                        if (stationStats.ContainsKey(key))
+                            bucket = stationStats[key];
+                        else
+                        {
+                            // Case-insensitive match for CF Dictionary
+                            System.Collections.IDictionaryEnumerator en = stationStats.GetEnumerator();
+                            while (en.MoveNext())
+                            {
+                                string existing = en.Key as string;
+                                if (existing != null &&
+                                    String.Compare(existing, station, StringComparison.OrdinalIgnoreCase) == 0)
+                                {
+                                    key = existing;
+                                    bucket = en.Value as decimal[];
+                                    break;
+                                }
+                            }
+                            if (bucket == null)
+                            {
+                                bucket = new decimal[2];
+                                stationStats[station] = bucket;
+                                key = station;
+                            }
+                        }
+                        bucket[0] += 1;
+                        bucket[1] += price;
+                        stationStats[key] = bucket;
                     }
                 }
             }
@@ -2124,6 +2174,24 @@ namespace CarExpenses
                     " " + Cur() + "\r\nРабота: " + Money(purposeWork) + " " + Cur();
                 if (purposeOther > 0)
                     result += "\r\nДругое: " + Money(purposeOther) + " " + Cur();
+                result += "\r\n";
+            }
+            if (stationStats.Count > 0)
+            {
+                result += "\r\nАЗС / бренд:";
+                System.Collections.ArrayList stationNames = new System.Collections.ArrayList();
+                foreach (string name in stationStats.Keys)
+                    stationNames.Add(name);
+                stationNames.Sort(new CaseInsensitiveComparer());
+                for (int s = 0; s < stationNames.Count; s++)
+                {
+                    string name = (string)stationNames[s];
+                    decimal[] bucket = stationStats[name];
+                    int count = (int)bucket[0];
+                    decimal avg = count > 0 ? bucket[1] / count : 0;
+                    result += "\r\n" + name + ": " + count.ToString(CultureInfo.InvariantCulture) +
+                        " · ср. " + Money(avg) + " " + Cur() + "/л";
+                }
                 result += "\r\n";
             }
 
@@ -2337,12 +2405,12 @@ namespace CarExpenses
         {
             if (values == null || values.Length < 5)
                 return values;
-            // date|car|km|liters|cost|price|comment|fullTank|purpose  (id added separately)
+            // date|car|km|liters|cost|price|comment|fullTank|purpose|station  (id added separately)
             string[] row = values;
-            if (row.Length > 9)
+            if (row.Length > 10)
             {
-                row = new string[9];
-                for (int i = 0; i < 9; i++)
+                row = new string[10];
+                for (int i = 0; i < 10; i++)
                     row[i] = i < values.Length ? values[i] : "";
             }
             if (row.Length > 5)
@@ -2361,6 +2429,8 @@ namespace CarExpenses
                 row[7] = NormalizeFullTankFlag(row[7]);
             if (row.Length > 8)
                 row[8] = NormalizePurpose(row[8]);
+            if (row.Length > 9)
+                row[9] = NormalizeStation(row[9]);
             int length = row.Length;
             while (length > 5)
             {
@@ -2392,6 +2462,22 @@ namespace CarExpenses
             return text;
         }
 
+        private static string GetStation(string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            if (content == null || content.Length <= 9)
+                return "";
+            return NormalizeStation(content[9]);
+        }
+
+        private static string NormalizeStation(string value)
+        {
+            string text = value == null ? "" : value.Trim().Replace("\r", " ").Replace("\n", " ");
+            if (text.Length > 48)
+                text = text.Substring(0, 48).Trim();
+            return text;
+        }
+
         private static string[] PurposeOptions(string current)
         {
             System.Collections.ArrayList list = new System.Collections.ArrayList();
@@ -2401,6 +2487,51 @@ namespace CarExpenses
             string value = NormalizePurpose(current);
             if (value.Length > 0 && list.IndexOf(value) < 0)
                 list.Add(value);
+            string[] result = new string[list.Count];
+            for (int i = 0; i < list.Count; i++)
+                result[i] = (string)list[i];
+            return result;
+        }
+
+        private static string[] StationOptions(string current)
+        {
+            System.Collections.ArrayList list = new System.Collections.ArrayList();
+            List<string[]> fuels = DataStore.LoadFuel();
+            for (int i = 0; i < fuels.Count; i++)
+            {
+                string station = GetStation(fuels[i]);
+                if (station.Length == 0)
+                    station = NormalizeStation(FieldAt(fuels[i], 6));
+                if (station.Length == 0)
+                    continue;
+                bool found = false;
+                for (int j = 0; j < list.Count; j++)
+                {
+                    if (String.Compare((string)list[j], station, StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    list.Add(station);
+            }
+            list.Sort(new CaseInsensitiveComparer());
+            string value = NormalizeStation(current);
+            if (value.Length > 0)
+            {
+                bool found = false;
+                for (int j = 0; j < list.Count; j++)
+                {
+                    if (String.Compare((string)list[j], value, StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    list.Insert(0, value);
+            }
             string[] result = new string[list.Count];
             for (int i = 0; i < list.Count; i++)
                 result[i] = (string)list[i];
@@ -2429,7 +2560,8 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.31.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.32.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "АЗС / бренд у заправок; автодополнение; средняя цена/л в сводке.\r\n" +
                 "Оценка пробега в сводке: средний км/день и срок до ТО масла/ремня.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Шаблоны записей (templates.dat); избранный авто.\r\n" +
@@ -2641,7 +2773,8 @@ namespace CarExpenses
                     CollectKpkHits(results, hitSections, hitCars, hitIndexes, FuelSection, "fuel.dat",
                         q, DataStore.LoadFuel(), delegate(string[] row)
                         {
-                            return FieldAt(row, 6) + " " + GetPurpose(row) + " " + FieldAt(row, 1);
+                            return FieldAt(row, 6) + " " + GetPurpose(row) + " " +
+                                GetStation(row) + " " + FieldAt(row, 1);
                         });
                     CollectKpkHits(results, hitSections, hitCars, hitIndexes, RepairSection, "repairs.dat",
                         q, DataStore.LoadRepairs(), delegate(string[] row)
@@ -3295,9 +3428,10 @@ namespace CarExpenses
                     new EntryField("Литры", "", "number", false),
                     new EntryField("Стоимость", "", "number", false),
                     new EntryField("Цена за литр", LastFuelPricePerLiter(currentCar), "number", false),
-                    new EntryField("АЗС / комментарий", "", "text", false),
+                    new EntryField("Комментарий", "", "text", false),
                     new EntryField("Полный бак (1/0)", "1", "text", false),
-                    new EntryField("Цель", "", "text", false)
+                    new EntryField("Цель", "", "text", false),
+                    EntryField.Suggest("АЗС / бренд", "", StationOptions(""), false)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3306,7 +3440,7 @@ namespace CarExpenses
                 RecordTemplate item = new RecordTemplate();
                 item.Type = RecordTemplates.TypeFuel;
                 item.Name = v[0];
-                item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8] };
+                item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9] };
                 if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
                     return;
                 MessageBox.Show("Шаблон сохранён.", "Шаблоны");
@@ -3386,6 +3520,7 @@ namespace CarExpenses
                 string comment = entity.Length > 6 ? entity[6] : "";
                 string full = entity.Length > 7 && entity[7].Length > 0 ? entity[7] : "1";
                 string purpose = entity.Length > 8 ? entity[8] : "";
+                string station = entity.Length > 9 ? entity[9] : "";
                 using (EntryEditorForm editor = new EntryEditorForm("Заправка из шаблона",
                     new EntryField[] {
                         new EntryField("Дата", date, "date", true),
@@ -3394,9 +3529,10 @@ namespace CarExpenses
                         new EntryField("Литры", liters, "number", true),
                         new EntryField("Стоимость", cost, "number", true),
                         new EntryField("Цена за литр", price, "number", false),
-                        new EntryField("АЗС / комментарий", comment, "text", false),
+                        new EntryField("Комментарий", comment, "text", false),
                         new EntryField("Полный бак (1/0)", full, "text", false),
-                        new EntryField("Цель", purpose, "text", false)
+                        new EntryField("Цель", purpose, "text", false),
+                        EntryField.Suggest("АЗС / бренд", station, StationOptions(station), false)
                     }))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
