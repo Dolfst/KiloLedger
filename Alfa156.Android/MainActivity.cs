@@ -3449,6 +3449,11 @@ public sealed class MainActivity : Activity
                 lastOilMileage, lastOilDate, toIntervals.OilInterval, toIntervals.OilWarn))
             .Append("\n").Append(ServiceStatus("Ремень ГРМ", currentMileage,
                 lastTimingMileage, lastTimingDate, toIntervals.BeltInterval, toIntervals.BeltWarn));
+        result.Append(ForecastInsights.FormatBlock(
+            currentCar, fuels, repairs, currentMileage,
+            lastOilMileage, lastTimingMileage,
+            toIntervals.OilInterval, toIntervals.BeltInterval,
+            DateTime.Today, "\n"));
         int warnDays = ToSettings.GetReminderWarnDays(DataDirectory);
         result.Append(DateReminders.FormatUpcomingBlock(DataDirectory, warnDays, DateTime.Today, "\n"));
         return result.ToString();
@@ -4221,7 +4226,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.29.0";
+        string version = "1.30.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -4233,6 +4238,7 @@ public sealed class MainActivity : Activity
             .SetTitle("О программе")
             .SetMessage("Alfa 156\nВерсия " + version +
                 "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
+                "\nОценка пробега в сводке: средний км/день и срок до ТО масла/ремня." +
                 "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), избранный авто (default_car)." +
                 "\nНапоминания по дате (reminders.dat): страховка / техосмотр / своё." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +

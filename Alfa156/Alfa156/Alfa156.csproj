@@ -73,6 +73,7 @@
     <Compile Include="DuplicateFinder.cs" />
     <Compile Include="CarCompare.cs" />
     <Compile Include="PeriodCompare.cs" />
+    <Compile Include="ForecastInsights.cs" />
     <Compile Include="DataIntegrity.cs" />
     <Compile Include="ToSettings.cs" />
     <Compile Include="SyncCrypto.cs" />

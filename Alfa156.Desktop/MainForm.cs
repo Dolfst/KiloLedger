@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.29.0";
+        private const string AppVersion = "1.30.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -2774,6 +2774,11 @@ namespace Alfa156.Desktop
                 lastOilDate, intervals.OilInterval, intervals.OilWarn)).Append("\r\n");
             result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn));
+            result.Append(ForecastInsights.FormatBlock(
+                currentCar, fuels, repairs, currentMileage,
+                lastOilMileage, lastTimingMileage,
+                intervals.OilInterval, intervals.BeltInterval,
+                DateTime.Today, "\r\n"));
             int warnDays = ToSettings.GetReminderWarnDays(repository.Settings);
             result.Append(DateReminders.FormatUpcomingBlock(
                 repository.RemindersRows, warnDays, DateTime.Today));
