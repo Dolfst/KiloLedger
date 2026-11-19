@@ -46,6 +46,8 @@ public sealed class MainActivity : Activity
     private const string Utilities = "utilities";
     private const string AllCategories = "Все категории";
     private const string ToReminderChannelId = "to_reminders";
+    private const string BudgetChannelId = "budget";
+    private const int BudgetNotificationId = 9001;
     private static readonly string[] DataFiles = ExpenseDataCodec.DataFiles;
 
     private TextView status;
@@ -110,8 +112,10 @@ public sealed class MainActivity : Activity
                 selectedSection = savedSection;
             CreateLayout();
             EnsureNotificationChannel();
+            EnsureBudgetNotificationChannel();
             RefreshRecords();
             RefreshServiceNotifications();
+            RefreshBudgetNotification();
             MaybeShowOnboardingTip();
         }
         catch (Exception ex)
@@ -156,6 +160,7 @@ public sealed class MainActivity : Activity
         try
         {
             RefreshServiceNotifications();
+            RefreshBudgetNotification();
         }
         catch
         {
@@ -366,6 +371,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditToIntervals(); });
                 labels.Add("Валюта");
                 actions.Add(delegate { EditCurrency(); });
+                labels.Add("Бюджет месяца");
+                actions.Add(delegate { EditBudget(); });
                 labels.Add("Копия на телефоне");
                 actions.Add(delegate { CreateLocalBackup(); });
                 labels.Add("Восстановить копию");
@@ -3003,8 +3010,20 @@ public sealed class MainActivity : Activity
             .Append("\n\nРемонт по категориям:");
         foreach (KeyValuePair<string, decimal> pair in byCategory)
             result.Append("\n").Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur());
-        result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" " + Cur())
-            .Append("\n\nИтого за год ").Append(yearPrefix).Append(":")
+        result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" " + Cur());
+        string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        decimal monthFuel = 0, monthRepair = 0, monthExpense = 0, monthUtility = 0;
+        decimal[] monthBucket;
+        if (monthlyTotals.TryGetValue(monthKey, out monthBucket))
+        {
+            monthFuel = monthBucket[0];
+            monthRepair = monthBucket[1];
+            monthUtility = monthBucket[2];
+            monthExpense = monthBucket.Length > 3 ? monthBucket[3] : 0;
+        }
+        AppendBudgetBlock(result, "\n", monthKey,
+            monthFuel + monthRepair + monthExpense, monthUtility);
+        result.Append("\n\nИтого за год ").Append(yearPrefix).Append(":")
             .Append("\nТопливо: ").Append(Money(yearFuel)).Append(" " + Cur())
             .Append("\nРемонт: ").Append(Money(yearRepair)).Append(" " + Cur())
             .Append("\nПрочие: ").Append(Money(yearExpense)).Append(" " + Cur())
@@ -3433,6 +3452,131 @@ public sealed class MainActivity : Activity
 #pragma warning restore CA1416
     }
 
+    private void EnsureBudgetNotificationChannel()
+    {
+        if (Build.VERSION.SdkInt < BuildVersionCodes.O)
+            return;
+#pragma warning disable CA1416
+        NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
+        if (manager == null)
+            return;
+        NotificationChannel channel = new NotificationChannel(
+            BudgetChannelId,
+            "Бюджет месяца",
+            NotificationImportance.Default);
+        channel.Description = "Превышение месячного бюджета расходов";
+        manager.CreateNotificationChannel(channel);
+#pragma warning restore CA1416
+    }
+
+    private void AppendBudgetBlock(StringBuilder result, string nl, string monthKey,
+        decimal spent, decimal utilitiesMonth)
+    {
+        decimal budget = ToSettings.GetBudgetMonth(DataDirectory);
+        if (budget <= 0)
+            return;
+        decimal warnPct = ToSettings.GetBudgetWarnPct(DataDirectory);
+        decimal pct = budget > 0 ? (spent * 100m) / budget : 0;
+        result.Append(nl).Append(nl).Append("Бюджет месяца ").Append(monthKey).Append(":")
+            .Append(nl).Append("Потрачено (топливо+ремонт+прочие): ")
+            .Append(Money(spent)).Append(" / ").Append(Money(budget)).Append(" ").Append(Cur())
+            .Append(" (").Append(Money(pct)).Append("%)")
+            .Append(nl).Append("Коммунальные в этом месяце: ")
+            .Append(Money(utilitiesMonth)).Append(" ").Append(Cur());
+        if (spent >= budget)
+            result.Append(nl).Append("⚠ Превышен бюджет");
+        else if (pct >= warnPct)
+            result.Append(nl).Append("⚠ Предупреждение: ≥").Append(Money(warnPct)).Append("% бюджета");
+    }
+
+    private void RefreshBudgetNotification()
+    {
+        if (!ExpenseDataStore.HasCompleteCoreFiles(DataDirectory))
+            return;
+        EnsureBudgetNotificationChannel();
+        MaybeRequestNotificationPermission();
+        NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
+        if (manager == null)
+            return;
+
+        decimal budget = ToSettings.GetBudgetMonth(DataDirectory);
+        if (budget <= 0)
+        {
+            manager.Cancel(BudgetNotificationId);
+            return;
+        }
+
+        decimal spent;
+        decimal utilitiesMonth;
+        ComputeMonthSpend(out spent, out utilitiesMonth);
+        if (spent < budget)
+        {
+            manager.Cancel(BudgetNotificationId);
+            return;
+        }
+
+        string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        string text = "Потрачено " + Money(spent) + " / " + Money(budget) + " " + Cur() +
+            " за " + monthKey +
+            " (коммунальные " + Money(utilitiesMonth) + " " + Cur() + " отдельно)";
+
+        Intent intent = new Intent(this, typeof(MainActivity));
+        intent.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ClearTop);
+        PendingIntentFlags flags = PendingIntentFlags.UpdateCurrent;
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.M)
+            flags |= PendingIntentFlags.Immutable;
+        PendingIntent pending = PendingIntent.GetActivity(this, BudgetNotificationId, intent, flags);
+
+#pragma warning disable CA1416, CA1422
+        Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
+            ? new Notification.Builder(this, BudgetChannelId)
+            : new Notification.Builder(this);
+        builder.SetContentTitle("Alfa 156 · Бюджет превышен")
+            .SetContentText(text)
+            .SetStyle(new Notification.BigTextStyle().BigText(text))
+            .SetSmallIcon(Resource.Drawable.icon)
+            .SetContentIntent(pending)
+            .SetAutoCancel(true)
+            .SetOnlyAlertOnce(true);
+        manager.Notify(BudgetNotificationId, builder.Build());
+#pragma warning restore CA1416, CA1422
+    }
+
+    private void ComputeMonthSpend(out decimal spent, out decimal utilitiesMonth)
+    {
+        spent = 0;
+        utilitiesMonth = 0;
+        string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+        List<string[]> repairs = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
+        List<string[]> expenses = ExpenseDataStore.LoadOptional(DataDirectory, ExpenseDataCodec.ExpensesFile);
+        List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
+        for (int i = 0; i < fuels.Count; i++)
+        {
+            if (fuels[i].Length > 4 && fuels[i][0] != null &&
+                fuels[i][0].StartsWith(monthKey, StringComparison.Ordinal))
+                spent += NumberOrZero(fuels[i][4]);
+        }
+        for (int i = 0; i < repairs.Count; i++)
+        {
+            if (repairs[i].Length > 7 && repairs[i][0] != null &&
+                repairs[i][0].StartsWith(monthKey, StringComparison.Ordinal))
+                spent += NumberOrZero(repairs[i][7]);
+        }
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            if (expenses[i].Length > 4 && expenses[i][0] != null &&
+                expenses[i][0].StartsWith(monthKey, StringComparison.Ordinal))
+                spent += NumberOrZero(expenses[i][4]);
+        }
+        for (int i = 0; i < utilities.Count; i++)
+        {
+            if (utilities[i][0] != null &&
+                utilities[i][0].StartsWith(monthKey, StringComparison.Ordinal))
+                utilitiesMonth += ExpenseDataCodec.Sum(utilities[i], 1);
+        }
+    }
+
     private void RefreshServiceNotifications()
     {
         ToIntervals intervals = ToSettings.Load(DataDirectory);
@@ -3583,7 +3727,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.21.0";
+        string version = "1.22.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -3807,5 +3951,31 @@ public sealed class MainActivity : Activity
         }, false);
     }
 
+    private void EditBudget()
+    {
+        decimal budget = ToSettings.GetBudgetMonth(DataDirectory);
+        decimal warnPct = ToSettings.GetBudgetWarnPct(DataDirectory);
+        RenderEditor("Бюджет месяца", new List<EditorField>
+        {
+            EditorField.Number("Лимит (0 = выкл.)",
+                budget.ToString(CultureInfo.InvariantCulture), true),
+            EditorField.Number("Предупр. %",
+                warnPct.ToString(CultureInfo.InvariantCulture), true)
+        }, delegate(string[] raw)
+        {
+            decimal monthLimit, pct;
+            if (!TryNumber(raw[0], out monthLimit) || monthLimit < 0)
+                throw new InvalidOperationException("Лимит: 0 (выкл.) или положительное число.");
+            if (!TryNumber(raw[1], out pct) || pct <= 0 || pct > 100)
+                throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+            ToSettings.SetBudget(DataDirectory, monthLimit, pct);
+            RefreshBudgetNotification();
+            if (monthLimit <= 0)
+                ShowMessage("Месячный бюджет выключен.");
+            else
+                ShowMessage("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
+                    ", предупреждение с " + Money(pct) + "%.");
+        }, false);
+    }
 
 }

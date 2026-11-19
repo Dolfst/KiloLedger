@@ -24,6 +24,9 @@ namespace CarExpenses
         internal const string CurrencyKey = "currency";
         internal const string DefaultCurrency = "BYN";
         internal const string OnboardingSeenKey = "onboarding_seen";
+        internal const string BudgetMonthKey = "budget_month";
+        internal const string BudgetWarnPctKey = "budget_warn_pct";
+        internal const decimal DefaultBudgetWarnPct = 80;
         private const string DataDirectory = @"\My Documents\Alfa156";
 
         internal static bool IsValidRow(string[] row)
@@ -122,6 +125,62 @@ namespace CarExpenses
             LoadInto(map, directory);
             ApplyDefaults(map);
             map[OnboardingSeenKey] = seen ? "1" : "0";
+            WriteMap(directory, map);
+        }
+
+        /// <summary>0 = disabled. Soft monthly budget for fuel+repair+expenses.</summary>
+        internal static decimal GetBudgetMonth()
+        {
+            return GetBudgetMonthFromDirectory(DataDirectory);
+        }
+
+        internal static decimal GetBudgetMonthFromDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string raw;
+            if (!map.TryGetValue(BudgetMonthKey, out raw))
+                return 0;
+            decimal value;
+            if (!TryDecimal(raw, out value) || value < 0)
+                return 0;
+            return value;
+        }
+
+        internal static decimal GetBudgetWarnPct()
+        {
+            return GetBudgetWarnPctFromDirectory(DataDirectory);
+        }
+
+        internal static decimal GetBudgetWarnPctFromDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string raw;
+            if (!map.TryGetValue(BudgetWarnPctKey, out raw))
+                return DefaultBudgetWarnPct;
+            decimal value;
+            if (!TryDecimal(raw, out value) || value <= 0 || value > 100)
+                return DefaultBudgetWarnPct;
+            return value;
+        }
+
+        internal static void SetBudget(decimal monthLimit, decimal warnPct)
+        {
+            SetBudgetInDirectory(DataDirectory, monthLimit, warnPct);
+        }
+
+        internal static void SetBudgetInDirectory(string directory, decimal monthLimit, decimal warnPct)
+        {
+            if (monthLimit < 0)
+                throw new InvalidOperationException("Бюджет месяца: 0 (выкл.) или положительное число.");
+            if (warnPct <= 0 || warnPct > 100)
+                throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[BudgetMonthKey] = Format(monthLimit);
+            map[BudgetWarnPctKey] = Format(warnPct);
             WriteMap(directory, map);
         }
 

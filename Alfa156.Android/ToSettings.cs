@@ -22,6 +22,9 @@ internal static class ToSettings
     internal const string CurrencyKey = "currency";
     internal const string DefaultCurrency = "BYN";
     internal const string OnboardingSeenKey = "onboarding_seen";
+    internal const string BudgetMonthKey = "budget_month";
+    internal const string BudgetWarnPctKey = "budget_warn_pct";
+    internal const decimal DefaultBudgetWarnPct = 80;
 
     internal static bool IsValidRow(string[] row)
     {
@@ -94,6 +97,47 @@ internal static class ToSettings
         LoadInto(map, directory);
         ApplyDefaults(map);
         map[OnboardingSeenKey] = seen ? "1" : "0";
+        WriteMap(directory, map);
+    }
+
+    /// <summary>0 = disabled. Soft monthly budget for fuel+repair+expenses.</summary>
+    internal static decimal GetBudgetMonth(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string raw;
+        if (!map.TryGetValue(BudgetMonthKey, out raw))
+            return 0;
+        decimal value;
+        if (!TryDecimal(raw, out value) || value < 0)
+            return 0;
+        return value;
+    }
+
+    internal static decimal GetBudgetWarnPct(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string raw;
+        if (!map.TryGetValue(BudgetWarnPctKey, out raw))
+            return DefaultBudgetWarnPct;
+        decimal value;
+        if (!TryDecimal(raw, out value) || value <= 0 || value > 100)
+            return DefaultBudgetWarnPct;
+        return value;
+    }
+
+    internal static void SetBudget(string directory, decimal monthLimit, decimal warnPct)
+    {
+        if (monthLimit < 0)
+            throw new InvalidOperationException("Бюджет месяца: 0 (выкл.) или положительное число.");
+        if (warnPct <= 0 || warnPct > 100)
+            throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[BudgetMonthKey] = Format(monthLimit);
+        map[BudgetWarnPctKey] = Format(warnPct);
         WriteMap(directory, map);
     }
 

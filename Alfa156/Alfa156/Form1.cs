@@ -113,6 +113,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Проверка данных", new EventHandler(ShowDataIntegrityFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
@@ -2001,7 +2002,19 @@ namespace CarExpenses
             foreach (KeyValuePair<string, decimal> pair in byCategory)
                 result += pair.Key + ": " + Money(pair.Value) + " " + Cur() + "\r\n";
             result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) +
-                " " + Cur() + "\r\n\r\nИтого за год " + yearPrefix + ":\r\n" +
+                " " + Cur();
+            string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            decimal monthFuel = 0, monthRepair = 0, monthExpense = 0, monthUtility = 0;
+            decimal[] monthBucket;
+            if (monthlyTotals.TryGetValue(monthKey, out monthBucket))
+            {
+                monthFuel = monthBucket[0];
+                monthRepair = monthBucket[1];
+                monthUtility = monthBucket[2];
+                monthExpense = monthBucket.Length > 3 ? monthBucket[3] : 0m;
+            }
+            result += FormatBudgetBlock(monthKey, monthFuel + monthRepair + monthExpense, monthUtility);
+            result += "\r\n\r\nИтого за год " + yearPrefix + ":\r\n" +
                 "Топливо: " + Money(yearFuel) + " " + Cur() + "\r\n" +
                 "Ремонт: " + Money(yearRepair) + " " + Cur() + "\r\n" +
                 "Прочие: " + Money(yearExpense) + " " + Cur() + "\r\n" +
@@ -2235,7 +2248,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.21.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.22.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
@@ -2692,6 +2705,71 @@ namespace CarExpenses
                 }
                 MessageBox.Show("Валюта: " + ToSettings.GetCurrency() +
                     ". Суммы не пересчитываются — меняется только подпись.", "Валюта");
+                if (summaryBox != null)
+                    summaryBox.Text = BuildSummary();
+            }
+        }
+
+        private string FormatBudgetBlock(string monthKey, decimal spent, decimal utilitiesMonth)
+        {
+            decimal budget = ToSettings.GetBudgetMonth();
+            if (budget <= 0)
+                return "";
+            decimal warnPct = ToSettings.GetBudgetWarnPct();
+            decimal pct = budget > 0 ? (spent * 100m) / budget : 0;
+            string block = "\r\n\r\nБюджет месяца " + monthKey + ":\r\n" +
+                "Потрачено (топливо+ремонт+прочие): " +
+                Money(spent) + " / " + Money(budget) + " " + Cur() +
+                " (" + Money(pct) + "%)\r\n" +
+                "Коммунальные в этом месяце: " + Money(utilitiesMonth) + " " + Cur();
+            if (spent >= budget)
+                block += "\r\n! Превышен бюджет";
+            else if (pct >= warnPct)
+                block += "\r\n! Предупреждение: >= " + Money(warnPct) + "% бюджета";
+            return block;
+        }
+
+        private void EditBudget(object sender, EventArgs e)
+        {
+            decimal budget = ToSettings.GetBudgetMonth();
+            decimal warnPct = ToSettings.GetBudgetWarnPct();
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Лимит (0 = выкл.)",
+                    budget.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField("Предупр. %",
+                    warnPct.ToString(CultureInfo.InvariantCulture), "number", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Бюджет месяца", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                decimal monthLimit, pct;
+                if (!DataStore.TryNumber(editor.Values[0], out monthLimit) || monthLimit < 0)
+                {
+                    MessageBox.Show("Лимит: 0 (выкл.) или положительное число.", "Бюджет");
+                    return;
+                }
+                if (!DataStore.TryNumber(editor.Values[1], out pct) || pct <= 0 || pct > 100)
+                {
+                    MessageBox.Show("Порог предупреждения: от 1 до 100 %.", "Бюджет");
+                    return;
+                }
+                try
+                {
+                    if (!TrySave(delegate { ToSettings.SetBudget(monthLimit, pct); }))
+                        return;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Бюджет");
+                    return;
+                }
+                if (monthLimit <= 0)
+                    MessageBox.Show("Месячный бюджет выключен.", "Бюджет");
+                else
+                    MessageBox.Show("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
+                        ", предупреждение с " + Money(pct) + "%.", "Бюджет");
                 if (summaryBox != null)
                     summaryBox.Text = BuildSummary();
             }
