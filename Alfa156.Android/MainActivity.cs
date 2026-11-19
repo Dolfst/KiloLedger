@@ -310,6 +310,8 @@ public sealed class MainActivity : Activity
             {
                 labels.Add("Интервалы ТО");
                 actions.Add(delegate { EditToIntervals(); });
+                labels.Add("Валюта");
+                actions.Add(delegate { EditCurrency(); });
                 labels.Add("Копия на телефоне");
                 actions.Add(delegate { CreateLocalBackup(); });
                 labels.Add("Восстановить копию");
@@ -1088,7 +1090,7 @@ public sealed class MainActivity : Activity
         if (selectedSection == Fuel && row.Length >= 5)
         {
             string formatted = row[0] + " · " + row[2] + " км · " + row[3] +
-                " л · " + row[4] + " BYN";
+                " л · " + row[4] + " " + Cur();
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
                 formatted += " · " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
@@ -1098,18 +1100,18 @@ public sealed class MainActivity : Activity
         {
             string mileage = row[2].Length > 0 ? " · " + row[2] + " км" : "";
             return row[0] + mileage + " · " + row[3] + ": " + ShortText(row[4], 22) +
-                " · " + row[7] + " BYN";
+                " · " + row[7] + " " + Cur();
         }
         if (selectedSection == Expenses)
         {
             string[] content = RecordIds.StripId(row);
             if (content.Length >= 5)
                 return content[0] + " · " + content[2] + ": " + ShortText(content[3], 22) +
-                    " · " + content[4] + " BYN";
+                    " · " + content[4] + " " + Cur();
         }
         if (selectedSection == Utilities && row.Length >= 8)
             return row[0] + " · итого " + ExpenseDataCodec.Sum(row, 1)
-                .ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
+                .ToString("0.##", CultureInfo.InvariantCulture) + " " + Cur();
         return String.Join(" | ", row);
     }
 
@@ -1146,16 +1148,16 @@ public sealed class MainActivity : Activity
                 .Append("\nДата: ").Append(row[0])
                 .Append("\nПробег: ").Append(row[2]).Append(" км")
                 .Append("\nЛитры: ").Append(row[3])
-                .Append("\nСтоимость: ").Append(row[4]).Append(" BYN");
+                .Append("\nСтоимость: ").Append(row[4]).Append(" " + Cur());
             string storedPrice = FieldAt(row, 5).Trim();
             decimal liters;
             decimal cost;
             if (storedPrice.Length > 0)
-                details.Append("\nЦена за литр: ").Append(storedPrice).Append(" BYN");
+                details.Append("\nЦена за литр: ").Append(storedPrice).Append(" " + Cur());
             else if (TryNumber(row[3], out liters) && liters > 0 && TryNumber(row[4], out cost))
                 details.Append("\nЦена за литр: ")
                     .Append((cost / liters).ToString("0.00", CultureInfo.InvariantCulture))
-                    .Append(" BYN");
+                    .Append(" " + Cur());
             string comment = FieldAt(row, 6).Trim();
             if (comment.Length > 0)
                 details.Append("\nАЗС / комментарий: ").Append(comment);
@@ -1177,7 +1179,7 @@ public sealed class MainActivity : Activity
                 .Append("\nТовар: ").Append(row[4])
                 .Append("\nНаименование: ").Append(row[5].Length > 0 ? row[5] : "—")
                 .Append("\nКоличество: ").Append(row[6])
-                .Append("\nСумма: ").Append(row[7]).Append(" BYN")
+                .Append("\nСумма: ").Append(row[7]).Append(" " + Cur())
                 .Append("\nКомментарий: ").Append(row[8].Length > 0 ? row[8] : "—");
             return details.ToString();
         }
@@ -1191,11 +1193,11 @@ public sealed class MainActivity : Activity
                 if (amount == null || amount.Trim().Length == 0 || amount == "0")
                     continue;
                 details.Append("\n").Append(ExpenseDataStore.UtilityLabels[i])
-                    .Append(": ").Append(amount).Append(" BYN");
+                    .Append(": ").Append(amount).Append(" " + Cur());
             }
             details.Append("\nИтого: ")
                 .Append(ExpenseDataCodec.Sum(row, 1).ToString("0.##", CultureInfo.InvariantCulture))
-                .Append(" BYN");
+                .Append(" " + Cur());
             return details.ToString();
         }
         return String.Join(" | ", row);
@@ -1315,8 +1317,8 @@ public sealed class MainActivity : Activity
                     : "Пробег, км",
                 row[2], true));
             fields.Add(EditorField.Number("Литры", row[3], true));
-            fields.Add(EditorField.Number("Стоимость, BYN", row[4], true));
-            fields.Add(EditorField.Number("Цена за литр, BYN", FieldAt(row, 5), false));
+            fields.Add(EditorField.Number("Стоимость, " + Cur(), row[4], true));
+            fields.Add(EditorField.Number("Цена за литр, " + Cur(), FieldAt(row, 5), false));
             fields.Add(EditorField.Text("АЗС / комментарий", FieldAt(row, 6), false));
             string fullTank = FieldAt(row, 7);
             if (fullTank.Length == 0)
@@ -1339,7 +1341,7 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Text("Товар / деталь", row[4], true));
             fields.Add(EditorField.Text("Наименование", row[5], false));
             fields.Add(EditorField.Number("Количество", row[6], true));
-            fields.Add(EditorField.Number("Сумма, BYN", row[7], true));
+            fields.Add(EditorField.Number("Сумма, " + Cur(), row[7], true));
             fields.Add(EditorField.Text("Комментарий", row[8], false, true));
         }
         else if (selectedSection == Expenses)
@@ -1352,7 +1354,7 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Option("Категория", FieldAt(content, 2),
                 categories.ToArray(), true));
             fields.Add(EditorField.Text("Название", FieldAt(content, 3), true));
-            fields.Add(EditorField.Number("Сумма, BYN", FieldAt(content, 4), true));
+            fields.Add(EditorField.Number("Сумма, " + Cur(), FieldAt(content, 4), true));
             fields.Add(EditorField.Text("Комментарий", FieldAt(content, 5), false, true));
         }
         else
@@ -1360,7 +1362,7 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Month("Месяц", row[0], true));
             for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length; i++)
                 fields.Add(EditorField.Number(
-                    ExpenseDataStore.UtilityLabels[i] + ", BYN", row[i + 1], false));
+                    ExpenseDataStore.UtilityLabels[i] + ", " + Cur(), row[i + 1], false));
         }
 
         RenderEditor(editing ? "Изменить запись" : "Новая запись", fields,
@@ -1995,7 +1997,7 @@ public sealed class MainActivity : Activity
     private void ConfirmDelete(string[] row, int sourceIndex)
     {
         string description = selectedSection == Fuel
-            ? row[0] + ", " + row[2] + " км, " + row[4] + " BYN"
+            ? row[0] + ", " + row[2] + " км, " + row[4] + " " + Cur()
             : selectedSection == Repairs
                 ? row[0] + ", " + row[3] + ": " + ShortText(row[4], 30)
                 : selectedSection == Expenses
@@ -2414,17 +2416,17 @@ public sealed class MainActivity : Activity
         }
 
         StringBuilder result = new StringBuilder(currentCar);
-        result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" BYN")
-            .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" BYN")
-            .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" BYN")
+        result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" " + Cur())
+            .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur())
+            .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur())
             .Append("\nУчтённые расходы на км (примерно): ")
             .Append(minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage
-                ? Money((fuelTotal + repairTotal + expenseTotal) / (maximumMileage - minimumMileage)) + " BYN/км"
+                ? Money((fuelTotal + repairTotal + expenseTotal) / (maximumMileage - minimumMileage)) + " " + Cur() + "/км"
                 : "недостаточно данных о пробеге")
             .Append("\n\nРемонт по категориям:");
         foreach (KeyValuePair<string, decimal> pair in byCategory)
-            result.Append("\n").Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" BYN");
-        result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" BYN")
+            result.Append("\n").Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur());
+        result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" " + Cur())
             .Append("\n\nРасходы по месяцам (последние 12):");
         List<string> months = new List<string>(monthlyTotals.Keys);
         months.Sort(StringComparer.Ordinal);
@@ -2436,12 +2438,12 @@ public sealed class MainActivity : Activity
                 .Append(": топливо ").Append(Money(totals[0]))
                 .Append(", ремонт ").Append(Money(totals[1]))
                 .Append(", коммунальные ").Append(Money(totals[2]))
-                .Append(", прочие ").Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" BYN");
+                .Append(", прочие ").Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" " + Cur());
         }
         result.Append("\n\nТопливо, ремонт и прочие по автомобилям:");
         for (int i = 0; i < cars.Count; i++)
             result.Append("\n").Append(cars[i]).Append(": ")
-                .Append(Money(carTotals[cars[i]])).Append(" BYN");
+                .Append(Money(carTotals[cars[i]])).Append(" " + Cur());
         ToIntervals toIntervals = ToSettings.Load(DataDirectory);
         result
             .Append("\n\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км")
@@ -2993,9 +2995,14 @@ public sealed class MainActivity : Activity
 #pragma warning restore CA1416, CA1422
     }
 
+    private string Cur()
+    {
+        return ToSettings.GetCurrency(DataDirectory);
+    }
+
     private void ShowAbout()
     {
-        string version = "1.14.0";
+        string version = "1.15.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -3008,7 +3015,7 @@ public sealed class MainActivity : Activity
             .SetMessage("Alfa 156\nВерсия " + version +
                 "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +
-                "\nФото чеков: папка Receipts/{id}.jpg (в ZIP; Wi‑Fi sync — только .dat)." +
+                "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
             .SetPositiveButton("ОК", delegate { })
             .Show();
@@ -3201,5 +3208,22 @@ public sealed class MainActivity : Activity
             ShowMessage("Интервалы ТО сохранены.");
         }, false);
     }
+
+    private void EditCurrency()
+    {
+        string current = ToSettings.GetCurrency(DataDirectory);
+        RenderEditor("Валюта", new List<EditorField>
+        {
+            EditorField.Text("Код валюты (BYN/RUB/USD/EUR)", current, true)
+        }, delegate(string[] raw)
+        {
+            ToSettings.SetCurrency(DataDirectory, raw[0]);
+            RefreshRecords();
+            RefreshServiceNotifications();
+            ShowMessage("Валюта: " + ToSettings.GetCurrency(DataDirectory) +
+                ". Суммы не пересчитываются — меняется только подпись.");
+        }, false);
+    }
+
 
 }

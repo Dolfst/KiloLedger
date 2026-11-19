@@ -149,6 +149,9 @@ namespace Alfa156.Desktop.Exchange
             s = ReplaceIgnoreCase(s, "руб.", "");
             s = ReplaceIgnoreCase(s, "руб", "");
             s = ReplaceIgnoreCase(s, "BYN", "");
+            s = ReplaceIgnoreCase(s, "RUB", "");
+            s = ReplaceIgnoreCase(s, "USD", "");
+            s = ReplaceIgnoreCase(s, "EUR", "");
             decimal value;
             if (AlfaCodec.TryNumber(s, out value))
                 return value.ToString(System.Globalization.CultureInfo.InvariantCulture);

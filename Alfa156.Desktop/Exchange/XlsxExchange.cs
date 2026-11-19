@@ -19,6 +19,7 @@ namespace Alfa156.Desktop.Exchange
             using (FileStream stream = File.Create(xlsxPath))
             using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Create))
             {
+                string money = "Сумма_" + ToSettings.GetCurrency(repo.Settings);
                 WriteEntry(zip, "[Content_Types].xml", ContentTypesXml());
                 WriteEntry(zip, "_rels/.rels", RelsXml());
                 WriteEntry(zip, "xl/workbook.xml", WorkbookXml());
@@ -26,18 +27,18 @@ namespace Alfa156.Desktop.Exchange
                 WriteEntry(zip, "xl/styles.xml", StylesXml());
                 WriteSheet(zip, "xl/worksheets/sheet1.xml", new string[] { "Автомобиль" }, repo.Cars);
                 WriteSheet(zip, "xl/worksheets/sheet2.xml",
-                    new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", "Сумма_BYN", "Цена_за_литр", "Комментарий", "Полный_бак" },
+                    new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак" },
                     repo.Fuel);
                 WriteSheet(zip, "xl/worksheets/sheet3.xml",
                     new string[]
                     {
                         "Дата", "Автомобиль", "Пробег_км", "Категория", "Товар",
-                        "Описание", "Кол_во", "Сумма_BYN", "Комментарий"
+                        "Описание", "Кол_во", money, "Комментарий"
                     }, repo.Repairs);
                 WriteSheet(zip, "xl/worksheets/sheet4.xml", UtilityHeaders(), repo.Utilities);
                 WriteSheet(zip, "xl/worksheets/sheet5.xml", new string[] { "Категория" }, repo.Categories);
                 WriteSheet(zip, "xl/worksheets/sheet6.xml",
-                    new string[] { "Дата", "Автомобиль", "Категория", "Название", "Сумма_BYN", "Комментарий" },
+                    new string[] { "Дата", "Автомобиль", "Категория", "Название", money, "Комментарий" },
                     repo.Expenses);
                 WriteSheet(zip, "xl/worksheets/sheet7.xml", new string[] { "Категория" }, repo.ExpenseCategories);
             }

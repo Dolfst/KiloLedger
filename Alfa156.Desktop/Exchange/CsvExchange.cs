@@ -15,21 +15,22 @@ namespace Alfa156.Desktop.Exchange
         internal static void ExportFolder(AlfaRepository repo, string folder)
         {
             Directory.CreateDirectory(folder);
+            string money = "Сумма_" + ToSettings.GetCurrency(repo.Settings);
             WriteCsv(Path.Combine(folder, "cars.csv"), new string[] { "Автомобиль" }, repo.Cars);
             WriteCsv(Path.Combine(folder, "fuel.csv"),
-                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", "Сумма_BYN", "Цена_за_литр", "Комментарий", "Полный_бак" },
+                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак" },
                 repo.Fuel);
             WriteCsv(Path.Combine(folder, "repairs.csv"),
                 new string[]
                 {
                     "Дата", "Автомобиль", "Пробег_км", "Категория", "Товар",
-                    "Описание", "Кол_во", "Сумма_BYN", "Комментарий"
+                    "Описание", "Кол_во", money, "Комментарий"
                 }, repo.Repairs);
             WriteCsv(Path.Combine(folder, "utilities.csv"), BuildUtilityHeaders(), repo.Utilities);
             WriteCsv(Path.Combine(folder, "repair-categories.csv"),
                 new string[] { "Категория" }, repo.Categories);
             WriteCsv(Path.Combine(folder, "expenses.csv"),
-                new string[] { "Дата", "Автомобиль", "Категория", "Название", "Сумма_BYN", "Комментарий" },
+                new string[] { "Дата", "Автомобиль", "Категория", "Название", money, "Комментарий" },
                 repo.Expenses);
             WriteCsv(Path.Combine(folder, "expense-categories.csv"),
                 new string[] { "Категория" }, repo.ExpenseCategories);

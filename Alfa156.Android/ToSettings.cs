@@ -19,6 +19,8 @@ internal static class ToSettings
     internal const string OilWarnKey = "oil_warn";
     internal const string BeltIntervalKey = "belt_interval";
     internal const string BeltWarnKey = "belt_warn";
+    internal const string CurrencyKey = "currency";
+    internal const string DefaultCurrency = "BYN";
 
     internal static bool IsValidRow(string[] row)
     {
@@ -50,17 +52,61 @@ internal static class ToSettings
         return values;
     }
 
+    internal static string GetCurrency(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string code;
+        if (map.TryGetValue(CurrencyKey, out code))
+        {
+            string normalized = NormalizeCurrency(code);
+            if (normalized != null)
+                return normalized;
+        }
+        return DefaultCurrency;
+    }
+
+    internal static void SetCurrency(string directory, string code)
+    {
+        string normalized = NormalizeCurrency(code);
+        if (normalized == null)
+            throw new InvalidOperationException(
+                "Код валюты: 1–8 символов (латиница/цифры), например BYN, RUB, USD, EUR.");
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[CurrencyKey] = normalized;
+        WriteMap(directory, map);
+    }
+
+    internal static string NormalizeCurrency(string code)
+    {
+        if (code == null)
+            return null;
+        string trimmed = code.Trim().ToUpperInvariant();
+        if (trimmed.Length < 1 || trimmed.Length > 8)
+            return null;
+        for (int i = 0; i < trimmed.Length; i++)
+        {
+            char c = trimmed[i];
+            if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')))
+                return null;
+        }
+        return trimmed;
+    }
+
     internal static void Save(string directory, ToIntervals values)
     {
         if (values == null)
             values = new ToIntervals();
-        Directory.CreateDirectory(directory);
-        List<string[]> rows = new List<string[]>();
-        rows.Add(new string[] { OilIntervalKey, Format(values.OilInterval) });
-        rows.Add(new string[] { OilWarnKey, Format(values.OilWarn) });
-        rows.Add(new string[] { BeltIntervalKey, Format(values.BeltInterval) });
-        rows.Add(new string[] { BeltWarnKey, Format(values.BeltWarn) });
-        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.SettingsFile), rows);
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        map[OilIntervalKey] = Format(values.OilInterval);
+        map[OilWarnKey] = Format(values.OilWarn);
+        map[BeltIntervalKey] = Format(values.BeltInterval);
+        map[BeltWarnKey] = Format(values.BeltWarn);
+        ApplyDefaults(map);
+        WriteMap(directory, map);
     }
 
     internal static void EnsureFile(string directory)
@@ -68,6 +114,13 @@ internal static class ToSettings
         string path = Path.Combine(directory, ExpenseDataCodec.SettingsFile);
         if (!File.Exists(path))
             Save(directory, new ToIntervals());
+        else
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            WriteMap(directory, map);
+        }
     }
 
     internal static void MergeFiles(string localDirectory, string remoteDirectory, string destinationDirectory,
@@ -83,11 +136,16 @@ internal static class ToSettings
                 map[pair.Key] = pair.Value;
         }
         ApplyDefaults(map);
+        WriteMap(destinationDirectory, map);
+    }
+
+    private static void WriteMap(string directory, Dictionary<string, string> map)
+    {
         List<string[]> rows = new List<string[]>();
         foreach (KeyValuePair<string, string> pair in map)
             rows.Add(new string[] { pair.Key, pair.Value });
-        Directory.CreateDirectory(destinationDirectory);
-        ExpenseDataCodec.SaveRows(Path.Combine(destinationDirectory, ExpenseDataCodec.SettingsFile), rows);
+        Directory.CreateDirectory(directory);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.SettingsFile), rows);
     }
 
     private static void LoadInto(Dictionary<string, string> map, string directory)
@@ -101,10 +159,7 @@ internal static class ToSettings
             if (!IsValidRow(rows[i]))
                 continue;
             string key = rows[i][0].Trim();
-            if (!map.ContainsKey(key))
-                map.Add(key, (rows[i][1] ?? "").Trim());
-            else
-                map[key] = (rows[i][1] ?? "").Trim();
+            map[key] = (rows[i][1] ?? "").Trim();
         }
     }
 
@@ -114,6 +169,13 @@ internal static class ToSettings
         if (!map.ContainsKey(OilWarnKey)) map[OilWarnKey] = "1000";
         if (!map.ContainsKey(BeltIntervalKey)) map[BeltIntervalKey] = "60000";
         if (!map.ContainsKey(BeltWarnKey)) map[BeltWarnKey] = "5000";
+        if (!map.ContainsKey(CurrencyKey))
+            map[CurrencyKey] = DefaultCurrency;
+        else
+        {
+            string normalized = NormalizeCurrency(map[CurrencyKey]);
+            map[CurrencyKey] = normalized != null ? normalized : DefaultCurrency;
+        }
     }
 
     private static bool TryDecimal(string text, out decimal value)

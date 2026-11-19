@@ -133,6 +133,7 @@ internal static class ExpenseSyncService
                     WriteInt32(stream, 0);
                     Directory.CreateDirectory(incomingDirectory);
                     ReceiveSnapshot(stream, incomingDirectory, crypto);
+                    ReceiveReceipts(stream, incomingDirectory, crypto);
                     ExpenseDataCodec.ValidateDirectory(incomingDirectory);
 
                     SyncPlan plan = resolvePlan(FormatSummary(
@@ -145,9 +146,11 @@ internal static class ExpenseSyncService
                     }
 
                     MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
+                    ReceiptStore.OverlayFrom(incomingDirectory, dataDirectory);
                     finalResponseStarted = true;
                     WriteInt32(stream, 0);
                     SendSnapshot(stream, dataDirectory, crypto);
+                    SendReceipts(stream, dataDirectory, crypto);
                     return null;
                 }
             }
@@ -771,6 +774,60 @@ internal static class ExpenseSyncService
         {
             string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
             byte[] content = File.Exists(path) ? File.ReadAllBytes(path) : Array.Empty<byte>();
+            if (content.Length > 0)
+                crypto.TransformInPlace(content);
+            WriteInt32(stream, content.Length);
+            if (content.Length > 0)
+                stream.Write(content, 0, content.Length);
+        }
+        stream.Flush();
+    }
+
+    private static void ReceiveReceipts(NetworkStream stream, string directory, SyncCrypto crypto)
+    {
+        int count = ReadInt32(stream);
+        if (count < 0 || count > ReceiptStore.MaxSyncFiles)
+            throw new InvalidDataException("Неверное число фото чеков в синхронизации.");
+        ReceiptStore.EnsureFolder(directory);
+        for (int i = 0; i < count; i++)
+        {
+            int nameLength = ReadInt32(stream);
+            if (nameLength <= 0 || nameLength > 128)
+                throw new InvalidDataException("Неверное имя файла чека.");
+            byte[] nameBytes = new byte[nameLength];
+            ReadExactly(stream, nameBytes, 0, nameLength);
+            string name = Encoding.UTF8.GetString(nameBytes);
+            if (!ReceiptStore.IsSafeReceiptFileName(name))
+                throw new InvalidDataException("Недопустимое имя файла чека: " + name);
+            int length = ReadInt32(stream);
+            if (length < 0 || length > ReceiptStore.MaxSyncFileBytes)
+                throw new InvalidDataException("Файл чека превышает лимит 2 МБ.");
+            byte[] content = new byte[length];
+            if (length > 0)
+            {
+                ReadExactly(stream, content, 0, length);
+                crypto.TransformInPlace(content);
+            }
+            File.WriteAllBytes(Path.Combine(ReceiptStore.GetFolder(directory), name), content);
+        }
+    }
+
+    private static void SendReceipts(NetworkStream stream, string directory, SyncCrypto crypto)
+    {
+        List<string> files = ReceiptStore.ListForSync(directory);
+        WriteInt32(stream, files.Count);
+        for (int i = 0; i < files.Count; i++)
+        {
+            string name = Path.GetFileName(files[i]);
+            byte[] nameBytes = Encoding.UTF8.GetBytes(name);
+            WriteInt32(stream, nameBytes.Length);
+            stream.Write(nameBytes, 0, nameBytes.Length);
+            byte[] content = File.ReadAllBytes(files[i]);
+            if (content.Length > ReceiptStore.MaxSyncFileBytes)
+            {
+                WriteInt32(stream, 0);
+                continue;
+            }
             if (content.Length > 0)
                 crypto.TransformInPlace(content);
             WriteInt32(stream, content.Length);

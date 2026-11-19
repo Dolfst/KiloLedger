@@ -21,6 +21,8 @@ namespace CarExpenses
         internal const string OilWarnKey = "oil_warn";
         internal const string BeltIntervalKey = "belt_interval";
         internal const string BeltWarnKey = "belt_warn";
+        internal const string CurrencyKey = "currency";
+        internal const string DefaultCurrency = "BYN";
         private const string DataDirectory = @"\My Documents\Alfa156";
 
         internal static bool IsValidRow(string[] row)
@@ -58,6 +60,60 @@ namespace CarExpenses
             return values;
         }
 
+        internal static string GetCurrency()
+        {
+            return GetCurrencyFromDirectory(DataDirectory);
+        }
+
+        internal static string GetCurrencyFromDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string code;
+            if (map.TryGetValue(CurrencyKey, out code))
+            {
+                string normalized = NormalizeCurrency(code);
+                if (normalized != null)
+                    return normalized;
+            }
+            return DefaultCurrency;
+        }
+
+        internal static void SetCurrency(string code)
+        {
+            SetCurrencyInDirectory(DataDirectory, code);
+        }
+
+        internal static void SetCurrencyInDirectory(string directory, string code)
+        {
+            string normalized = NormalizeCurrency(code);
+            if (normalized == null)
+                throw new InvalidOperationException(
+                    "Код валюты: 1–8 символов (латиница/цифры), например BYN, RUB, USD, EUR.");
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[CurrencyKey] = normalized;
+            WriteMap(directory, map);
+        }
+
+        /// <summary>Null if invalid; otherwise trimmed uppercase code.</summary>
+        internal static string NormalizeCurrency(string code)
+        {
+            if (code == null)
+                return null;
+            string trimmed = code.Trim().ToUpperInvariant();
+            if (trimmed.Length < 1 || trimmed.Length > 8)
+                return null;
+            for (int i = 0; i < trimmed.Length; i++)
+            {
+                char c = trimmed[i];
+                if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')))
+                    return null;
+            }
+            return trimmed;
+        }
+
         internal static void Save(ToIntervals values)
         {
             SaveToDirectory(DataDirectory, values);
@@ -67,14 +123,14 @@ namespace CarExpenses
         {
             if (values == null)
                 values = new ToIntervals();
-            Directory.CreateDirectory(directory);
-            using (StreamWriter writer = new StreamWriter(Path.Combine(directory, SettingsFile), false))
-            {
-                writer.WriteLine(OilIntervalKey + "|" + Format(values.OilInterval));
-                writer.WriteLine(OilWarnKey + "|" + Format(values.OilWarn));
-                writer.WriteLine(BeltIntervalKey + "|" + Format(values.BeltInterval));
-                writer.WriteLine(BeltWarnKey + "|" + Format(values.BeltWarn));
-            }
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            map[OilIntervalKey] = Format(values.OilInterval);
+            map[OilWarnKey] = Format(values.OilWarn);
+            map[BeltIntervalKey] = Format(values.BeltInterval);
+            map[BeltWarnKey] = Format(values.BeltWarn);
+            ApplyDefaults(map);
+            WriteMap(directory, map);
         }
 
         internal static void EnsureFile()
@@ -82,6 +138,13 @@ namespace CarExpenses
             string path = Path.Combine(DataDirectory, SettingsFile);
             if (!File.Exists(path))
                 Save(new ToIntervals());
+            else
+            {
+                Dictionary<string, string> map = new Dictionary<string, string>();
+                LoadInto(map, DataDirectory);
+                ApplyDefaults(map);
+                WriteMap(DataDirectory, map);
+            }
         }
 
         internal static void EnsureFileIn(string directory)
@@ -89,6 +152,13 @@ namespace CarExpenses
             string path = Path.Combine(directory, SettingsFile);
             if (!File.Exists(path))
                 SaveToDirectory(directory, new ToIntervals());
+            else
+            {
+                Dictionary<string, string> map = new Dictionary<string, string>();
+                LoadInto(map, directory);
+                ApplyDefaults(map);
+                WriteMap(directory, map);
+            }
         }
 
         internal static void MergeDirectories(string localDirectory, string remoteDirectory,
@@ -103,14 +173,30 @@ namespace CarExpenses
                 if (!map.ContainsKey(pair.Key) || preferIncoming)
                     map[pair.Key] = pair.Value;
             }
+            ApplyDefaults(map);
+            WriteMap(destinationDirectory, map);
+        }
+
+        private static void ApplyDefaults(Dictionary<string, string> map)
+        {
             if (!map.ContainsKey(OilIntervalKey)) map[OilIntervalKey] = "10000";
             if (!map.ContainsKey(OilWarnKey)) map[OilWarnKey] = "1000";
             if (!map.ContainsKey(BeltIntervalKey)) map[BeltIntervalKey] = "60000";
             if (!map.ContainsKey(BeltWarnKey)) map[BeltWarnKey] = "5000";
+            if (!map.ContainsKey(CurrencyKey))
+                map[CurrencyKey] = DefaultCurrency;
+            else
+            {
+                string normalized = NormalizeCurrency(map[CurrencyKey]);
+                map[CurrencyKey] = normalized != null ? normalized : DefaultCurrency;
+            }
+        }
 
-            Directory.CreateDirectory(destinationDirectory);
+        private static void WriteMap(string directory, Dictionary<string, string> map)
+        {
+            Directory.CreateDirectory(directory);
             using (StreamWriter writer = new StreamWriter(
-                Path.Combine(destinationDirectory, SettingsFile), false))
+                Path.Combine(directory, SettingsFile), false))
             {
                 foreach (KeyValuePair<string, string> pair in map)
                     writer.WriteLine(pair.Key + "|" + pair.Value);

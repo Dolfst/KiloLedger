@@ -151,6 +151,10 @@ internal static class ReceiptStore
         return ids;
     }
 
+    /// <summary>Wi‑Fi sync limits (1.15+): skip files larger than 2 MB; at most 50 per session.</summary>
+    internal const int MaxSyncFileBytes = 2 * 1024 * 1024;
+    internal const int MaxSyncFiles = 50;
+
     internal static bool IsSafeReceiptFileName(string name)
     {
         if (String.IsNullOrEmpty(name) || name.IndexOf("..") >= 0)
@@ -159,6 +163,104 @@ internal static class ReceiptStore
             return false;
         string id = Path.GetFileNameWithoutExtension(name);
         return RecordIds.LooksLikeId(id);
+    }
+
+    /// <summary>
+    /// Paths under Receipts/ eligible for Wi‑Fi: safe name, size ≤ 2 MB, capped at 50.
+    /// Prefers files whose id appears in fuel/repairs/expenses; then remaining files.
+    /// </summary>
+    internal static List<string> ListForSync(string dataDirectory)
+    {
+        List<string> result = new List<string>();
+        string folder = GetFolder(dataDirectory);
+        if (!Directory.Exists(folder))
+            return result;
+
+        HashSet<string> referenced = CollectReferencedIds(dataDirectory);
+        string[] files = Directory.GetFiles(folder, "*.jpg");
+        Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+
+        AddSyncCandidates(result, files, referenced, true);
+        AddSyncCandidates(result, files, referenced, false);
+        return result;
+    }
+
+    private static void AddSyncCandidates(
+        List<string> result, string[] files, HashSet<string> referenced, bool requireReferenced)
+    {
+        for (int i = 0; i < files.Length; i++)
+        {
+            if (result.Count >= MaxSyncFiles)
+                return;
+            string name = Path.GetFileName(files[i]);
+            if (!IsSafeReceiptFileName(name))
+                continue;
+            string id = Path.GetFileNameWithoutExtension(name);
+            bool isRef = referenced.Contains(id);
+            if (requireReferenced != isRef)
+                continue;
+            try
+            {
+                long length = new FileInfo(files[i]).Length;
+                if (length <= 0 || length > MaxSyncFileBytes)
+                    continue;
+            }
+            catch
+            {
+                continue;
+            }
+            bool already = false;
+            for (int j = 0; j < result.Count; j++)
+            {
+                if (String.Equals(result[j], files[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    already = true;
+                    break;
+                }
+            }
+            if (!already)
+                result.Add(files[i]);
+        }
+    }
+
+    private static HashSet<string> CollectReferencedIds(string dataDirectory)
+    {
+        HashSet<string> ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddIdsFromFile(ids, dataDirectory, "fuel.dat");
+        AddIdsFromFile(ids, dataDirectory, "repairs.dat");
+        AddIdsFromFile(ids, dataDirectory, ExpenseDataCodec.ExpensesFile);
+        return ids;
+    }
+
+    private static void AddIdsFromFile(HashSet<string> ids, string directory, string fileName)
+    {
+        string path = Path.Combine(directory, fileName);
+        if (!File.Exists(path))
+            return;
+        List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            string id = RecordIds.GetId(rows[i]);
+            if (id != null)
+                ids.Add(id);
+        }
+    }
+
+    /// <summary>Copy receipt files from source onto dest without deleting dest-only files.</summary>
+    internal static void OverlayFrom(string sourceDataDir, string destDataDir)
+    {
+        string source = GetFolder(sourceDataDir);
+        if (!Directory.Exists(source))
+            return;
+        EnsureFolder(destDataDir);
+        string[] files = Directory.GetFiles(source, "*.jpg");
+        for (int i = 0; i < files.Length; i++)
+        {
+            string name = Path.GetFileName(files[i]);
+            if (!IsSafeReceiptFileName(name))
+                continue;
+            File.Copy(files[i], Path.Combine(GetFolder(destDataDir), name), true);
+        }
     }
 
     private static AndroidBitmap ScaleDown(AndroidBitmap source, int maxEdge)

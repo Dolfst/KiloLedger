@@ -101,6 +101,9 @@ namespace CarExpenses
         }
 
         private const string ReceiptsFolderName = "Receipts";
+        /// <summary>Wi‑Fi receipt limits (1.15+): skip &gt; 2 MB; max 50 files per sync.</summary>
+        internal const int MaxReceiptSyncFileBytes = 2 * 1024 * 1024;
+        internal const int MaxReceiptSyncFiles = 50;
 
         private static void CopyReceiptsFolder(string sourceDataDir, string destDataDir)
         {
@@ -228,6 +231,7 @@ namespace CarExpenses
                     if (content.Length > 0)
                         stream.Write(content, 0, content.Length);
                 }
+                WriteSyncReceipts(stream, DataDirectory, crypto);
             }
             stream.Flush();
         }
@@ -285,6 +289,7 @@ namespace CarExpenses
                         using (FileStream output = File.Create(Path.Combine(staging, DataFiles[i])))
                             output.Write(content, 0, content.Length);
                     }
+                    ReadSyncReceipts(stream, staging, crypto);
                 }
                 ValidateSyncDirectory(staging);
 
@@ -312,12 +317,14 @@ namespace CarExpenses
                     }
                     File.Copy(sourcePath, Path.Combine(safety, DataFiles[i]), true);
                 }
+                CopyReceiptsFolder(DataDirectory, safety);
                 try
                 {
                     CopyBackupFiles(merged);
                     EnsureRepairCategories();
                     EnsureExpenseCategories();
                     ToSettings.EnsureFile();
+                    OverlayReceiptsFrom(staging, DataDirectory);
                     LoadCars();
                 }
                 catch (Exception installError)
@@ -379,6 +386,160 @@ namespace CarExpenses
             };
             stream.Write(bytes, 0, bytes.Length);
             stream.Flush();
+        }
+
+        private static void WriteSyncReceipts(NetworkStream stream, string dataDirectory, SyncCrypto crypto)
+        {
+            List<string> files = ListReceiptsForSync(dataDirectory);
+            WriteSyncInt32(stream, files.Count);
+            for (int i = 0; i < files.Count; i++)
+            {
+                string name = Path.GetFileName(files[i]);
+                byte[] nameBytes = Encoding.UTF8.GetBytes(name);
+                WriteSyncInt32(stream, nameBytes.Length);
+                stream.Write(nameBytes, 0, nameBytes.Length);
+                byte[] content = ReadFileBytes(files[i]);
+                if (content.Length > MaxReceiptSyncFileBytes)
+                    content = new byte[0];
+                if (content.Length > 0)
+                    crypto.TransformInPlace(content);
+                WriteSyncInt32(stream, content.Length);
+                if (content.Length > 0)
+                    stream.Write(content, 0, content.Length);
+            }
+            stream.Flush();
+        }
+
+        private static void ReadSyncReceipts(NetworkStream stream, string directory, SyncCrypto crypto)
+        {
+            int count = ReadSyncInt32(stream);
+            if (count < 0 || count > MaxReceiptSyncFiles)
+                throw new InvalidDataException("Неверное число фото чеков в синхронизации.");
+            string folder = Path.Combine(directory, ReceiptsFolderName);
+            Directory.CreateDirectory(folder);
+            for (int i = 0; i < count; i++)
+            {
+                int nameLength = ReadSyncInt32(stream);
+                if (nameLength <= 0 || nameLength > 128)
+                    throw new InvalidDataException("Неверное имя файла чека.");
+                byte[] nameBytes = ReadSyncBytes(stream, nameLength);
+                string name = Encoding.UTF8.GetString(nameBytes, 0, nameBytes.Length);
+                if (!IsSafeReceiptFileName(name))
+                    throw new InvalidDataException("Недопустимое имя файла чека.");
+                int length = ReadSyncInt32(stream);
+                if (length < 0 || length > MaxReceiptSyncFileBytes)
+                    throw new InvalidDataException("Файл чека превышает лимит 2 МБ.");
+                byte[] content = ReadSyncBytes(stream, length);
+                if (content.Length > 0)
+                    crypto.TransformInPlace(content);
+                using (FileStream output = File.Create(Path.Combine(folder, name)))
+                    output.Write(content, 0, content.Length);
+            }
+        }
+
+        private static void OverlayReceiptsFrom(string sourceDataDir, string destDataDir)
+        {
+            string source = Path.Combine(sourceDataDir, ReceiptsFolderName);
+            if (!Directory.Exists(source))
+                return;
+            string dest = Path.Combine(destDataDir, ReceiptsFolderName);
+            Directory.CreateDirectory(dest);
+            string[] files = Directory.GetFiles(source, "*.jpg");
+            for (int i = 0; i < files.Length; i++)
+            {
+                string name = Path.GetFileName(files[i]);
+                if (!IsSafeReceiptFileName(name))
+                    continue;
+                File.Copy(files[i], Path.Combine(dest, name), true);
+            }
+        }
+
+        private static bool IsSafeReceiptFileName(string name)
+        {
+            if (name == null || name.Length == 0 || name.IndexOf("..") >= 0)
+                return false;
+            if (!name.EndsWith(".jpg") && !name.EndsWith(".JPG") && !name.EndsWith(".Jpg"))
+                return false;
+            string id = Path.GetFileNameWithoutExtension(name);
+            return RecordIds.LooksLikeId(id);
+        }
+
+        private static List<string> ListReceiptsForSync(string dataDirectory)
+        {
+            List<string> result = new List<string>();
+            string folder = Path.Combine(dataDirectory, ReceiptsFolderName);
+            if (!Directory.Exists(folder))
+                return result;
+            Dictionary<string, bool> referenced = CollectReferencedReceiptIds(dataDirectory);
+            string[] files = Directory.GetFiles(folder, "*.jpg");
+            AddReceiptSyncCandidates(result, files, referenced, true);
+            AddReceiptSyncCandidates(result, files, referenced, false);
+            return result;
+        }
+
+        private static void AddReceiptSyncCandidates(
+            List<string> result, string[] files, Dictionary<string, bool> referenced, bool requireReferenced)
+        {
+            for (int i = 0; i < files.Length; i++)
+            {
+                if (result.Count >= MaxReceiptSyncFiles)
+                    return;
+                string name = Path.GetFileName(files[i]);
+                if (!IsSafeReceiptFileName(name))
+                    continue;
+                string id = Path.GetFileNameWithoutExtension(name);
+                bool isRef = referenced.ContainsKey(id);
+                if (requireReferenced != isRef)
+                    continue;
+                try
+                {
+                    FileInfo info = new FileInfo(files[i]);
+                    if (info.Length <= 0 || info.Length > MaxReceiptSyncFileBytes)
+                        continue;
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    continue;
+                }
+                bool already = false;
+                for (int j = 0; j < result.Count; j++)
+                {
+                    if (String.Compare(result[j], files[i], true, CultureInfo.InvariantCulture) == 0)
+                    {
+                        already = true;
+                        break;
+                    }
+                }
+                if (!already)
+                    result.Add(files[i]);
+            }
+        }
+
+        private static Dictionary<string, bool> CollectReferencedReceiptIds(string dataDirectory)
+        {
+            Dictionary<string, bool> ids = new Dictionary<string, bool>(
+                StringComparer.OrdinalIgnoreCase);
+            AddReceiptIdsFromFile(ids, Path.Combine(dataDirectory, FuelFile));
+            AddReceiptIdsFromFile(ids, Path.Combine(dataDirectory, RepairsFile));
+            AddReceiptIdsFromFile(ids, Path.Combine(dataDirectory, ExpensesFile));
+            return ids;
+        }
+
+        private static void AddReceiptIdsFromFile(Dictionary<string, bool> ids, string path)
+        {
+            if (!File.Exists(path))
+                return;
+            List<string[]> rows = ReadRowsFromPath(path);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                string id = RecordIds.GetId(rows[i]);
+                if (id != null && !ids.ContainsKey(id))
+                    ids.Add(id, true);
+            }
         }
 
         private static bool IsValidSyncColumnCount(string fileName, int length)

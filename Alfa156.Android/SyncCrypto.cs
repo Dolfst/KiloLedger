@@ -12,9 +12,10 @@ namespace Alfa156.Android;
 /// </summary>
 internal sealed class SyncCrypto : IDisposable
 {
-    internal const string ProtocolHeader = "ALFA156SYNC2|";
+    // SYNC2 crypto; "R" = receipts over Wi-Fi (1.15+). Same XOR session as 1.12–1.14.
+    internal const string ProtocolHeader = "ALFA156SYNC2R|";
     internal const string UpgradeMessage =
-        "Обновите Alfa 156 на обоих устройствах до 1.12+";
+        "Обновите до 1.15+ для обмена фото";
 
     private const string Salt = "Alfa156-WiFi-Sync-v2";
     private readonly SHA1 sha;

@@ -337,7 +337,7 @@ namespace Alfa156.Desktop.Data
             if (Settings == null || Settings.Count == 0)
                 Settings = ToSettings.ToRows(new ToIntervals());
             else
-                Settings = ToSettings.ToRows(ToSettings.FromRows(Settings));
+                Settings = ToSettings.Normalize(Settings);
 
             if (Deleted == null)
                 Deleted = new List<Tombstone>();

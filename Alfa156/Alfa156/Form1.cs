@@ -79,6 +79,7 @@ namespace CarExpenses
             menu.MenuItems.Add(data);
             MenuItem actionsHome = CreateMenuItem("Действия");
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
@@ -215,12 +216,12 @@ namespace CarExpenses
                     recordList.Items.Add(FormatFuel(row, records));
                 else if (section == RepairSection)
                     recordList.Items.Add(row[0] + " " + row[3] + ": " +
-                        ShortText(row[4], 18) + " " + row[7] + " BYN");
+                        ShortText(row[4], 18) + " " + row[7] + " " + Cur());
                 else if (section == ExpensesSection)
                     recordList.Items.Add(row[0] + " " + row[2] + ": " +
-                        ShortText(row[3], 18) + " " + row[4] + " BYN");
+                        ShortText(row[3], 18) + " " + row[4] + " " + Cur());
                 else
-                    recordList.Items.Add(row[0] + "  " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " BYN");
+                    recordList.Items.Add(row[0] + "  " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " " + Cur());
             }
             if (recordList.Items.Count == 0)
             {
@@ -454,7 +455,7 @@ namespace CarExpenses
 
         private string FormatFuel(string[] row, List<string[]> allRows)
         {
-            string result = row[0] + "  " + row[2] + " км  " + row[3] + " л  " + row[4] + " BYN";
+            string result = row[0] + "  " + row[2] + " км  " + row[3] + " л  " + row[4] + " " + Cur();
             decimal consumption = FuelConsumption(row, allRows);
             if (consumption > 0)
                 result += "  " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
@@ -531,16 +532,16 @@ namespace CarExpenses
             {
                 details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
                     "\r\nПробег: " + row[2] + " км\r\nЛитры: " + row[3] +
-                    "\r\nСтоимость: " + row[4] + " BYN";
+                    "\r\nСтоимость: " + row[4] + " " + Cur();
                 string storedPrice = FieldAt(row, 5).Trim();
                 decimal liters;
                 decimal cost;
                 if (storedPrice.Length > 0)
-                    details += "\r\nЦена за литр: " + storedPrice + " BYN";
+                    details += "\r\nЦена за литр: " + storedPrice + " " + Cur();
                 else if (DataStore.TryNumber(row[3], out liters) && liters > 0 &&
                     DataStore.TryNumber(row[4], out cost))
                     details += "\r\nЦена за литр: " +
-                        (cost / liters).ToString("0.00", CultureInfo.InvariantCulture) + " BYN";
+                        (cost / liters).ToString("0.00", CultureInfo.InvariantCulture) + " " + Cur();
                 string comment = FieldAt(row, 6).Trim();
                 if (comment.Length > 0)
                     details += "\r\nАЗС / комментарий: " + comment;
@@ -556,15 +557,15 @@ namespace CarExpenses
                     "\r\nПробег: " + row[2] + " км\r\nКатегория: " + row[3] +
                     "\r\nТовар: " + row[4] + "\r\nНаименование: " + row[5] +
                     "\r\nКоличество: " + row[6] + "\r\nСумма: " + row[7] +
-                    " BYN\r\nКомментарий: " + row[8];
+                    " " + Cur() + "\r\nКомментарий: " + row[8];
             }
             else
             {
                 string[] labels = DataStore.UtilityLabels;
                 details = row[0] + "\r\n";
                 for (int i = 0; i < labels.Length; i++)
-                    details += labels[i] + ": " + row[i + 1] + " BYN\r\n";
-                details += "Итого: " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
+                    details += labels[i] + ": " + row[i + 1] + " " + Cur() + "\r\n";
+                details += "Итого: " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " " + Cur();
             }
             MessageBox.Show(details, "Запись");
         }
@@ -589,8 +590,8 @@ namespace CarExpenses
                     new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
                     new EntryField("Пробег, км", row[2], "number", true),
                     new EntryField("Литры", row[3], "number", true),
-                    new EntryField("Стоимость, BYN", row[4], "number", true),
-                    new EntryField("Цена за литр, BYN", FieldAt(row, 5), "number", false),
+                    new EntryField("Стоимость, " + Cur(), row[4], "number", true),
+                    new EntryField("Цена за литр, " + Cur(), FieldAt(row, 5), "number", false),
                     new EntryField("АЗС / комментарий", FieldAt(row, 6), "text", false),
                     new EntryField("Полный бак", FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false)
                 };
@@ -615,7 +616,7 @@ namespace CarExpenses
                     new EntryField("Товар / деталь", row[4], "text", true),
                     new EntryField("Наименование", row[5], "text", false),
                     new EntryField("Количество", row[6], "number", true),
-                    new EntryField("Сумма, BYN", row[7], "number", true),
+                    new EntryField("Сумма, " + Cur(), row[7], "number", true),
                     new EntryField("Комментарий", row[8], "text", false)
                 };
                 using (EntryEditorForm editor = new EntryEditorForm("Изменить ремонт", fields))
@@ -636,7 +637,7 @@ namespace CarExpenses
                     new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
                     new EntryField("Категория", row[2], DataStore.LoadExpenseCategories(), true),
                     new EntryField("Название", row[3], "text", true),
-                    new EntryField("Сумма, BYN", row[4], "number", true),
+                    new EntryField("Сумма, " + Cur(), row[4], "number", true),
                     new EntryField("Комментарий", FieldAt(row, 5), "text", false)
                 };
                 using (EntryEditorForm editor = new EntryEditorForm("Изменить прочий расход", fields))
@@ -670,7 +671,7 @@ namespace CarExpenses
             EntryField[] fields = new EntryField[8];
             fields[0] = new EntryField("Месяц (гггг-мм)", row[0], "month", true);
             for (int i = 0; i < DataStore.UtilityLabels.Length; i++)
-                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", BYN",
+                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", " + Cur(),
                     row[i + 1], "number", false);
             return fields;
         }
@@ -687,7 +688,7 @@ namespace CarExpenses
             string[] row = displayedRecords[selectedIndex];
             string description;
             if (currentSection == FuelSection)
-                description = row[0] + ", " + row[2] + " км, " + row[4] + " BYN";
+                description = row[0] + ", " + row[2] + " км, " + row[4] + " " + Cur();
             else if (currentSection == RepairSection)
                 description = row[0] + ", " + row[3] + ": " + ShortText(row[4], 24);
             else if (currentSection == ExpensesSection)
@@ -1290,8 +1291,8 @@ namespace CarExpenses
                     ? "Пробег, км (последняя запись)"
                     : "Пробег, км", lastMileage, "number", true),
                 new EntryField("Литры", "", "number", true),
-                new EntryField("Стоимость, BYN", "", "number", true),
-                new EntryField("Цена за литр, BYN", "", "number", false),
+                new EntryField("Стоимость, " + Cur(), "", "number", true),
+                new EntryField("Цена за литр, " + Cur(), "", "number", false),
                 new EntryField("АЗС / комментарий", "", "text", false),
                 new EntryField("Полный бак", "1", "check", false)
             };
@@ -1355,7 +1356,7 @@ namespace CarExpenses
                 new EntryField("Товар / деталь", "", "text", true),
                 new EntryField("Наименование", "", "text", false),
                 new EntryField("Количество", "1", "number", true),
-                new EntryField("Сумма, BYN", "", "number", true),
+                new EntryField("Сумма, " + Cur(), "", "number", true),
                 new EntryField("Комментарий", "", "text", false)
             };
             using (EntryEditorForm editor = new EntryEditorForm("Новый ремонт", fields))
@@ -1375,7 +1376,7 @@ namespace CarExpenses
             EntryField[] fields = new EntryField[8];
             fields[0] = new EntryField("Месяц (гггг-мм)", DateTime.Now.ToString("yyyy-MM"), "month", true);
             for (int i = 0; i < DataStore.UtilityLabels.Length; i++)
-                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", BYN", "", "number", false);
+                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", " + Cur(), "", "number", false);
 
             using (EntryEditorForm editor = new EntryEditorForm("Коммунальные", fields))
             {
@@ -1699,8 +1700,8 @@ namespace CarExpenses
             }
 
             string result = currentCar + "\r\n\r\nЗаправки: " + Money(fuelTotal) +
-                " BYN\r\nРемонт и ТО: " + Money(repairTotal) +
-                " BYN\r\nПрочие расходы: " + Money(expenseTotal) + " BYN\r\n";
+                " " + Cur() + "\r\nРемонт и ТО: " + Money(repairTotal) +
+                " " + Cur() + "\r\nПрочие расходы: " + Money(expenseTotal) + " " + Cur() + "\r\n";
 
             decimal minimumMileage = Decimal.MaxValue;
             decimal maximumMileage = 0;
@@ -1742,15 +1743,15 @@ namespace CarExpenses
             result += "Учтённые расходы на км (примерно): ";
             if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
                 result += Money((fuelTotal + repairTotal + expenseTotal) /
-                    (maximumMileage - minimumMileage)) + " BYN/км\r\n";
+                    (maximumMileage - minimumMileage)) + " " + Cur() + "/км\r\n";
             else
                 result += "недостаточно данных о пробеге\r\n";
 
             result += "\r\nРемонт по категориям:\r\n";
             foreach (KeyValuePair<string, decimal> pair in byCategory)
-                result += pair.Key + ": " + Money(pair.Value) + " BYN\r\n";
+                result += pair.Key + ": " + Money(pair.Value) + " " + Cur() + "\r\n";
             result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) +
-                " BYN\r\n\r\nРасходы по месяцам (последние 12):\r\n";
+                " " + Cur() + "\r\n\r\nРасходы по месяцам (последние 12):\r\n";
             List<string> months = new List<string>(monthlyTotals.Keys);
             months.Sort(StringComparer.Ordinal);
             int firstMonth = Math.Max(0, months.Count - 12);
@@ -1760,11 +1761,11 @@ namespace CarExpenses
                 result += months[i] + ": топливо " + Money(totals[0]) +
                     ", ремонт " + Money(totals[1]) + ", коммунальные " +
                     Money(totals[2]) + ", прочие " +
-                    Money(totals.Length > 3 ? totals[3] : 0m) + " BYN\r\n";
+                    Money(totals.Length > 3 ? totals[3] : 0m) + " " + Cur() + "\r\n";
             }
             result += "\r\nТопливо, ремонт и прочие по автомобилям:\r\n";
             for (int i = 0; i < cars.Count; i++)
-                result += cars[i] + ": " + Money(carTotals[cars[i]]) + " BYN\r\n";
+                result += cars[i] + ": " + Money(carTotals[cars[i]]) + " " + Cur() + "\r\n";
             result += "\r\nТекущий пробег: " + Money(currentMileage) + " км\r\n";
             ToIntervals intervals = ToSettings.Load();
             result += ServiceStatus("Замена масла", currentMileage, lastOilMileage,
@@ -1937,11 +1938,16 @@ namespace CarExpenses
             }
         }
 
+        private static string Cur()
+        {
+            return ToSettings.GetCurrency();
+        }
+
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.14.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
-                "Фото чеков (Receipts/) переносятся через ZIP/копии; камеры на КПК нет.\r\n" +
+                "Alfa 156\r\nВерсия 1.15.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Фото чеков (Receipts/) — ZIP и Wi‑Fi sync (до 50 файлов ≤2 МБ); камеры на КПК нет.\r\n" +
                 "Полный бак: частичные заправки не входят в расчёт л/100 км.",
                 "О программе");
         }
@@ -1985,7 +1991,7 @@ namespace CarExpenses
                 new EntryField("Автомобиль", currentCar, cars, true),
                 new EntryField("Категория", categories[0], categories, true),
                 new EntryField("Название", "", "text", true),
-                new EntryField("Сумма, BYN", "", "number", true),
+                new EntryField("Сумма, " + Cur(), "", "number", true),
                 new EntryField("Комментарий", "", "text", false)
             };
             using (EntryEditorForm editor = new EntryEditorForm("Прочий расход", fields))
@@ -2095,6 +2101,34 @@ namespace CarExpenses
                 if (!TrySave(delegate { ToSettings.Save(values); }))
                     return;
                 MessageBox.Show("Интервалы ТО сохранены.", "Интервалы ТО");
+            }
+        }
+
+        private void EditCurrency(object sender, EventArgs e)
+        {
+            string current = ToSettings.GetCurrency();
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Код валюты (BYN/RUB/USD/EUR)", current, "text", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Валюта", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                try
+                {
+                    if (!TrySave(delegate { ToSettings.SetCurrency(editor.Values[0]); }))
+                        return;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Валюта");
+                    return;
+                }
+                MessageBox.Show("Валюта: " + ToSettings.GetCurrency() +
+                    ". Суммы не пересчитываются — меняется только подпись.", "Валюта");
+                if (summaryBox != null)
+                    summaryBox.Text = BuildSummary();
             }
         }
 
