@@ -681,12 +681,12 @@ namespace Alfa156.Desktop
                     {
                         if (priceTouched && priceBox.Text.Trim().Length > 0)
                             return;
-                        decimal liters;
-                        decimal cost;
-                        if (!AlfaCodec.TryNumber(litersBox.Text, out liters) || liters <= 0 ||
-                            !AlfaCodec.TryNumber(costBox.Text, out cost) || cost <= 0)
+                        decimal litersVal;
+                        decimal costVal;
+                        if (!AlfaCodec.TryNumber(litersBox.Text, out litersVal) || litersVal <= 0 ||
+                            !AlfaCodec.TryNumber(costBox.Text, out costVal) || costVal <= 0)
                             return;
-                        string next = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
+                        string next = (costVal / litersVal).ToString("0.##", CultureInfo.InvariantCulture);
                         if (priceBox.Text != next)
                             priceBox.Text = next;
                     };
