@@ -306,21 +306,31 @@ namespace CarExpenses
             WriteMap(directory, map);
         }
 
-        /// <summary>CF-safe parse of backup UTC stamp (no DateTimeStyles.AssumeUniversal).</summary>
+        /// <summary>CF-safe parse of backup UTC stamp (CF has no DateTime.TryParseExact).</summary>
         private static bool TryParseBackupUtc(string raw, out DateTime utc)
         {
             utc = DateTime.MinValue;
             if (raw == null)
                 return false;
             string trimmed = raw.Trim();
-            DateTime parsed;
-            if (!DateTime.TryParseExact(trimmed, BackupUtcFormat, CultureInfo.InvariantCulture,
-                    DateTimeStyles.None, out parsed))
+            // yyyy-MM-dd HH:mm:ss
+            if (trimmed.Length != 19 || trimmed[4] != '-' || trimmed[7] != '-' ||
+                trimmed[10] != ' ' || trimmed[13] != ':' || trimmed[16] != ':')
                 return false;
-            // Treat parsed wall-clock as UTC; CF DateTimeKind ctor is unreliable.
-            utc = new DateTime(parsed.Year, parsed.Month, parsed.Day,
-                parsed.Hour, parsed.Minute, parsed.Second);
-            return true;
+            try
+            {
+                int year = int.Parse(trimmed.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
+                int month = int.Parse(trimmed.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                int day = int.Parse(trimmed.Substring(8, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                int hour = int.Parse(trimmed.Substring(11, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                int minute = int.Parse(trimmed.Substring(14, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                int second = int.Parse(trimmed.Substring(17, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                utc = new DateTime(year, month, day, hour, minute, second);
+                return true;
+            }
+            catch (FormatException) { return false; }
+            catch (OverflowException) { return false; }
+            catch (ArgumentOutOfRangeException) { return false; }
         }
 
         /// <summary>Null if invalid; otherwise trimmed uppercase code.</summary>
