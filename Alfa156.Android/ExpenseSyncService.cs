@@ -322,6 +322,9 @@ internal static class ExpenseSyncService
             new int[] { 0 }, new bool[] { true }, plan, null, tombs, journal, false);
         MergeRows(ExpenseDataCodec.TemplatesFile, localDirectory, remoteDirectory, null,
             new int[] { 0, 1 }, new bool[] { true, true }, plan, null, tombs, journal, false);
+        MergeRows(ExpenseDataCodec.RemindersFile, localDirectory, remoteDirectory, null,
+            new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true }, plan, null, tombs,
+            journal, false);
         return journal;
     }
 
@@ -396,6 +399,13 @@ internal static class ExpenseSyncService
             File.Exists(remoteTpl) ? ExpenseDataCodec.ReadRows(remoteTpl) : new List<string[]>(),
             new int[] { 0, 1 }, new bool[] { true, true },
             RecordIds.IdsForType(tombs, RecordIds.TypeTemplate)));
+        string localRem = Path.Combine(localDirectory, ExpenseDataCodec.RemindersFile);
+        string remoteRem = Path.Combine(remoteDirectory, ExpenseDataCodec.RemindersFile);
+        diffs.Add(AnalyzeTable("Напоминания",
+            File.Exists(localRem) ? ExpenseDataCodec.ReadRows(localRem) : new List<string[]>(),
+            File.Exists(remoteRem) ? ExpenseDataCodec.ReadRows(remoteRem) : new List<string[]>(),
+            new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true },
+            RecordIds.IdsForType(tombs, RecordIds.TypeReminder)));
         return diffs;
     }
 
@@ -518,6 +528,9 @@ internal static class ExpenseSyncService
             MergeRows(ExpenseDataCodec.TemplatesFile, dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1 }, new bool[] { true, true }, plan, resolveConflict, mergedTombs,
                 journal, true);
+            MergeRows(ExpenseDataCodec.RemindersFile, dataDirectory, incomingDirectory, mergedDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true }, plan,
+                resolveConflict, mergedTombs, journal, true);
             ToSettings.MergeFiles(dataDirectory, incomingDirectory, mergedDirectory,
                 plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
         }
@@ -586,6 +599,8 @@ internal static class ExpenseSyncService
             RecordIds.TypeCarMeta, tombs, journal);
         FilterFileByTombstones(directory, ExpenseDataCodec.TemplatesFile,
             RecordIds.TypeTemplate, tombs, journal);
+        FilterFileByTombstones(directory, ExpenseDataCodec.RemindersFile,
+            RecordIds.TypeReminder, tombs, journal);
     }
 
     private static void FilterFileByTombstones(
@@ -623,10 +638,12 @@ internal static class ExpenseSyncService
         EnsureIdsFile(directory, ExpenseDataCodec.ExpenseCategoriesFile);
         EnsureIdsFile(directory, ExpenseDataCodec.CarsMetaFile);
         EnsureIdsFile(directory, ExpenseDataCodec.TemplatesFile);
+        EnsureIdsFile(directory, ExpenseDataCodec.RemindersFile);
         RecordIds.EnsureDeletedFile(directory);
         ToSettings.EnsureFile(directory);
         CarsMeta.EnsureFile(directory);
         RecordTemplates.EnsureFile(directory);
+        DateReminders.EnsureFile(directory);
     }
 
     private static void EnsureIdsFile(string directory, string fileName)
@@ -832,6 +849,8 @@ internal static class ExpenseSyncService
             return "Паспорт авто";
         if (fileName == ExpenseDataCodec.TemplatesFile)
             return "Шаблон";
+        if (fileName == ExpenseDataCodec.RemindersFile)
+            return "Напоминание";
         return "Коммунальные";
     }
 
@@ -973,7 +992,8 @@ internal static class ExpenseSyncService
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.ExpenseCategoriesFile ||
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.SettingsFile ||
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.CarsMetaFile ||
-                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.TemplatesFile)
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.TemplatesFile ||
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.RemindersFile)
                     continue;
                 throw new InvalidDataException("Нет файла " + ExpenseDataCodec.DataFiles[i]);
             }

@@ -103,6 +103,11 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "templates.dat"),
                 new int[] { 0, 1 }, new bool[] { true, true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeTemplate)));
+            diffs.Add(AnalyzeTable("Напоминания",
+                DataStore.ReadSyncTable(localDirectory, "reminders.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "reminders.dat"),
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeReminder)));
             return diffs;
         }
 
@@ -203,6 +208,9 @@ namespace CarExpenses
             MergeFile("templates.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1 }, new bool[] { true, true }, plan, resolveConflict, tombs, journal,
                 writeOutput);
+            MergeFile("reminders.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true }, plan,
+                resolveConflict, tombs, journal, writeOutput);
             if (writeOutput && destinationDirectory != null)
             {
                 ToSettings.MergeDirectories(localDirectory, remoteDirectory, destinationDirectory,
@@ -417,6 +425,8 @@ namespace CarExpenses
                 return "Паспорт авто";
             if (fileName == "templates.dat")
                 return "Шаблоны";
+            if (fileName == "reminders.dat")
+                return "Напоминания";
             return fileName;
         }
 

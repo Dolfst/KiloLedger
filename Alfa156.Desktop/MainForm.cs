@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.25.0";
+        private const string AppVersion = "1.26.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -42,6 +42,7 @@ namespace Alfa156.Desktop
         private readonly TextBox budgetBox = new TextBox();
         private readonly TextBox budgetWarnBox = new TextBox();
         private readonly TextBox backupRemindBox = new TextBox();
+        private readonly TextBox reminderWarnBox = new TextBox();
         private readonly ComboBox defaultCarBox = new ComboBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
@@ -239,10 +240,17 @@ namespace Alfa156.Desktop
             backupRemindBox.Text = "7";
             intervalRow.Controls.Add(backupRemindBox);
             intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
+            intervalRow.Controls.Add(new Label { Text = "Напом. даты (дн.)", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            reminderWarnBox.Width = 40;
+            reminderWarnBox.Text = "14";
+            intervalRow.Controls.Add(reminderWarnBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить срок", SaveReminderWarnDays));
             intervalRow.Controls.Add(new Label { Text = "Авто по умолч.", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             defaultCarBox.Width = 140;
             intervalRow.Controls.Add(defaultCarBox);
             intervalRow.Controls.Add(MakeButton("Сохранить авто", SaveDefaultCar));
+            intervalRow.Controls.Add(MakeButton("Добавить напоминание", AddDateReminder));
+            intervalRow.Controls.Add(MakeButton("Удалить напоминание", DeleteDateReminder));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Сравнить периоды", ShowPeriodCompare));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
@@ -846,6 +854,149 @@ namespace Alfa156.Desktop
                     SetStatus("Напоминание о резервной копии выключено.");
                 else
                     SetStatus("Напоминание о копии: каждые " + ((int)days) + " дн. без бэкапа.");
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void SaveReminderWarnDays(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                decimal days;
+                if (!AlfaCodec.TryNumber(reminderWarnBox.Text, out days) || days < 0 || days > 3650 ||
+                    days != Decimal.Truncate(days))
+                    throw new InvalidOperationException("Срок напоминаний: целое 0–3650.");
+                repository.Settings = ToSettings.SetReminderWarnDays(repository.Settings, (int)days);
+                PullAll();
+                repository.Save();
+                dirty = false;
+                reminderWarnBox.Text = ToSettings.GetReminderWarnDays(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                SetStatus("Предупреждать за " + ((int)days) + " дн. до даты напоминания.");
+                RefreshSummaryText();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void AddDateReminder(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                string car = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Новое напоминание";
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.ClientSize = new Size(420, 200);
+                    dialog.MaximizeBox = false;
+                    dialog.MinimizeBox = false;
+                    Label dateLabel = new Label { Text = "Дата (ГГГГ-ММ-ДД)", Left = 12, Top = 14, Width = 160 };
+                    TextBox dateBox = new TextBox
+                    {
+                        Left = 180, Top = 12, Width = 220,
+                        Text = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    };
+                    Label carLabel = new Label { Text = "Автомобиль", Left = 12, Top = 44, Width = 160 };
+                    TextBox carBox = new TextBox { Left = 180, Top = 42, Width = 220, Text = car };
+                    Label titleLabel = new Label { Text = "Название", Left = 12, Top = 74, Width = 160 };
+                    TextBox titleBox = new TextBox { Left = 180, Top = 72, Width = 220 };
+                    Label typeLabel = new Label { Text = "Тип", Left = 12, Top = 104, Width = 160 };
+                    ComboBox typeBox = new ComboBox
+                    {
+                        Left = 180, Top = 102, Width = 220, DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+                    typeBox.Items.AddRange(new object[] { "Страховка", "Техосмотр", "Своё" });
+                    typeBox.SelectedIndex = 0;
+                    Button ok = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, Left = 220, Top = 150, Width = 90 };
+                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 320, Top = 150, Width = 80 };
+                    dialog.Controls.Add(dateLabel);
+                    dialog.Controls.Add(dateBox);
+                    dialog.Controls.Add(carLabel);
+                    dialog.Controls.Add(carBox);
+                    dialog.Controls.Add(titleLabel);
+                    dialog.Controls.Add(titleBox);
+                    dialog.Controls.Add(typeLabel);
+                    dialog.Controls.Add(typeBox);
+                    dialog.Controls.Add(ok);
+                    dialog.Controls.Add(cancel);
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK)
+                        return;
+                    DateReminder item = new DateReminder();
+                    item.Date = (dateBox.Text ?? "").Trim();
+                    item.Car = (carBox.Text ?? "").Trim();
+                    item.Title = (titleBox.Text ?? "").Trim();
+                    item.Type = DateReminders.NormalizeType(Convert.ToString(typeBox.SelectedItem));
+                    if (repository.RemindersRows == null)
+                        repository.RemindersRows = new List<string[]>();
+                    DateReminders.Upsert(repository.RemindersRows, repository.Deleted, item);
+                    repository.Save();
+                    dirty = false;
+                    SetStatus("Напоминание сохранено.");
+                    RefreshSummaryText();
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void DeleteDateReminder(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                List<DateReminder> list = DateReminders.FromRows(repository.RemindersRows);
+                if (list.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет напоминаний.", "Напоминания",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Удалить напоминание";
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.ClientSize = new Size(520, 140);
+                    dialog.MaximizeBox = false;
+                    dialog.MinimizeBox = false;
+                    ComboBox pick = new ComboBox
+                    {
+                        Left = 12, Top = 16, Width = 490, DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+                    for (int i = 0; i < list.Count; i++)
+                        pick.Items.Add(DateReminders.FormatLine(list[i], DateTime.Today));
+                    pick.SelectedIndex = 0;
+                    Button ok = new Button { Text = "Удалить", DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
+                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
+                    dialog.Controls.Add(pick);
+                    dialog.Controls.Add(ok);
+                    dialog.Controls.Add(cancel);
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK || pick.SelectedIndex < 0)
+                        return;
+                    DateReminder item = list[pick.SelectedIndex];
+                    DateReminders.DeleteById(repository.RemindersRows, repository.Deleted, item.Id);
+                    repository.Save();
+                    dirty = false;
+                    SetStatus("Напоминание удалено.");
+                    RefreshSummaryText();
+                }
             }
             catch (Exception ex)
             {
@@ -1531,6 +1682,8 @@ namespace Alfa156.Desktop
                 budgetWarnBox.Text = ToSettings.GetBudgetWarnPct(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                reminderWarnBox.Text = ToSettings.GetReminderWarnDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 RefreshDefaultCarBox();
                 // Column headers include currency code — refresh before binding rows.
@@ -2354,6 +2507,9 @@ namespace Alfa156.Desktop
                 lastOilDate, intervals.OilInterval, intervals.OilWarn)).Append("\r\n");
             result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn));
+            int warnDays = ToSettings.GetReminderWarnDays(repository.Settings);
+            result.Append(DateReminders.FormatUpcomingBlock(
+                repository.RemindersRows, warnDays, DateTime.Today));
             return result.ToString();
         }
 

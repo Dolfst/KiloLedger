@@ -30,6 +30,8 @@ internal static class ToSettings
     internal const string LastBackupNagDateKey = "last_backup_nag_date";
     internal const int DefaultBackupRemindDays = 7;
     internal const string DefaultCarKey = "default_car";
+    internal const string ReminderWarnDaysKey = "reminder_warn_days";
+    internal const int DefaultReminderWarnDays = 14;
     private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
     private const string NagDateFormat = "yyyy-MM-dd";
 
@@ -145,6 +147,31 @@ internal static class ToSettings
         ApplyDefaults(map);
         map[BudgetMonthKey] = Format(monthLimit);
         map[BudgetWarnPctKey] = Format(warnPct);
+        WriteMap(directory, map);
+    }
+
+    /// <summary>Days before due date to warn about date reminders. Default 14.</summary>
+    internal static int GetReminderWarnDays(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string raw;
+        if (!map.TryGetValue(ReminderWarnDaysKey, out raw))
+            return DefaultReminderWarnDays;
+        decimal value;
+        if (!TryDecimal(raw, out value) || value < 0 || value > 3650)
+            return DefaultReminderWarnDays;
+        return (int)value;
+    }
+
+    internal static void SetReminderWarnDays(string directory, int days)
+    {
+        if (days < 0 || days > 3650)
+            throw new InvalidOperationException("Предупреждение: 0–3650 дней.");
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[ReminderWarnDaysKey] = days.ToString(CultureInfo.InvariantCulture);
         WriteMap(directory, map);
     }
 
@@ -380,6 +407,8 @@ internal static class ToSettings
         }
         if (!map.ContainsKey(BackupRemindDaysKey))
             map[BackupRemindDaysKey] = DefaultBackupRemindDays.ToString(CultureInfo.InvariantCulture);
+        if (!map.ContainsKey(ReminderWarnDaysKey))
+            map[ReminderWarnDaysKey] = DefaultReminderWarnDays.ToString(CultureInfo.InvariantCulture);
     }
 
     private static bool TryDecimal(string text, out decimal value)

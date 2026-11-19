@@ -139,6 +139,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
             actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             actionsHome.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
@@ -2123,6 +2124,8 @@ namespace CarExpenses
                 lastOilDate, intervals.OilInterval, intervals.OilWarn) + "\r\n";
             result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn);
+            result += DateReminders.FormatUpcomingBlock(
+                ToSettings.GetReminderWarnDays(), DateTime.Today);
             return result;
         }
 
@@ -2331,8 +2334,9 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.25.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.26.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
+                "Напоминания по дате (reminders.dat): страховка / техосмотр / своё.\r\n" +
                 "Сравнение периодов: этот месяц vs прошлый.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
@@ -2895,6 +2899,100 @@ namespace CarExpenses
                     : "Авто по умолчанию: " + name, "Авто по умолчанию");
                 if (screenType == "home")
                     ShowHome();
+            }
+        }
+
+        private void ManageRemindersFromMenu(object sender, EventArgs e)
+        {
+            DateReminders.EnsureFile();
+            MessageBox.Show(DateReminders.FormatAllBlock(DateTime.Today), "Напоминания");
+            using (EntryEditorForm editor = new EntryEditorForm("Напоминания",
+                new EntryField[] {
+                    new EntryField("Действие", "Добавить",
+                        new string[] { "Добавить", "Удалить", "Срок предупреждения" }, true),
+                    new EntryField("Номер (для удаления)", "", "text", false)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string action = editor.Values[0];
+                if (action == "Срок предупреждения")
+                {
+                    EditReminderWarnDays();
+                    return;
+                }
+                if (action == "Удалить")
+                {
+                    List<DateReminder> list = DateReminders.ListAll();
+                    string numText = editor.Values[1] == null ? "" : editor.Values[1].Trim();
+                    int index;
+                    if (!int.TryParse(numText, NumberStyles.Integer, CultureInfo.InvariantCulture, out index) ||
+                        index < 1 || index > list.Count)
+                    {
+                        MessageBox.Show("Укажите номер из списка.", "Напоминания");
+                        return;
+                    }
+                    DateReminder item = list[index - 1];
+                    if (!TrySave(delegate { DateReminders.DeleteById(item.Id); }))
+                        return;
+                    MessageBox.Show("Удалено.", "Напоминания");
+                    if (screenType == "summary")
+                        summaryBox.Text = BuildSummary();
+                    return;
+                }
+                // Добавить
+                string car = currentCar == null ? "" : currentCar;
+                string defaultDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd",
+                    CultureInfo.InvariantCulture);
+                using (EntryEditorForm add = new EntryEditorForm("Новое напоминание",
+                    new EntryField[] {
+                        new EntryField("Дата", defaultDate, "date", true),
+                        new EntryField("Автомобиль", car, "text", true),
+                        new EntryField("Название", "", "text", true),
+                        new EntryField("Тип", "Страховка",
+                            new string[] { "Страховка", "Техосмотр", "Своё" }, true)
+                    }))
+                {
+                    if (add.ShowDialog() != DialogResult.OK)
+                        return;
+                    DateReminder item = new DateReminder();
+                    item.Date = add.Values[0];
+                    item.Car = add.Values[1];
+                    item.Title = add.Values[2];
+                    item.Type = DateReminders.NormalizeType(add.Values[3]);
+                    if (!TrySave(delegate { DateReminders.Upsert(item); }))
+                        return;
+                    MessageBox.Show("Напоминание сохранено.", "Напоминания");
+                    if (screenType == "summary")
+                        summaryBox.Text = BuildSummary();
+                }
+            }
+        }
+
+        private void EditReminderWarnDays()
+        {
+            int days = ToSettings.GetReminderWarnDays();
+            using (EntryEditorForm editor = new EntryEditorForm("Срок напоминаний",
+                new EntryField[] {
+                    new EntryField("Дней до срока",
+                        days.ToString(CultureInfo.InvariantCulture), "number", true)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                decimal value;
+                if (!DataStore.TryNumber(editor.Values[0], out value) || value < 0 || value > 3650 ||
+                    value != Decimal.Truncate(value))
+                {
+                    MessageBox.Show("Срок: целое 0–3650.", "Напоминания");
+                    return;
+                }
+                if (!TrySave(delegate { ToSettings.SetReminderWarnDays((int)value); }))
+                    return;
+                MessageBox.Show("Предупреждать за " +
+                    ((int)value).ToString(CultureInfo.InvariantCulture) + " дн.", "Напоминания");
+                if (screenType == "summary")
+                    summaryBox.Text = BuildSummary();
             }
         }
 

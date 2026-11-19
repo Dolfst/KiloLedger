@@ -23,6 +23,7 @@ namespace CarExpenses
         private const string SettingsFile = "settings.dat";
         private const string CarsMetaFile = CarsMeta.FileName;
         private const string TemplatesFile = RecordTemplates.FileName;
+        private const string RemindersFile = DateReminders.FileName;
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
@@ -34,7 +35,7 @@ namespace CarExpenses
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile,
             ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-            DeletedFile
+            RemindersFile, DeletedFile
         };
 
         private static readonly string[] DefaultRepairCategories = new string[]
@@ -67,6 +68,7 @@ namespace CarExpenses
             ToSettings.EnsureFile();
             CarsMeta.EnsureFile();
             RecordTemplates.EnsureFile();
+            DateReminders.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
         }
@@ -86,6 +88,9 @@ namespace CarExpenses
             EnsureRepairCategories();
             EnsureExpenseCategories();
             ToSettings.EnsureFile();
+            CarsMeta.EnsureFile();
+            RecordTemplates.EnsureFile();
+            DateReminders.EnsureFile();
             EnsureDeletedFile();
             Directory.CreateDirectory(backupRoot);
 
@@ -249,6 +254,9 @@ namespace CarExpenses
         {
             EnsureExpenseCategories();
             ToSettings.EnsureFile();
+            CarsMeta.EnsureFile();
+            RecordTemplates.EnsureFile();
+            DateReminders.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
             using (SyncCrypto crypto = new SyncCrypto(pairingCode))
@@ -594,6 +602,8 @@ namespace CarExpenses
                 return length >= 1 && length <= 7;
             if (fileName == TemplatesFile)
                 return length >= 3 && length <= 11;
+            if (fileName == RemindersFile)
+                return length == 4 || length == 5;
             return false;
         }
 
@@ -667,6 +677,15 @@ namespace CarExpenses
                     if (!RecordTemplates.IsValidRow(templates[i]))
                         throw new InvalidDataException("Неверный формат templates.dat.");
             }
+
+            string remindersPath = Path.Combine(directory, RemindersFile);
+            if (File.Exists(remindersPath))
+            {
+                List<string[]> reminders = ReadRowsFromPath(remindersPath);
+                for (int i = 0; i < reminders.Count; i++)
+                    if (!DateReminders.IsValidRow(reminders[i]))
+                        throw new InvalidDataException("Неверный формат reminders.dat.");
+            }
         }
 
         private static void EnsureDeletedFile()
@@ -691,6 +710,7 @@ namespace CarExpenses
             EnsureIdsInFile(ExpenseCategoriesFile);
             EnsureIdsInFile(CarsMetaFile);
             EnsureIdsInFile(TemplatesFile);
+            EnsureIdsInFile(RemindersFile);
         }
 
         private static void EnsureIdsInFile(string fileName)
@@ -961,6 +981,11 @@ namespace CarExpenses
                 File.Copy(templatesSource, GetPath(TemplatesFile), true);
             else
                 RecordTemplates.EnsureFile();
+            string remindersSource = Path.Combine(backupPath, RemindersFile);
+            if (File.Exists(remindersSource))
+                File.Copy(remindersSource, GetPath(RemindersFile), true);
+            else
+                DateReminders.EnsureFile();
             string deletedSource = Path.Combine(backupPath, DeletedFile);
             if (File.Exists(deletedSource))
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
