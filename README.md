@@ -9,7 +9,8 @@
 - `Alfa156.Desktop/Alfa156.Desktop.csproj` — ПК (.NET Framework 4.8): Excel, CSV, Google Sheets
 - `google-sync/` — Apps Script для двусторонней синхронизации с Google Таблицей
 - `branding/` — общий логотип и описание стиля (`BrandTheme.md`)
-- `dist/download/` — готовые сборки для скачивания: `Alfa156.apk`, `Alfa156.Desktop.exe`, `Alfa156-KPK.exe`
+- `VERSION` — единый номер версии приложения (источник правды для имён файлов и сборок)
+- `dist/download/` — готовые сборки: `Alfa156-<version>.apk`, `Alfa156-<version>-Desktop.exe`, `Alfa156-<version>-KPK.exe` / `.zip`
 - `dist/Alfa156-Desktop/` — готовый `Alfa156.Desktop.exe`
 
 На всех платформах: автомобили, заправки, ремонт/ТО, коммунальные, фильтры, категории, сводка. Android — ZIP и Wi‑Fi; КПК — резервные копии и Wi‑Fi; ПК — Excel/Google.
@@ -138,21 +139,21 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 ### Скачать готовые сборки
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): `Alfa156.apk` (Android), `Alfa156.Desktop.exe` (ПК), `Alfa156-KPK.exe` / `Alfa156-KPK.zip` (КПК).
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию из [`VERSION`](VERSION) (сейчас `1.8.0`) — `Alfa156-1.8.0.apk` (Android), `Alfa156-1.8.0-Desktop.exe` (ПК), `Alfa156-1.8.0-KPK.exe` / `Alfa156-1.8.0-KPK.zip` (КПК).
 
-**Обновление КПК:** скопируйте свежий `Alfa156-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
+**Обновление КПК:** скопируйте свежий `Alfa156-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
 
 GitHub Actions собирает всё автоматически:
 
 | Workflow | `dist/download` | Rolling Release |
 |----------|-----------------|-----------------|
-| **Android APK** | `Alfa156.apk` | [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) |
-| **Desktop EXE** | `Alfa156.Desktop.exe` | [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) |
-| **KPK EXE** | `Alfa156-KPK.exe`, `Alfa156-KPK.zip` | [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) |
+| **Android APK** | `Alfa156-<version>.apk` | [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) |
+| **Desktop EXE** | `Alfa156-<version>-Desktop.exe` | [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) |
+| **KPK EXE** | `Alfa156-<version>-KPK.exe`, `Alfa156-<version>-KPK.zip` | [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) |
 
-Вручную: **Actions → нужный workflow → Run workflow**. Каждый workflow заново создаёт свой rolling release (дата на странице Releases обновляется).
+Вручную: **Actions → нужный workflow → Run workflow**. Каждый workflow заново создаёт свой rolling release (дата на странице Releases обновляется). Изменение `VERSION` тоже запускает сборки.
 
-Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит Alfa 156 со **старой** (отладочной) подписью, Android откажет в обновлении: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый `Alfa156.apk` и при необходимости импортируйте ZIP.
+Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит Alfa 156 со **старой** (отладочной) подписью, Android откажет в обновлении: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый `Alfa156-<version>.apk` и при необходимости импортируйте ZIP.
 
 Если установка пишет «приложение не установлено» без обновления поверх старого: разрешите установку из браузера/«Мои файлы», скачайте APK заново (файл ~4 МБ) и ставьте на 64‑битный телефон (Samsung Galaxy S23+ и новее).
 

@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "Alfa156.Android/**"
+      - "VERSION"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
@@ -22,6 +23,12 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Read version
+        id: ver
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -80,6 +87,7 @@ jobs:
           -c Release
           -p:RuntimeIdentifier=android-arm64
           -p:ApplicationVersion=${{ steps.android-version.outputs.version_code }}
+          -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }}
           -p:AndroidSdkDirectory="$ANDROID_HOME"
           -p:JavaSdkDirectory="$JAVA_HOME"
           -p:AcceptAndroidSDKLicenses=True
@@ -88,7 +96,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk_path="$RUNNER_TEMP/Alfa156.apk"
+          version="${{ steps.ver.outputs.version }}"
+          apk_name="Alfa156-${version}.apk"
+          apk_path="$RUNNER_TEMP/$apk_name"
           signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
           if [ -z "$signed" ]; then
             echo "Signed APK not found" >&2
@@ -103,8 +113,8 @@ jobs:
             gh release delete android-latest --yes --cleanup-tag
           fi
           gh release create android-latest "$apk_path" \
-            --title "Latest Android APK" \
-            --notes "Automatically updated Android ARM64 build (run #${{ github.run_number }})." \
+            --title "Alfa 156 ${version} — Android" \
+            --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})." \
             --target "$GITHUB_SHA" \
             --latest=false
 
@@ -112,17 +122,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          version="${{ steps.ver.outputs.version }}"
+          apk_name="Alfa156-${version}.apk"
           signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
           mkdir -p dist/download
-          cp "$signed" dist/download/Alfa156.apk
+          cp "$signed" "dist/download/$apk_name"
+
+          # Remove old unversioned + other versioned Android APK download assets.
+          find dist/download -maxdepth 1 -type f \( \
+            -name 'Alfa156.apk' -o \
+            -name 'Alfa156-*.apk' \
+          \) ! -name "$apk_name" -delete
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/download/Alfa156.apk
+          git add "dist/download/$apk_name"
+          git add -u dist/download
           if git diff --cached --quiet; then
             echo "APK unchanged"
             exit 0
           fi
-          git commit -m "Update Alfa156.apk in dist/download (build #${{ github.run_number }})."
+          git commit -m "Update $apk_name in dist/download (build #${{ github.run_number }})."
           for i in 1 2 3 4 5; do
             git pull --rebase origin main && git push origin HEAD:main && break
             echo "push retry $i"

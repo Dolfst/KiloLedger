@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "Alfa156.Desktop/**"
+      - "VERSION"
       - ".github/workflows/desktop-exe.yml"
   workflow_dispatch:
 
@@ -23,6 +24,13 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Read version
+        id: ver
+        shell: bash
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -37,17 +45,30 @@ jobs:
       - name: Publish to dist/download and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          APP_VERSION: ${{ steps.ver.outputs.version }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $version = $env:APP_VERSION
+          if (-not $version) { throw "VERSION is empty" }
+          $exeName = "Alfa156-$version-Desktop.exe"
+
           $exe = Get-ChildItem "Alfa156.Desktop/bin/Release/Alfa156.Desktop.exe" | Select-Object -First 1
           if (-not $exe) { throw "Desktop exe not found" }
           New-Item -ItemType Directory -Path dist/download -Force | Out-Null
-          Copy-Item $exe.FullName "dist/download/Alfa156.Desktop.exe" -Force
+          Copy-Item $exe.FullName "dist/download/$exeName" -Force
           Copy-Item $exe.FullName "dist/Alfa156-Desktop/Alfa156.Desktop.exe" -Force -ErrorAction SilentlyContinue
 
+          # Remove old unversioned + other versioned Desktop download assets.
+          Get-ChildItem dist/download -File | Where-Object {
+            $_.Name -ne $exeName -and (
+              $_.Name -eq "Alfa156.Desktop.exe" -or
+              $_.Name -match '^Alfa156-.+-Desktop\.exe$'
+            )
+          } | Remove-Item -Force
+
           # Recreate rolling release so Releases shows today's date (upload --clobber does not).
-          $releasePath = Join-Path $env:RUNNER_TEMP "Alfa156.Desktop.exe"
+          $releasePath = Join-Path $env:RUNNER_TEMP $exeName
           Copy-Item $exe.FullName $releasePath -Force
           $prevEap = $ErrorActionPreference
           $ErrorActionPreference = "Continue"
@@ -58,14 +79,15 @@ jobs:
             gh release delete desktop-latest --yes --cleanup-tag
           }
           gh release create desktop-latest $releasePath `
-            --title "Latest Desktop EXE" `
-            --notes "Automatically updated Desktop build (run #${{ github.run_number }})." `
+            --title "Alfa 156 $version — Desktop" `
+            --notes "Automatically updated Desktop build $version (run #${{ github.run_number }})." `
             --target $env:GITHUB_SHA `
             --latest=false
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/download/Alfa156.Desktop.exe
+          git add "dist/download/$exeName"
+          git add -u dist/download
           if (Test-Path "dist/Alfa156-Desktop/Alfa156.Desktop.exe") {
             git add dist/Alfa156-Desktop/Alfa156.Desktop.exe
           }
@@ -73,7 +95,7 @@ jobs:
             Write-Host "Desktop exe unchanged"
             exit 0
           }
-          git commit -m "Update Alfa156.Desktop.exe in dist/download (build #${{ github.run_number }})."
+          git commit -m "Update $exeName in dist/download (build #${{ github.run_number }})."
           for ($i = 1; $i -le 5; $i++) {
             git pull --rebase origin main
             git push origin HEAD:main
