@@ -12,6 +12,8 @@ internal static class ExpenseDataStore
         "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
     };
 
+    private static readonly string[] DefaultExpenseCategories = ExpenseDataCodec.DefaultExpenseCategories;
+
     internal static readonly string[] UtilityLabels =
     {
         "Коммунальные платежи", "Электроэнергия", "Газ", "Стационарный телефон",
@@ -165,6 +167,151 @@ internal static class ExpenseDataStore
             RecordIds.AddTombstone(directory, ExpenseDataCodec.RepairCategoriesFile, deletedId);
     }
 
+    internal static void EnsureExpenseCategories(string directory)
+    {
+        string path = Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile);
+        List<string> categories = new List<string>();
+        bool changed = !File.Exists(path);
+        if (File.Exists(path))
+        {
+            List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (!ExpenseDataCodec.IsValidCategoryRow(rows[i]))
+                    throw new InvalidDataException("Неверная запись в " +
+                        ExpenseDataCodec.ExpenseCategoriesFile + ".");
+                if (!RecordIds.HasId(rows[i]))
+                    changed = true;
+                if (ContainsCategory(categories, rows[i][0]))
+                    changed = true;
+                else
+                    categories.Add(rows[i][0]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < DefaultExpenseCategories.Length; i++)
+                AddUniqueCategory(categories, DefaultExpenseCategories[i]);
+        }
+
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            if (expenses[i].Length < 3 || expenses[i][2].Length == 0 ||
+                ContainsCategory(categories, expenses[i][2]))
+                continue;
+            categories.Add(expenses[i][2]);
+            changed = true;
+        }
+        if (changed)
+            SaveExpenseCategories(directory, categories);
+    }
+
+    internal static List<string> LoadExpenseCategories(string directory)
+    {
+        EnsureExpenseCategories(directory);
+        List<string[]> rows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile));
+        List<string> categories = new List<string>();
+        for (int i = 0; i < rows.Count; i++)
+            categories.Add(rows[i][0]);
+        return categories;
+    }
+
+    internal static void AddExpenseCategory(string directory, string name)
+    {
+        name = ValidateRepairCategoryName(name);
+        List<string> categories = LoadExpenseCategories(directory);
+        if (ContainsCategory(categories, name))
+            throw new InvalidOperationException("Такая категория уже есть.");
+        categories.Add(name);
+        SaveExpenseCategories(directory, categories);
+    }
+
+    internal static void RenameExpenseCategory(string directory, string oldName, string newName)
+    {
+        newName = ValidateRepairCategoryName(newName);
+        List<string> categories = LoadExpenseCategories(directory);
+        int categoryIndex = FindCategory(categories, oldName);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+        if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Новое название совпадает с текущим.");
+        if (ContainsCategory(categories, newName))
+            throw new InvalidOperationException("Категория с таким названием уже есть.");
+
+        string previousName = categories[categoryIndex];
+        List<string> previousCategories = new List<string>(categories);
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < expenses.Count; i++)
+            if (String.Equals(expenses[i][2], previousName, StringComparison.OrdinalIgnoreCase))
+                expenses[i][2] = newName;
+
+        categories[categoryIndex] = newName;
+        SaveExpenseCategories(directory, categories);
+        try
+        {
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), expenses);
+        }
+        catch (Exception renameError)
+        {
+            try
+            {
+                SaveExpenseCategories(directory, previousCategories);
+            }
+            catch (Exception rollbackError)
+            {
+                throw new IOException("Не удалось переименовать категорию: " +
+                    renameError.Message + ". Не удалось вернуть список категорий: " +
+                    rollbackError.Message);
+            }
+            throw;
+        }
+    }
+
+    internal static void DeleteExpenseCategory(string directory, string name)
+    {
+        List<string> categories = LoadExpenseCategories(directory);
+        int categoryIndex = FindCategory(categories, name);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < expenses.Count; i++)
+            if (String.Equals(expenses[i][2], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Сначала перенесите записи из этой категории в другую.");
+        List<string[]> categoryRows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile));
+        string deletedId = null;
+        for (int i = 0; i < categoryRows.Count; i++)
+            if (String.Equals(categoryRows[i][0], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+            {
+                deletedId = RecordIds.GetId(categoryRows[i]);
+                break;
+            }
+        categories.RemoveAt(categoryIndex);
+        SaveExpenseCategories(directory, categories);
+        if (deletedId != null)
+            RecordIds.AddTombstone(directory, ExpenseDataCodec.ExpenseCategoriesFile, deletedId);
+    }
+
+    internal static List<string[]> LoadOptional(string directory, string fileName)
+    {
+        string path = Path.Combine(directory, fileName);
+        if (!File.Exists(path))
+            return new List<string[]>();
+        return ExpenseDataCodec.ReadRows(path);
+    }
+
+    internal static void EnsureCompanionFiles(string directory)
+    {
+        EnsureExpenseCategories(directory);
+        if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.ExpensesFile)))
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile),
+                new List<string[]>());
+        ToSettings.EnsureFile(directory);
+    }
+
     internal static void AddCar(string directory, string name)
     {
         name = ValidateCarName(name);
@@ -192,17 +339,22 @@ internal static class ExpenseDataStore
         string previousName = cars[carIndex];
         List<string[]> fuel = Load(directory, "fuel.dat");
         List<string[]> repairs = Load(directory, "repairs.dat");
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
         for (int i = 0; i < fuel.Count; i++)
             if (String.Equals(fuel[i][1], previousName, StringComparison.OrdinalIgnoreCase))
                 fuel[i][1] = newName;
         for (int i = 0; i < repairs.Count; i++)
             if (String.Equals(repairs[i][1], previousName, StringComparison.OrdinalIgnoreCase))
                 repairs[i][1] = newName;
+        for (int i = 0; i < expenses.Count; i++)
+            if (String.Equals(expenses[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                expenses[i][1] = newName;
 
         cars[carIndex] = newName;
         SaveCarNames(directory, cars);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), fuel);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), repairs);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), expenses);
     }
 
     internal static void DeleteCar(string directory, string name)
@@ -225,8 +377,10 @@ internal static class ExpenseDataStore
             }
         List<string[]> fuel = Load(directory, "fuel.dat");
         List<string[]> repairs = Load(directory, "repairs.dat");
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
         List<string[]> keptFuel = new List<string[]>();
         List<string[]> keptRepairs = new List<string[]>();
+        List<string[]> keptExpenses = new List<string[]>();
         for (int i = 0; i < fuel.Count; i++)
         {
             if (!String.Equals(fuel[i][1], carName, StringComparison.OrdinalIgnoreCase))
@@ -250,6 +404,18 @@ internal static class ExpenseDataStore
                     RecordIds.AddTombstone(directory, "repairs.dat", id);
             }
         }
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            if (!String.Equals(expenses[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                keptExpenses.Add(expenses[i]);
+            else
+            {
+                string id = RecordIds.GetId(RecordIds.EnsureId(expenses[i],
+                    RecordIds.PrefixForFile(ExpenseDataCodec.ExpensesFile)));
+                if (id != null)
+                    RecordIds.AddTombstone(directory, ExpenseDataCodec.ExpensesFile, id);
+            }
+        }
 
         cars.RemoveAt(carIndex);
         SaveCarNames(directory, cars);
@@ -257,6 +423,7 @@ internal static class ExpenseDataStore
             RecordIds.AddTombstone(directory, "cars.dat", carId);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), keptFuel);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), keptRepairs);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), keptExpenses);
     }
 
     private static string ValidateCarName(string name)
@@ -329,8 +496,11 @@ internal static class ExpenseDataStore
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), new List<string[]>());
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), new List<string[]>());
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "utilities.dat"), new List<string[]>());
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), new List<string[]>());
         RecordIds.EnsureDeletedFile(directory);
         EnsureRepairCategories(directory);
+        EnsureExpenseCategories(directory);
+        ToSettings.EnsureFile(directory);
         ExpenseDataCodec.ValidateDirectory(directory);
     }
 
@@ -485,6 +655,19 @@ internal static class ExpenseDataStore
             File.Copy(categoriesSource, categoriesDestination, true);
         else
             SaveRepairCategories(destination, new List<string>(DefaultRepairCategories));
+        CopyOptionalFile(source, destination, ExpenseDataCodec.ExpensesFile, true);
+        string expenseCategoriesSource = Path.Combine(source, ExpenseDataCodec.ExpenseCategoriesFile);
+        string expenseCategoriesDestination = Path.Combine(destination, ExpenseDataCodec.ExpenseCategoriesFile);
+        if (File.Exists(expenseCategoriesSource))
+            File.Copy(expenseCategoriesSource, expenseCategoriesDestination, true);
+        else
+            SaveExpenseCategories(destination, new List<string>(DefaultExpenseCategories));
+        string settingsSource = Path.Combine(source, ExpenseDataCodec.SettingsFile);
+        string settingsDestination = Path.Combine(destination, ExpenseDataCodec.SettingsFile);
+        if (File.Exists(settingsSource))
+            File.Copy(settingsSource, settingsDestination, true);
+        else
+            ToSettings.EnsureFile(destination);
         string deletedSource = Path.Combine(source, RecordIds.DeletedFile);
         string deletedDestination = Path.Combine(destination, RecordIds.DeletedFile);
         if (File.Exists(deletedSource))
@@ -492,6 +675,18 @@ internal static class ExpenseDataStore
         else
             RecordIds.EnsureDeletedFile(destination);
         EnsureRepairCategories(destination);
+        EnsureExpenseCategories(destination);
+        ToSettings.EnsureFile(destination);
+    }
+
+    private static void CopyOptionalFile(string source, string destination, string fileName, bool createEmpty)
+    {
+        string from = Path.Combine(source, fileName);
+        string to = Path.Combine(destination, fileName);
+        if (File.Exists(from))
+            File.Copy(from, to, true);
+        else if (createEmpty)
+            ExpenseDataCodec.SaveRows(to, new List<string[]>());
     }
 
     internal static void CopyDataFiles(string source, string destination)
@@ -541,8 +736,18 @@ internal static class ExpenseDataStore
 
     private static void SaveRepairCategories(string directory, List<string> categories)
     {
+        SaveNamedCategories(directory, ExpenseDataCodec.RepairCategoriesFile, categories);
+    }
+
+    private static void SaveExpenseCategories(string directory, List<string> categories)
+    {
+        SaveNamedCategories(directory, ExpenseDataCodec.ExpenseCategoriesFile, categories);
+    }
+
+    private static void SaveNamedCategories(string directory, string fileName, List<string> categories)
+    {
         Dictionary<string, string> existingIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        string path = Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile);
+        string path = Path.Combine(directory, fileName);
         if (File.Exists(path))
         {
             List<string[]> previous = ExpenseDataCodec.ReadRows(path);
@@ -561,7 +766,7 @@ internal static class ExpenseDataStore
             if (existingIds.TryGetValue(categories[i], out id))
                 row = RecordIds.WithId(row, id);
             else
-                row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(ExpenseDataCodec.RepairCategoriesFile));
+                row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(fileName));
             rows.Add(row);
         }
         ExpenseDataCodec.SaveRows(path, rows);

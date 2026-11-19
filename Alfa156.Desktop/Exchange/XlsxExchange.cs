@@ -35,6 +35,10 @@ namespace Alfa156.Desktop.Exchange
                     }, repo.Repairs);
                 WriteSheet(zip, "xl/worksheets/sheet4.xml", UtilityHeaders(), repo.Utilities);
                 WriteSheet(zip, "xl/worksheets/sheet5.xml", new string[] { "Категория" }, repo.Categories);
+                WriteSheet(zip, "xl/worksheets/sheet6.xml",
+                    new string[] { "Дата", "Автомобиль", "Категория", "Название", "Сумма_BYN", "Комментарий" },
+                    repo.Expenses);
+                WriteSheet(zip, "xl/worksheets/sheet7.xml", new string[] { "Категория" }, repo.ExpenseCategories);
             }
         }
 
@@ -57,11 +61,16 @@ namespace Alfa156.Desktop.Exchange
                 List<string[]> utilities = ReadNamedSheet(zip, sheetMap, new string[] { "Коммуналка", "utilities", "Sheet4" }, 8);
                 List<string[]> categories = ReadNamedSheetOptional(zip, sheetMap,
                     new string[] { "Категории", "repair-categories", "Sheet5" }, 1);
+                List<string[]> expenses = ReadNamedSheetOptional(zip, sheetMap,
+                    new string[] { "Прочие", "expenses", "Sheet6" }, 6);
+                List<string[]> expenseCategories = ReadNamedSheetOptional(zip, sheetMap,
+                    new string[] { "Кат. прочих", "expense-categories", "Sheet7" }, 1);
                 if (cars.Count == 0)
                     throw new InvalidDataException("В Excel нет данных на листе «Автомобили».");
                 if (DengiFormat.LooksLikeMonthList(cars))
                     throw new InvalidDataException("На листе «Автомобили» похоже месяцы. Для файла «Деньги» нужны листы Заправки/Ремонт/Коммунальные/Справочник.");
-                repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
+                repo.ReplaceAll(cars, fuel, repairs, utilities, categories, expenses, expenseCategories,
+                    repo.Settings);
             }
         }
 
@@ -400,6 +409,8 @@ namespace Alfa156.Desktop.Exchange
                 "<Override PartName=\"/xl/worksheets/sheet3.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
                 "<Override PartName=\"/xl/worksheets/sheet4.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
                 "<Override PartName=\"/xl/worksheets/sheet5.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+                "<Override PartName=\"/xl/worksheets/sheet6.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+                "<Override PartName=\"/xl/worksheets/sheet7.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
                 "</Types>";
         }
 
@@ -422,6 +433,8 @@ namespace Alfa156.Desktop.Exchange
                 "<sheet name=\"Ремонт\" sheetId=\"3\" r:id=\"rId3\"/>" +
                 "<sheet name=\"Коммуналка\" sheetId=\"4\" r:id=\"rId4\"/>" +
                 "<sheet name=\"Категории\" sheetId=\"5\" r:id=\"rId5\"/>" +
+                "<sheet name=\"Прочие\" sheetId=\"6\" r:id=\"rId6\"/>" +
+                "<sheet name=\"Кат. прочих\" sheetId=\"7\" r:id=\"rId7\"/>" +
                 "</sheets></workbook>";
         }
 
@@ -434,7 +447,9 @@ namespace Alfa156.Desktop.Exchange
                 "<Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet3.xml\"/>" +
                 "<Relationship Id=\"rId4\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet4.xml\"/>" +
                 "<Relationship Id=\"rId5\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet5.xml\"/>" +
-                "<Relationship Id=\"rId6\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
+                "<Relationship Id=\"rId6\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet6.xml\"/>" +
+                "<Relationship Id=\"rId7\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet7.xml\"/>" +
+                "<Relationship Id=\"rId8\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
                 "</Relationships>";
         }
 

@@ -83,6 +83,16 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "repair-categories.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
+            diffs.Add(AnalyzeTable("Прочие расходы",
+                DataStore.ReadSyncTable(localDirectory, "expenses.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "expenses.dat"),
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeExpense)));
+            diffs.Add(AnalyzeTable("Кат. прочих",
+                DataStore.ReadSyncTable(localDirectory, "expense-categories.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "expense-categories.dat"),
+                new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
             return diffs;
         }
 
@@ -140,6 +150,13 @@ namespace CarExpenses
                 new int[] { 0 }, new bool[] { false }, plan, resolveConflict, tombs, journal);
             MergeFile("repair-categories.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
+            MergeFile("expenses.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false }, plan,
+                resolveConflict, tombs, journal);
+            MergeFile("expense-categories.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
+            ToSettings.MergeDirectories(localDirectory, remoteDirectory, destinationDirectory,
+                plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
 
             RecordIds.WriteTombstones(destinationDirectory, tombs);
             return journal;
@@ -312,6 +329,10 @@ namespace CarExpenses
                 return "Коммуналка";
             if (fileName == "repair-categories.dat")
                 return "Категории";
+            if (fileName == "expenses.dat")
+                return "Прочие расходы";
+            if (fileName == "expense-categories.dat")
+                return "Кат. прочих";
             return fileName;
         }
 

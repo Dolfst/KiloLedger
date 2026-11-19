@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 
-ID_RE = re.compile(r"^[cfrukx]_[0-9a-fA-F]{8,}$")
+ID_RE = re.compile(r"^[cfrukepx]_[0-9a-fA-F]{8,}$")
 
 
 def looks_like_id(value: str) -> bool:

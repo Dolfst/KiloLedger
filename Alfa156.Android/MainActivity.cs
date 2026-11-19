@@ -35,6 +35,7 @@ public sealed class MainActivity : Activity
     private const int ExportRequest = 1002;
     private const string Fuel = "fuel";
     private const string Repairs = "repairs";
+    private const string Expenses = "expenses";
     private const string Utilities = "utilities";
     private const string AllCategories = "Все категории";
     private const string ToReminderChannelId = "to_reminders";
@@ -45,6 +46,7 @@ public sealed class MainActivity : Activity
     private Spinner carSpinner;
     private Button fuelButton;
     private Button repairsButton;
+    private Button expensesButton;
     private Button utilitiesButton;
     private Button summaryButton;
     private Button addButton;
@@ -91,7 +93,8 @@ public sealed class MainActivity : Activity
             var settings = GetSharedPreferences("settings", FileCreationMode.Private);
             currentCar = settings.GetString("currentCar", "");
             string savedSection = settings.GetString("selectedSection", Fuel);
-            if (savedSection == Fuel || savedSection == Repairs || savedSection == Utilities)
+            if (savedSection == Fuel || savedSection == Repairs || savedSection == Expenses ||
+                savedSection == Utilities)
                 selectedSection = savedSection;
             CreateLayout();
             EnsureNotificationChannel();
@@ -198,11 +201,17 @@ public sealed class MainActivity : Activity
 
         LinearLayout sectionRow2 = NewRow();
         sectionRow2.SetPadding(0, 0, 0, Dp(2));
+        expensesButton = CreateSectionButton("Прочие", ButtonIcons.Categories, delegate { SelectSection(Expenses); });
         utilitiesButton = CreateSectionButton("Коммунальные", ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
-        summaryButton = CreateSectionButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
+        sectionRow2.AddView(expensesButton, WeightedButton(Dp(3)));
         sectionRow2.AddView(utilitiesButton, WeightedButton(Dp(3)));
-        sectionRow2.AddView(summaryButton, WeightedButton(Dp(3)));
         root.AddView(sectionRow2);
+
+        LinearLayout sectionRow3 = NewRow();
+        sectionRow3.SetPadding(0, 0, 0, Dp(2));
+        summaryButton = CreateSectionButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
+        sectionRow3.AddView(summaryButton, WeightedButton(Dp(3)));
+        root.AddView(sectionRow3);
 
         LinearLayout recordActions = NewRow();
         recordActions.SetPadding(0, Dp(2), 0, Dp(2));
@@ -217,7 +226,13 @@ public sealed class MainActivity : Activity
         filterRow = NewRow();
         filterButton = CreateButton("Фильтр", ButtonIcons.Filter, delegate { EditSectionFilter(); });
         resetFilterButton = CreateButton("Сбросить", ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
-        categoriesButton = CreateButton("Категории", ButtonIcons.Categories, delegate { ManageRepairCategories(); });
+        categoriesButton = CreateButton("Категории", ButtonIcons.Categories, delegate
+        {
+            if (selectedSection == Expenses)
+                ManageExpenseCategories();
+            else
+                ManageRepairCategories();
+        });
         filterRow.AddView(filterButton, WeightedButton(Dp(2)));
         filterRow.AddView(resetFilterButton, WeightedButton(Dp(2)));
         filterRow.AddView(categoriesButton, WeightedButton(Dp(2)));
@@ -270,6 +285,8 @@ public sealed class MainActivity : Activity
             actions.Add(delegate { ConfigureGoogleSync(); });
             if (hasData)
             {
+                labels.Add("Интервалы ТО");
+                actions.Add(delegate { EditToIntervals(); });
                 labels.Add("Копия на телефоне");
                 actions.Add(delegate { CreateLocalBackup(); });
                 labels.Add("Восстановить копию");
@@ -404,6 +421,7 @@ public sealed class MainActivity : Activity
     {
         SetSectionButton(fuelButton, selectedSection == Fuel, true);
         SetSectionButton(repairsButton, selectedSection == Repairs, true);
+        SetSectionButton(expensesButton, selectedSection == Expenses, true);
         SetSectionButton(utilitiesButton, selectedSection == Utilities, true);
         SetSectionButton(summaryButton, false, true);
     }
@@ -425,6 +443,11 @@ public sealed class MainActivity : Activity
     private void RefreshRecords()
     {
         bool hasData = IsCompleteData(DataDirectory);
+        if (hasData)
+        {
+            try { ExpenseDataStore.EnsureCompanionFiles(DataDirectory); }
+            catch { }
+        }
         SetDataActionsEnabled(hasData);
         if (!hasData)
         {
@@ -475,7 +498,8 @@ public sealed class MainActivity : Activity
         }
 
         string sectionTitle = selectedSection == Fuel ? "Заправки"
-            : selectedSection == Repairs ? "Ремонт и ТО" : "Коммунальные";
+            : selectedSection == Repairs ? "Ремонт и ТО"
+            : selectedSection == Expenses ? "Прочие расходы" : "Коммунальные";
         string scope = selectedSection == Utilities ? "все месяцы" : currentCar;
         string filterNote = HasCurrentFilter() ? " · фильтр" : "";
         if (displayRows.Count == 0)
@@ -509,7 +533,7 @@ public sealed class MainActivity : Activity
             return;
         bool showFilters = selectedSection == Fuel || selectedSection == Repairs;
         filterRow.Visibility = showFilters ? ViewStates.Visible : ViewStates.Gone;
-        categoriesButton.Visibility = selectedSection == Repairs
+        categoriesButton.Visibility = (selectedSection == Repairs || selectedSection == Expenses)
             ? ViewStates.Visible : ViewStates.Gone;
     }
 
@@ -532,7 +556,7 @@ public sealed class MainActivity : Activity
         bool supportsFilter = selectedSection == Repairs || selectedSection == Fuel;
         UpdateFilterButtonAppearance(enabled && !syncActive && supportsFilter);
         resetFilterButton.Enabled = enabled && !syncActive && supportsFilter && HasCurrentFilter();
-        categoriesButton.Enabled = enabled && !syncActive && selectedSection == Repairs;
+        categoriesButton.Enabled = enabled && !syncActive && (selectedSection == Repairs || selectedSection == Expenses);
         carSpinner.Enabled = enabled && !syncActive;
         UpdateFilterRowVisibility();
     }
@@ -548,7 +572,7 @@ public sealed class MainActivity : Activity
         UpdateFilterButtonAppearance(!syncActive && supportsFilter && hasData);
         resetFilterButton.Enabled = supportsFilter &&
             !syncActive && hasData && HasCurrentFilter();
-        categoriesButton.Enabled = !syncActive && selectedSection == Repairs && hasData;
+        categoriesButton.Enabled = !syncActive && (selectedSection == Repairs || selectedSection == Expenses) && hasData;
         if (addCarButton != null)
             addCarButton.Enabled = !syncActive;
         addButton.Enabled = hasData && !syncActive;
@@ -1007,6 +1031,8 @@ public sealed class MainActivity : Activity
             return "fuel.dat";
         if (selectedSection == Repairs)
             return "repairs.dat";
+        if (selectedSection == Expenses)
+            return ExpenseDataCodec.ExpensesFile;
         return "utilities.dat";
     }
 
@@ -1026,6 +1052,13 @@ public sealed class MainActivity : Activity
             string mileage = row[2].Length > 0 ? " · " + row[2] + " км" : "";
             return row[0] + mileage + " · " + row[3] + ": " + ShortText(row[4], 22) +
                 " · " + row[7] + " BYN";
+        }
+        if (selectedSection == Expenses)
+        {
+            string[] content = RecordIds.StripId(row);
+            if (content.Length >= 5)
+                return content[0] + " · " + content[2] + ": " + ShortText(content[3], 22) +
+                    " · " + content[4] + " BYN";
         }
         if (selectedSection == Utilities && row.Length >= 8)
             return row[0] + " · итого " + ExpenseDataCodec.Sum(row, 1)
@@ -1159,6 +1192,21 @@ public sealed class MainActivity : Activity
                 currentCar, lastMileage, categories[0], "", "", "1", "", ""
             }, -1);
         }
+        else if (selectedSection == Expenses)
+        {
+            List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
+            if (categories.Count == 0)
+            {
+                ShowMessage("Сначала добавьте категорию прочих расходов.");
+                ManageExpenseCategories();
+                return;
+            }
+            ShowRecordEditor(false, new string[]
+            {
+                DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                currentCar, categories[0], "", "", ""
+            }, -1);
+        }
         else
         {
             ShowRecordEditor(false, new string[]
@@ -1228,6 +1276,19 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Number("Количество", row[6], true));
             fields.Add(EditorField.Number("Сумма, BYN", row[7], true));
             fields.Add(EditorField.Text("Комментарий", row[8], false, true));
+        }
+        else if (selectedSection == Expenses)
+        {
+            string[] content = RecordIds.StripId(row);
+            fields.Add(EditorField.Date("Дата", FieldAt(content, 0), true));
+            fields.Add(EditorField.Option("Автомобиль", FieldAt(content, 1),
+                ExpenseDataStore.LoadCarNames(DataDirectory).ToArray(), true));
+            List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
+            fields.Add(EditorField.Option("Категория", FieldAt(content, 2),
+                categories.ToArray(), true));
+            fields.Add(EditorField.Text("Название", FieldAt(content, 3), true));
+            fields.Add(EditorField.Number("Сумма, BYN", FieldAt(content, 4), true));
+            fields.Add(EditorField.Text("Комментарий", FieldAt(content, 5), false, true));
         }
         else
         {
@@ -1965,9 +2026,11 @@ public sealed class MainActivity : Activity
     {
         List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
         List<string[]> repairs = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
+        List<string[]> expenses = ExpenseDataStore.LoadOptional(DataDirectory, ExpenseDataCodec.ExpensesFile);
         List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
         decimal fuelTotal = 0;
         decimal repairTotal = 0;
+        decimal expenseTotal = 0;
         decimal utilityTotal = 0;
         decimal currentMileage = 0;
         decimal minimumMileage = Decimal.MaxValue;
@@ -2031,6 +2094,18 @@ public sealed class MainActivity : Activity
                 lastTimingDate = row[0];
             }
         }
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            string[] row = expenses[i];
+            if (row.Length < 5)
+                continue;
+            decimal amount = NumberOrZero(row[4]);
+            AddMonthlyAmount(monthlyTotals, row[0], 3, amount);
+            if (carTotals.ContainsKey(row[1]))
+                carTotals[row[1]] += amount;
+            if (row[1] == currentCar)
+                expenseTotal += amount;
+        }
         for (int i = 0; i < utilities.Count; i++)
         {
             decimal amount = ExpenseDataCodec.Sum(utilities[i], 1);
@@ -2041,9 +2116,10 @@ public sealed class MainActivity : Activity
         StringBuilder result = new StringBuilder(currentCar);
         result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" BYN")
             .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" BYN")
+            .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" BYN")
             .Append("\nУчтённые расходы на км (примерно): ")
             .Append(minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage
-                ? Money((fuelTotal + repairTotal) / (maximumMileage - minimumMileage)) + " BYN/км"
+                ? Money((fuelTotal + repairTotal + expenseTotal) / (maximumMileage - minimumMileage)) + " BYN/км"
                 : "недостаточно данных о пробеге")
             .Append("\n\nРемонт по категориям:");
         foreach (KeyValuePair<string, decimal> pair in byCategory)
@@ -2059,18 +2135,20 @@ public sealed class MainActivity : Activity
             result.Append("\n").Append(months[i])
                 .Append(": топливо ").Append(Money(totals[0]))
                 .Append(", ремонт ").Append(Money(totals[1]))
-                .Append(", коммунальные ").Append(Money(totals[2])).Append(" BYN");
+                .Append(", коммунальные ").Append(Money(totals[2]))
+                .Append(", прочие ").Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" BYN");
         }
-        result.Append("\n\nТопливо и ремонт по автомобилям:");
+        result.Append("\n\nТопливо, ремонт и прочие по автомобилям:");
         for (int i = 0; i < cars.Count; i++)
             result.Append("\n").Append(cars[i]).Append(": ")
                 .Append(Money(carTotals[cars[i]])).Append(" BYN");
+        ToIntervals toIntervals = ToSettings.Load(DataDirectory);
         result
             .Append("\n\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км")
             .Append("\n").Append(ServiceStatus("Замена масла", currentMileage,
-                lastOilMileage, lastOilDate, 10000, 1000))
+                lastOilMileage, lastOilDate, toIntervals.OilInterval, toIntervals.OilWarn))
             .Append("\n").Append(ServiceStatus("Ремень ГРМ", currentMileage,
-                lastTimingMileage, lastTimingDate, 60000, 5000));
+                lastTimingMileage, lastTimingDate, toIntervals.BeltInterval, toIntervals.BeltWarn));
         return result.ToString();
     }
 
@@ -2087,7 +2165,7 @@ public sealed class MainActivity : Activity
         decimal[] monthly;
         if (!totals.TryGetValue(key, out monthly))
         {
-            monthly = new decimal[3];
+            monthly = new decimal[4];
             totals.Add(key, monthly);
         }
         monthly[category] += amount;
@@ -2461,6 +2539,7 @@ public sealed class MainActivity : Activity
 
     private void RefreshServiceNotifications()
     {
+        ToIntervals intervals = ToSettings.Load(DataDirectory);
         if (!ExpenseDataStore.HasCompleteCoreFiles(DataDirectory))
             return;
         EnsureNotificationChannel();
@@ -2485,9 +2564,9 @@ public sealed class MainActivity : Activity
                 out lastOilDate, out lastTimingDate);
 
             PostServiceNotification(manager, car, "ТО Масло", "Масло",
-                currentMileage, lastOilMileage, 10000, 1000, 1000 + i * 10);
+                currentMileage, lastOilMileage, intervals.OilInterval, intervals.OilWarn, 1000 + i * 10);
             PostServiceNotification(manager, car, "ТО ГРМ", "Ремень ГРМ",
-                currentMileage, lastTimingMileage, 60000, 5000, 1001 + i * 10);
+                currentMileage, lastTimingMileage, intervals.BeltInterval, intervals.BeltWarn, 1001 + i * 10);
         }
     }
 
@@ -2672,4 +2751,115 @@ public sealed class MainActivity : Activity
             return field;
         }
     }
+
+    private void ManageExpenseCategories()
+    {
+        List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
+        List<string> labels = new List<string>();
+        labels.Add("Добавить категорию");
+        if (categories.Count > 0)
+        {
+            labels.Add("Переименовать категорию");
+            labels.Add("Удалить категорию");
+        }
+        new AlertDialog.Builder(this)
+            .SetTitle("Категории прочих")
+            .SetItems(labels.ToArray(), (sender, args) =>
+            {
+                if (args.Which == 0)
+                    PromptAddExpenseCategory();
+                else if (args.Which == 1)
+                    PromptRenameExpenseCategory();
+                else if (args.Which == 2)
+                    PromptDeleteExpenseCategory();
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void PromptAddExpenseCategory()
+    {
+        RenderEditor("Новая кат. прочих", new List<EditorField>
+        {
+            EditorField.Text("Название", "", true)
+        }, delegate(string[] values)
+        {
+            ExpenseDataStore.AddExpenseCategory(DataDirectory, values[0]);
+            RefreshRecords();
+        }, false);
+    }
+
+    private void PromptRenameExpenseCategory()
+    {
+        List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
+        RenderEditor("Переименовать кат. прочих", new List<EditorField>
+        {
+            EditorField.Option("Категория", categories[0], categories.ToArray(), true),
+            EditorField.Text("Новое название", "", true)
+        }, delegate(string[] values)
+        {
+            ExpenseDataStore.RenameExpenseCategory(DataDirectory, values[0], values[1]);
+            RefreshRecords();
+        }, false);
+    }
+
+    private void PromptDeleteExpenseCategory()
+    {
+        List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
+        RenderEditor("Удалить кат. прочих", new List<EditorField>
+        {
+            EditorField.Option("Категория", categories[0], categories.ToArray(), true)
+        }, delegate(string[] values)
+        {
+            new AlertDialog.Builder(this)
+                .SetTitle("Удалить категорию?")
+                .SetMessage("Записи не удаляются. Сначала перенесите записи из категории в другую.")
+                .SetPositiveButton("Удалить", delegate
+                {
+                    try
+                    {
+                        ExpenseDataStore.DeleteExpenseCategory(DataDirectory, values[0]);
+                        RefreshRecords();
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowMessage("Не удалось удалить категорию: " + ex.Message);
+                    }
+                })
+                .SetNegativeButton("Отмена", delegate { })
+                .Show();
+        }, false);
+    }
+
+    private void EditToIntervals()
+    {
+        ToIntervals values = ToSettings.Load(DataDirectory);
+        RenderEditor("Интервалы ТО", new List<EditorField>
+        {
+            EditorField.Number("Интервал масла, км",
+                values.OilInterval.ToString(CultureInfo.InvariantCulture), true),
+            EditorField.Number("Предупр. масла, км",
+                values.OilWarn.ToString(CultureInfo.InvariantCulture), true),
+            EditorField.Number("Интервал ремня, км",
+                values.BeltInterval.ToString(CultureInfo.InvariantCulture), true),
+            EditorField.Number("Предупр. ремня, км",
+                values.BeltWarn.ToString(CultureInfo.InvariantCulture), true)
+        }, delegate(string[] raw)
+        {
+            decimal oilInterval, oilWarn, beltInterval, beltWarn;
+            if (!TryNumber(raw[0], out oilInterval) || oilInterval <= 0 ||
+                !TryNumber(raw[1], out oilWarn) || oilWarn <= 0 ||
+                !TryNumber(raw[2], out beltInterval) || beltInterval <= 0 ||
+                !TryNumber(raw[3], out beltWarn) || beltWarn <= 0)
+                throw new InvalidOperationException("Введите положительные числа.");
+            values.OilInterval = oilInterval;
+            values.OilWarn = oilWarn;
+            values.BeltInterval = beltInterval;
+            values.BeltWarn = beltWarn;
+            ToSettings.Save(DataDirectory, values);
+            RefreshServiceNotifications();
+            ShowMessage("Интервалы ТО сохранены.");
+        }, false);
+    }
+
 }

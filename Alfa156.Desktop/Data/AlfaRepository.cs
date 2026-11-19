@@ -13,6 +13,9 @@ namespace Alfa156.Desktop.Data
         public List<string[]> Repairs { get; private set; }
         public List<string[]> Utilities { get; private set; }
         public List<string[]> Categories { get; private set; }
+        public List<string[]> Expenses { get; private set; }
+        public List<string[]> ExpenseCategories { get; private set; }
+        public List<string[]> Settings { get; private set; }
         public List<Tombstone> Deleted { get; set; }
 
         public AlfaRepository()
@@ -22,6 +25,9 @@ namespace Alfa156.Desktop.Data
             Repairs = new List<string[]>();
             Utilities = new List<string[]>();
             Categories = new List<string[]>();
+            Expenses = new List<string[]>();
+            ExpenseCategories = new List<string[]>();
+            Settings = ToSettings.ToRows(new ToIntervals());
             Deleted = new List<Tombstone>();
         }
 
@@ -35,6 +41,11 @@ namespace Alfa156.Desktop.Data
             Categories = new List<string[]>();
             for (int i = 0; i < AlfaCodec.DefaultRepairCategories.Length; i++)
                 Categories.Add(new string[] { AlfaCodec.DefaultRepairCategories[i] });
+            Expenses = new List<string[]>();
+            ExpenseCategories = new List<string[]>();
+            for (int i = 0; i < AlfaCodec.DefaultExpenseCategories.Length; i++)
+                ExpenseCategories.Add(new string[] { AlfaCodec.DefaultExpenseCategories[i] });
+            Settings = ToSettings.ToRows(new ToIntervals());
             Deleted = new List<Tombstone>();
             DirectoryPath = directory;
             Save();
@@ -51,8 +62,21 @@ namespace Alfa156.Desktop.Data
             Categories = File.Exists(categoriesPath)
                 ? AlfaCodec.ReadRows(categoriesPath)
                 : new List<string[]>();
+            string expensesPath = Path.Combine(directory, AlfaCodec.ExpensesFile);
+            Expenses = File.Exists(expensesPath)
+                ? AlfaCodec.ReadRows(expensesPath)
+                : new List<string[]>();
+            string expenseCategoriesPath = Path.Combine(directory, AlfaCodec.ExpenseCategoriesFile);
+            ExpenseCategories = File.Exists(expenseCategoriesPath)
+                ? AlfaCodec.ReadRows(expenseCategoriesPath)
+                : new List<string[]>();
+            string settingsPath = Path.Combine(directory, AlfaCodec.SettingsFile);
+            Settings = File.Exists(settingsPath)
+                ? AlfaCodec.ReadRows(settingsPath)
+                : ToSettings.ToRows(new ToIntervals());
             Deleted = RecordIds.ReadTombstones(directory);
             EnsureCategoriesFromRepairs();
+            EnsureExpenseCategoriesFromExpenses();
             DirectoryPath = directory;
         }
 
@@ -76,6 +100,9 @@ namespace Alfa156.Desktop.Data
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, "repairs.dat"), Repairs);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, "utilities.dat"), Utilities);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.RepairCategoriesFile), Categories);
+            AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.ExpensesFile), Expenses);
+            AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.ExpenseCategoriesFile), ExpenseCategories);
+            AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.SettingsFile), Settings);
             RecordIds.WriteTombstones(DirectoryPath, Deleted ?? new List<Tombstone>());
             AlfaCodec.ValidateDirectory(DirectoryPath);
         }
@@ -104,12 +131,29 @@ namespace Alfa156.Desktop.Data
             List<string[]> utilities,
             List<string[]> categories)
         {
+            ReplaceAll(cars, fuel, repairs, utilities, categories, Expenses, ExpenseCategories, Settings);
+        }
+
+        public void ReplaceAll(
+            List<string[]> cars,
+            List<string[]> fuel,
+            List<string[]> repairs,
+            List<string[]> utilities,
+            List<string[]> categories,
+            List<string[]> expenses,
+            List<string[]> expenseCategories,
+            List<string[]> settings)
+        {
             Cars = cars ?? new List<string[]>();
             Fuel = fuel ?? new List<string[]>();
             Repairs = repairs ?? new List<string[]>();
             Utilities = utilities ?? new List<string[]>();
             Categories = categories ?? new List<string[]>();
+            Expenses = expenses ?? new List<string[]>();
+            ExpenseCategories = expenseCategories ?? new List<string[]>();
+            Settings = settings ?? ToSettings.ToRows(new ToIntervals());
             EnsureCategoriesFromRepairs();
+            EnsureExpenseCategoriesFromExpenses();
         }
 
         public void NoteDeleted(string fileName, string id)
@@ -149,6 +193,39 @@ namespace Alfa156.Desktop.Data
             {
                 for (int i = 0; i < AlfaCodec.DefaultRepairCategories.Length; i++)
                     Categories.Add(new string[] { AlfaCodec.DefaultRepairCategories[i] });
+            }
+        }
+
+        private void EnsureExpenseCategoriesFromExpenses()
+        {
+            Dictionary<string, string> known = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < ExpenseCategories.Count; i++)
+            {
+                if (ExpenseCategories[i].Length == 0)
+                    continue;
+                string name = ExpenseCategories[i][0].Trim();
+                if (name.Length == 0)
+                    continue;
+                if (!known.ContainsKey(name))
+                    known[name] = name;
+            }
+
+            for (int i = 0; i < Expenses.Count; i++)
+            {
+                string[] content = RecordIds.StripId(Expenses[i]);
+                if (content.Length < 3)
+                    continue;
+                string category = (content[2] ?? "").Trim();
+                if (category.Length == 0 || known.ContainsKey(category))
+                    continue;
+                known[category] = category;
+                ExpenseCategories.Add(new string[] { category });
+            }
+
+            if (ExpenseCategories.Count == 0)
+            {
+                for (int i = 0; i < AlfaCodec.DefaultExpenseCategories.Length; i++)
+                    ExpenseCategories.Add(new string[] { AlfaCodec.DefaultExpenseCategories[i] });
             }
         }
 
@@ -226,6 +303,40 @@ namespace Alfa156.Desktop.Data
             });
             EnsureCategoriesFromRepairs();
             RecordIds.EnsureIds(Categories, AlfaCodec.RepairCategoriesFile);
+
+            for (int i = 0; i < Expenses.Count; i++)
+            {
+                string id = RecordIds.GetId(Expenses[i]);
+                string[] content = Resize(RecordIds.StripId(Expenses[i]), 6);
+                content[0] = AlfaCodec.NormalizeDate(content[0]);
+                content[1] = (content[1] ?? "").Trim();
+                content[2] = (content[2] ?? "").Trim();
+                content[3] = (content[3] ?? "").Trim();
+                content[4] = AlfaCodec.FormatNumber(content[4]);
+                content[5] = content[5] ?? "";
+                Expenses[i] = id != null ? RecordIds.WithId(content, id) : content;
+            }
+            RecordIds.EnsureIds(Expenses, AlfaCodec.ExpensesFile);
+
+            for (int i = 0; i < ExpenseCategories.Count; i++)
+            {
+                string id = RecordIds.GetId(ExpenseCategories[i]);
+                string[] content = Resize(RecordIds.StripId(ExpenseCategories[i]), 1);
+                content[0] = (content[0] ?? "").Trim();
+                ExpenseCategories[i] = id != null ? RecordIds.WithId(content, id) : content;
+            }
+            ExpenseCategories.RemoveAll(delegate(string[] row)
+            {
+                string[] content = RecordIds.StripId(row);
+                return content.Length == 0 || String.IsNullOrEmpty(content[0]);
+            });
+            EnsureExpenseCategoriesFromExpenses();
+            RecordIds.EnsureIds(ExpenseCategories, AlfaCodec.ExpenseCategoriesFile);
+
+            if (Settings == null || Settings.Count == 0)
+                Settings = ToSettings.ToRows(new ToIntervals());
+            else
+                Settings = ToSettings.ToRows(ToSettings.FromRows(Settings));
 
             if (Deleted == null)
                 Deleted = new List<Tombstone>();

@@ -16,6 +16,8 @@ internal static class RecordIds
     internal const string TypeRepair = "repair";
     internal const string TypeUtility = "utility";
     internal const string TypeCategory = "category";
+    internal const string TypeExpense = "expense";
+    internal const string TypeExpenseCategory = "expense-category";
 
     internal static string PrefixForFile(string fileName)
     {
@@ -24,6 +26,8 @@ internal static class RecordIds
         if (fileName == "repairs.dat") return "r_";
         if (fileName == "utilities.dat") return "u_";
         if (fileName == ExpenseDataCodec.RepairCategoriesFile) return "k_";
+        if (fileName == ExpenseDataCodec.ExpensesFile) return "e_";
+        if (fileName == ExpenseDataCodec.ExpenseCategoriesFile) return "p_";
         return "x_";
     }
 
@@ -34,6 +38,8 @@ internal static class RecordIds
         if (fileName == "repairs.dat") return TypeRepair;
         if (fileName == "utilities.dat") return TypeUtility;
         if (fileName == ExpenseDataCodec.RepairCategoriesFile) return TypeCategory;
+        if (fileName == ExpenseDataCodec.ExpensesFile) return TypeExpense;
+        if (fileName == ExpenseDataCodec.ExpenseCategoriesFile) return TypeExpenseCategory;
         return "unknown";
     }
 
@@ -43,7 +49,7 @@ internal static class RecordIds
             return false;
         char prefix = value[0];
         if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
-             prefix != 'x') || value[1] != '_')
+             prefix != 'e' && prefix != 'p' && prefix != 'x') || value[1] != '_')
             return false;
         for (int i = 2; i < value.Length; i++)
         {

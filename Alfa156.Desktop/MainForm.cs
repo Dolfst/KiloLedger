@@ -20,8 +20,14 @@ namespace Alfa156.Desktop
         private readonly DataGridView repairsGrid = CreateGrid();
         private readonly DataGridView utilitiesGrid = CreateGrid();
         private readonly DataGridView categoriesGrid = CreateGrid();
+        private readonly DataGridView expensesGrid = CreateGrid();
+        private readonly DataGridView expenseCategoriesGrid = CreateGrid();
         private readonly TextBox summaryBox = new TextBox();
         private readonly TabPage summaryTab = new TabPage("Сводка");
+        private readonly TextBox oilIntervalBox = new TextBox();
+        private readonly TextBox oilWarnBox = new TextBox();
+        private readonly TextBox beltIntervalBox = new TextBox();
+        private readonly TextBox beltWarnBox = new TextBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
@@ -106,6 +112,8 @@ namespace Alfa156.Desktop
             tabs.TabPages.Add(WrapGrid("Автомобили", carsGrid));
             tabs.TabPages.Add(WrapGrid("Заправки", fuelGrid));
             tabs.TabPages.Add(WrapGrid("Ремонт", repairsGrid));
+            tabs.TabPages.Add(WrapGrid("Прочие", expensesGrid));
+            tabs.TabPages.Add(WrapGrid("Кат. прочих", expenseCategoriesGrid));
             tabs.TabPages.Add(WrapGrid("Коммуналка", utilitiesGrid));
             tabs.TabPages.Add(WrapGrid("Категории", categoriesGrid));
 
@@ -118,7 +126,32 @@ namespace Alfa156.Desktop
             summaryBox.ForeColor = Color.FromArgb(35, 51, 70);
             summaryBox.BorderStyle = BorderStyle.None;
             summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
-            summaryTab.Controls.Add(summaryBox);
+            TableLayoutPanel summaryLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(8)
+            };
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            FlowLayoutPanel intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
+            intervalRow.Controls.Add(new Label { Text = "Масло интервал", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
+            oilIntervalBox.Width = 70;
+            intervalRow.Controls.Add(oilIntervalBox);
+            intervalRow.Controls.Add(new Label { Text = "предупр.", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
+            oilWarnBox.Width = 60;
+            intervalRow.Controls.Add(oilWarnBox);
+            intervalRow.Controls.Add(new Label { Text = "Ремень интервал", AutoSize = true, Padding = new Padding(12, 8, 0, 0) });
+            beltIntervalBox.Width = 70;
+            intervalRow.Controls.Add(beltIntervalBox);
+            intervalRow.Controls.Add(new Label { Text = "предупр.", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
+            beltWarnBox.Width = 60;
+            intervalRow.Controls.Add(beltWarnBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить интервалы ТО", SaveToIntervals));
+            summaryLayout.Controls.Add(intervalRow, 0, 0);
+            summaryLayout.Controls.Add(summaryBox, 0, 1);
+            summaryTab.Controls.Add(summaryLayout);
             tabs.TabPages.Add(summaryTab);
             tabs.SelectedIndexChanged += SummaryTabSelected;
 
@@ -134,12 +167,16 @@ namespace Alfa156.Desktop
             SetupCarsGrid();
             SetupFuelGrid();
             SetupRepairsGrid();
+            SetupExpensesGrid();
+            SetupExpenseCategoriesGrid();
             SetupUtilitiesGrid();
             SetupCategoriesGrid();
 
             WireDirty(carsGrid);
             WireDirty(fuelGrid);
             WireDirty(repairsGrid);
+            WireDirty(expensesGrid);
+            WireDirty(expenseCategoriesGrid);
             WireDirty(utilitiesGrid);
             WireDirty(categoriesGrid);
         }
@@ -308,6 +345,52 @@ namespace Alfa156.Desktop
             categoriesGrid.Columns.Add("name", "Категория");
         }
 
+        private void SetupExpensesGrid()
+        {
+            expensesGrid.Columns.Clear();
+            expensesGrid.Columns.Add("date", "Дата");
+            expensesGrid.Columns.Add("car", "Автомобиль");
+            expensesGrid.Columns.Add("cat", "Категория");
+            expensesGrid.Columns.Add("name", "Название");
+            expensesGrid.Columns.Add("sum", "Сумма, BYN");
+            expensesGrid.Columns.Add("comment", "Комментарий");
+        }
+
+        private void SetupExpenseCategoriesGrid()
+        {
+            expenseCategoriesGrid.Columns.Clear();
+            expenseCategoriesGrid.Columns.Add("name", "Категория");
+        }
+
+        private void SaveToIntervals(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                ToIntervals values = new ToIntervals();
+                decimal oilInterval, oilWarn, beltInterval, beltWarn;
+                if (!AlfaCodec.TryNumber(oilIntervalBox.Text, out oilInterval) || oilInterval <= 0 ||
+                    !AlfaCodec.TryNumber(oilWarnBox.Text, out oilWarn) || oilWarn <= 0 ||
+                    !AlfaCodec.TryNumber(beltIntervalBox.Text, out beltInterval) || beltInterval <= 0 ||
+                    !AlfaCodec.TryNumber(beltWarnBox.Text, out beltWarn) || beltWarn <= 0)
+                    throw new InvalidOperationException("Введите положительные числа для интервалов ТО.");
+                values.OilInterval = oilInterval;
+                values.OilWarn = oilWarn;
+                values.BeltInterval = beltInterval;
+                values.BeltWarn = beltWarn;
+                repository.Settings = ToSettings.ToRows(values);
+                PullAll();
+                repository.Save();
+                dirty = false;
+                SetStatus("Интервалы ТО сохранены.");
+                RefreshSummaryText();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
         private void WireDirty(DataGridView grid)
         {
             grid.CellValueChanged += delegate { MarkDirty(); };
@@ -333,6 +416,10 @@ namespace Alfa156.Desktop
                 fileName = "utilities.dat";
             else if (Object.ReferenceEquals(grid, categoriesGrid))
                 fileName = AlfaCodec.RepairCategoriesFile;
+            else if (Object.ReferenceEquals(grid, expensesGrid))
+                fileName = AlfaCodec.ExpensesFile;
+            else if (Object.ReferenceEquals(grid, expenseCategoriesGrid))
+                fileName = AlfaCodec.ExpenseCategoriesFile;
             repository.NoteDeleted(fileName, id);
         }
 
@@ -606,8 +693,15 @@ namespace Alfa156.Desktop
                 BindGrid(carsGrid, repository.Cars, 1);
                 BindGrid(fuelGrid, repository.Fuel, 7);
                 BindGrid(repairsGrid, repository.Repairs, 9);
+                BindGrid(expensesGrid, repository.Expenses, 6);
+                BindGrid(expenseCategoriesGrid, repository.ExpenseCategories, 1);
                 BindGrid(utilitiesGrid, repository.Utilities, 8);
                 BindGrid(categoriesGrid, repository.Categories, 1);
+                ToIntervals intervals = ToSettings.FromRows(repository.Settings);
+                oilIntervalBox.Text = intervals.OilInterval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                oilWarnBox.Text = intervals.OilWarn.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                beltIntervalBox.Text = intervals.BeltInterval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                beltWarnBox.Text = intervals.BeltWarn.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 RefreshSummaryText();
             }
             finally
@@ -632,12 +726,25 @@ namespace Alfa156.Desktop
 
         private void PullAll()
         {
+            ToIntervals intervals = ToSettings.FromRows(repository.Settings);
+            decimal oilInterval, oilWarn, beltInterval, beltWarn;
+            if (AlfaCodec.TryNumber(oilIntervalBox.Text, out oilInterval) && oilInterval > 0)
+                intervals.OilInterval = oilInterval;
+            if (AlfaCodec.TryNumber(oilWarnBox.Text, out oilWarn) && oilWarn > 0)
+                intervals.OilWarn = oilWarn;
+            if (AlfaCodec.TryNumber(beltIntervalBox.Text, out beltInterval) && beltInterval > 0)
+                intervals.BeltInterval = beltInterval;
+            if (AlfaCodec.TryNumber(beltWarnBox.Text, out beltWarn) && beltWarn > 0)
+                intervals.BeltWarn = beltWarn;
             repository.ReplaceAll(
                 ReadGrid(carsGrid, 1),
                 ReadGrid(fuelGrid, 7),
                 ReadGrid(repairsGrid, 9),
                 ReadGrid(utilitiesGrid, 8),
-                ReadGrid(categoriesGrid, 1));
+                ReadGrid(categoriesGrid, 1),
+                ReadGrid(expensesGrid, 6),
+                ReadGrid(expenseCategoriesGrid, 1),
+                ToSettings.ToRows(intervals));
         }
 
         private void SummaryTabSelected(object sender, EventArgs e)
@@ -727,6 +834,21 @@ namespace Alfa156.Desktop
                 byCategory[category] += amount;
             }
 
+            decimal expenseTotal = 0;
+            List<string[]> expenses = repository.Expenses;
+            for (int i = 0; i < expenses.Count; i++)
+            {
+                string[] row = expenses[i];
+                if (row.Length < 5)
+                    continue;
+                decimal amount = NumberOrZero(row[4]);
+                AddMonthlyAmount(monthlyTotals, row[0], 3, amount);
+                if (carTotals.ContainsKey(row[1]))
+                    carTotals[row[1]] += amount;
+                if (row[1] == currentCar)
+                    expenseTotal += amount;
+            }
+
             decimal utilityTotal = 0;
             List<string[]> utilities = repository.Utilities;
             for (int i = 0; i < utilities.Count; i++)
@@ -738,7 +860,7 @@ namespace Alfa156.Desktop
 
             StringBuilder result = new StringBuilder();
             result.Append(currentCar).Append("\r\n\r\nЗаправки: ").Append(Money(fuelTotal))
-                .Append(" BYN\r\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" BYN\r\n");
+                .Append(" BYN\r\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" BYN\r\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" BYN\r\n");
 
             decimal minimumMileage = Decimal.MaxValue;
             decimal maximumMileage = 0;
@@ -779,7 +901,7 @@ namespace Alfa156.Desktop
             }
             result.Append("Учтённые расходы на км (примерно): ");
             if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
-                result.Append(Money((fuelTotal + repairTotal) /
+                result.Append(Money((fuelTotal + repairTotal + expenseTotal) /
                     (maximumMileage - minimumMileage))).Append(" BYN/км\r\n");
             else
                 result.Append("недостаточно данных о пробеге\r\n");
@@ -796,17 +918,18 @@ namespace Alfa156.Desktop
             {
                 decimal[] totals = monthlyTotals[months[i]];
                 result.Append(months[i]).Append(": топливо ").Append(Money(totals[0]))
-                    .Append(", ремонт ").Append(Money(totals[1])).Append(", коммунальные ")
-                    .Append(Money(totals[2])).Append(" BYN\r\n");
+                    .Append(", ремонт ").Append(Money(totals[1])).Append(", коммунальные ").Append(Money(totals[2])).Append(", прочие ")
+                    .Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" BYN\r\n");
             }
-            result.Append("\r\nТопливо и ремонт по автомобилям:\r\n");
+            result.Append("\r\nТопливо, ремонт и прочие по автомобилям:\r\n");
             for (int i = 0; i < cars.Count; i++)
                 result.Append(cars[i]).Append(": ").Append(Money(carTotals[cars[i]])).Append(" BYN\r\n");
             result.Append("\r\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км\r\n");
+            ToIntervals intervals = ToSettings.FromRows(repository.Settings);
             result.Append(ServiceStatus("Замена масла", currentMileage, lastOilMileage,
-                lastOilDate, 10000, 1000)).Append("\r\n");
+                lastOilDate, intervals.OilInterval, intervals.OilWarn)).Append("\r\n");
             result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
-                lastTimingDate, 60000, 5000));
+                lastTimingDate, intervals.BeltInterval, intervals.BeltWarn));
             return result.ToString();
         }
 
@@ -849,7 +972,7 @@ namespace Alfa156.Desktop
             decimal[] monthly;
             if (!totals.TryGetValue(key, out monthly))
             {
-                monthly = new decimal[3];
+                monthly = new decimal[4];
                 totals.Add(key, monthly);
             }
             monthly[category] += amount;

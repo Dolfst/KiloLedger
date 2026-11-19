@@ -14,11 +14,14 @@ namespace Alfa156.Desktop.Data
         };
 
         internal const string RepairCategoriesFile = "repair-categories.dat";
+        internal const string ExpensesFile = "expenses.dat";
+        internal const string ExpenseCategoriesFile = "expense-categories.dat";
+        internal const string SettingsFile = "settings.dat";
 
         internal static readonly string[] DataFiles = new string[]
         {
             "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
-            RecordIds.DeletedFile
+            ExpensesFile, ExpenseCategoriesFile, SettingsFile, RecordIds.DeletedFile
         };
 
         internal static readonly string[] UtilityLabels = new string[]
@@ -30,6 +33,11 @@ namespace Alfa156.Desktop.Data
         internal static readonly string[] DefaultRepairCategories = new string[]
         {
             "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
+        };
+
+        internal static readonly string[] DefaultExpenseCategories = new string[]
+        {
+            "Страховка", "Техосмотр", "Штрафы", "Мойка", "Парковка", "Прочее"
         };
 
         private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
@@ -164,6 +172,35 @@ namespace Alfa156.Desktop.Data
                 if (i == 0 && rows.Count == 0)
                     throw new InvalidDataException("В cars.dat нет автомобилей.");
             }
+
+            string expensesPath = Path.Combine(directory, ExpensesFile);
+            if (File.Exists(expensesPath))
+            {
+                List<string[]> expenses = ReadRows(expensesPath);
+                for (int j = 0; j < expenses.Count; j++)
+                    if (!IsValidColumnCount(ExpensesFile, expenses[j].Length))
+                        throw new InvalidDataException("Неверный формат записи в " + ExpensesFile +
+                            " (строка " + (j + 1) + ").");
+            }
+
+            string expenseCategoriesPath = Path.Combine(directory, ExpenseCategoriesFile);
+            if (File.Exists(expenseCategoriesPath))
+            {
+                List<string[]> expenseCategories = ReadRows(expenseCategoriesPath);
+                for (int j = 0; j < expenseCategories.Count; j++)
+                    if (!IsValidCategoryRow(expenseCategories[j]))
+                        throw new InvalidDataException("Неверный формат записи в " +
+                            ExpenseCategoriesFile + ".");
+            }
+
+            string settingsPath = Path.Combine(directory, SettingsFile);
+            if (File.Exists(settingsPath))
+            {
+                List<string[]> settings = ReadRows(settingsPath);
+                for (int j = 0; j < settings.Count; j++)
+                    if (!ToSettings.IsValidRow(settings[j]))
+                        throw new InvalidDataException("Неверный формат записи в " + SettingsFile + ".");
+            }
         }
 
         internal static bool IsValidColumnCount(string fileName, int length)
@@ -177,6 +214,8 @@ namespace Alfa156.Desktop.Data
                 return length == 9 || length == 10;
             if (fileName == "utilities.dat")
                 return length == 8 || length == 9;
+            if (fileName == ExpensesFile)
+                return length == 6 || length == 7;
             return false;
         }
 

@@ -295,6 +295,18 @@ internal static class ExpenseSyncService
             File.Exists(remoteCat) ? ExpenseDataCodec.ReadRows(remoteCat) : new List<string[]>(),
             new int[] { 0 }, new bool[] { true },
             RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
+        diffs.Add(AnalyzeTable("Прочие расходы",
+            ExpenseDataStore.LoadOptional(localDirectory, ExpenseDataCodec.ExpensesFile),
+            ExpenseDataStore.LoadOptional(remoteDirectory, ExpenseDataCodec.ExpensesFile),
+            new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false },
+            RecordIds.IdsForType(tombs, RecordIds.TypeExpense)));
+        string localExpCat = Path.Combine(localDirectory, ExpenseDataCodec.ExpenseCategoriesFile);
+        string remoteExpCat = Path.Combine(remoteDirectory, ExpenseDataCodec.ExpenseCategoriesFile);
+        diffs.Add(AnalyzeTable("Кат. прочих",
+            File.Exists(localExpCat) ? ExpenseDataCodec.ReadRows(localExpCat) : new List<string[]>(),
+            File.Exists(remoteExpCat) ? ExpenseDataCodec.ReadRows(remoteExpCat) : new List<string[]>(),
+            new int[] { 0 }, new bool[] { true },
+            RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
         return diffs;
     }
 
@@ -390,6 +402,7 @@ internal static class ExpenseSyncService
         {
             ExpenseDataCodec.ValidateDirectory(dataDirectory);
             ExpenseDataStore.EnsureRepairCategories(dataDirectory);
+            ExpenseDataStore.EnsureCompanionFiles(dataDirectory);
             MergeRows("cars.dat", dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0 }, new bool[] { true }, plan, resolveConflict, mergedTombs, journal);
             MergeRows(ExpenseDataCodec.RepairCategoriesFile, dataDirectory, incomingDirectory,
@@ -404,10 +417,19 @@ internal static class ExpenseSyncService
                 mergedTombs, journal);
             MergeRows("utilities.dat", dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0 }, new bool[] { false }, plan, resolveConflict, mergedTombs, journal);
+            MergeRows(ExpenseDataCodec.ExpensesFile, dataDirectory, incomingDirectory, mergedDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false }, plan,
+                resolveConflict, mergedTombs, journal);
+            MergeRows(ExpenseDataCodec.ExpenseCategoriesFile, dataDirectory, incomingDirectory,
+                mergedDirectory, new int[] { 0 }, new bool[] { true }, plan, resolveConflict,
+                mergedTombs, journal);
+            ToSettings.MergeFiles(dataDirectory, incomingDirectory, mergedDirectory,
+                plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
         }
 
         RecordIds.WriteTombstones(mergedDirectory, mergedTombs);
         ExpenseDataStore.EnsureRepairCategories(mergedDirectory);
+        ExpenseDataStore.EnsureCompanionFiles(mergedDirectory);
         EnsureIdsInDirectory(mergedDirectory);
         ExpenseDataCodec.ValidateDirectory(mergedDirectory);
         ValidateSnapshotSizes(mergedDirectory);
@@ -500,7 +522,10 @@ internal static class ExpenseSyncService
         EnsureIdsFile(directory, "repairs.dat");
         EnsureIdsFile(directory, "utilities.dat");
         EnsureIdsFile(directory, ExpenseDataCodec.RepairCategoriesFile);
+        EnsureIdsFile(directory, ExpenseDataCodec.ExpensesFile);
+        EnsureIdsFile(directory, ExpenseDataCodec.ExpenseCategoriesFile);
         RecordIds.EnsureDeletedFile(directory);
+        ToSettings.EnsureFile(directory);
     }
 
     private static void EnsureIdsFile(string directory, string fileName)
@@ -525,8 +550,8 @@ internal static class ExpenseSyncService
         List<Tombstone> tombs,
         SyncJournal journal)
     {
-        List<string[]> localRows = ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, fileName));
-        List<string[]> incoming = ExpenseDataCodec.ReadRows(Path.Combine(incomingDirectory, fileName));
+        List<string[]> localRows = ExpenseDataStore.LoadOptional(localDirectory, fileName);
+        List<string[]> incoming = ExpenseDataStore.LoadOptional(incomingDirectory, fileName);
         RecordIds.EnsureIds(localRows, fileName);
         RecordIds.EnsureIds(incoming, fileName);
 
@@ -668,6 +693,10 @@ internal static class ExpenseSyncService
             return "Заправка";
         if (fileName == "repairs.dat")
             return "Ремонт";
+        if (fileName == ExpenseDataCodec.ExpensesFile)
+            return "Прочий расход";
+        if (fileName == ExpenseDataCodec.ExpenseCategoriesFile)
+            return "Категория прочих";
         return "Коммунальные";
     }
 
@@ -712,6 +741,8 @@ internal static class ExpenseSyncService
     private static void SendSnapshot(NetworkStream stream, string directory)
     {
         RecordIds.EnsureDeletedFile(directory);
+        ExpenseDataStore.EnsureCompanionFiles(directory);
+        ExpenseDataStore.EnsureRepairCategories(directory);
         for (int i = 0; i < ExpenseDataCodec.DataFiles.Length; i++)
         {
             string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
@@ -730,7 +761,10 @@ internal static class ExpenseSyncService
             string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
             if (!File.Exists(path))
             {
-                if (ExpenseDataCodec.DataFiles[i] == RecordIds.DeletedFile)
+                if (ExpenseDataCodec.DataFiles[i] == RecordIds.DeletedFile ||
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.ExpensesFile ||
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.ExpenseCategoriesFile ||
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.SettingsFile)
                     continue;
                 throw new InvalidDataException("Нет файла " + ExpenseDataCodec.DataFiles[i]);
             }

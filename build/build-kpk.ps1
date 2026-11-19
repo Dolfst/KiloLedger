@@ -68,6 +68,7 @@ $sources = @(
     (Join-Path $projDir "DataStore.cs"),
     (Join-Path $projDir "EntryEditorForm.cs"),
     (Join-Path $projDir "RecordIds.cs"),
+    (Join-Path $projDir "ToSettings.cs"),
     (Join-Path $projDir "SyncMerge.cs"),
     (Join-Path $projDir "SyncOptionsForm.cs"),
     (Join-Path $projDir "Program.cs"),

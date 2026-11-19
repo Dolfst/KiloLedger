@@ -14,11 +14,19 @@ internal static class ExpenseDataCodec
     };
 
     internal const string RepairCategoriesFile = "repair-categories.dat";
+    internal const string ExpensesFile = "expenses.dat";
+    internal const string ExpenseCategoriesFile = "expense-categories.dat";
+    internal const string SettingsFile = "settings.dat";
+
+    internal static readonly string[] DefaultExpenseCategories =
+    {
+        "Страховка", "Техосмотр", "Штрафы", "Мойка", "Парковка", "Прочее"
+    };
 
     internal static readonly string[] DataFiles =
     {
         "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
-        RecordIds.DeletedFile
+        ExpensesFile, ExpenseCategoriesFile, SettingsFile, RecordIds.DeletedFile
     };
 
     internal static bool IsDataFile(string name)
@@ -153,6 +161,33 @@ internal static class ExpenseDataCodec
                 if (!IsValidCategoryRow(categories[i]))
                     throw new InvalidDataException("Неверный формат записи в " + RepairCategoriesFile + ".");
         }
+
+        string expensesPath = Path.Combine(directory, ExpensesFile);
+        if (File.Exists(expensesPath))
+        {
+            List<string[]> expenses = ReadRows(expensesPath);
+            for (int i = 0; i < expenses.Count; i++)
+                if (!IsValidColumnCount(ExpensesFile, expenses[i].Length))
+                    throw new InvalidDataException("Неверный формат записи в " + ExpensesFile + ".");
+        }
+
+        string expenseCategoriesPath = Path.Combine(directory, ExpenseCategoriesFile);
+        if (File.Exists(expenseCategoriesPath))
+        {
+            List<string[]> expenseCategories = ReadRows(expenseCategoriesPath);
+            for (int i = 0; i < expenseCategories.Count; i++)
+                if (!IsValidCategoryRow(expenseCategories[i]))
+                    throw new InvalidDataException("Неверный формат записи в " + ExpenseCategoriesFile + ".");
+        }
+
+        string settingsPath = Path.Combine(directory, SettingsFile);
+        if (File.Exists(settingsPath))
+        {
+            List<string[]> settings = ReadRows(settingsPath);
+            for (int i = 0; i < settings.Count; i++)
+                if (!ToSettings.IsValidRow(settings[i]))
+                    throw new InvalidDataException("Неверный формат записи в " + SettingsFile + ".");
+        }
     }
 
     internal static bool IsValidCategoryRow(string[] row)
@@ -177,6 +212,8 @@ internal static class ExpenseDataCodec
             return length == 9 || length == 10;
         if (fileName == "utilities.dat")
             return length == 8 || length == 9;
+        if (fileName == ExpensesFile)
+            return length == 6 || length == 7;
         return false;
     }
 

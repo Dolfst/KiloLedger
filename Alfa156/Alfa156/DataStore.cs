@@ -18,6 +18,9 @@ namespace CarExpenses
         private const string RepairsFile = "repairs.dat";
         private const string UtilitiesFile = "utilities.dat";
         private const string RepairCategoriesFile = "repair-categories.dat";
+        private const string ExpensesFile = "expenses.dat";
+        private const string ExpenseCategoriesFile = "expense-categories.dat";
+        private const string SettingsFile = "settings.dat";
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
@@ -27,12 +30,18 @@ namespace CarExpenses
         };
         private static readonly string[] DataFiles = new string[]
         {
-            CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile, DeletedFile
+            CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile,
+            ExpensesFile, ExpenseCategoriesFile, SettingsFile, DeletedFile
         };
 
         private static readonly string[] DefaultRepairCategories = new string[]
         {
             "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
+        };
+
+        private static readonly string[] DefaultExpenseCategories = new string[]
+        {
+            "Страховка", "Техосмотр", "Штрафы", "Мойка", "Парковка", "Прочее"
         };
 
         internal static readonly string[] UtilityLabels = new string[]
@@ -50,6 +59,9 @@ namespace CarExpenses
             EnsureFile(UtilitiesFile, "Alfa156.SeedData.Utilities.seed");
             EnsureRepairCategoriesFile();
             EnsureRepairCategories();
+            EnsureExpenseCategoriesFile();
+            EnsureExpenseCategories();
+            ToSettings.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
         }
@@ -67,6 +79,8 @@ namespace CarExpenses
         private static string CreateBackup(string backupRoot)
         {
             EnsureRepairCategories();
+            EnsureExpenseCategories();
+            ToSettings.EnsureFile();
             EnsureDeletedFile();
             Directory.CreateDirectory(backupRoot);
 
@@ -169,6 +183,8 @@ namespace CarExpenses
 
         internal static void WriteSyncSnapshot(NetworkStream stream)
         {
+            EnsureExpenseCategories();
+            ToSettings.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
             for (int i = 0; i < DataFiles.Length; i++)
@@ -263,6 +279,8 @@ namespace CarExpenses
                 {
                     CopyBackupFiles(merged);
                     EnsureRepairCategories();
+                    EnsureExpenseCategories();
+                    ToSettings.EnsureFile();
                     LoadCars();
                 }
                 catch (Exception installError)
@@ -336,6 +354,8 @@ namespace CarExpenses
                 return length == 9 || length == 10;
             if (fileName == UtilitiesFile)
                 return length == 8 || length == 9;
+            if (fileName == ExpensesFile)
+                return length == 6 || length == 7;
             return false;
         }
 
@@ -368,6 +388,29 @@ namespace CarExpenses
                         throw new InvalidDataException("Неверный id в repair-categories.dat.");
                 }
             }
+
+            string expensesPath = Path.Combine(directory, ExpensesFile);
+            if (File.Exists(expensesPath))
+            {
+                List<string[]> expenses = ReadRowsFromPath(expensesPath);
+                for (int i = 0; i < expenses.Count; i++)
+                    if (!IsValidSyncColumnCount(ExpensesFile, expenses[i].Length))
+                        throw new InvalidDataException("Неверный формат expenses.dat.");
+            }
+
+            string expenseCategoriesPath = Path.Combine(directory, ExpenseCategoriesFile);
+            if (File.Exists(expenseCategoriesPath))
+            {
+                List<string[]> expenseCategories = ReadRowsFromPath(expenseCategoriesPath);
+                for (int i = 0; i < expenseCategories.Count; i++)
+                {
+                    if (expenseCategories[i].Length < 1 || expenseCategories[i].Length > 2 ||
+                        expenseCategories[i][0].Trim().Length == 0)
+                        throw new InvalidDataException("Неверный формат expense-categories.dat.");
+                    if (expenseCategories[i].Length == 2 && !RecordIds.LooksLikeId(expenseCategories[i][1]))
+                        throw new InvalidDataException("Неверный id в expense-categories.dat.");
+                }
+            }
         }
 
         private static void EnsureDeletedFile()
@@ -388,6 +431,8 @@ namespace CarExpenses
             EnsureIdsInFile(RepairsFile);
             EnsureIdsInFile(UtilitiesFile);
             EnsureIdsInFile(RepairCategoriesFile);
+            EnsureIdsInFile(ExpensesFile);
+            EnsureIdsInFile(ExpenseCategoriesFile);
         }
 
         private static void EnsureIdsInFile(string fileName)
@@ -615,6 +660,21 @@ namespace CarExpenses
                 File.Copy(categoriesSource, GetPath(RepairCategoriesFile), true);
             else
                 WriteRepairCategories(CreateRepairCategoryRows(DefaultRepairCategories));
+            string expensesSource = Path.Combine(backupPath, ExpensesFile);
+            if (File.Exists(expensesSource))
+                File.Copy(expensesSource, GetPath(ExpensesFile), true);
+            else
+                SaveRows(ExpensesFile, new List<string[]>());
+            string expenseCategoriesSource = Path.Combine(backupPath, ExpenseCategoriesFile);
+            if (File.Exists(expenseCategoriesSource))
+                File.Copy(expenseCategoriesSource, GetPath(ExpenseCategoriesFile), true);
+            else
+                WriteExpenseCategories(CreateRepairCategoryRows(DefaultExpenseCategories));
+            string settingsSource = Path.Combine(backupPath, SettingsFile);
+            if (File.Exists(settingsSource))
+                File.Copy(settingsSource, GetPath(SettingsFile), true);
+            else
+                ToSettings.EnsureFile();
             string deletedSource = Path.Combine(backupPath, DeletedFile);
             if (File.Exists(deletedSource))
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
@@ -761,6 +821,12 @@ namespace CarExpenses
         {
             return ReadRows(RepairsFile);
         }
+        internal static List<string[]> LoadExpenses()
+        {
+            EnsureExpenseFile();
+            return ReadRows(ExpensesFile);
+        }
+
 
         internal static string[] LoadRepairCategories()
         {
@@ -846,6 +912,186 @@ namespace CarExpenses
             if (deletedId != null)
                 RecordIds.AddTombstone(DataDirectory, RepairCategoriesFile, deletedId);
         }
+
+
+        private static void EnsureExpenseFile()
+        {
+            string path = GetPath(ExpensesFile);
+            if (!File.Exists(path))
+                SaveRows(ExpensesFile, new List<string[]>());
+        }
+
+        private static void EnsureExpenseCategoriesFile()
+        {
+            string path = GetPath(ExpenseCategoriesFile);
+            if (File.Exists(path))
+                return;
+            WriteExpenseCategories(CreateRepairCategoryRows(DefaultExpenseCategories));
+        }
+
+        private static void EnsureExpenseCategories()
+        {
+            EnsureExpenseCategoriesFile();
+            EnsureExpenseFile();
+            List<string[]> categoryRows = ReadRows(ExpenseCategoriesFile);
+            List<string> categories = new List<string>();
+            bool changed = false;
+            for (int i = 0; i < categoryRows.Count; i++)
+            {
+                if (categoryRows[i].Length < 1 || categoryRows[i][0].Trim().Length == 0)
+                    throw new InvalidDataException("Неверная запись в expense-categories.dat.");
+                if (categoryRows[i].Length > 2)
+                    throw new InvalidDataException("Неверная запись в expense-categories.dat.");
+                if (categoryRows[i].Length == 2 && !RecordIds.LooksLikeId(categoryRows[i][1]))
+                    throw new InvalidDataException("Неверная запись в expense-categories.dat.");
+                if (!RecordIds.HasId(categoryRows[i]))
+                    changed = true;
+                string name = categoryRows[i][0].Trim();
+                if (ContainsCategory(categories, name))
+                    changed = true;
+                else
+                    categories.Add(name);
+            }
+            List<string[]> expenses = ReadRows(ExpensesFile);
+            for (int i = 0; i < expenses.Count; i++)
+            {
+                if (expenses[i].Length < 3)
+                    continue;
+                string category = expenses[i][2];
+                if (category == null || category.Length == 0 || ContainsCategory(categories, category))
+                    continue;
+                categories.Add(category);
+                changed = true;
+            }
+            if (categories.Count == 0)
+            {
+                for (int i = 0; i < DefaultExpenseCategories.Length; i++)
+                    categories.Add(DefaultExpenseCategories[i]);
+                changed = true;
+            }
+            if (changed)
+                SaveExpenseCategories(categories);
+        }
+
+        internal static string[] LoadExpenseCategories()
+        {
+            EnsureExpenseCategories();
+            List<string[]> rows = ReadRows(ExpenseCategoriesFile);
+            string[] names = new string[rows.Count];
+            for (int i = 0; i < rows.Count; i++)
+                names[i] = rows[i][0];
+            return names;
+        }
+
+        internal static void AddExpenseCategory(string name)
+        {
+            name = ValidateRepairCategoryName(name);
+            List<string> categories = new List<string>(LoadExpenseCategories());
+            if (ContainsCategory(categories, name))
+                throw new InvalidOperationException("Такая категория уже есть.");
+            categories.Add(name);
+            SaveExpenseCategories(categories);
+        }
+
+        internal static void RenameExpenseCategory(string oldName, string newName)
+        {
+            newName = ValidateRepairCategoryName(newName);
+            List<string> categories = new List<string>(LoadExpenseCategories());
+            int categoryIndex = FindCategory(categories, oldName);
+            if (categoryIndex < 0)
+                throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+            if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Новое название совпадает с текущим.");
+            if (ContainsCategory(categories, newName))
+                throw new InvalidOperationException("Категория с таким названием уже есть.");
+            string previousName = categories[categoryIndex];
+            List<string> previousCategories = new List<string>(categories);
+            List<string[]> expenses = ReadRows(ExpensesFile);
+            for (int i = 0; i < expenses.Count; i++)
+                if (String.Equals(expenses[i][2], previousName, StringComparison.OrdinalIgnoreCase))
+                    expenses[i][2] = newName;
+            categories[categoryIndex] = newName;
+            SaveExpenseCategories(categories);
+            try
+            {
+                SaveRows(ExpensesFile, expenses);
+            }
+            catch (Exception renameError)
+            {
+                try
+                {
+                    SaveExpenseCategories(previousCategories);
+                }
+                catch (Exception rollbackError)
+                {
+                    throw new IOException("Не удалось переименовать категорию: " +
+                        renameError.Message + ". Не удалось вернуть список категорий: " +
+                        rollbackError.Message);
+                }
+                throw;
+            }
+        }
+
+        internal static void DeleteExpenseCategory(string name)
+        {
+            List<string> categories = new List<string>(LoadExpenseCategories());
+            int categoryIndex = FindCategory(categories, name);
+            if (categoryIndex < 0)
+                throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+            List<string[]> expenses = ReadRows(ExpensesFile);
+            for (int i = 0; i < expenses.Count; i++)
+                if (String.Equals(expenses[i][2], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException(
+                        "Сначала перенесите записи из этой категории в другую.");
+            List<string[]> categoryRows = ReadRows(ExpenseCategoriesFile);
+            string deletedId = null;
+            for (int i = 0; i < categoryRows.Count; i++)
+                if (String.Equals(categoryRows[i][0], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+                {
+                    deletedId = RecordIds.GetId(categoryRows[i]);
+                    break;
+                }
+            categories.RemoveAt(categoryIndex);
+            SaveExpenseCategories(categories);
+            if (deletedId != null)
+                RecordIds.AddTombstone(DataDirectory, ExpenseCategoriesFile, deletedId);
+        }
+
+        private static void SaveExpenseCategories(List<string> categories)
+        {
+            Dictionary<string, string> existingIds = new Dictionary<string, string>();
+            if (File.Exists(GetPath(ExpenseCategoriesFile)))
+            {
+                List<string[]> previous = ReadRows(ExpenseCategoriesFile);
+                for (int i = 0; i < previous.Count; i++)
+                {
+                    string id = RecordIds.GetId(previous[i]);
+                    if (id != null && previous[i].Length > 0 && !existingIds.ContainsKey(previous[i][0]))
+                        existingIds.Add(previous[i][0], id);
+                }
+            }
+            List<string[]> rows = new List<string[]>();
+            for (int i = 0; i < categories.Count; i++)
+            {
+                string[] row = new string[] { categories[i] };
+                if (existingIds.ContainsKey(categories[i]))
+                    row = RecordIds.WithId(row, existingIds[categories[i]]);
+                else
+                    row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(ExpenseCategoriesFile));
+                rows.Add(row);
+            }
+            SaveRows(ExpenseCategoriesFile, rows);
+        }
+
+        private static void WriteExpenseCategories(List<string[]> rows)
+        {
+            using (StreamWriter writer = new StreamWriter(GetPath(ExpenseCategoriesFile), false))
+            {
+                for (int i = 0; i < rows.Count; i++)
+                    writer.WriteLine(EncodeRow(rows[i]));
+            }
+        }
+
 
         private static void EnsureRepairCategoriesFile()
         {
@@ -981,6 +1227,12 @@ namespace CarExpenses
             Append(RepairsFile, values);
         }
 
+        internal static void AddExpense(string[] values)
+        {
+            EnsureExpenseFile();
+            Append(ExpensesFile, values);
+        }
+
         internal static void AddUtility(string[] values)
         {
             Append(UtilitiesFile, values);
@@ -994,6 +1246,12 @@ namespace CarExpenses
         internal static void UpdateRepairAt(int index, string[] values)
         {
             ReplaceAt(RepairsFile, index, values);
+        }
+
+        internal static void UpdateExpenseAt(int index, string[] values)
+        {
+            EnsureExpenseFile();
+            ReplaceAt(ExpensesFile, index, values);
         }
 
         internal static void UpdateUtilityAt(int index, string[] values)
@@ -1015,6 +1273,12 @@ namespace CarExpenses
         internal static void DeleteRepairAt(int index)
         {
             DeleteAt(RepairsFile, index);
+        }
+
+        internal static void DeleteExpenseAt(int index)
+        {
+            EnsureExpenseFile();
+            DeleteAt(ExpensesFile, index);
         }
 
         internal static void DeleteUtilityAt(int index)
@@ -1055,12 +1319,16 @@ namespace CarExpenses
             string previousName = cars[carIndex];
             List<string[]> fuel = LoadFuel();
             List<string[]> repairs = LoadRepairs();
+            List<string[]> expenses = LoadExpenses();
             for (int i = 0; i < fuel.Count; i++)
                 if (String.Equals(fuel[i][1], previousName, StringComparison.OrdinalIgnoreCase))
                     fuel[i][1] = newName;
             for (int i = 0; i < repairs.Count; i++)
                 if (String.Equals(repairs[i][1], previousName, StringComparison.OrdinalIgnoreCase))
                     repairs[i][1] = newName;
+            for (int i = 0; i < expenses.Count; i++)
+                if (String.Equals(expenses[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                    expenses[i][1] = newName;
 
             cars[carIndex] = newName;
             SaveCarNames(cars);
@@ -1068,6 +1336,7 @@ namespace CarExpenses
             {
                 SaveRows(FuelFile, fuel);
                 SaveRows(RepairsFile, repairs);
+                SaveRows(ExpensesFile, expenses);
             }
             catch (Exception renameError)
             {
@@ -1107,8 +1376,10 @@ namespace CarExpenses
                 }
             List<string[]> fuel = LoadFuel();
             List<string[]> repairs = LoadRepairs();
+            List<string[]> expenses = LoadExpenses();
             List<string[]> keptFuel = new List<string[]>();
             List<string[]> keptRepairs = new List<string[]>();
+            List<string[]> keptExpenses = new List<string[]>();
             for (int i = 0; i < fuel.Count; i++)
             {
                 if (!String.Equals(fuel[i][1], carName, StringComparison.OrdinalIgnoreCase))
@@ -1133,6 +1404,18 @@ namespace CarExpenses
                         RecordIds.AddTombstone(DataDirectory, RepairsFile, id);
                 }
             }
+            for (int i = 0; i < expenses.Count; i++)
+            {
+                if (!String.Equals(expenses[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                    keptExpenses.Add(expenses[i]);
+                else
+                {
+                    string id = RecordIds.GetId(RecordIds.EnsureId(expenses[i],
+                        RecordIds.PrefixForFile(ExpensesFile)));
+                    if (id != null)
+                        RecordIds.AddTombstone(DataDirectory, ExpensesFile, id);
+                }
+            }
 
             cars.RemoveAt(carIndex);
             SaveCarNames(cars);
@@ -1142,6 +1425,7 @@ namespace CarExpenses
             {
                 SaveRows(FuelFile, keptFuel);
                 SaveRows(RepairsFile, keptRepairs);
+                SaveRows(ExpensesFile, keptExpenses);
             }
             catch (Exception deleteError)
             {

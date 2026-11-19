@@ -54,6 +54,12 @@ namespace Alfa156.Desktop.Data
                 RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
             diffs.Add(AnalyzeTable("Категории", local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
+            diffs.Add(AnalyzeTable("Прочие расходы", local.Expenses, remote.Expenses, new int[] { 0, 1, 2, 3 },
+                new bool[] { false, true, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeExpense)));
+            diffs.Add(AnalyzeTable("Кат. прочих", local.ExpenseCategories, remote.ExpenseCategories,
+                new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
             return diffs;
         }
 
@@ -91,7 +97,15 @@ namespace Alfa156.Desktop.Data
                 ApplyList(local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }, plan,
                     RecordIds.IdsForType(tombs, RecordIds.TypeUtility), "utilities.dat", journal),
                 ApplyList(local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeCategory), AlfaCodec.RepairCategoriesFile, journal));
+                    RecordIds.IdsForType(tombs, RecordIds.TypeCategory), AlfaCodec.RepairCategoriesFile, journal),
+                ApplyList(local.Expenses, remote.Expenses, new int[] { 0, 1, 2, 3 },
+                    new bool[] { false, true, true, false }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeExpense), AlfaCodec.ExpensesFile, journal),
+                ApplyList(local.ExpenseCategories, remote.ExpenseCategories, new int[] { 0 }, new bool[] { true }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory),
+                    AlfaCodec.ExpenseCategoriesFile, journal),
+                ToSettings.MergeRows(local.Settings, remote.Settings,
+                    plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming));
             local.Deleted = tombs;
             return journal;
         }

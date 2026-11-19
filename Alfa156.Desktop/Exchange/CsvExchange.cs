@@ -27,6 +27,11 @@ namespace Alfa156.Desktop.Exchange
             WriteCsv(Path.Combine(folder, "utilities.csv"), BuildUtilityHeaders(), repo.Utilities);
             WriteCsv(Path.Combine(folder, "repair-categories.csv"),
                 new string[] { "Категория" }, repo.Categories);
+            WriteCsv(Path.Combine(folder, "expenses.csv"),
+                new string[] { "Дата", "Автомобиль", "Категория", "Название", "Сумма_BYN", "Комментарий" },
+                repo.Expenses);
+            WriteCsv(Path.Combine(folder, "expense-categories.csv"),
+                new string[] { "Категория" }, repo.ExpenseCategories);
         }
 
         internal static void ImportFolder(AlfaRepository repo, string folder)
@@ -39,7 +44,16 @@ namespace Alfa156.Desktop.Exchange
             List<string[]> categories = File.Exists(categoriesPath)
                 ? ReadCsv(categoriesPath, 1, true)
                 : new List<string[]>();
-            repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
+            string expensesPath = Path.Combine(folder, "expenses.csv");
+            List<string[]> expenses = File.Exists(expensesPath)
+                ? ReadCsv(expensesPath, 6, true)
+                : new List<string[]>();
+            string expenseCategoriesPath = Path.Combine(folder, "expense-categories.csv");
+            List<string[]> expenseCategories = File.Exists(expenseCategoriesPath)
+                ? ReadCsv(expenseCategoriesPath, 1, true)
+                : new List<string[]>();
+            repo.ReplaceAll(cars, fuel, repairs, utilities, categories, expenses, expenseCategories,
+                repo.Settings);
         }
 
         internal static void ImportGoogleSheetWorkbook(AlfaRepository repo, string spreadsheetUrl)

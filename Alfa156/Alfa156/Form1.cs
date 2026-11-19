@@ -15,6 +15,7 @@ namespace CarExpenses
     {
         private const string FuelSection = "Заправки";
         private const string RepairSection = "Ремонт и ТО";
+        private const string ExpensesSection = "Прочие расходы";
         private const string UtilitiesSection = "Коммунальные";
 
         private string currentSection;
@@ -75,6 +76,9 @@ namespace CarExpenses
             data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
             menu.MenuItems.Add(data);
+            MenuItem actionsHome = CreateMenuItem("Действия");
+            actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
+            menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
 
@@ -92,6 +96,7 @@ namespace CarExpenses
 
             AddHomeButton(FuelSection);
             AddHomeButton(RepairSection);
+            AddHomeButton(ExpensesSection);
             AddHomeButton(UtilitiesSection);
             AddHomeButton("Сводка и ТО");
             LayoutScreen();
@@ -106,6 +111,8 @@ namespace CarExpenses
                 button.BackColor = Color.FromArgb(23, 122, 86);
             else if (section == RepairSection)
                 button.BackColor = Color.FromArgb(196, 101, 30);
+            else if (section == ExpensesSection)
+                button.BackColor = Color.FromArgb(120, 70, 90);
             else if (section == UtilitiesSection)
                 button.BackColor = Color.FromArgb(79, 104, 179);
             else
@@ -179,6 +186,8 @@ namespace CarExpenses
                     records = DataStore.LoadFuel();
                 else if (section == RepairSection)
                     records = DataStore.LoadRepairs();
+                else if (section == ExpensesSection)
+                    records = DataStore.LoadExpenses();
                 else
                     records = DataStore.LoadUtilities();
             }
@@ -206,6 +215,9 @@ namespace CarExpenses
                 else if (section == RepairSection)
                     recordList.Items.Add(row[0] + " " + row[3] + ": " +
                         ShortText(row[4], 18) + " " + row[7] + " BYN");
+                else if (section == ExpensesSection)
+                    recordList.Items.Add(row[0] + " " + row[2] + ": " +
+                        ShortText(row[3], 18) + " " + row[4] + " BYN");
                 else
                     recordList.Items.Add(row[0] + "  " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " BYN");
             }
@@ -239,6 +251,12 @@ namespace CarExpenses
                 actions.MenuItems.Add(CreateMenuItem("Добавить категорию", new EventHandler(AddRepairCategory)));
                 actions.MenuItems.Add(CreateMenuItem("Переименовать категорию", new EventHandler(RenameRepairCategory)));
                 actions.MenuItems.Add(CreateMenuItem("Удалить категорию", new EventHandler(DeleteRepairCategory)));
+            }
+            else if (section == ExpensesSection)
+            {
+                actions.MenuItems.Add(CreateMenuItem("Добавить категорию", new EventHandler(AddExpenseCategory)));
+                actions.MenuItems.Add(CreateMenuItem("Переименовать категорию", new EventHandler(RenameExpenseCategory)));
+                actions.MenuItems.Add(CreateMenuItem("Удалить категорию", new EventHandler(DeleteExpenseCategory)));
             }
             menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
@@ -601,6 +619,27 @@ namespace CarExpenses
                     currentCar = values[1];
                 }
             }
+            else if (currentSection == ExpensesSection)
+            {
+                EntryField[] fields = new EntryField[]
+                {
+                    new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
+                    new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
+                    new EntryField("Категория", row[2], DataStore.LoadExpenseCategories(), true),
+                    new EntryField("Название", row[3], "text", true),
+                    new EntryField("Сумма, BYN", row[4], "number", true),
+                    new EntryField("Комментарий", FieldAt(row, 5), "text", false)
+                };
+                using (EntryEditorForm editor = new EntryEditorForm("Изменить прочий расход", fields))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.UpdateExpenseAt(sourceIndex, values); }))
+                        return;
+                    currentCar = values[1];
+                }
+            }
             else
             {
                 EntryField[] fields = CreateUtilityFields(row);
@@ -642,6 +681,8 @@ namespace CarExpenses
                 description = row[0] + ", " + row[2] + " км, " + row[4] + " BYN";
             else if (currentSection == RepairSection)
                 description = row[0] + ", " + row[3] + ": " + ShortText(row[4], 24);
+            else if (currentSection == ExpensesSection)
+                description = row[0] + ", " + row[2] + ": " + ShortText(row[3], 24);
             else
                 description = "коммунальные платежи за " + row[0];
 
@@ -654,6 +695,8 @@ namespace CarExpenses
                 saved = TrySave(delegate { DataStore.DeleteFuelAt(sourceIndex); });
             else if (currentSection == RepairSection)
                 saved = TrySave(delegate { DataStore.DeleteRepairAt(sourceIndex); });
+            else if (currentSection == ExpensesSection)
+                saved = TrySave(delegate { DataStore.DeleteExpenseAt(sourceIndex); });
             else
                 saved = TrySave(delegate { DataStore.DeleteUtilityAt(sourceIndex); });
 
@@ -1219,6 +1262,8 @@ namespace CarExpenses
                 AddFuel();
             else if (currentSection == RepairSection)
                 AddRepair();
+            else if (currentSection == ExpensesSection)
+                AddExpense();
             else
                 AddUtility();
         }
@@ -1618,6 +1663,21 @@ namespace CarExpenses
                 byCategory[category] += amount;
             }
 
+            decimal expenseTotal = 0;
+            List<string[]> expenses = DataStore.LoadExpenses();
+            for (int i = 0; i < expenses.Count; i++)
+            {
+                string[] row = expenses[i];
+                if (row.Length < 5)
+                    continue;
+                decimal amount = DataStore.NumberOrZero(row[4]);
+                AddMonthlyAmount(monthlyTotals, row[0], 3, amount);
+                if (carTotals.ContainsKey(row[1]))
+                    carTotals[row[1]] += amount;
+                if (row[1] == currentCar)
+                    expenseTotal += amount;
+            }
+
             decimal utilityTotal = 0;
             List<string[]> utilities = DataStore.LoadUtilities();
             for (int i = 0; i < utilities.Count; i++)
@@ -1628,7 +1688,8 @@ namespace CarExpenses
             }
 
             string result = currentCar + "\r\n\r\nЗаправки: " + Money(fuelTotal) +
-                " BYN\r\nРемонт и ТО: " + Money(repairTotal) + " BYN\r\n";
+                " BYN\r\nРемонт и ТО: " + Money(repairTotal) +
+                " BYN\r\nПрочие расходы: " + Money(expenseTotal) + " BYN\r\n";
 
             decimal minimumMileage = Decimal.MaxValue;
             decimal maximumMileage = 0;
@@ -1669,7 +1730,7 @@ namespace CarExpenses
             }
             result += "Учтённые расходы на км (примерно): ";
             if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
-                result += Money((fuelTotal + repairTotal) /
+                result += Money((fuelTotal + repairTotal + expenseTotal) /
                     (maximumMileage - minimumMileage)) + " BYN/км\r\n";
             else
                 result += "недостаточно данных о пробеге\r\n";
@@ -1687,16 +1748,18 @@ namespace CarExpenses
                 decimal[] totals = monthlyTotals[months[i]];
                 result += months[i] + ": топливо " + Money(totals[0]) +
                     ", ремонт " + Money(totals[1]) + ", коммунальные " +
-                    Money(totals[2]) + " BYN\r\n";
+                    Money(totals[2]) + ", прочие " +
+                    Money(totals.Length > 3 ? totals[3] : 0m) + " BYN\r\n";
             }
-            result += "\r\nТопливо и ремонт по автомобилям:\r\n";
+            result += "\r\nТопливо, ремонт и прочие по автомобилям:\r\n";
             for (int i = 0; i < cars.Count; i++)
                 result += cars[i] + ": " + Money(carTotals[cars[i]]) + " BYN\r\n";
             result += "\r\nТекущий пробег: " + Money(currentMileage) + " км\r\n";
+            ToIntervals intervals = ToSettings.Load();
             result += ServiceStatus("Замена масла", currentMileage, lastOilMileage,
-                lastOilDate, 10000, 1000) + "\r\n";
+                lastOilDate, intervals.OilInterval, intervals.OilWarn) + "\r\n";
             result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
-                lastTimingDate, 60000, 5000);
+                lastTimingDate, intervals.BeltInterval, intervals.BeltWarn);
             return result;
         }
 
@@ -1739,7 +1802,7 @@ namespace CarExpenses
             decimal[] monthly;
             if (!totals.TryGetValue(key, out monthly))
             {
-                monthly = new decimal[3];
+                monthly = new decimal[4];
                 totals.Add(key, monthly);
             }
             monthly[category] += amount;
@@ -1864,5 +1927,134 @@ namespace CarExpenses
         {
             Close();
         }
+
+        private void AddExpense()
+        {
+            string[] cars = DataStore.LoadCarNames().ToArray();
+            string[] categories = DataStore.LoadExpenseCategories();
+            if (categories.Length == 0)
+            {
+                MessageBox.Show("Сначала добавьте категорию прочих расходов.", "Категории");
+                return;
+            }
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField("Автомобиль", currentCar, cars, true),
+                new EntryField("Категория", categories[0], categories, true),
+                new EntryField("Название", "", "text", true),
+                new EntryField("Сумма, BYN", "", "number", true),
+                new EntryField("Комментарий", "", "text", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Прочий расход", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                if (!TrySave(delegate { DataStore.AddExpense(values); }))
+                    return;
+                currentCar = values[1];
+            }
+            ShowRecords(ExpensesSection);
+        }
+
+        private void AddExpenseCategory(object sender, EventArgs e)
+        {
+            EntryField[] fields = new EntryField[] { new EntryField("Название", "", "text", true) };
+            using (EntryEditorForm editor = new EntryEditorForm("Новая кат. прочих", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                if (!TrySave(delegate { DataStore.AddExpenseCategory(editor.Values[0]); }))
+                    return;
+            }
+            ShowRecords(ExpensesSection);
+        }
+
+        private void RenameExpenseCategory(object sender, EventArgs e)
+        {
+            string[] categories = DataStore.LoadExpenseCategories();
+            if (categories.Length == 0)
+            {
+                MessageBox.Show("Нет категорий для переименования.", "Категории");
+                return;
+            }
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Категория", categories[0], categories, true),
+                new EntryField("Новое название", "", "text", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Переименовать кат. прочих", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                if (!TrySave(delegate { DataStore.RenameExpenseCategory(values[0], values[1]); }))
+                    return;
+            }
+            ShowRecords(ExpensesSection);
+        }
+
+        private void DeleteExpenseCategory(object sender, EventArgs e)
+        {
+            string[] categories = DataStore.LoadExpenseCategories();
+            if (categories.Length == 0)
+            {
+                MessageBox.Show("Нет категорий для удаления.", "Категории");
+                return;
+            }
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Категория", categories[0], categories, true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Удалить кат. прочих", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                if (MessageBox.Show(
+                    "Записи не удаляются. Если категория используется, сначала перенесите записи в другую. Удалить категорию?",
+                    "Категории", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                    return;
+                if (!TrySave(delegate { DataStore.DeleteExpenseCategory(editor.Values[0]); }))
+                    return;
+            }
+            ShowRecords(ExpensesSection);
+        }
+
+        private void EditToIntervals(object sender, EventArgs e)
+        {
+            ToIntervals values = ToSettings.Load();
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Интервал масла, км", values.OilInterval.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField("Предупр. масла, км", values.OilWarn.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField("Интервал ремня, км", values.BeltInterval.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField("Предупр. ремня, км", values.BeltWarn.ToString(CultureInfo.InvariantCulture), "number", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Интервалы ТО", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] raw = editor.Values;
+                decimal oilInterval, oilWarn, beltInterval, beltWarn;
+                if (!DataStore.TryNumber(raw[0], out oilInterval) || oilInterval <= 0 ||
+                    !DataStore.TryNumber(raw[1], out oilWarn) || oilWarn <= 0 ||
+                    !DataStore.TryNumber(raw[2], out beltInterval) || beltInterval <= 0 ||
+                    !DataStore.TryNumber(raw[3], out beltWarn) || beltWarn <= 0)
+                {
+                    MessageBox.Show("Введите положительные числа.", "Интервалы ТО");
+                    return;
+                }
+                values.OilInterval = oilInterval;
+                values.OilWarn = oilWarn;
+                values.BeltInterval = beltInterval;
+                values.BeltWarn = beltWarn;
+                if (!TrySave(delegate { ToSettings.Save(values); }))
+                    return;
+                MessageBox.Show("Интервалы ТО сохранены.", "Интервалы ТО");
+            }
+        }
+
     }
 }

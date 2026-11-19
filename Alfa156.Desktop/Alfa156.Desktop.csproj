@@ -46,6 +46,7 @@
     <Compile Include="Data\AlfaRepository.cs" />
     <Compile Include="Data\RecordIds.cs" />
     <Compile Include="Data\SyncMerge.cs" />
+    <Compile Include="Data\ToSettings.cs" />
     <Compile Include="Exchange\CsvExchange.cs" />
     <Compile Include="Exchange\DengiFormat.cs" />
     <Compile Include="Exchange\GoogleSyncClient.cs" />
