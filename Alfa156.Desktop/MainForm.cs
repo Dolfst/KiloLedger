@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.21.0";
+        private const string AppVersion = "1.22.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -39,6 +39,8 @@ namespace Alfa156.Desktop
         private readonly TextBox beltIntervalBox = new TextBox();
         private readonly TextBox beltWarnBox = new TextBox();
         private readonly TextBox currencyBox = new TextBox();
+        private readonly TextBox budgetBox = new TextBox();
+        private readonly TextBox budgetWarnBox = new TextBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
@@ -199,7 +201,7 @@ namespace Alfa156.Desktop
                 RowCount = 3,
                 Padding = new Padding(8)
             };
-            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 120));
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             FlowLayoutPanel intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
@@ -221,6 +223,15 @@ namespace Alfa156.Desktop
             currencyBox.Text = "BYN";
             intervalRow.Controls.Add(currencyBox);
             intervalRow.Controls.Add(MakeButton("Сохранить валюту", SaveCurrency));
+            intervalRow.Controls.Add(new Label { Text = "Бюджет/мес", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            budgetBox.Width = 70;
+            budgetBox.Text = "0";
+            intervalRow.Controls.Add(budgetBox);
+            intervalRow.Controls.Add(new Label { Text = "предупр.%", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
+            budgetWarnBox.Width = 40;
+            budgetWarnBox.Text = "80";
+            intervalRow.Controls.Add(budgetWarnBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить бюджет", SaveBudget));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
             intervalRow.Controls.Add(MakeButton("График: /км", ToggleCostPerKmChart));
@@ -746,6 +757,37 @@ namespace Alfa156.Desktop
             }
         }
 
+        private void SaveBudget(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                decimal monthLimit, warnPct;
+                if (!AlfaCodec.TryNumber(budgetBox.Text, out monthLimit) || monthLimit < 0)
+                    throw new InvalidOperationException("Бюджет месяца: 0 (выкл.) или положительное число.");
+                if (!AlfaCodec.TryNumber(budgetWarnBox.Text, out warnPct) || warnPct <= 0 || warnPct > 100)
+                    throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+                repository.Settings = ToSettings.SetBudget(repository.Settings, monthLimit, warnPct);
+                PullAll();
+                repository.Save();
+                dirty = false;
+                budgetBox.Text = ToSettings.GetBudgetMonth(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                budgetWarnBox.Text = ToSettings.GetBudgetWarnPct(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                if (monthLimit <= 0)
+                    SetStatus("Месячный бюджет выключен.");
+                else
+                    SetStatus("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
+                        ", предупреждение с " + Money(warnPct) + "%.");
+                RefreshSummaryText();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
         private void WireDirty(DataGridView grid)
         {
             grid.CellValueChanged += delegate { MarkDirty(); };
@@ -1120,6 +1162,10 @@ namespace Alfa156.Desktop
                 beltIntervalBox.Text = intervals.BeltInterval.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 beltWarnBox.Text = intervals.BeltWarn.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 currencyBox.Text = ToSettings.GetCurrency(repository.Settings);
+                budgetBox.Text = ToSettings.GetBudgetMonth(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                budgetWarnBox.Text = ToSettings.GetBudgetWarnPct(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
                 // Column headers include currency code — refresh before binding rows.
                 SetupFuelGrid();
                 SetupRepairsGrid();
@@ -1753,7 +1799,19 @@ namespace Alfa156.Desktop
             foreach (KeyValuePair<string, decimal> pair in byCategory)
                 result.Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur() + "\r\n");
             result.Append("\r\nКоммунальные за весь период:\r\n").Append(Money(utilityTotal))
-                .Append(" " + Cur() + "\r\n\r\nИтого за год ").Append(yearPrefix).Append(":\r\n")
+                .Append(" " + Cur());
+            string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            decimal monthFuel = 0, monthRepair = 0, monthExpense = 0, monthUtility = 0;
+            decimal[] monthBucket;
+            if (monthlyTotals.TryGetValue(monthKey, out monthBucket))
+            {
+                monthFuel = monthBucket[0];
+                monthRepair = monthBucket[1];
+                monthUtility = monthBucket[2];
+                monthExpense = monthBucket.Length > 3 ? monthBucket[3] : 0;
+            }
+            AppendBudgetBlock(result, monthKey, monthFuel + monthRepair + monthExpense, monthUtility);
+            result.Append("\r\n\r\nИтого за год ").Append(yearPrefix).Append(":\r\n")
                 .Append("Топливо: ").Append(Money(yearFuel)).Append(" " + Cur() + "\r\n")
                 .Append("Ремонт: ").Append(Money(yearRepair)).Append(" " + Cur() + "\r\n")
                 .Append("Прочие: ").Append(Money(yearExpense)).Append(" " + Cur() + "\r\n")
@@ -1779,6 +1837,26 @@ namespace Alfa156.Desktop
             result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn));
             return result.ToString();
+        }
+
+        private void AppendBudgetBlock(StringBuilder result, string monthKey,
+            decimal spent, decimal utilitiesMonth)
+        {
+            decimal budget = ToSettings.GetBudgetMonth(repository.Settings);
+            if (budget <= 0)
+                return;
+            decimal warnPct = ToSettings.GetBudgetWarnPct(repository.Settings);
+            decimal pct = budget > 0 ? (spent * 100m) / budget : 0;
+            result.Append("\r\n\r\nБюджет месяца ").Append(monthKey).Append(":\r\n")
+                .Append("Потрачено (топливо+ремонт+прочие): ")
+                .Append(Money(spent)).Append(" / ").Append(Money(budget)).Append(" ").Append(Cur())
+                .Append(" (").Append(Money(pct)).Append("%)\r\n")
+                .Append("Коммунальные в этом месяце: ")
+                .Append(Money(utilitiesMonth)).Append(" ").Append(Cur());
+            if (spent >= budget)
+                result.Append("\r\n⚠ Превышен бюджет");
+            else if (pct >= warnPct)
+                result.Append("\r\n⚠ Предупреждение: ≥").Append(Money(warnPct)).Append("% бюджета");
         }
 
         private static bool TryParseYearMonth(string value, out DateTime month)
