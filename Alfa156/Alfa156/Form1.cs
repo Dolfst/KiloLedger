@@ -2212,6 +2212,11 @@ namespace CarExpenses
                 lastOilDate, intervals.OilInterval, intervals.OilWarn) + "\r\n";
             result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn);
+            result += ForecastInsights.FormatBlock(
+                currentCar, fuels, repairs, currentMileage,
+                lastOilMileage, lastTimingMileage,
+                intervals.OilInterval, intervals.BeltInterval,
+                DateTime.Today, "\r\n");
             result += DateReminders.FormatUpcomingBlock(
                 ToSettings.GetReminderWarnDays(), DateTime.Today);
             return result;
@@ -2422,7 +2427,8 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.29.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.30.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Оценка пробега в сводке: средний км/день и срок до ТО масла/ремня.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Шаблоны записей (templates.dat); избранный авто.\r\n" +
                 "Напоминания по дате (reminders.dat): страховка / техосмотр / своё.\r\n" +
