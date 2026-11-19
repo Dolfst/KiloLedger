@@ -1,6 +1,6 @@
 # Готовые сборки Alfa 156
 
-Версия берётся из корневого файла [`VERSION`](../../VERSION) (сейчас `1.28.0`).
+Версия берётся из корневого файла [`VERSION`](../../VERSION) (сейчас `1.29.0`).
 Имена файлов в этой папке всегда включают номер версии:
 
 | Файл | Платформа |
@@ -10,7 +10,9 @@
 | `Alfa156-<version>-KPK.exe` | Windows Mobile / КПК |
 | `Alfa156-<version>-KPK.zip` | КПК + .NET CF 3.5 CAB |
 
-Пример для `1.28.0`: `Alfa156-1.28.0.apk`, `Alfa156-1.28.0-Desktop.exe`, `Alfa156-1.28.0-KPK.exe`, `Alfa156-1.28.0-KPK.zip`.
+Пример для `1.29.0`: `Alfa156-1.29.0.apk`, `Alfa156-1.29.0-Desktop.exe`, `Alfa156-1.29.0-KPK.exe`, `Alfa156-1.29.0-KPK.zip`.
+
+**1.29.0:** быстрая заправка (Android / Desktop / КПК): default_car, пробег, литры, стоимость, авто цена/л, полный бак.
 
 **1.28.0:** smoke verifies в CI; CF API guard; полный ZIP (templates/reminders/cars-meta); стабилизация после 1.25–1.27.
 

@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.28.0";
+        private const string AppVersion = "1.29.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -152,6 +152,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Найти", OpenGlobalSearch));
             toolbar.Controls.Add(MakeButton("Дубликаты", OpenDuplicates));
             toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
+            toolbar.Controls.Add(MakeButton("Быстрая заправка", OpenQuickFuelEntry));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -526,12 +527,20 @@ namespace Alfa156.Desktop
 
         private string LastFuelPricePerLiterFromGrid()
         {
+            return LastFuelPricePerLiterForCar(null);
+        }
+
+        private string LastFuelPricePerLiterForCar(string car)
+        {
             string bestDate = "";
             string bestPrice = "";
             for (int i = 0; i < fuelGrid.Rows.Count; i++)
             {
                 DataGridViewRow row = fuelGrid.Rows[i];
                 if (row.IsNewRow)
+                    continue;
+                if (!String.IsNullOrEmpty(car) &&
+                    !String.Equals(CellText(row, 1), car, StringComparison.OrdinalIgnoreCase))
                     continue;
                 string price = CellText(row, 5).Trim();
                 if (price.Length == 0)
@@ -545,6 +554,220 @@ namespace Alfa156.Desktop
                 }
             }
             return bestPrice;
+        }
+
+        private string LastFuelKmForCar(string car)
+        {
+            decimal best = LastKnownMileageFromGrids(car, null, -1);
+            return best < 0 ? "" : best.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private bool LastFuelFullTankForCar(string car)
+        {
+            string bestDate = "";
+            int bestIndex = -1;
+            bool full = true;
+            for (int i = 0; i < fuelGrid.Rows.Count; i++)
+            {
+                DataGridViewRow row = fuelGrid.Rows[i];
+                if (row.IsNewRow)
+                    continue;
+                if (!String.IsNullOrEmpty(car) &&
+                    !String.Equals(CellText(row, 1), car, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string date = CellText(row, 0);
+                if (bestIndex < 0 ||
+                    String.Compare(date, bestDate, StringComparison.Ordinal) > 0 ||
+                    (date == bestDate && i > bestIndex))
+                {
+                    bestDate = date;
+                    bestIndex = i;
+                    object val = row.Cells.Count > 7 ? row.Cells[7].Value : null;
+                    if (val is bool)
+                        full = (bool)val;
+                    else
+                    {
+                        string raw = Convert.ToString(val) ?? "";
+                        full = raw != "0" &&
+                            !String.Equals(raw, "false", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+            }
+            return full;
+        }
+
+        private void OpenQuickFuelEntry(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                List<string> cars = new List<string>();
+                for (int i = 0; i < repository.Cars.Count; i++)
+                {
+                    string[] content = RecordIds.StripId(repository.Cars[i]);
+                    if (content.Length > 0 && !String.IsNullOrEmpty(content[0]))
+                        cars.Add(content[0]);
+                }
+                if (cars.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет автомобилей. Добавьте авто на вкладке Автомобили.",
+                        "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                string preferred = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
+                if (String.IsNullOrEmpty(preferred))
+                    preferred = cars[0];
+
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Быстрая заправка";
+                    dialog.Width = 420;
+                    dialog.Height = 340;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    dialog.MaximizeBox = false;
+                    dialog.MinimizeBox = false;
+                    dialog.BackColor = Color.FromArgb(245, 247, 250);
+
+                    Label carLabel = new Label { Text = "Автомобиль", Left = 16, Top = 16, Width = 370 };
+                    ComboBox carBox = new ComboBox
+                    {
+                        Left = 16, Top = 36, Width = 370, DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+                    for (int i = 0; i < cars.Count; i++)
+                        carBox.Items.Add(cars[i]);
+                    int sel = cars.IndexOf(preferred);
+                    carBox.SelectedIndex = sel >= 0 ? sel : 0;
+
+                    Label kmLabel = new Label { Text = "Пробег, км", Left = 16, Top = 70, Width = 370 };
+                    TextBox kmBox = new TextBox { Left = 16, Top = 90, Width = 370 };
+                    Label litersLabel = new Label { Text = "Литры", Left = 16, Top = 124, Width = 180 };
+                    TextBox litersBox = new TextBox { Left = 16, Top = 144, Width = 180 };
+                    Label costLabel = new Label { Text = "Стоимость, " + Cur(), Left = 206, Top = 124, Width = 180 };
+                    TextBox costBox = new TextBox { Left = 206, Top = 144, Width = 180 };
+                    Label priceLabel = new Label
+                    {
+                        Text = "Цена/л, " + Cur() + " (авто)",
+                        Left = 16, Top = 178, Width = 370
+                    };
+                    TextBox priceBox = new TextBox { Left = 16, Top = 198, Width = 370 };
+                    CheckBox fullTankBox = new CheckBox
+                    {
+                        Text = "Полный бак",
+                        Left = 16, Top = 232, Width = 200,
+                        Checked = true,
+                        BackColor = dialog.BackColor
+                    };
+
+                    Action refreshPrefill = delegate
+                    {
+                        string car = carBox.SelectedItem != null ? carBox.SelectedItem.ToString() : "";
+                        kmBox.Text = LastFuelKmForCar(car);
+                        string lastPrice = LastFuelPricePerLiterForCar(car);
+                        if (!String.IsNullOrEmpty(lastPrice))
+                            priceBox.Text = lastPrice;
+                        fullTankBox.Checked = LastFuelFullTankForCar(car);
+                    };
+                    refreshPrefill();
+                    carBox.SelectedIndexChanged += delegate { refreshPrefill(); };
+
+                    bool priceTouched = priceBox.Text.Trim().Length > 0;
+                    priceBox.TextChanged += delegate
+                    {
+                        if (priceBox.Focused)
+                            priceTouched = true;
+                    };
+                    EventHandler recalc = delegate
+                    {
+                        if (priceTouched && priceBox.Text.Trim().Length > 0)
+                            return;
+                        decimal liters;
+                        decimal cost;
+                        if (!AlfaCodec.TryNumber(litersBox.Text, out liters) || liters <= 0 ||
+                            !AlfaCodec.TryNumber(costBox.Text, out cost) || cost <= 0)
+                            return;
+                        string next = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
+                        if (priceBox.Text != next)
+                            priceBox.Text = next;
+                    };
+                    litersBox.TextChanged += recalc;
+                    costBox.TextChanged += recalc;
+
+                    Button ok = new Button
+                    {
+                        Text = "Сохранить", Left = 206, Top = 268, Width = 90,
+                        DialogResult = DialogResult.OK
+                    };
+                    Button cancel = new Button
+                    {
+                        Text = "Отмена", Left = 306, Top = 268, Width = 80,
+                        DialogResult = DialogResult.Cancel
+                    };
+                    dialog.Controls.AddRange(new Control[]
+                    {
+                        carLabel, carBox, kmLabel, kmBox, litersLabel, litersBox,
+                        costLabel, costBox, priceLabel, priceBox, fullTankBox, ok, cancel
+                    });
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK)
+                        return;
+
+                    string carName = carBox.SelectedItem != null ? carBox.SelectedItem.ToString() : "";
+                    string km = kmBox.Text.Trim();
+                    string liters = litersBox.Text.Trim();
+                    string cost = costBox.Text.Trim();
+                    string price = priceBox.Text.Trim();
+                    if (carName.Length == 0 || km.Length == 0 || liters.Length == 0 || cost.Length == 0)
+                    {
+                        MessageBox.Show(this, "Заполните автомобиль, пробег, литры и стоимость.",
+                            "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    decimal litersN;
+                    decimal costN;
+                    if (price.Length == 0 &&
+                        AlfaCodec.TryNumber(liters, out litersN) && litersN > 0 &&
+                        AlfaCodec.TryNumber(cost, out costN) && costN > 0)
+                        price = (costN / litersN).ToString("0.##", CultureInfo.InvariantCulture);
+
+                    decimal newKm;
+                    if (AlfaCodec.TryNumber(km, out newKm))
+                    {
+                        decimal last = LastKnownMileageFromGrids(carName, null, -1);
+                        string warning = FormatMileageWarning(newKm, last);
+                        if (warning != null &&
+                            MessageBox.Show(this, warning, "Пробег", MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                            return;
+                    }
+
+                    string date = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    object[] values = new object[]
+                    {
+                        date, carName, km, liters, cost, price, "",
+                        fullTankBox.Checked, ""
+                    };
+                    int index = fuelGrid.Rows.Add(values);
+                    fuelGrid.ClearSelection();
+                    if (index >= 0 && index < fuelGrid.Rows.Count)
+                        fuelGrid.Rows[index].Selected = true;
+                    if (tabs.TabPages.Count > 1)
+                        tabs.SelectedIndex = 1; // Заправки typically after Автомобили
+                    MarkDirty();
+
+                    // Persist immediately when a data folder is open.
+                    PullAll();
+                    repository.Save();
+                    dirty = false;
+                    BindAll();
+                    SetStatus("Быстрая заправка сохранена: " + carName + ", " + liters + " л.");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
         }
 
         private static Button MakeButton(string text, EventHandler click)

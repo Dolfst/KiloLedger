@@ -138,6 +138,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
@@ -301,6 +302,8 @@ namespace CarExpenses
             MainMenu menu = new MainMenu();
             MenuItem actions = CreateMenuItem("Действия");
             actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCurrentRecord)));
+            if (section == FuelSection)
+                actions.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
             actions.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
             actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
@@ -1382,6 +1385,91 @@ namespace CarExpenses
                 AddUtility();
         }
 
+        private void QuickFuelFromMenu(object sender, EventArgs e)
+        {
+            QuickFuel();
+        }
+
+        private void QuickFuel()
+        {
+            List<string> carList = DataStore.LoadCarNames();
+            if (carList.Count == 0)
+            {
+                MessageBox.Show("Нет автомобилей.", "Быстрая заправка");
+                return;
+            }
+            string[] cars = carList.ToArray();
+            string car = ToSettings.ResolvePreferredCar(carList, currentCar);
+            string lastMileage = LastCarMileage(car);
+            string lastPrice = LastFuelPricePerLiter(car);
+            string fullPrefill = LastFuelFullTank(car) ? "1" : "0";
+            // Compact: car, km, liters, cost, price (auto), full tank — date = today on save.
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Автомобиль", car, cars, true),
+                new EntryField(lastMileage.Length > 0
+                    ? "Пробег, км (посл.)"
+                    : "Пробег, км", lastMileage, "number", true),
+                new EntryField("Литры", "", "number", true),
+                new EntryField("Стоимость, " + Cur(), "", "number", true),
+                new EntryField("Цена/л, " + Cur(), lastPrice, "number", false),
+                new EntryField("Полный бак", fullPrefill, "check", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Быстрая заправка", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] q = editor.Values;
+                string[] values = new string[]
+                {
+                    DateTime.Now.ToString("yyyy-MM-dd"),
+                    q.Length > 0 ? q[0] : car,
+                    q.Length > 1 ? q[1] : "",
+                    q.Length > 2 ? q[2] : "",
+                    q.Length > 3 ? q[3] : "",
+                    q.Length > 4 ? q[4] : "",
+                    "",
+                    q.Length > 5 ? q[5] : "1",
+                    ""
+                };
+                values = NormalizeFuelValues(values);
+                if (!ConfirmMileageIfNeeded(values, "fuel.dat", -1))
+                    return;
+                if (!TrySave(delegate { DataStore.AddFuel(values); }))
+                    return;
+                currentCar = values[1];
+                string tankHint = CarsMeta.TankNearHint(values[1], values[3]);
+                if (tankHint != null)
+                    MessageBox.Show(tankHint, "Alfa 156");
+            }
+            ShowRecords(FuelSection);
+        }
+
+        private static bool LastFuelFullTank(string car)
+        {
+            List<string[]> fuels = DataStore.LoadFuel();
+            string bestDate = "";
+            int bestIndex = -1;
+            bool full = true;
+            for (int i = 0; i < fuels.Count; i++)
+            {
+                if (fuels[i].Length < 2)
+                    continue;
+                if ((fuels[i][1] ?? "") != (car ?? ""))
+                    continue;
+                string date = fuels[i][0] == null ? "" : fuels[i][0];
+                if (bestIndex < 0 ||
+                    String.Compare(date, bestDate, false, CultureInfo.InvariantCulture) > 0 ||
+                    (date == bestDate && i > bestIndex))
+                {
+                    bestDate = date;
+                    bestIndex = i;
+                    full = IsFullTank(fuels[i]);
+                }
+            }
+            return full;
+        }
+
         private void AddFuel()
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
@@ -2334,7 +2422,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.28.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.29.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Шаблоны записей (templates.dat); избранный авто.\r\n" +
                 "Напоминания по дате (reminders.dat): страховка / техосмотр / своё.\r\n" +
