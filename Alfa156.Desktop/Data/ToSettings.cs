@@ -30,6 +30,8 @@ namespace Alfa156.Desktop.Data
         internal const string LastBackupNagDateKey = "last_backup_nag_date";
         internal const int DefaultBackupRemindDays = 7;
         internal const string DefaultCarKey = "default_car";
+        internal const string ReminderWarnDaysKey = "reminder_warn_days";
+        internal const int DefaultReminderWarnDays = 14;
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
 
@@ -228,6 +230,32 @@ namespace Alfa156.Desktop.Data
             return first.Length > 0 ? (first[0] ?? "").Trim() : "";
         }
 
+
+        /// <summary>Days before calendar reminder date to warn (default 14).</summary>
+        internal static int GetReminderWarnDays(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string raw;
+            if (!map.TryGetValue(ReminderWarnDaysKey, out raw))
+                return DefaultReminderWarnDays;
+            decimal value;
+            if (!AlfaCodec.TryNumber(raw, out value) || value < 0 || value > 3650)
+                return DefaultReminderWarnDays;
+            return (int)value;
+        }
+
+        internal static List<string[]> SetReminderWarnDays(List<string[]> existing, int days)
+        {
+            if (days < 0 || days > 3650)
+                throw new InvalidOperationException("Предупреждение напоминаний: 0–3650 дней.");
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[ReminderWarnDaysKey] = days.ToString(CultureInfo.InvariantCulture);
+            return MapToRows(map);
+        }
+
         /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>
         internal static int GetBackupRemindDays(List<string[]> rows)
         {
@@ -394,6 +422,8 @@ namespace Alfa156.Desktop.Data
             }
             if (!map.ContainsKey(BackupRemindDaysKey))
                 map[BackupRemindDaysKey] = DefaultBackupRemindDays.ToString(CultureInfo.InvariantCulture);
+            if (!map.ContainsKey(ReminderWarnDaysKey))
+                map[ReminderWarnDaysKey] = DefaultReminderWarnDays.ToString(CultureInfo.InvariantCulture);
         }
 
         private static List<string[]> MapToRows(Dictionary<string, string> map)

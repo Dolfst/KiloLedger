@@ -47,7 +47,9 @@ public sealed class MainActivity : Activity
     private const string AllCategories = "Все категории";
     private const string ToReminderChannelId = "to_reminders";
     private const string BudgetChannelId = "budget";
+    private const string DateReminderChannelId = "date_reminders";
     private const int BudgetNotificationId = 9001;
+    private const int DateReminderNotificationBase = 9100;
     private static readonly string[] DataFiles = ExpenseDataCodec.DataFiles;
 
     private TextView status;
@@ -161,6 +163,7 @@ public sealed class MainActivity : Activity
         {
             RefreshServiceNotifications();
             RefreshBudgetNotification();
+            RefreshDateReminderNotifications();
             MaybeShowBackupReminder();
         }
         catch
@@ -376,6 +379,10 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditBudget(); });
                 labels.Add("Авто по умолчанию");
                 actions.Add(delegate { EditDefaultCar(); });
+                labels.Add("Напоминания");
+                actions.Add(delegate { ManageDateReminders(); });
+                labels.Add("Предупр. напоминаний");
+                actions.Add(delegate { EditReminderWarnDays(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Копия на телефоне");
@@ -4000,7 +4007,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.25.0";
+        string version = "1.26.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -4012,7 +4019,7 @@ public sealed class MainActivity : Activity
             .SetTitle("О программе")
             .SetMessage("Alfa 156\nВерсия " + version +
                 "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
-                "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), избранный авто (default_car)." +
+                "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), напоминания (reminders.dat), избранный авто (default_car)." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +
                 "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
@@ -4175,6 +4182,146 @@ public sealed class MainActivity : Activity
                 .SetNegativeButton("Отмена", delegate { })
                 .Show();
         }, false);
+    }
+
+
+    private void ManageDateReminders()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте данные.");
+            return;
+        }
+        List<DateReminder> list = DateReminders.ListAll(DataDirectory);
+        List<string> labels = new List<string>();
+        labels.Add("＋ Добавить напоминание");
+        for (int i = 0; i < list.Count; i++)
+            labels.Add(DateReminders.FormatLine(list[i], DateTime.Today));
+        new AlertDialog.Builder(this)
+            .SetTitle("Напоминания")
+            .SetItems(labels.ToArray(), (sender, args) =>
+            {
+                if (args.Which == 0)
+                {
+                    AddDateReminder();
+                    return;
+                }
+                int index = args.Which - 1;
+                if (index < 0 || index >= list.Count)
+                    return;
+                DateReminder chosen = list[index];
+                new AlertDialog.Builder(this)
+                    .SetTitle(chosen.Title)
+                    .SetMessage(DateReminders.FormatLine(chosen, DateTime.Today))
+                    .SetPositiveButton("Удалить", (s2, a2) =>
+                    {
+                        DateReminders.Delete(DataDirectory, chosen.Id);
+                        RefreshDateReminderNotifications();
+                        ShowMessage("Напоминание удалено.");
+                    })
+                    .SetNegativeButton("Закрыть", delegate { })
+                    .Show();
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void AddDateReminder()
+    {
+        string defaultDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        RenderEditor("Новое напоминание", new List<EditorField>
+        {
+            EditorField.Date("Дата", defaultDate, true),
+            EditorField.Text("Автомобиль", currentCar ?? "", true),
+            EditorField.Text("Название", "", true),
+            EditorField.Text("Тип (страховка/техосмотр/своё)", "своё", true)
+        }, delegate(string[] raw)
+        {
+            DateReminder item = new DateReminder();
+            item.Date = raw[0];
+            item.Car = raw[1];
+            item.Title = raw[2];
+            item.Type = raw[3];
+            DateReminders.Upsert(DataDirectory, item);
+            RefreshDateReminderNotifications();
+            ShowMessage("Напоминание сохранено.");
+        }, false);
+    }
+
+    private void EditReminderWarnDays()
+    {
+        int days = ToSettings.GetReminderWarnDays(DataDirectory);
+        RenderEditor("Предупреждение напоминаний", new List<EditorField>
+        {
+            EditorField.Number("Дней до даты (по умолч. 14)",
+                days.ToString(CultureInfo.InvariantCulture), true)
+        }, delegate(string[] raw)
+        {
+            decimal value;
+            if (!TryNumber(raw[0], out value) || value < 0 || value > 3650 || value != Math.Floor(value))
+                throw new InvalidOperationException("Укажите целое число 0–3650.");
+            ToSettings.SetReminderWarnDays(DataDirectory, (int)value);
+            RefreshDateReminderNotifications();
+            ShowMessage("Предупреждать за " + ((int)value) + " дн. до даты.");
+        }, false);
+    }
+
+    private void EnsureDateReminderChannel()
+    {
+        if (Build.VERSION.SdkInt < BuildVersionCodes.O)
+            return;
+#pragma warning disable CA1416
+        NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
+        if (manager == null)
+            return;
+        NotificationChannel channel = new NotificationChannel(
+            DateReminderChannelId,
+            "Календарные напоминания",
+            NotificationImportance.Default);
+        channel.Description = "Страховка, техосмотр и другие даты";
+        manager.CreateNotificationChannel(channel);
+#pragma warning restore CA1416
+    }
+
+    private void RefreshDateReminderNotifications()
+    {
+        if (!ExpenseDataStore.HasCompleteCoreFiles(DataDirectory))
+            return;
+        EnsureDateReminderChannel();
+        MaybeRequestNotificationPermission();
+        NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
+        if (manager == null)
+            return;
+        int warn = ToSettings.GetReminderWarnDays(DataDirectory);
+        List<DateReminder> due = DateReminders.ListDue(DataDirectory, warn, DateTime.Today);
+        for (int i = 0; i < 40; i++)
+            manager.Cancel(DateReminderNotificationBase + i);
+        int count = Math.Min(due.Count, 40);
+        for (int i = 0; i < count; i++)
+        {
+            DateReminder item = due[i];
+            string text = DateReminders.FormatLine(item, DateTime.Today);
+            Intent intent = new Intent(this, typeof(MainActivity));
+            intent.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ClearTop);
+            PendingIntentFlags flags = PendingIntentFlags.UpdateCurrent;
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.M)
+                flags |= PendingIntentFlags.Immutable;
+            int notificationId = DateReminderNotificationBase + i;
+            PendingIntent pending = PendingIntent.GetActivity(this, notificationId, intent, flags);
+#pragma warning disable CA1416, CA1422
+            Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
+                ? new Notification.Builder(this, DateReminderChannelId)
+                : new Notification.Builder(this);
+            builder.SetContentTitle("Alfa 156 · " + DateReminders.TypeLabelRu(item.Type))
+                .SetContentText(text)
+                .SetStyle(new Notification.BigTextStyle().BigText(text))
+                .SetSmallIcon(Resource.Drawable.icon)
+                .SetContentIntent(pending)
+                .SetAutoCancel(true)
+                .SetOnlyAlertOnce(true);
+            manager.Notify(notificationId, builder.Build());
+#pragma warning restore CA1416, CA1422
+        }
     }
 
     private void EditToIntervals()

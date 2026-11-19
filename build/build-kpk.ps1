@@ -67,6 +67,7 @@ $sources = @(
     (Join-Path $projDir "Form1.Designer.cs"),
     (Join-Path $projDir "CarsMeta.cs"),
     (Join-Path $projDir "RecordTemplates.cs"),
+    (Join-Path $projDir "DateReminders.cs"),
     (Join-Path $projDir "DataStore.cs"),
     (Join-Path $projDir "EntryEditorForm.cs"),
     (Join-Path $projDir "RecordIds.cs"),

@@ -20,6 +20,7 @@ namespace CarExpenses
         internal const string TypeExpenseCategory = "expense-category";
         internal const string TypeCarMeta = "car-meta";
         internal const string TypeTemplate = "template";
+        internal const string TypeReminder = "reminder";
 
         internal static string PrefixForFile(string fileName)
         {
@@ -32,6 +33,7 @@ namespace CarExpenses
             if (fileName == "expense-categories.dat") return "p_";
             if (fileName == "cars-meta.dat") return "m_";
             if (fileName == "templates.dat") return "t_";
+            if (fileName == "reminders.dat") return "n_";
             return "x_";
         }
 
@@ -46,6 +48,7 @@ namespace CarExpenses
             if (fileName == "expense-categories.dat") return TypeExpenseCategory;
             if (fileName == "cars-meta.dat") return TypeCarMeta;
             if (fileName == "templates.dat") return TypeTemplate;
+            if (fileName == "reminders.dat") return TypeReminder;
             return "unknown";
         }
 
@@ -55,7 +58,8 @@ namespace CarExpenses
                 return false;
             char prefix = value[0];
             if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
-                 prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'x') ||
+                 prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
+                 prefix != 'x') ||
                 value[1] != '_')
                 return false;
             for (int i = 2; i < value.Length; i++)

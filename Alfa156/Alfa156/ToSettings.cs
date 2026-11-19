@@ -32,6 +32,8 @@ namespace CarExpenses
         internal const string LastBackupNagDateKey = "last_backup_nag_date";
         internal const int DefaultBackupRemindDays = 7;
         internal const string DefaultCarKey = "default_car";
+        internal const string ReminderWarnDaysKey = "reminder_warn_days";
+        internal const int DefaultReminderWarnDays = 14;
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
         private const string DataDirectory = @"\My Documents\Alfa156";
@@ -242,6 +244,42 @@ namespace CarExpenses
                         return cars[i];
             }
             return cars[0];
+        }
+
+
+        /// <summary>Days before calendar reminder date to warn (default 14).</summary>
+        internal static int GetReminderWarnDays()
+        {
+            return GetReminderWarnDaysFromDirectory(DataDirectory);
+        }
+
+        internal static int GetReminderWarnDaysFromDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            LoadInto(map, directory);
+            string raw;
+            if (!map.TryGetValue(ReminderWarnDaysKey, out raw))
+                return DefaultReminderWarnDays;
+            decimal value;
+            if (!TryDecimal(raw, out value) || value < 0 || value > 3650)
+                return DefaultReminderWarnDays;
+            return (int)value;
+        }
+
+        internal static void SetReminderWarnDays(int days)
+        {
+            SetReminderWarnDaysInDirectory(DataDirectory, days);
+        }
+
+        internal static void SetReminderWarnDaysInDirectory(string directory, int days)
+        {
+            if (days < 0 || days > 3650)
+                throw new InvalidOperationException("Предупреждение напоминаний: 0–3650 дней.");
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            map[ReminderWarnDaysKey] = days.ToString(CultureInfo.InvariantCulture);
+            WriteMap(directory, map);
         }
 
         /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>
@@ -482,6 +520,8 @@ namespace CarExpenses
             }
             if (!map.ContainsKey(BackupRemindDaysKey))
                 map[BackupRemindDaysKey] = DefaultBackupRemindDays.ToString(CultureInfo.InvariantCulture);
+            if (!map.ContainsKey(ReminderWarnDaysKey))
+                map[ReminderWarnDaysKey] = DefaultReminderWarnDays.ToString(CultureInfo.InvariantCulture);
         }
 
         private static void WriteMap(string directory, Dictionary<string, string> map)

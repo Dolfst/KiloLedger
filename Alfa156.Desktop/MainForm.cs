@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.25.0";
+        private const string AppVersion = "1.26.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -31,6 +31,8 @@ namespace Alfa156.Desktop
         private readonly DataGridView categoriesGrid = CreateGrid();
         private readonly DataGridView expensesGrid = CreateGrid();
         private readonly DataGridView expenseCategoriesGrid = CreateGrid();
+        private readonly DataGridView remindersGrid = CreateGrid();
+        private readonly TextBox reminderWarnBox = new TextBox();
         private readonly TextBox summaryBox = new TextBox();
         private readonly MonthlyChartPanel summaryChart = new MonthlyChartPanel();
         private readonly TabPage summaryTab = new TabPage("Сводка");
@@ -186,6 +188,7 @@ namespace Alfa156.Desktop
             tabs.TabPages.Add(WrapGrid("Кат. прочих", expenseCategoriesGrid));
             tabs.TabPages.Add(WrapFilteredGrid("Коммуналка", utilitiesGrid, BuildUtilityFilterBar()));
             tabs.TabPages.Add(WrapGrid("Категории", categoriesGrid));
+            tabs.TabPages.Add(WrapGrid("Напоминания", remindersGrid));
 
             summaryBox.Multiline = true;
             summaryBox.ReadOnly = true;
@@ -239,6 +242,11 @@ namespace Alfa156.Desktop
             backupRemindBox.Text = "7";
             intervalRow.Controls.Add(backupRemindBox);
             intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
+            intervalRow.Controls.Add(new Label { Text = "Напом. даты (дн.)", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            reminderWarnBox.Width = 40;
+            reminderWarnBox.Text = "14";
+            intervalRow.Controls.Add(reminderWarnBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить предупр.", SaveReminderWarn));
             intervalRow.Controls.Add(new Label { Text = "Авто по умолч.", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             defaultCarBox.Width = 140;
             intervalRow.Controls.Add(defaultCarBox);
@@ -273,6 +281,7 @@ namespace Alfa156.Desktop
             SetupExpenseCategoriesGrid();
             SetupUtilitiesGrid();
             SetupCategoriesGrid();
+            SetupRemindersGrid();
 
             WireDirty(carsGrid);
             WireDirty(fuelGrid);
@@ -291,6 +300,7 @@ namespace Alfa156.Desktop
             repairsGrid.CellEndEdit += MileageCellEndEdit;
             WireDirty(utilitiesGrid);
             WireDirty(categoriesGrid);
+            WireDirty(remindersGrid);
 
             defaultCarBox.DropDownStyle = ComboBoxStyle.DropDownList;
             defaultCarBox.Width = 140;
@@ -721,6 +731,15 @@ namespace Alfa156.Desktop
                 utilitiesGrid.Columns.Add("u" + i, AlfaCodec.UtilityLabels[i]);
         }
 
+        private void SetupRemindersGrid()
+        {
+            remindersGrid.Columns.Clear();
+            remindersGrid.Columns.Add("date", "Дата");
+            remindersGrid.Columns.Add("car", "Авто");
+            remindersGrid.Columns.Add("title", "Название");
+            remindersGrid.Columns.Add("type", "Тип");
+        }
+
         private void SetupCategoriesGrid()
         {
             categoriesGrid.Columns.Clear();
@@ -846,6 +865,30 @@ namespace Alfa156.Desktop
                     SetStatus("Напоминание о резервной копии выключено.");
                 else
                     SetStatus("Напоминание о копии: каждые " + ((int)days) + " дн. без бэкапа.");
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void SaveReminderWarn(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                decimal days;
+                if (!AlfaCodec.TryNumber(reminderWarnBox.Text, out days) || days < 0 || days > 3650 ||
+                    days != Decimal.Truncate(days))
+                    throw new InvalidOperationException("Предупреждение напоминаний: целое 0–3650.");
+                repository.Settings = ToSettings.SetReminderWarnDays(repository.Settings, (int)days);
+                PullAll();
+                repository.Save();
+                dirty = false;
+                reminderWarnBox.Text = ToSettings.GetReminderWarnDays(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                SetStatus("Предупреждать о датах за " + ((int)days) + " дн.");
+                RefreshSummaryText();
             }
             catch (Exception ex)
             {
@@ -1154,6 +1197,8 @@ namespace Alfa156.Desktop
                 fileName = AlfaCodec.ExpensesFile;
             else if (Object.ReferenceEquals(grid, expenseCategoriesGrid))
                 fileName = AlfaCodec.ExpenseCategoriesFile;
+            else if (Object.ReferenceEquals(grid, remindersGrid))
+                fileName = AlfaCodec.RemindersFile;
             repository.NoteDeleted(fileName, id);
         }
 
@@ -1262,7 +1307,8 @@ namespace Alfa156.Desktop
                     "Подсказка Alfa 156:\r\n" +
                     "• Синхронизация по Wi‑Fi — обмен .dat с телефоном/КПК\r\n" +
                     "• Экспорт всего (ZIP) — .dat + Receipts/ + settings\r\n" +
-                    "• Вкладка «Сводка» — итоги, график и ТО";
+                    "• Вкладка «Сводка» — итоги, график и ТО
+• Вкладка «Напоминания» — страховка, техосмотр, свои даты";
                 MessageBox.Show(this, tip, "Alfa 156", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 SetStatus("Подсказка показана один раз (onboarding_seen).");
             }
@@ -1532,6 +1578,8 @@ namespace Alfa156.Desktop
                     .ToString(CultureInfo.InvariantCulture);
                 backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
+                reminderWarnBox.Text = ToSettings.GetReminderWarnDays(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
                 RefreshDefaultCarBox();
                 // Column headers include currency code — refresh before binding rows.
                 SetupFuelGrid();
@@ -1544,6 +1592,7 @@ namespace Alfa156.Desktop
                 BindGrid(expenseCategoriesGrid, repository.ExpenseCategories, 1);
                 BindGrid(utilitiesGrid, repository.Utilities, 8);
                 BindGrid(categoriesGrid, repository.Categories, 1);
+                BindGrid(remindersGrid, repository.RemindersRows ?? new List<string[]>(), 4);
                 RefreshCategoryFilterLists();
                 ApplyAllFilterVisibility();
                 RefreshSummaryText();
@@ -1629,6 +1678,7 @@ namespace Alfa156.Desktop
                 ReadGrid(expenseCategoriesGrid, 1),
                 settings);
             repository.CarsMetaRows = carsMeta;
+            repository.RemindersRows = ReadGrid(remindersGrid, 4);
         }
 
         private void BindCarsGrid()
@@ -2354,6 +2404,11 @@ namespace Alfa156.Desktop
                 lastOilDate, intervals.OilInterval, intervals.OilWarn)).Append("\r\n");
             result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn));
+            result.Append(DateReminders.FormatUpcomingBlock(
+                repository.RemindersRows,
+                ToSettings.GetReminderWarnDays(repository.Settings),
+                "
+"));
             return result.ToString();
         }
 
