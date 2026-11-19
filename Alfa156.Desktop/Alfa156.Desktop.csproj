@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Data\AlfaCodec.cs" />
     <Compile Include="Data\AlfaRepository.cs" />
+    <Compile Include="Data\CarsMeta.cs" />
     <Compile Include="Data\ReceiptStore.cs" />
     <Compile Include="Data\RecordIds.cs" />
     <Compile Include="Data\DuplicateFinder.cs" />

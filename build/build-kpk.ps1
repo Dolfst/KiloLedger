@@ -65,6 +65,7 @@ if ($rg2.ExitCode -ne 0) { throw "ResGen Resources.resx failed" }
 $sources = @(
     (Join-Path $projDir "Form1.cs"),
     (Join-Path $projDir "Form1.Designer.cs"),
+    (Join-Path $projDir "CarsMeta.cs"),
     (Join-Path $projDir "DataStore.cs"),
     (Join-Path $projDir "EntryEditorForm.cs"),
     (Join-Path $projDir "RecordIds.cs"),

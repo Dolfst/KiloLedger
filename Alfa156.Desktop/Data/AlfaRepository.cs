@@ -17,6 +17,7 @@ namespace Alfa156.Desktop.Data
         public List<string[]> Expenses { get; private set; }
         public List<string[]> ExpenseCategories { get; private set; }
         public List<string[]> Settings { get; set; }
+        public List<string[]> CarsMetaRows { get; set; }
         public List<Tombstone> Deleted { get; set; }
 
         public AlfaRepository()
@@ -29,6 +30,7 @@ namespace Alfa156.Desktop.Data
             Expenses = new List<string[]>();
             ExpenseCategories = new List<string[]>();
             Settings = ToSettings.ToRows(new ToIntervals());
+            CarsMetaRows = new List<string[]>();
             Deleted = new List<Tombstone>();
         }
 
@@ -47,6 +49,7 @@ namespace Alfa156.Desktop.Data
             for (int i = 0; i < AlfaCodec.DefaultExpenseCategories.Length; i++)
                 ExpenseCategories.Add(new string[] { AlfaCodec.DefaultExpenseCategories[i] });
             Settings = ToSettings.ToRows(new ToIntervals());
+            CarsMetaRows = new List<string[]>();
             Deleted = new List<Tombstone>();
             DirectoryPath = directory;
             Save();
@@ -75,6 +78,10 @@ namespace Alfa156.Desktop.Data
             Settings = File.Exists(settingsPath)
                 ? AlfaCodec.ReadRows(settingsPath)
                 : ToSettings.ToRows(new ToIntervals());
+            string carsMetaPath = Path.Combine(directory, AlfaCodec.CarsMetaFile);
+            CarsMetaRows = File.Exists(carsMetaPath)
+                ? AlfaCodec.ReadRows(carsMetaPath)
+                : new List<string[]>();
             Deleted = RecordIds.ReadTombstones(directory);
             EnsureCategoriesFromRepairs();
             EnsureExpenseCategoriesFromExpenses();
@@ -104,6 +111,8 @@ namespace Alfa156.Desktop.Data
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.ExpensesFile), Expenses);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.ExpenseCategoriesFile), ExpenseCategories);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.SettingsFile), Settings);
+            AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.CarsMetaFile),
+                CarsMetaRows ?? new List<string[]>());
             RecordIds.WriteTombstones(DirectoryPath, Deleted ?? new List<Tombstone>());
             AlfaCodec.ValidateDirectory(DirectoryPath);
         }
@@ -395,6 +404,31 @@ namespace Alfa156.Desktop.Data
                 Settings = ToSettings.ToRows(new ToIntervals());
             else
                 Settings = ToSettings.Normalize(Settings);
+
+            if (CarsMetaRows == null)
+                CarsMetaRows = new List<string[]>();
+            Dictionary<string, string[]> metaByCar =
+                new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < CarsMetaRows.Count; i++)
+            {
+                CarPassport meta = CarsMeta.FromRow(CarsMetaRows[i]);
+                if (meta.CarName.Length == 0)
+                    continue;
+                metaByCar[meta.CarName] = CarsMeta.ToRow(meta);
+            }
+            List<string[]> syncedMeta = new List<string[]>();
+            for (int i = 0; i < Cars.Count; i++)
+            {
+                string[] carContent = RecordIds.StripId(Cars[i]);
+                string name = carContent.Length > 0 ? (carContent[0] ?? "").Trim() : "";
+                if (name.Length == 0)
+                    continue;
+                string[] row;
+                if (metaByCar.TryGetValue(name, out row))
+                    syncedMeta.Add(row);
+            }
+            CarsMetaRows = syncedMeta;
+            RecordIds.EnsureIds(CarsMetaRows, AlfaCodec.CarsMetaFile);
 
             if (Deleted == null)
                 Deleted = new List<Tombstone>();

@@ -93,6 +93,11 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "expense-categories.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
+            diffs.Add(AnalyzeTable("Паспорт авто",
+                DataStore.ReadSyncTable(localDirectory, "cars-meta.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "cars-meta.dat"),
+                new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeCarMeta)));
             return diffs;
         }
 
@@ -187,6 +192,8 @@ namespace CarExpenses
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false }, plan,
                 resolveConflict, tombs, journal, writeOutput);
             MergeFile("expense-categories.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
+            MergeFile("cars-meta.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
             if (writeOutput && destinationDirectory != null)
             {
@@ -398,6 +405,8 @@ namespace CarExpenses
                 return "Прочие расходы";
             if (fileName == "expense-categories.dat")
                 return "Кат. прочих";
+            if (fileName == "cars-meta.dat")
+                return "Паспорт авто";
             return fileName;
         }
 

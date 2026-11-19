@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.19.0";
+        private const string AppVersion = "1.20.0";
 
         private string Cur()
         {
@@ -220,6 +220,7 @@ namespace Alfa156.Desktop
             intervalRow.Controls.Add(currencyBox);
             intervalRow.Controls.Add(MakeButton("Сохранить валюту", SaveCurrency));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
+            intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
             summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
             summaryLayout.Controls.Add(summaryChart, 0, 1);
@@ -603,6 +604,11 @@ namespace Alfa156.Desktop
         {
             carsGrid.Columns.Clear();
             carsGrid.Columns.Add("name", "Автомобиль");
+            carsGrid.Columns.Add("year", "Год");
+            carsGrid.Columns.Add("plate", "Госномер");
+            carsGrid.Columns.Add("vin", "VIN");
+            carsGrid.Columns.Add("tank", "Бак, л");
+            carsGrid.Columns.Add("note", "Заметка");
         }
 
         private void SetupFuelGrid()
@@ -1115,7 +1121,7 @@ namespace Alfa156.Desktop
                 SetupFuelGrid();
                 SetupRepairsGrid();
                 SetupExpensesGrid();
-                BindGrid(carsGrid, repository.Cars, 1);
+                BindCarsGrid();
                 BindFuelGrid(repository.Fuel);
                 BindGrid(repairsGrid, repository.Repairs, 9);
                 BindGrid(expensesGrid, repository.Expenses, 6);
@@ -1190,12 +1196,15 @@ namespace Alfa156.Desktop
             if (AlfaCodec.TryNumber(beltWarnBox.Text, out beltWarn) && beltWarn > 0)
                 intervals.BeltWarn = beltWarn;
             // ReadGrid includes hidden (filtered-out) rows — фильтр только визуальный.
+            List<string[]> cars;
+            List<string[]> carsMeta;
+            ReadCarsGrid(out cars, out carsMeta);
             List<string[]> settings = ToSettings.ApplyIntervals(repository.Settings, intervals);
             string currencyCode = ToSettings.NormalizeCurrency(currencyBox.Text);
             if (currencyCode != null)
                 settings = ToSettings.SetCurrency(settings, currencyCode);
             repository.ReplaceAll(
-                ReadGrid(carsGrid, 1),
+                cars,
                 ReadFuelGrid(),
                 ReadGrid(repairsGrid, 9),
                 ReadGrid(utilitiesGrid, 8),
@@ -1203,6 +1212,89 @@ namespace Alfa156.Desktop
                 ReadGrid(expensesGrid, 6),
                 ReadGrid(expenseCategoriesGrid, 1),
                 settings);
+            repository.CarsMetaRows = carsMeta;
+        }
+
+        private void BindCarsGrid()
+        {
+            carsGrid.Rows.Clear();
+            Dictionary<string, CarPassport> metaMap =
+                new Dictionary<string, CarPassport>(StringComparer.OrdinalIgnoreCase);
+            if (repository.CarsMetaRows != null)
+            {
+                for (int i = 0; i < repository.CarsMetaRows.Count; i++)
+                {
+                    CarPassport meta = CarsMeta.FromRow(repository.CarsMetaRows[i]);
+                    if (meta.CarName.Length > 0 && !metaMap.ContainsKey(meta.CarName))
+                        metaMap.Add(meta.CarName, meta);
+                }
+            }
+            for (int i = 0; i < repository.Cars.Count; i++)
+            {
+                string[] content = RecordIds.StripId(repository.Cars[i]);
+                string name = content.Length > 0 ? (content[0] ?? "") : "";
+                CarPassport meta;
+                if (!metaMap.TryGetValue(name, out meta))
+                    meta = new CarPassport { CarName = name };
+                int index = carsGrid.Rows.Add(name, meta.Year, meta.Plate, meta.Vin,
+                    meta.TankLiters, meta.Note);
+                carsGrid.Rows[index].Tag = RecordIds.GetId(repository.Cars[i]);
+            }
+        }
+
+        private void ReadCarsGrid(out List<string[]> cars, out List<string[]> carsMeta)
+        {
+            cars = new List<string[]>();
+            carsMeta = new List<string[]>();
+            Dictionary<string, string> metaIds =
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (repository.CarsMetaRows != null)
+            {
+                for (int i = 0; i < repository.CarsMetaRows.Count; i++)
+                {
+                    CarPassport existing = CarsMeta.FromRow(repository.CarsMetaRows[i]);
+                    if (existing.CarName.Length > 0 && !String.IsNullOrEmpty(existing.Id) &&
+                        !metaIds.ContainsKey(existing.CarName))
+                        metaIds.Add(existing.CarName, existing.Id);
+                }
+            }
+            for (int i = 0; i < carsGrid.Rows.Count; i++)
+            {
+                DataGridViewRow row = carsGrid.Rows[i];
+                if (row.IsNewRow)
+                    continue;
+                string name = CellText(row, 0).Trim();
+                if (name.Length == 0)
+                    continue;
+                string[] carRow = new string[] { name };
+                string id = row.Tag as string;
+                if (!String.IsNullOrEmpty(id) && RecordIds.LooksLikeId(id))
+                    carRow = RecordIds.WithId(carRow, id);
+                cars.Add(carRow);
+
+                CarPassport meta = new CarPassport();
+                meta.CarName = name;
+                meta.Year = CellText(row, 1);
+                meta.Plate = CellText(row, 2);
+                meta.Vin = CellText(row, 3);
+                meta.TankLiters = CellText(row, 4);
+                meta.Note = CellText(row, 5);
+                string metaId;
+                if (metaIds.TryGetValue(name, out metaId))
+                    meta.Id = metaId;
+                bool hasMeta = meta.Year.Length > 0 || meta.Plate.Length > 0 ||
+                    meta.Vin.Length > 0 || meta.TankLiters.Length > 0 || meta.Note.Length > 0 ||
+                    !String.IsNullOrEmpty(meta.Id);
+                if (hasMeta)
+                    carsMeta.Add(CarsMeta.ToRow(meta));
+            }
+        }
+
+        private static string CellText(DataGridViewRow row, int column)
+        {
+            if (row == null || column < 0 || column >= row.Cells.Count || row.Cells[column].Value == null)
+                return "";
+            return Convert.ToString(row.Cells[column].Value) ?? "";
         }
 
         private List<string[]> ReadFuelGrid()
@@ -1351,6 +1443,74 @@ namespace Alfa156.Desktop
             }
         }
 
+        private void ShowCarTimeline(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                string car = repository.Cars.Count > 0
+                    ? (RecordIds.StripId(repository.Cars[0])[0] ?? "")
+                    : "";
+                if (car.Length == 0)
+                    throw new InvalidOperationException("Нет автомобиля для ленты.");
+                CarPassport passport = FindPassport(car);
+                string text = CarTimeline.FormatList(
+                    CarTimeline.Build(repository.Fuel, repository.Repairs, repository.Expenses, car),
+                    car,
+                    FormatPassportSuffix(passport));
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Лента · " + car;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.Size = new Size(640, 480);
+                    dialog.MinimizeBox = false;
+                    dialog.MaximizeBox = true;
+                    TextBox box = new TextBox
+                    {
+                        Multiline = true,
+                        ReadOnly = true,
+                        ScrollBars = ScrollBars.Vertical,
+                        Dock = DockStyle.Fill,
+                        Font = new Font("Consolas", 10F),
+                        Text = text
+                    };
+                    dialog.Controls.Add(box);
+                    dialog.ShowDialog(this);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private CarPassport FindPassport(string carName)
+        {
+            if (repository.CarsMetaRows != null)
+            {
+                for (int i = 0; i < repository.CarsMetaRows.Count; i++)
+                {
+                    CarPassport meta = CarsMeta.FromRow(repository.CarsMetaRows[i]);
+                    if (String.Equals(meta.CarName, carName, StringComparison.OrdinalIgnoreCase))
+                        return meta;
+                }
+            }
+            return new CarPassport { CarName = carName };
+        }
+
+        private static string FormatPassportSuffix(CarPassport meta)
+        {
+            if (meta == null)
+                return "";
+            StringBuilder sb = new StringBuilder();
+            if (meta.Year.Length > 0)
+                sb.Append(" · ").Append(meta.Year);
+            if (meta.Plate.Length > 0)
+                sb.Append(" · ").Append(meta.Plate);
+            return sb.ToString();
+        }
+
         private string GetSelectedRecordId()
         {
             DataGridView grid = null;
@@ -1484,7 +1644,24 @@ namespace Alfa156.Desktop
             }
 
             StringBuilder result = new StringBuilder();
-            result.Append(currentCar).Append("\r\n\r\nЗаправки: ").Append(Money(fuelTotal))
+            CarPassport passport = FindPassport(currentCar);
+            result.Append(currentCar).Append(FormatPassportSuffix(passport));
+            if (passport.Vin.Length > 0 || passport.TankLiters.Length > 0 || passport.Note.Length > 0)
+            {
+                result.Append("\r\n");
+                if (passport.Vin.Length > 0)
+                    result.Append("VIN: ").Append(passport.Vin);
+                if (passport.TankLiters.Length > 0)
+                {
+                    if (passport.Vin.Length > 0)
+                        result.Append(" · ");
+                    result.Append("бак ").Append(passport.TankLiters).Append(" л");
+                }
+                if (passport.Note.Length > 0)
+                    result.Append("\r\n").Append(passport.Note);
+            }
+            result.Append("\r\n\r\nЗаправки: ").Append(Money(fuelTotal))
+
                 .Append(" " + Cur() + "\r\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur() + "\r\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur() + "\r\n");
             if (anyPurpose)
             {

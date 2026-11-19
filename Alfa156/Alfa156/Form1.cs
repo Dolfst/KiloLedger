@@ -96,6 +96,7 @@ namespace CarExpenses
             MainMenu menu = new MainMenu();
             MenuItem cars = CreateMenuItem("Авто");
             cars.MenuItems.Add(CreateMenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
+            cars.MenuItems.Add(CreateMenuItem("Свойства", new EventHandler(EditCarPassport)));
             menu.MenuItems.Add(cars);
             MenuItem data = CreateMenuItem("Данные");
             data.MenuItems.Add(CreateMenuItem("Создать копию в памяти КПК", new EventHandler(CreateLocalBackupFromMenu)));
@@ -111,6 +112,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Дубликаты", new EventHandler(ShowDuplicatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
@@ -121,7 +123,7 @@ namespace CarExpenses
             Controls.Add(homeLogoPanel);
 
             homeCarLabel = new Label();
-            homeCarLabel.Text = "Автомобиль: " + currentCar;
+            homeCarLabel.Text = "Автомобиль: " + currentCar + CarsMeta.HeaderSuffix(currentCar);
             homeCarLabel.BackColor = Color.FromArgb(232, 238, 244);
             homeCarLabel.ForeColor = Color.FromArgb(35, 51, 70);
             homeCarLabel.Font = new Font("Arial", 10, FontStyle.Bold);
@@ -644,6 +646,9 @@ namespace CarExpenses
                     if (!TrySave(delegate { DataStore.UpdateFuelAt(sourceIndex, values); }))
                         return;
                     currentCar = values[1];
+                    string tankHint = CarsMeta.TankNearHint(values[1], values[3]);
+                    if (tankHint != null)
+                        MessageBox.Show(tankHint, "Alfa 156");
                 }
             }
             else if (currentSection == RepairSection)
@@ -1350,6 +1355,9 @@ namespace CarExpenses
                 if (!TrySave(delegate { DataStore.AddFuel(values); }))
                     return;
                 currentCar = values[1];
+                string tankHint = CarsMeta.TankNearHint(values[1], values[3]);
+                if (tankHint != null)
+                    MessageBox.Show(tankHint, "Alfa 156");
             }
             ShowRecords(FuelSection);
         }
@@ -1556,12 +1564,94 @@ namespace CarExpenses
             MenuItem actions = CreateMenuItem("Действия");
             actions.MenuItems.Add(CreateMenuItem("Выбрать", new EventHandler(SelectCar)));
             actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCar)));
+            actions.MenuItems.Add(CreateMenuItem("Свойства", new EventHandler(EditCarPassportFromList)));
             actions.MenuItems.Add(CreateMenuItem("Переименовать", new EventHandler(RenameCar)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCar)));
             menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
             LayoutScreen();
+        }
+
+        private void EditCarPassport(object sender, EventArgs e)
+        {
+            EditCarPassportFor(currentCar);
+        }
+
+        private void EditCarPassportFromList(object sender, EventArgs e)
+        {
+            if (recordList == null || recordList.SelectedIndex < 0)
+            {
+                MessageBox.Show("Выберите автомобиль.", "Учет");
+                return;
+            }
+            EditCarPassportFor(recordList.SelectedItem.ToString());
+        }
+
+        private void EditCarPassportFor(string carName)
+        {
+            CarPassport meta = CarsMeta.Get(carName);
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Год", meta.Year, "text", false),
+                new EntryField("Госномер", meta.Plate, "text", false),
+                new EntryField("VIN", meta.Vin, "text", false),
+                new EntryField("Объём бака, л", meta.TankLiters, "number", false),
+                new EntryField("Заметка", meta.Note, "text", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Свойства · " + carName, fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                meta.CarName = carName;
+                meta.Year = editor.Values[0];
+                meta.Plate = editor.Values[1];
+                meta.Vin = editor.Values[2];
+                meta.TankLiters = editor.Values[3];
+                meta.Note = editor.Values[4];
+                if (!TrySave(delegate { CarsMeta.Upsert(meta); }))
+                    return;
+            }
+            if (screenType == "cars")
+                ShowCars(sender, e);
+            else
+                ShowHome();
+        }
+
+        private void ShowCarTimeline(object sender, EventArgs e)
+        {
+            try
+            {
+                string text = CarTimeline.FormatList(currentCar);
+                screenType = "timeline";
+                homeCarLabel = null;
+                homeLogoPanel = null;
+                screenHeading = null;
+                recordList = null;
+                homeButtons = null;
+                Controls.Clear();
+                Text = "Лента";
+                screenHeading = new Label();
+                screenHeading.Text = "Лента · " + currentCar + CarsMeta.HeaderSuffix(currentCar);
+                StyleHeading(screenHeading);
+                Controls.Add(screenHeading);
+                summaryBox = new TextBox();
+                summaryBox.Multiline = true;
+                summaryBox.ReadOnly = true;
+                summaryBox.ScrollBars = ScrollBars.Vertical;
+                summaryBox.BackColor = Color.FromArgb(245, 248, 251);
+                summaryBox.ForeColor = Color.FromArgb(35, 51, 70);
+                summaryBox.Text = text;
+                Controls.Add(summaryBox);
+                MainMenu menu = new MainMenu();
+                menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
+                Menu = menu;
+                LayoutScreen();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось построить ленту: " + ex.Message, "Ошибка");
+            }
         }
 
         private void SelectCar(object sender, EventArgs e)
@@ -1644,7 +1734,7 @@ namespace CarExpenses
             Controls.Clear();
             Text = "Сводка";
             screenHeading = new Label();
-            screenHeading.Text = "Сводка расходов";
+            screenHeading.Text = "Сводка · " + currentCar + CarsMeta.HeaderSuffix(currentCar);
             StyleHeading(screenHeading);
             Controls.Add(screenHeading);
 
@@ -1732,7 +1822,7 @@ namespace CarExpenses
                     recordList.Size = new System.Drawing.Size(width - 8, height - 40);
                 }
             }
-            else if (screenType == "summary")
+            else if (screenType == "summary" || screenType == "timeline")
             {
                 if (screenHeading != null)
                 {
@@ -1843,7 +1933,23 @@ namespace CarExpenses
                     yearUtility += amount;
             }
 
-            string result = currentCar + "\r\n\r\nЗаправки: " + Money(fuelTotal) +
+            CarPassport passport = CarsMeta.Get(currentCar);
+            string result = currentCar + CarsMeta.HeaderSuffix(currentCar);
+            if (passport.Vin.Length > 0 || passport.TankLiters.Length > 0 || passport.Note.Length > 0)
+            {
+                result += "\r\n";
+                if (passport.Vin.Length > 0)
+                    result += "VIN: " + passport.Vin;
+                if (passport.TankLiters.Length > 0)
+                {
+                    if (passport.Vin.Length > 0)
+                        result += " · ";
+                    result += "бак " + passport.TankLiters + " л";
+                }
+                if (passport.Note.Length > 0)
+                    result += "\r\n" + passport.Note;
+            }
+            result += "\r\n\r\nЗаправки: " + Money(fuelTotal) +
                 " " + Cur() + "\r\nРемонт и ТО: " + Money(repairTotal) +
                 " " + Cur() + "\r\nПрочие расходы: " + Money(expenseTotal) + " " + Cur() + "\r\n";
             if (anyPurpose)
@@ -2138,7 +2244,8 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.19.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.20.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
                 "Полный бак: частичные заправки не входят в расчёт л/100 км.",

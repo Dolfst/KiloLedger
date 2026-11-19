@@ -17,11 +17,12 @@ namespace Alfa156.Desktop.Data
         internal const string ExpensesFile = "expenses.dat";
         internal const string ExpenseCategoriesFile = "expense-categories.dat";
         internal const string SettingsFile = "settings.dat";
+        internal const string CarsMetaFile = CarsMeta.FileName;
 
         internal static readonly string[] DataFiles = new string[]
         {
             "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
-            ExpensesFile, ExpenseCategoriesFile, SettingsFile, RecordIds.DeletedFile
+            ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, RecordIds.DeletedFile
         };
 
         internal static readonly string[] UtilityLabels = new string[]
@@ -201,6 +202,15 @@ namespace Alfa156.Desktop.Data
                     if (!ToSettings.IsValidRow(settings[j]))
                         throw new InvalidDataException("Неверный формат записи в " + SettingsFile + ".");
             }
+
+            string carsMetaPath = Path.Combine(directory, CarsMetaFile);
+            if (File.Exists(carsMetaPath))
+            {
+                List<string[]> meta = ReadRows(carsMetaPath);
+                for (int j = 0; j < meta.Count; j++)
+                    if (!CarsMeta.IsValidRow(meta[j]))
+                        throw new InvalidDataException("Неверный формат записи в " + CarsMetaFile + ".");
+            }
         }
 
         internal static bool IsValidColumnCount(string fileName, int length)
@@ -217,6 +227,8 @@ namespace Alfa156.Desktop.Data
                 return length == 8 || length == 9;
             if (fileName == ExpensesFile)
                 return length == 6 || length == 7;
+            if (fileName == CarsMetaFile)
+                return length >= 1 && length <= 7;
             return false;
         }
 

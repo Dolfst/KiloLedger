@@ -21,6 +21,7 @@ namespace CarExpenses
         private const string ExpensesFile = "expenses.dat";
         private const string ExpenseCategoriesFile = "expense-categories.dat";
         private const string SettingsFile = "settings.dat";
+        private const string CarsMetaFile = CarsMeta.FileName;
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
@@ -31,7 +32,7 @@ namespace CarExpenses
         private static readonly string[] DataFiles = new string[]
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile,
-            ExpensesFile, ExpenseCategoriesFile, SettingsFile, DeletedFile
+            ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, DeletedFile
         };
 
         private static readonly string[] DefaultRepairCategories = new string[]
@@ -62,6 +63,7 @@ namespace CarExpenses
             EnsureExpenseCategoriesFile();
             EnsureExpenseCategories();
             ToSettings.EnsureFile();
+            CarsMeta.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
         }
@@ -561,6 +563,8 @@ namespace CarExpenses
                 return length == 8 || length == 9;
             if (fileName == ExpensesFile)
                 return length == 6 || length == 7;
+            if (fileName == CarsMetaFile)
+                return length >= 1 && length <= 7;
             return false;
         }
 
@@ -616,6 +620,15 @@ namespace CarExpenses
                         throw new InvalidDataException("Неверный id в expense-categories.dat.");
                 }
             }
+
+            string carsMetaPath = Path.Combine(directory, CarsMetaFile);
+            if (File.Exists(carsMetaPath))
+            {
+                List<string[]> meta = ReadRowsFromPath(carsMetaPath);
+                for (int i = 0; i < meta.Count; i++)
+                    if (!CarsMeta.IsValidRow(meta[i]))
+                        throw new InvalidDataException("Неверный формат cars-meta.dat.");
+            }
         }
 
         private static void EnsureDeletedFile()
@@ -638,6 +651,7 @@ namespace CarExpenses
             EnsureIdsInFile(RepairCategoriesFile);
             EnsureIdsInFile(ExpensesFile);
             EnsureIdsInFile(ExpenseCategoriesFile);
+            EnsureIdsInFile(CarsMetaFile);
         }
 
         private static void EnsureIdsInFile(string fileName)
@@ -898,6 +912,11 @@ namespace CarExpenses
                 File.Copy(settingsSource, GetPath(SettingsFile), true);
             else
                 ToSettings.EnsureFile();
+            string carsMetaSource = Path.Combine(backupPath, CarsMetaFile);
+            if (File.Exists(carsMetaSource))
+                File.Copy(carsMetaSource, GetPath(CarsMetaFile), true);
+            else
+                CarsMeta.EnsureFile();
             string deletedSource = Path.Combine(backupPath, DeletedFile);
             if (File.Exists(deletedSource))
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
@@ -1568,6 +1587,7 @@ namespace CarExpenses
                 SaveRows(FuelFile, fuel);
                 SaveRows(RepairsFile, repairs);
                 SaveRows(ExpensesFile, expenses);
+                CarsMeta.RenameCar(previousName, newName);
             }
             catch (Exception renameError)
             {
@@ -1657,6 +1677,7 @@ namespace CarExpenses
                 SaveRows(FuelFile, keptFuel);
                 SaveRows(RepairsFile, keptRepairs);
                 SaveRows(ExpensesFile, keptExpenses);
+                CarsMeta.DeleteCar(carName);
             }
             catch (Exception deleteError)
             {

@@ -18,6 +18,7 @@ namespace Alfa156.Desktop.Data
         internal const string TypeCategory = "category";
         internal const string TypeExpense = "expense";
         internal const string TypeExpenseCategory = "expense-category";
+        internal const string TypeCarMeta = "car-meta";
 
         internal static string PrefixForFile(string fileName)
         {
@@ -28,6 +29,7 @@ namespace Alfa156.Desktop.Data
             if (fileName == AlfaCodec.RepairCategoriesFile) return "k_";
             if (fileName == AlfaCodec.ExpensesFile) return "e_";
             if (fileName == AlfaCodec.ExpenseCategoriesFile) return "p_";
+            if (fileName == AlfaCodec.CarsMetaFile) return "m_";
             return "x_";
         }
 
@@ -40,6 +42,7 @@ namespace Alfa156.Desktop.Data
             if (fileName == AlfaCodec.RepairCategoriesFile) return TypeCategory;
             if (fileName == AlfaCodec.ExpensesFile) return TypeExpense;
             if (fileName == AlfaCodec.ExpenseCategoriesFile) return TypeExpenseCategory;
+            if (fileName == AlfaCodec.CarsMetaFile) return TypeCarMeta;
             return "unknown";
         }
 
@@ -49,7 +52,7 @@ namespace Alfa156.Desktop.Data
                 return false;
             char prefix = value[0];
             if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
-                 prefix != 'e' && prefix != 'p' && prefix != 'x') || value[1] != '_')
+                 prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 'x') || value[1] != '_')
                 return false;
             for (int i = 2; i < value.Length; i++)
             {

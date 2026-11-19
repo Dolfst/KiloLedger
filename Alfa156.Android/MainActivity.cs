@@ -1453,6 +1453,12 @@ public sealed class MainActivity : Activity
                     SetCurrentCar(values[1]);
                 RefreshRecords();
                 RefreshServiceNotifications();
+                if (selectedSection == Fuel && values.Length > 3)
+                {
+                    string tankHint = CarsMeta.TankNearHint(DataDirectory, values[1], values[3]);
+                    if (tankHint != null)
+                        ShowMessage(tankHint);
+                }
             }, selectedSection == Fuel, receiptId, mileageConfirm);
     }
 
@@ -1856,7 +1862,7 @@ public sealed class MainActivity : Activity
     {
         new AlertDialog.Builder(this)
             .SetTitle(name)
-            .SetItems(new string[] { "Выбрать", "Переименовать", "Удалить" },
+            .SetItems(new string[] { "Выбрать", "Свойства", "Лента", "Переименовать", "Удалить" },
                 delegate(object sender, DialogClickEventArgs e)
                 {
                     if (e.Which == 0)
@@ -1865,11 +1871,67 @@ public sealed class MainActivity : Activity
                         RefreshRecords();
                     }
                     else if (e.Which == 1)
+                        EditCarPassport(name);
+                    else if (e.Which == 2)
+                        ShowCarTimeline(name);
+                    else if (e.Which == 3)
                         RenameCar(name);
                     else
                         DeleteCar(name);
                 })
             .Show();
+    }
+
+    private void EditCarPassport(string carName)
+    {
+        CarPassport meta = CarsMeta.Get(DataDirectory, carName);
+        RenderEditor("Свойства · " + carName, new List<EditorField>
+        {
+            EditorField.Text("Год", meta.Year, false),
+            EditorField.Text("Госномер", meta.Plate, false),
+            EditorField.Text("VIN", meta.Vin, false),
+            EditorField.Number("Объём бака, л", meta.TankLiters, false),
+            EditorField.Text("Заметка", meta.Note, false, true)
+        }, delegate(string[] values)
+        {
+            meta.CarName = carName;
+            meta.Year = values[0];
+            meta.Plate = values[1];
+            meta.Vin = values[2];
+            meta.TankLiters = values[3];
+            meta.Note = values[4];
+            CarsMeta.Upsert(DataDirectory, meta);
+            RefreshRecords();
+        });
+    }
+
+    private void ShowCarTimeline(string carName)
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте или создайте данные.");
+            return;
+        }
+        try
+        {
+            ScrollView scroll = new ScrollView(this);
+            TextView body = new TextView(this);
+            body.Text = CarTimeline.FormatList(DataDirectory, carName);
+            body.TextSize = 14;
+            body.SetTextIsSelectable(true);
+            body.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+            body.SetPadding(Dp(12), Dp(8), Dp(12), Dp(8));
+            scroll.AddView(body);
+            new AlertDialog.Builder(this)
+                .SetTitle("Лента · " + carName)
+                .SetView(scroll)
+                .SetPositiveButton("Закрыть", delegate { })
+                .Show();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Не удалось построить ленту: " + ex.Message);
+        }
     }
 
     private void AddCar()
@@ -2669,17 +2731,17 @@ public sealed class MainActivity : Activity
             scroll.AddView(content);
             string summaryText = body.Text;
             new AlertDialog.Builder(this)
-                .SetTitle("Сводка и ТО · " + currentCar)
+                .SetTitle("Сводка и ТО · " + currentCar + CarsMeta.HeaderSuffix(DataDirectory, currentCar))
                 .SetView(scroll)
                 .SetPositiveButton("Поделиться", (sender, args) =>
                 {
                     ShareSummaryText(summaryText);
                 })
-                .SetNeutralButton("Экспорт", (sender, args) =>
+                .SetNeutralButton("Лента", delegate { ShowCarTimeline(currentCar); })
+                .SetNegativeButton("Экспорт", (sender, args) =>
                 {
                     ExportSummaryText(summaryText);
                 })
-                .SetNegativeButton("Закрыть", delegate { })
                 .Show();
         }
         catch (Exception ex)
@@ -2872,6 +2934,22 @@ public sealed class MainActivity : Activity
         }
 
         StringBuilder result = new StringBuilder(currentCar);
+        result.Append(CarsMeta.HeaderSuffix(DataDirectory, currentCar));
+        CarPassport passport = CarsMeta.Get(DataDirectory, currentCar);
+        if (passport.Vin.Length > 0 || passport.TankLiters.Length > 0 || passport.Note.Length > 0)
+        {
+            result.Append("\n");
+            if (passport.Vin.Length > 0)
+                result.Append("VIN: ").Append(passport.Vin);
+            if (passport.TankLiters.Length > 0)
+            {
+                if (passport.Vin.Length > 0)
+                    result.Append(" · ");
+                result.Append("бак ").Append(passport.TankLiters).Append(" л");
+            }
+            if (passport.Note.Length > 0)
+                result.Append("\n").Append(passport.Note);
+        }
         result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" " + Cur())
             .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur())
             .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur());
@@ -3472,7 +3550,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.16.0";
+        string version = "1.20.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -3484,6 +3562,7 @@ public sealed class MainActivity : Activity
             .SetTitle("О программе")
             .SetMessage("Alfa 156\nВерсия " + version +
                 "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
+                "\nПаспорт авто (cars-meta.dat) и лента расходов." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +
                 "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")

@@ -310,6 +310,7 @@ internal static class ExpenseDataStore
             ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile),
                 new List<string[]>());
         ToSettings.EnsureFile(directory);
+        CarsMeta.EnsureFile(directory);
     }
 
     internal static void AddCar(string directory, string name)
@@ -355,6 +356,7 @@ internal static class ExpenseDataStore
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), fuel);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), repairs);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), expenses);
+        CarsMeta.RenameCar(directory, previousName, newName);
     }
 
     internal static void DeleteCar(string directory, string name)
@@ -424,6 +426,7 @@ internal static class ExpenseDataStore
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), keptFuel);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), keptRepairs);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), keptExpenses);
+        CarsMeta.DeleteCar(directory, carName);
     }
 
     private static string ValidateCarName(string name)
@@ -501,6 +504,7 @@ internal static class ExpenseDataStore
         EnsureRepairCategories(directory);
         EnsureExpenseCategories(directory);
         ToSettings.EnsureFile(directory);
+        CarsMeta.EnsureFile(directory);
         ExpenseDataCodec.ValidateDirectory(directory);
     }
 
@@ -719,6 +723,7 @@ internal static class ExpenseDataStore
             File.Copy(settingsSource, settingsDestination, true);
         else
             ToSettings.EnsureFile(destination);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.CarsMetaFile, true);
         string deletedSource = Path.Combine(source, RecordIds.DeletedFile);
         string deletedDestination = Path.Combine(destination, RecordIds.DeletedFile);
         if (File.Exists(deletedSource))
@@ -728,6 +733,7 @@ internal static class ExpenseDataStore
         EnsureRepairCategories(destination);
         EnsureExpenseCategories(destination);
         ToSettings.EnsureFile(destination);
+        CarsMeta.EnsureFile(destination);
         // Replace Receipts/ only when the source snapshot includes that folder
         // (ZIP/копия с фото). Старые .dat-импорты без Receipts/ не стирают чеки.
         string receiptsSource = ReceiptStore.GetFolder(source);
