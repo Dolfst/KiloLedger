@@ -140,6 +140,8 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): `Alfa156.apk` (Android), `Alfa156.Desktop.exe` (ПК), `Alfa156-KPK.exe` / `Alfa156-KPK.zip` (КПК).
 
+**Обновление КПК:** скопируйте свежий `Alfa156-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
+
 GitHub Actions собирает всё автоматически:
 
 | Workflow | Что кладёт в `dist/download` |

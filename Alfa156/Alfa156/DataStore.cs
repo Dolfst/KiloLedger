@@ -544,23 +544,46 @@ namespace CarExpenses
 
         internal static void CreateStartMenuShortcut()
         {
+            string executablePath = GetExecutablePath();
+
+            // «Пуск → Программы»: основной ярлык, который виден в меню на КПК.
             string programsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
             if (programsDirectory == null || programsDirectory.Length == 0)
                 throw new IOException("Windows Mobile не вернул путь к меню «Пуск → Программы».");
+            EnsureStartMenuShortcut(programsDirectory, executablePath);
 
-            string shortcutPath = Path.Combine(programsDirectory, StartMenuShortcut);
-            if (File.Exists(shortcutPath))
-                return;
-
-            Directory.CreateDirectory(programsDirectory);
-            string executablePath = GetExecutablePath();
-            string target = "\"" + executablePath + "\"";
-            using (StreamWriter writer = new StreamWriter(shortcutPath, false, Encoding.ASCII))
+            // Если старый ярлык лежит в корне «Пуск», перенацелим и его на текущий exe.
+            string startMenuDirectory = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+            if (startMenuDirectory != null && startMenuDirectory.Length > 0)
             {
-                writer.Write(target.Length.ToString(CultureInfo.InvariantCulture));
-                writer.Write("#");
-                writer.Write(target);
+                string rootShortcut = Path.Combine(startMenuDirectory, StartMenuShortcut);
+                if (File.Exists(rootShortcut))
+                    WriteStartMenuShortcut(rootShortcut, executablePath);
             }
+        }
+
+        private static void EnsureStartMenuShortcut(string directory, string executablePath)
+        {
+            Directory.CreateDirectory(directory);
+            WriteStartMenuShortcut(Path.Combine(directory, StartMenuShortcut), executablePath);
+        }
+
+        private static void WriteStartMenuShortcut(string shortcutPath, string executablePath)
+        {
+            string target = "\"" + executablePath + "\"";
+            string content = target.Length.ToString(CultureInfo.InvariantCulture) + "#" + target;
+
+            if (File.Exists(shortcutPath))
+            {
+                string existing;
+                using (StreamReader reader = new StreamReader(shortcutPath, Encoding.ASCII))
+                    existing = reader.ReadToEnd();
+                if (string.Equals(existing, content, StringComparison.Ordinal))
+                    return;
+            }
+
+            using (StreamWriter writer = new StreamWriter(shortcutPath, false, Encoding.ASCII))
+                writer.Write(content);
         }
 
         private static string GetExecutablePath()
