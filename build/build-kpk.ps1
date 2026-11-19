@@ -74,6 +74,7 @@ $sources = @(
     (Join-Path $projDir "DuplicateFinder.cs"),
     (Join-Path $projDir "CarCompare.cs"),
     (Join-Path $projDir "PeriodCompare.cs"),
+    (Join-Path $projDir "ForecastInsights.cs"),
     (Join-Path $projDir "DataIntegrity.cs"),
     (Join-Path $projDir "ToSettings.cs"),
     (Join-Path $projDir "SyncCrypto.cs"),

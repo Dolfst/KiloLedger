@@ -110,6 +110,11 @@ def main() -> int:
     if "ForecastInsights.cs" not in kpk_csproj:
         errors.append("KPK csproj: missing ForecastInsights.cs")
 
+    # build-kpk.ps1 uses a hardcoded source list (not csproj Compile includes).
+    kpk_build = (ROOT / "build/build-kpk.ps1").read_text()
+    if 'ForecastInsights.cs"' not in kpk_build and "ForecastInsights.cs')" not in kpk_build:
+        errors.append("build/build-kpk.ps1: ForecastInsights.cs must be in $sources")
+
     readme = (ROOT / "README.md").read_text()
     if "**1.30.0**" not in readme:
         errors.append("README: missing 1.30.0")
