@@ -129,6 +129,7 @@ namespace CarExpenses
             data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Экспорт сводки", new EventHandler(ExportSummaryFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
             data.MenuItems.Add(CreateMenuItem("О программе", new EventHandler(ShowAbout)));
             menu.MenuItems.Add(data);
             MenuItem actionsHome = CreateMenuItem("Действия");
@@ -146,6 +147,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             actionsHome.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
             menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
@@ -1913,6 +1915,7 @@ namespace CarExpenses
             MainMenu menu = new MainMenu();
             MenuItem actions = CreateMenuItem("Действия");
             actions.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
             menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
@@ -1943,6 +1946,47 @@ namespace CarExpenses
             catch (Exception ex)
             {
                 MessageBox.Show("Не удалось сравнить периоды: " + ex.Message, "Ошибка");
+            }
+        }
+
+        private void ExportPeriodReportFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                string thisFrom, thisTo, prevFrom, prevTo;
+                PeriodCompare.ThisVsPreviousMonth(out thisFrom, out thisTo, out prevFrom, out prevTo);
+                DialogResult choice = MessageBox.Show(
+                    "Этот месяц — Да\r\nПрошлый месяц — Нет\r\nОтмена — закрыть",
+                    "Отчёт за период · " + currentCar,
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button1);
+                if (choice == DialogResult.Cancel)
+                    return;
+                string from = choice == DialogResult.Yes ? thisFrom : prevFrom;
+                string to = choice == DialogResult.Yes ? thisTo : prevTo;
+
+                List<string[]> fuels = DataStore.LoadFuel();
+                List<string[]> repairs = DataStore.LoadRepairs();
+                List<string[]> expenses = DataStore.LoadExpenses();
+                List<string[]> utilities = DataStore.LoadUtilities();
+                PeriodCompare.Totals totals = PeriodCompare.Build(
+                    currentCar, fuels, repairs, expenses, utilities, from, to);
+                string text = PeriodReport.FormatText(currentCar, from, to, totals, Cur());
+
+                string fileName = "Report_" + from + "_" + to + ".txt";
+                string folder = @"\My Documents\Alfa156";
+                if (!Directory.Exists(folder))
+                    Directory.CreateDirectory(folder);
+                string path = Path.Combine(folder, fileName);
+                using (StreamWriter writer = new StreamWriter(path, false))
+                    writer.Write(text);
+
+                MessageBox.Show(text + "\r\n\r\nСохранено:\r\n" + path, "Отчёт за период");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось сохранить отчёт: " + ex.Message, "Ошибка");
             }
         }
 
@@ -2560,7 +2604,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.32.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.33.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "АЗС / бренд у заправок; автодополнение; средняя цена/л в сводке.\r\n" +
                 "Оценка пробега в сводке: средний км/день и срок до ТО масла/ремня.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +

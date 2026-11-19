@@ -3162,6 +3162,12 @@ public sealed class MainActivity : Activity
             compareParams.BottomMargin = Dp(8);
             content.AddView(compareButton, compareParams);
 
+            Button reportButton = CreateButton("Отчёт за период", null);
+            LinearLayout.LayoutParams reportParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+            reportParams.BottomMargin = Dp(8);
+            content.AddView(reportButton, reportParams);
+
             TextView body = new TextView(this);
             body.Text = BuildSummary();
             body.TextSize = 14;
@@ -3171,6 +3177,7 @@ public sealed class MainActivity : Activity
             scroll.AddView(content);
             string summaryText = body.Text;
             compareButton.Click += delegate { ShowPeriodCompare(); };
+            reportButton.Click += delegate { ShowPeriodReport(); };
             new AlertDialog.Builder(this)
                 .SetTitle("Сводка и ТО · " + currentCar + CarsMeta.HeaderSuffix(DataDirectory, currentCar))
                 .SetView(scroll)
@@ -3273,26 +3280,156 @@ public sealed class MainActivity : Activity
 
     private void ShareSummaryText(string text)
     {
+        ShareSummaryText(text, "Alfa 156 · сводка · " + currentCar, "Поделиться сводкой");
+    }
+
+    private void ShareSummaryText(string text, string subject, string chooserTitle)
+    {
         if (String.IsNullOrEmpty(text))
             return;
         Intent share = new Intent(Intent.ActionSend);
         share.SetType("text/plain");
-        share.PutExtra(Intent.ExtraSubject, "Alfa 156 · сводка · " + currentCar);
+        share.PutExtra(Intent.ExtraSubject, subject);
         share.PutExtra(Intent.ExtraText, text);
-        StartActivity(Intent.CreateChooser(share, "Поделиться сводкой"));
+        StartActivity(Intent.CreateChooser(share, chooserTitle));
+    }
+
+    private void ShareSummaryHtml(string html, string subject)
+    {
+        if (String.IsNullOrEmpty(html))
+            return;
+        Intent share = new Intent(Intent.ActionSend);
+        share.SetType("text/html");
+        share.PutExtra(Intent.ExtraSubject, subject);
+        share.PutExtra(Intent.ExtraText, html);
+        share.PutExtra(Intent.ExtraHtmlText, html);
+        StartActivity(Intent.CreateChooser(share, "Поделиться HTML"));
     }
 
     private void ExportSummaryText(string text)
+    {
+        ExportSummaryText(text,
+            "Summary_" + DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt",
+            "text/plain");
+    }
+
+    private void ExportSummaryText(string text, string fileName, string mime)
     {
         if (String.IsNullOrEmpty(text))
             return;
         pendingSummaryText = text;
         Intent intent = new Intent(Intent.ActionCreateDocument);
         intent.AddCategory(Intent.CategoryOpenable);
-        intent.SetType("text/plain");
-        intent.PutExtra(Intent.ExtraTitle,
-            "Summary_" + DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt");
+        intent.SetType(String.IsNullOrEmpty(mime) ? "text/plain" : mime);
+        intent.PutExtra(Intent.ExtraTitle, fileName);
         StartActivityForResult(intent, SummaryExportRequest);
+    }
+
+    private void ShowPeriodReport()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            return;
+        }
+        string from, to, prevFrom, prevTo;
+        PeriodCompare.ThisVsPreviousMonth(out from, out to, out prevFrom, out prevTo);
+        new AlertDialog.Builder(this)
+            .SetTitle("Отчёт за период · " + currentCar)
+            .SetItems(new string[]
+            {
+                "Этот месяц",
+                "Прошлый месяц",
+                "Свои даты…"
+            }, (sender, args) =>
+            {
+                if (args.Which == 0)
+                    ShowPeriodReportResult(from, to);
+                else if (args.Which == 1)
+                    ShowPeriodReportResult(prevFrom, prevTo);
+                else if (args.Which == 2)
+                    PromptCustomPeriodReport(from, to);
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void PromptCustomPeriodReport(string from, string to)
+    {
+        RenderEditor("Период отчёта", new List<EditorField>
+        {
+            EditorField.Date("С", from, true),
+            EditorField.Date("По", to, true)
+        }, delegate(string[] raw)
+        {
+            if (String.CompareOrdinal(raw[0], raw[1]) > 0)
+                throw new InvalidOperationException("Дата «с» не позже «по».");
+            ShowPeriodReportResult(raw[0], raw[1]);
+        }, false);
+    }
+
+    private void ShowPeriodReportResult(string from, string to)
+    {
+        try
+        {
+            List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+            List<string[]> repairs = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
+            List<string[]> expenses = ExpenseDataStore.LoadOptional(DataDirectory, ExpenseDataCodec.ExpensesFile);
+            List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
+            PeriodCompare.Totals totals = PeriodCompare.Build(
+                currentCar, fuels, repairs, expenses, utilities, from, to);
+            string text = PeriodReport.FormatText(
+                currentCar, from, to, totals, Cur(), Money, "\n");
+            string html = PeriodReport.FormatHtml(
+                currentCar, from, to, totals, Cur(), Money);
+            string range = PeriodCompare.FormatRangeLabel(from, to);
+            string subject = "Alfa 156 · отчёт · " + currentCar + " · " + range;
+
+            ScrollView scroll = new ScrollView(this);
+            TextView body = new TextView(this);
+            body.Text = text;
+            body.TextSize = 14;
+            body.SetTextIsSelectable(true);
+            body.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+            body.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            scroll.AddView(body);
+            new AlertDialog.Builder(this)
+                .SetTitle("Отчёт · " + currentCar)
+                .SetView(scroll)
+                .SetPositiveButton("Поделиться", (sender, args) =>
+                {
+                    ShareSummaryText(text, subject, "Поделиться отчётом");
+                })
+                .SetNeutralButton("HTML", (sender, args) =>
+                {
+                    new AlertDialog.Builder(this)
+                        .SetTitle("HTML-отчёт")
+                        .SetItems(new string[]
+                        {
+                            "Поделиться HTML",
+                            "Сохранить .html"
+                        }, (s2, a2) =>
+                        {
+                            if (a2.Which == 0)
+                                ShareSummaryHtml(html, subject);
+                            else if (a2.Which == 1)
+                                ExportSummaryText(html,
+                                    "Report_" + from + "_" + to + ".html", "text/html");
+                        })
+                        .SetNegativeButton("Отмена", delegate { })
+                        .Show();
+                })
+                .SetNegativeButton("Сохранить", (sender, args) =>
+                {
+                    ExportSummaryText(text,
+                        "Report_" + from + "_" + to + ".txt", "text/plain");
+                })
+                .Show();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Не удалось построить отчёт: " + ex.Message);
+        }
     }
 
     private void BuildMonthlyChartData(out List<string> months, out List<decimal[]> totals)
@@ -4340,7 +4477,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.32.0";
+        string version = "1.33.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
