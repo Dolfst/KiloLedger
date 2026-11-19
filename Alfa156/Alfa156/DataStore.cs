@@ -96,7 +96,33 @@ namespace CarExpenses
             Directory.CreateDirectory(backupPath);
             for (int i = 0; i < DataFiles.Length; i++)
                 File.Copy(GetPath(DataFiles[i]), Path.Combine(backupPath, DataFiles[i]), false);
+            CopyReceiptsFolder(DataDirectory, backupPath);
             return backupPath;
+        }
+
+        private const string ReceiptsFolderName = "Receipts";
+
+        private static void CopyReceiptsFolder(string sourceDataDir, string destDataDir)
+        {
+            string source = Path.Combine(sourceDataDir, ReceiptsFolderName);
+            string dest = Path.Combine(destDataDir, ReceiptsFolderName);
+            if (Directory.Exists(dest))
+            {
+                string[] oldFiles = Directory.GetFiles(dest);
+                for (int i = 0; i < oldFiles.Length; i++)
+                    File.Delete(oldFiles[i]);
+            }
+            if (!Directory.Exists(source))
+                return;
+            Directory.CreateDirectory(dest);
+            string[] files = Directory.GetFiles(source, "*.jpg");
+            for (int i = 0; i < files.Length; i++)
+            {
+                string name = Path.GetFileName(files[i]);
+                if (name == null || name.IndexOf("..") >= 0)
+                    continue;
+                File.Copy(files[i], Path.Combine(dest, name), true);
+            }
         }
 
         internal static string[] ListBackupNames()
@@ -692,6 +718,14 @@ namespace CarExpenses
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
             else
                 EnsureDeletedFile();
+            string receiptsDest = Path.Combine(DataDirectory, ReceiptsFolderName);
+            if (Directory.Exists(receiptsDest))
+            {
+                string[] oldFiles = Directory.GetFiles(receiptsDest);
+                for (int i = 0; i < oldFiles.Length; i++)
+                    File.Delete(oldFiles[i]);
+            }
+            CopyReceiptsFolder(backupPath, DataDirectory);
             EnsureRepairCategories();
         }
 

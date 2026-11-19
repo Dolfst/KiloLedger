@@ -549,7 +549,10 @@ internal static class ExpenseDataStore
         rows.RemoveAt(index);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, fileName), rows);
         if (id != null)
+        {
             RecordIds.AddTombstone(directory, fileName, id);
+            ReceiptStore.Delete(directory, id);
+        }
     }
 
     internal static string CreateBackup(string dataDirectory)
@@ -677,6 +680,16 @@ internal static class ExpenseDataStore
         EnsureRepairCategories(destination);
         EnsureExpenseCategories(destination);
         ToSettings.EnsureFile(destination);
+        // Replace Receipts/ only when the source snapshot includes that folder
+        // (ZIP/копия с фото). Старые .dat-импорты без Receipts/ не стирают чеки.
+        string receiptsSource = ReceiptStore.GetFolder(source);
+        if (Directory.Exists(receiptsSource))
+        {
+            string receiptsDest = ReceiptStore.GetFolder(destination);
+            if (Directory.Exists(receiptsDest))
+                Directory.Delete(receiptsDest, true);
+            ReceiptStore.CopyFolder(source, destination);
+        }
     }
 
     private static void CopyOptionalFile(string source, string destination, string fileName, bool createEmpty)
