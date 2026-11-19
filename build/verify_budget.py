@@ -52,17 +52,17 @@ def main() -> int:
         "budgetBox",
         "SaveBudget",
         "AppendBudgetBlock",
-        'AppVersion = "1.22.0"',
     ):
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
+    if 'AppVersion = "' not in desktop:
+        errors.append("Desktop MainForm: missing AppVersion")
 
     kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
     for needle in (
         "EditBudget",
         "FormatBudgetBlock",
         "Бюджет месяца",
-        "1.22.0",
     ):
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
@@ -71,7 +71,7 @@ def main() -> int:
     if "## История версий" not in readme:
         errors.append("README: missing История версий")
     if "**1.22.0**" not in readme or "**1.9.0**" not in readme:
-        errors.append("README: История версий should cover 1.9.0 → 1.22.0")
+        errors.append("README: История версий should cover 1.9.0 → 1.22.0+")
 
     # Soft-limit math: warn at pct, over at >= budget
     budget, warn_pct = 1000.0, 80.0

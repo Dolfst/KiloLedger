@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.22.0";
+        private const string AppVersion = "1.23.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -41,6 +41,7 @@ namespace Alfa156.Desktop
         private readonly TextBox currencyBox = new TextBox();
         private readonly TextBox budgetBox = new TextBox();
         private readonly TextBox budgetWarnBox = new TextBox();
+        private readonly TextBox backupRemindBox = new TextBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
@@ -131,7 +132,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Открыть ZIP", OpenZip));
             toolbar.Controls.Add(MakeButton("Новая папка", CreateFolder));
             toolbar.Controls.Add(MakeButton("Сохранить .dat", SaveData));
-            toolbar.Controls.Add(MakeButton("Сохранить ZIP", SaveZip));
+            toolbar.Controls.Add(MakeButton("Экспорт всего (ZIP)", SaveZip));
             toolbar.Controls.Add(MakeButton("Фото чека", AttachReceiptPhoto));
             globalSearchBox.Width = 140;
             globalSearchBox.Text = "Поиск…";
@@ -232,6 +233,11 @@ namespace Alfa156.Desktop
             budgetWarnBox.Text = "80";
             intervalRow.Controls.Add(budgetWarnBox);
             intervalRow.Controls.Add(MakeButton("Сохранить бюджет", SaveBudget));
+            intervalRow.Controls.Add(new Label { Text = "Напом. копии (дн.)", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            backupRemindBox.Width = 40;
+            backupRemindBox.Text = "7";
+            intervalRow.Controls.Add(backupRemindBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
             intervalRow.Controls.Add(MakeButton("График: /км", ToggleCostPerKmChart));
@@ -788,6 +794,32 @@ namespace Alfa156.Desktop
             }
         }
 
+        private void SaveBackupRemind(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                decimal days;
+                if (!AlfaCodec.TryNumber(backupRemindBox.Text, out days) || days < 0 || days > 3650 ||
+                    days != Decimal.Truncate(days))
+                    throw new InvalidOperationException("Интервал напоминания: 0 (выкл.) или целое 1–3650.");
+                repository.Settings = ToSettings.SetBackupRemindDays(repository.Settings, (int)days);
+                PullAll();
+                repository.Save();
+                dirty = false;
+                backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                if (days <= 0)
+                    SetStatus("Напоминание о резервной копии выключено.");
+                else
+                    SetStatus("Напоминание о копии: каждые " + ((int)days) + " дн. без бэкапа.");
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
         private void WireDirty(DataGridView grid)
         {
             grid.CellValueChanged += delegate { MarkDirty(); };
@@ -843,6 +875,7 @@ namespace Alfa156.Desktop
                     dirty = false;
                     SetStatus("Открыта папка данных.");
                     MaybeShowOnboardingTip();
+                    MaybeShowBackupReminder();
                 }
                 catch (Exception ex)
                 {
@@ -923,7 +956,7 @@ namespace Alfa156.Desktop
                 string tip =
                     "Подсказка Alfa 156:\r\n" +
                     "• Синхронизация по Wi‑Fi — обмен .dat с телефоном/КПК\r\n" +
-                    "• ZIP — полная копия, включая фото чеков\r\n" +
+                    "• Экспорт всего (ZIP) — .dat + Receipts/ + settings\r\n" +
                     "• Вкладка «Сводка» — итоги, график и ТО";
                 MessageBox.Show(this, tip, "Alfa 156", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 SetStatus("Подсказка показана один раз (onboarding_seen).");
@@ -931,6 +964,32 @@ namespace Alfa156.Desktop
             catch
             {
                 // tip must not block folder open
+            }
+        }
+
+        private void MaybeShowBackupReminder()
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(repository.DirectoryPath))
+                    return;
+                if (!ToSettings.ShouldShowBackupReminder(repository.Settings))
+                    return;
+                repository.Settings = ToSettings.MarkBackupNagShown(repository.Settings);
+                try { repository.Save(); }
+                catch { dirty = true; }
+                int days = ToSettings.DaysSinceLastBackup(repository.Settings);
+                string age = days < 0 ? "копии ещё не было" : ("прошло " + days + " дн.");
+                MessageBox.Show(this,
+                    "Давно не было резервной копии (" + age + ").\r\n" +
+                    "Рекомендуем «Экспорт всего (ZIP)» — все .dat, Receipts/ и settings.",
+                    "Резервная копия",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch
+            {
+                // soft reminder must not block folder open
             }
         }
 
@@ -974,7 +1033,7 @@ namespace Alfa156.Desktop
                     }
                     repository.SaveZip(dialog.FileName);
                     dirty = false;
-                    SetStatus("ZIP сохранён: " + dialog.FileName);
+                    SetStatus("Экспорт всего (ZIP) сохранён: " + dialog.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -1165,6 +1224,8 @@ namespace Alfa156.Desktop
                 budgetBox.Text = ToSettings.GetBudgetMonth(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 budgetWarnBox.Text = ToSettings.GetBudgetWarnPct(repository.Settings)
+                    .ToString(CultureInfo.InvariantCulture);
+                backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 // Column headers include currency code — refresh before binding rows.
                 SetupFuelGrid();

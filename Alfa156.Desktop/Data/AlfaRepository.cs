@@ -170,6 +170,7 @@ namespace Alfa156.Desktop.Data
                 for (int i = 0; i < files.Length; i++)
                     File.Copy(files[i], Path.Combine(destReceipts, Path.GetFileName(files[i])), true);
             }
+            NoteSuccessfulBackup();
             return path;
         }
 
@@ -188,6 +189,23 @@ namespace Alfa156.Desktop.Data
                         archive.CreateEntryFromFile(path, fileName, CompressionLevel.Optimal);
                 }
                 ReceiptStore.AddFolderToZip(archive, DirectoryPath);
+            }
+            NoteSuccessfulBackup();
+        }
+
+        /// <summary>Updates last_backup_utc after local backup / ZIP / safety copy.</summary>
+        public void NoteSuccessfulBackup()
+        {
+            if (String.IsNullOrEmpty(DirectoryPath))
+                return;
+            try
+            {
+                Settings = ToSettings.MarkBackupDone(Settings);
+                AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.SettingsFile), Settings);
+            }
+            catch
+            {
+                // reminder stamp must not fail export
             }
         }
 

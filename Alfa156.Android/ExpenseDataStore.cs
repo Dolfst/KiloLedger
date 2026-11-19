@@ -587,6 +587,8 @@ internal static class ExpenseDataStore
             Directory.Delete(backupPath, true);
             throw;
         }
+        try { ToSettings.MarkBackupDone(dataDirectory); }
+        catch { /* reminder stamp must not fail backup */ }
         return backupName;
     }
 
@@ -636,6 +638,8 @@ internal static class ExpenseDataStore
                 Directory.Delete(path, true);
             throw;
         }
+        try { ToSettings.MarkBackupDone(dataDirectory); }
+        catch { /* reminder stamp must not fail safety copy */ }
         return path;
     }
 

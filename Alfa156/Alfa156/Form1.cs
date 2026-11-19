@@ -53,6 +53,7 @@ namespace CarExpenses
             Resize += new EventHandler(FormResized);
             ShowHome();
             MaybeShowOnboardingTip();
+            MaybeShowBackupReminder();
         }
 
         private void MaybeShowOnboardingTip()
@@ -73,9 +74,29 @@ namespace CarExpenses
                 MessageBox.Show(
                     "Кратко:\r\n" +
                     "• Wi‑Fi sync — обмен с телефоном\r\n" +
-                    "• Копии на SD / в памяти\r\n" +
+                    "• Копии на SD / в памяти (settings + cars-meta + expenses)\r\n" +
                     "• Сводка и ТО — итоги и напоминания",
                     "Alfa 156");
+            }
+            catch
+            {
+            }
+        }
+
+        private void MaybeShowBackupReminder()
+        {
+            try
+            {
+                if (!ToSettings.ShouldShowBackupReminder())
+                    return;
+                ToSettings.MarkBackupNagShown();
+                int days = ToSettings.DaysSinceLastBackup();
+                string age = days < 0 ? "копии ещё не было" : ("прошло " + days + " дн.");
+                MessageBox.Show(
+                    "Давно не было резервной копии (" + age + ").\r\n" +
+                    "Рекомендуем «Данные → Создать копию на SD» " +
+                    "(все .dat, settings, cars-meta, expenses и Receipts).",
+                    "Резервная копия");
             }
             catch
             {
@@ -114,6 +135,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
@@ -810,8 +832,20 @@ namespace CarExpenses
         {
             try
             {
+                int fileCount = DataStore.CountBackupFiles();
+                DialogResult confirm = MessageBox.Show(
+                    "Создать полную копию на SD?\r\n" +
+                    "Будет скопировано файлов: " + fileCount.ToString(CultureInfo.InvariantCulture) +
+                    "\r\n(.dat включая settings, cars-meta, expenses + Receipts).",
+                    "Копия на SD",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button1);
+                if (confirm != DialogResult.Yes)
+                    return;
                 string path = DataStore.CreateBackup();
                 MessageBox.Show("Резервная копия создана:\r\n" + path +
+                    "\r\nФайлов: " + fileCount.ToString(CultureInfo.InvariantCulture) +
                     "\r\nСкопируйте эту папку на компьютер через ActiveSync.",
                     "Резервная копия");
             }
@@ -826,8 +860,20 @@ namespace CarExpenses
         {
             try
             {
+                int fileCount = DataStore.CountBackupFiles();
+                DialogResult confirm = MessageBox.Show(
+                    "Создать полную копию в памяти КПК?\r\n" +
+                    "Будет скопировано файлов: " + fileCount.ToString(CultureInfo.InvariantCulture) +
+                    "\r\n(.dat включая settings, cars-meta, expenses + Receipts).",
+                    "Копия в памяти",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button1);
+                if (confirm != DialogResult.Yes)
+                    return;
                 string path = DataStore.CreateLocalBackup();
-                MessageBox.Show("Локальная резервная копия создана:\r\n" + path,
+                MessageBox.Show("Локальная резервная копия создана:\r\n" + path +
+                    "\r\nФайлов: " + fileCount.ToString(CultureInfo.InvariantCulture),
                     "Резервная копия");
             }
             catch (Exception ex)
@@ -2248,7 +2294,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.22.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.23.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
@@ -2727,6 +2773,44 @@ namespace CarExpenses
             else if (pct >= warnPct)
                 block += "\r\n! Предупреждение: >= " + Money(warnPct) + "% бюджета";
             return block;
+        }
+
+        private void EditBackupReminder(object sender, EventArgs e)
+        {
+            int days = ToSettings.GetBackupRemindDays();
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Дней (0 = выкл., по умолч. 7)",
+                    days.ToString(CultureInfo.InvariantCulture), "number", true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Напоминание о копии", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                decimal value;
+                if (!DataStore.TryNumber(editor.Values[0], out value) || value < 0 || value > 3650 ||
+                    value != Decimal.Truncate(value))
+                {
+                    MessageBox.Show("Интервал: 0 (выкл.) или целое 1–3650.", "Напоминание");
+                    return;
+                }
+                try
+                {
+                    if (!TrySave(delegate { ToSettings.SetBackupRemindDays((int)value); }))
+                        return;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Напоминание");
+                    return;
+                }
+                if (value <= 0)
+                    MessageBox.Show("Напоминание о резервной копии выключено.", "Напоминание");
+                else
+                    MessageBox.Show("Напоминание: если копии нет " +
+                        ((int)value).ToString(CultureInfo.InvariantCulture) + " дн. и дольше.",
+                        "Напоминание");
+            }
         }
 
         private void EditBudget(object sender, EventArgs e)
