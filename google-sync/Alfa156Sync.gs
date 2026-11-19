@@ -13,13 +13,16 @@
  *
  * API:
  *   GET  ?action=pull&token=...
- *   POST { token, cars, fuel, repairs, utilities, categories }
+ *   POST { token, cars, fuel, repairs, utilities, categories,
+ *          expenses, expenseCategories }
  */
 
 var FUEL_PREFIX = 'Заправки ';
 var REPAIR_PREFIX = 'Ремонт ';
+var EXPENSE_PREFIX = 'Прочие ';
 var UTILITIES_SHEET = 'Коммунальные';
 var CATEGORIES_SHEET = 'Справочник';
+var EXPENSE_CATEGORIES_SHEET = 'Кат. прочих';
 var DEFAULT_CAR = 'Alfa Romeo 156';
 
 var SPREADSHEET_ID = '1h-EJLq7PhsP_XDSsdnKMLsB7_nxxxFeoT_WKUJ4XgJA';
@@ -71,6 +74,7 @@ function exportSnapshot_() {
   var cars = [];
   var fuel = [];
   var repairs = [];
+  var expenses = [];
   var sheets = ss.getSheets();
   for (var i = 0; i < sheets.length; i++) {
     var name = sheets[i].getName();
@@ -82,6 +86,10 @@ function exportSnapshot_() {
       var carR = name.substring(REPAIR_PREFIX.length).trim() || DEFAULT_CAR;
       if (!carIn_(cars, carR)) cars.push([carR]);
       repairs = repairs.concat(readRepairs_(sheets[i], carR));
+    } else if (name.indexOf(EXPENSE_PREFIX) === 0) {
+      var carE = name.substring(EXPENSE_PREFIX.length).trim() || DEFAULT_CAR;
+      if (!carIn_(cars, carE)) cars.push([carE]);
+      expenses = expenses.concat(readExpenses_(sheets[i], carE));
     }
   }
   if (cars.length === 0) cars.push([DEFAULT_CAR]);
@@ -91,7 +99,9 @@ function exportSnapshot_() {
     fuel: fuel,
     repairs: repairs,
     utilities: readUtilities_(ss),
-    categories: readCategories_(ss)
+    categories: readCategories_(ss),
+    expenses: expenses,
+    expenseCategories: readExpenseCategories_(ss)
   };
 }
 
@@ -106,13 +116,24 @@ function importSnapshot_(data) {
   writeCategories_(ss, data.categories || []);
   writeUtilities_(ss, data.utilities || []);
 
+  // expenses / expenseCategories: only rewrite when the client sent the keys
+  // (old 1.11–1.16 clients omit them — keep existing Google sheets).
+  var hasExpenses = Object.prototype.hasOwnProperty.call(data, 'expenses');
+  var hasExpenseCategories = Object.prototype.hasOwnProperty.call(data, 'expenseCategories');
+  if (hasExpenseCategories) {
+    ensureSheet_(ss, EXPENSE_CATEGORIES_SHEET);
+    writeExpenseCategories_(ss, data.expenseCategories || []);
+  }
+
   for (var i = 0; i < cars.length; i++) {
     var car = String(cars[i][0] || '').trim();
     if (!car) continue;
     writeFuel_(ss, car, filterByCar_(data.fuel || [], car));
     writeRepairs_(ss, car, filterByCar_(data.repairs || [], car));
+    if (hasExpenses)
+      writeExpenses_(ss, car, filterByCar_(data.expenses || [], car));
   }
-  pruneCarSheets_(ss, cars);
+  pruneCarSheets_(ss, cars, hasExpenses);
 }
 
 function readFuel_(sheet, car) {
@@ -206,6 +227,38 @@ function readCategories_(ss) {
   return rows;
 }
 
+function readExpenses_(sheet, car) {
+  var values = sheet.getDataRange().getValues();
+  var display = sheet.getDataRange().getDisplayValues();
+  var rows = [];
+  for (var r = 1; r < values.length; r++) {
+    var date = normalizeDate_(values[r][0], display[r][0]);
+    if (!date) continue;
+    var category = clean_(display[r][1]);
+    var title = clean_(display[r][2]);
+    var sum = num_(display[r][3]);
+    var comment = display[r].length > 4 ? clean_(display[r][4]) : '';
+    if (!category && !title && !sum && !comment) continue;
+    rows.push([date, car, category, title, sum, comment]);
+  }
+  return rows;
+}
+
+function readExpenseCategories_(ss) {
+  var sheet = ss.getSheetByName(EXPENSE_CATEGORIES_SHEET);
+  if (!sheet) return [];
+  var values = sheet.getDataRange().getDisplayValues();
+  var rows = [];
+  var start = 0;
+  if (values.length && String(values[0][0]).toLowerCase().indexOf('категор') === 0) start = 1;
+  for (var r = start; r < values.length; r++) {
+    var name = String(values[r][0] || '').trim();
+    if (!name) continue;
+    rows.push([name]);
+  }
+  return rows;
+}
+
 function writeFuel_(ss, car, rows) {
   var sheet = ensureSheet_(ss, FUEL_PREFIX + car);
   clearSheetForWrite_(sheet);
@@ -264,14 +317,40 @@ function writeCategories_(ss, rows) {
   sheet.getRange(1, 1, out.length, 2).setValues(out);
 }
 
+function writeExpenses_(ss, car, rows) {
+  var sheet = ensureSheet_(ss, EXPENSE_PREFIX + car);
+  clearSheetForWrite_(sheet);
+  var out = [['Дата', 'Категория', 'Название', 'Сумма', 'Комментарий']];
+  for (var i = 0; i < rows.length; i++) {
+    out.push([
+      rows[i][0],
+      rows[i][2],
+      rows[i][3],
+      rows[i].length > 4 ? (rows[i][4] || '') : '',
+      rows[i].length > 5 ? (rows[i][5] || '') : ''
+    ]);
+  }
+  sheet.getRange(1, 1, out.length, out[0].length).setValues(out);
+}
+
+function writeExpenseCategories_(ss, rows) {
+  var sheet = ensureSheet_(ss, EXPENSE_CATEGORIES_SHEET);
+  clearSheetForWrite_(sheet);
+  var out = [['Категория']];
+  for (var i = 0; i < rows.length; i++) {
+    out.push([rows[i][0]]);
+  }
+  sheet.getRange(1, 1, out.length, 1).setValues(out);
+}
+
 /** Снимаем data validation — иначе setValues падает (категории вне списка после restore). */
 function clearSheetForWrite_(sheet) {
   try { sheet.clearDataValidations(); } catch (e) {}
   try { sheet.clearContents(); } catch (e) { sheet.clear(); }
 }
 
-/** Удаляет пустые/лишние листы Заправки/Ремонт для машин не из списка. */
-function pruneCarSheets_(ss, cars) {
+/** Удаляет пустые/лишние листы Заправки/Ремонт/Прочие для машин не из списка. */
+function pruneCarSheets_(ss, cars, pruneExpenses) {
   var keep = {};
   for (var i = 0; i < cars.length; i++) {
     var name = String(cars[i][0] || '').trim();
@@ -283,6 +362,8 @@ function pruneCarSheets_(ss, cars) {
     var car = null;
     if (title.indexOf(FUEL_PREFIX) === 0) car = title.substring(FUEL_PREFIX.length).trim();
     else if (title.indexOf(REPAIR_PREFIX) === 0) car = title.substring(REPAIR_PREFIX.length).trim();
+    else if (pruneExpenses && title.indexOf(EXPENSE_PREFIX) === 0)
+      car = title.substring(EXPENSE_PREFIX.length).trim();
     else continue;
     if (car && !keep[car]) {
       try { ss.deleteSheet(sheets[s]); } catch (e) {}

@@ -308,6 +308,8 @@ public sealed class MainActivity : Activity
             actions.Add(delegate { ConfigureGoogleSync(); });
             if (hasData)
             {
+                labels.Add("Поиск");
+                actions.Add(delegate { ShowGlobalSearch(); });
                 labels.Add("Интервалы ТО");
                 actions.Add(delegate { EditToIntervals(); });
                 labels.Add("Копия на телефоне");
@@ -1363,6 +1365,15 @@ public sealed class MainActivity : Activity
                     ExpenseDataStore.UtilityLabels[i] + ", BYN", row[i + 1], false));
         }
 
+        Func<string[], string> mileageConfirm = null;
+        if (selectedSection == Fuel || selectedSection == Repairs)
+        {
+            mileageConfirm = delegate(string[] values)
+            {
+                return MileageWarningForSave(values, fileName, editing ? sourceIndex : -1);
+            };
+        }
+
         RenderEditor(editing ? "Изменить запись" : "Новая запись", fields,
             delegate(string[] values)
             {
@@ -1381,7 +1392,7 @@ public sealed class MainActivity : Activity
                     SetCurrentCar(values[1]);
                 RefreshRecords();
                 RefreshServiceNotifications();
-            }, selectedSection == Fuel, receiptId);
+            }, selectedSection == Fuel, receiptId, mileageConfirm);
     }
 
     private static string FieldAt(string[] row, int index)
@@ -1430,29 +1441,210 @@ public sealed class MainActivity : Activity
 
     private string LastCarMileage(string car)
     {
+        decimal best = LastKnownMileage(car, null, -1);
+        return best < 0 ? "" : best.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private string MileageWarningForSave(string[] values, string fileName, int excludeIndex)
+    {
+        if (values == null || values.Length < 3)
+            return null;
+        string car = values[1] ?? "";
+        decimal newKm;
+        if (!TryNumber(values[2], out newKm) || newKm < 0)
+            return null;
+        // Empty optional repair mileage — skip checks.
+        if (fileName == "repairs.dat" && (values[2] ?? "").Trim().Length == 0)
+            return null;
+        decimal last = LastKnownMileage(car, fileName, excludeIndex);
+        return FormatMileageWarning(newKm, last);
+    }
+
+    private decimal LastKnownMileage(string car, string excludeFile, int excludeIndex)
+    {
         decimal best = -1;
-        string bestText = "";
-        RememberLatestMileage(ExpenseDataStore.Load(DataDirectory, "fuel.dat"), car, 2, ref best, ref bestText);
-        RememberLatestMileage(ExpenseDataStore.Load(DataDirectory, "repairs.dat"), car, 2, ref best, ref bestText);
-        return bestText;
+        RememberLatestMileage(ExpenseDataStore.Load(DataDirectory, "fuel.dat"), car, 2,
+            excludeFile == "fuel.dat" ? excludeIndex : -1, ref best);
+        RememberLatestMileage(ExpenseDataStore.Load(DataDirectory, "repairs.dat"), car, 2,
+            excludeFile == "repairs.dat" ? excludeIndex : -1, ref best);
+        return best;
     }
 
     private static void RememberLatestMileage(List<string[]> rows, string car, int mileageIndex,
-        ref decimal best, ref string bestText)
+        int excludeIndex, ref decimal best)
     {
         for (int i = 0; i < rows.Count; i++)
         {
+            if (i == excludeIndex)
+                continue;
             if (rows[i].Length <= mileageIndex || rows[i][1] != car)
                 continue;
             decimal mileage;
             if (!TryNumber(rows[i][mileageIndex], out mileage) || mileage < 0)
                 continue;
             if (mileage >= best)
-            {
                 best = mileage;
-                bestText = rows[i][mileageIndex];
-            }
         }
+    }
+
+    private static string FormatMileageWarning(decimal newKm, decimal lastKnown)
+    {
+        if (lastKnown < 0)
+            return null;
+        string x = lastKnown.ToString("0.##", CultureInfo.InvariantCulture);
+        if (newKm < lastKnown)
+            return "Пробег меньше предыдущего (" + x + "). Сохранить всё равно?";
+        if (newKm - lastKnown > 5000m)
+            return "Пробег вырос более чем на 5000 км с предыдущего (" + x +
+                "). Сохранить всё равно?";
+        return null;
+    }
+
+    private void ShowGlobalSearch()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала загрузите или создайте данные.");
+            return;
+        }
+        EditText queryBox = new EditText(this);
+        queryBox.Hint = "Комментарий, название, категория…";
+        queryBox.SetSingleLine(true);
+        LinearLayout layout = new LinearLayout(this);
+        layout.Orientation = Orientation.Vertical;
+        layout.SetPadding(Dp(12), Dp(8), Dp(12), Dp(4));
+        layout.AddView(queryBox, MatchWrap());
+        ListView resultsList = new ListView(this);
+        layout.AddView(resultsList, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MatchParent, Dp(280)));
+
+        List<SearchHit> hits = new List<SearchHit>();
+        ArrayAdapter<string> adapter = new ArrayAdapter<string>(this,
+            AndroidLayout.SimpleListItem1, new List<string>());
+        resultsList.Adapter = adapter;
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .SetTitle("Поиск")
+            .SetView(layout)
+            .SetNegativeButton("Закрыть", delegate { })
+            .Create();
+
+        Action runSearch = delegate
+        {
+            string q = (queryBox.Text ?? "").Trim();
+            hits.Clear();
+            adapter.Clear();
+            if (q.Length == 0)
+            {
+                adapter.NotifyDataSetChanged();
+                return;
+            }
+            hits.AddRange(FindSearchHits(q));
+            for (int i = 0; i < hits.Count; i++)
+                adapter.Add(hits[i].Label);
+            adapter.NotifyDataSetChanged();
+        };
+        queryBox.TextChanged += delegate { runSearch(); };
+        resultsList.ItemClick += delegate(object sender, AdapterView.ItemClickEventArgs e)
+        {
+            if (e.Position < 0 || e.Position >= hits.Count)
+                return;
+            SearchHit hit = hits[e.Position];
+            dialog.Dismiss();
+            OpenSearchHit(hit);
+        };
+        dialog.Show();
+    }
+
+    private sealed class SearchHit
+    {
+        public string Section;
+        public string Label;
+        public int SourceIndex;
+        public string Car;
+        public string[] Row;
+    }
+
+    private List<SearchHit> FindSearchHits(string query)
+    {
+        string q = query.ToLowerInvariant();
+        List<SearchHit> hits = new List<SearchHit>();
+        CollectSearchHits(hits, Fuel, "fuel.dat", "Заправка", q, delegate(string[] row)
+        {
+            return FieldAt(row, 6) + " " + FieldAt(row, 1);
+        });
+        CollectSearchHits(hits, Repairs, "repairs.dat", "Ремонт", q, delegate(string[] row)
+        {
+            return FieldAt(row, 3) + " " + FieldAt(row, 4) + " " + FieldAt(row, 5) + " " +
+                FieldAt(row, 8) + " " + FieldAt(row, 1);
+        });
+        CollectSearchHits(hits, Expenses, ExpenseDataCodec.ExpensesFile, "Прочие", q,
+            delegate(string[] row)
+            {
+                return FieldAt(row, 2) + " " + FieldAt(row, 3) + " " + FieldAt(row, 5) + " " +
+                    FieldAt(row, 1);
+            });
+        CollectSearchHits(hits, Utilities, "utilities.dat", "Коммуналка", q, delegate(string[] row)
+        {
+            StringBuilder sb = new StringBuilder(FieldAt(row, 0));
+            for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length && i + 1 < row.Length; i++)
+                sb.Append(' ').Append(ExpenseDataStore.UtilityLabels[i]).Append(' ').Append(row[i + 1]);
+            return sb.ToString();
+        });
+        return hits;
+    }
+
+    private void CollectSearchHits(List<SearchHit> hits, string section, string fileName,
+        string sectionLabel, string queryLower, Func<string[], string> haystack)
+    {
+        List<string[]> rows = ExpenseDataStore.LoadOptional(DataDirectory, fileName);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            string[] row = rows[i];
+            string text = haystack(row) ?? "";
+            if (text.ToLowerInvariant().IndexOf(queryLower, StringComparison.Ordinal) < 0)
+                continue;
+            string date = FieldAt(row, 0);
+            string detail = ShortText(text.Trim(), 40);
+            SearchHit hit = new SearchHit();
+            hit.Section = section;
+            hit.SourceIndex = i;
+            hit.Car = section == Utilities ? "" : FieldAt(row, 1);
+            hit.Row = row;
+            hit.Label = sectionLabel + " · " + date +
+                (hit.Car.Length > 0 ? " · " + hit.Car : "") + " — " + detail;
+            hits.Add(hit);
+        }
+    }
+
+    private void OpenSearchHit(SearchHit hit)
+    {
+        if (!String.IsNullOrEmpty(hit.Car))
+            SetCurrentCar(hit.Car);
+        SelectSection(hit.Section);
+        // Select matching visible row if still present after car/section filter.
+        for (int i = 0; i < visibleIndexes.Count; i++)
+        {
+            if (visibleIndexes[i] != hit.SourceIndex)
+                continue;
+            int visiblePos = i;
+            int sourceIdx = visibleIndexes[i];
+            string[] visibleRow = visibleRows[i];
+            selectedRecordPosition = visiblePos;
+            recordList.SetSelection(visiblePos);
+            UpdateRecordActions();
+            new AlertDialog.Builder(this)
+                .SetTitle("Запись")
+                .SetMessage(FormatDetails(visibleRow))
+                .SetPositiveButton("Закрыть", delegate { })
+                .SetNeutralButton("Изменить", delegate
+                {
+                    ShowRecordEditor(true, visibleRow, sourceIdx);
+                })
+                .Show();
+            return;
+        }
+        ShowMessage("Запись найдена, но скрыта фильтром. Сбросьте фильтр или смените авто.");
     }
 
     private void ManageCars()
@@ -1598,7 +1790,8 @@ public sealed class MainActivity : Activity
     }
 
     private void RenderEditor(string title, List<EditorField> fields, Action<string[]> save,
-        bool wireFuelPrice = false, string receiptRecordId = null)
+        bool wireFuelPrice = false, string receiptRecordId = null,
+        Func<string[], string> confirmMessage = null)
     {
         ScrollView scroll = new ScrollView(this);
         LinearLayout form = new LinearLayout(this);
@@ -1636,17 +1829,32 @@ public sealed class MainActivity : Activity
                 ShowMessage(validationError);
                 return;
             }
-            try
+            Action commit = delegate
             {
-                save(values);
-                editorReceiptId = null;
-                editorReceiptThumb = null;
-                dialog.Dismiss();
-            }
-            catch (Exception ex)
+                try
+                {
+                    save(values);
+                    editorReceiptId = null;
+                    editorReceiptThumb = null;
+                    dialog.Dismiss();
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage("Не удалось сохранить: " + ex.Message);
+                }
+            };
+            string confirm = confirmMessage != null ? confirmMessage(values) : null;
+            if (!String.IsNullOrEmpty(confirm))
             {
-                ShowMessage("Не удалось сохранить: " + ex.Message);
+                new AlertDialog.Builder(this)
+                    .SetTitle("Пробег")
+                    .SetMessage(confirm)
+                    .SetPositiveButton("Да", delegate { commit(); })
+                    .SetNegativeButton("Нет", delegate { })
+                    .Show();
+                return;
             }
+            commit();
         };
         cancelButton.Click += delegate
         {
