@@ -39,6 +39,7 @@ public sealed class MainActivity : Activity
     private const int ExportRequest = 1002;
     private const int PhotoCameraRequest = 1003;
     private const int PhotoGalleryRequest = 1004;
+    private const int SummaryExportRequest = 1005;
     private const string Fuel = "fuel";
     private const string Repairs = "repairs";
     private const string Expenses = "expenses";
@@ -87,6 +88,7 @@ public sealed class MainActivity : Activity
     private string editorReceiptId;
     private ImageView editorReceiptThumb;
     private Java.IO.File cameraCaptureFile;
+    private string pendingSummaryText;
 
     private string DataDirectory
     {
@@ -149,6 +151,20 @@ public sealed class MainActivity : Activity
                     return;
                 ExportTo(data.Data);
                 ShowMessage("Резервная копия ZIP сохранена.");
+            }
+            else if (requestCode == SummaryExportRequest)
+            {
+                if (data == null || data.Data == null || String.IsNullOrEmpty(pendingSummaryText))
+                    return;
+                using (Stream output = ContentResolver.OpenOutputStream(data.Data))
+                {
+                    if (output == null)
+                        throw new IOException("Не удалось открыть файл для записи.");
+                    byte[] bytes = Encoding.UTF8.GetBytes(pendingSummaryText);
+                    output.Write(bytes, 0, bytes.Length);
+                }
+                pendingSummaryText = null;
+                ShowMessage("Сводка сохранена в .txt.");
             }
             else if (requestCode == PhotoGalleryRequest)
             {
@@ -310,6 +326,8 @@ public sealed class MainActivity : Activity
             {
                 labels.Add("Поиск");
                 actions.Add(delegate { ShowGlobalSearch(); });
+                labels.Add("Дубликаты");
+                actions.Add(delegate { ShowDuplicates(); });
                 labels.Add("Интервалы ТО");
                 actions.Add(delegate { EditToIntervals(); });
                 labels.Add("Валюта");
@@ -1230,7 +1248,7 @@ public sealed class MainActivity : Activity
             ShowRecordEditor(false, new string[]
             {
                 DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                currentCar, lastMileage, "", "", "", "", "1"
+                currentCar, lastMileage, "", "", LastFuelPricePerLiter(currentCar), "", "1"
             }, -1);
         }
         else if (selectedSection == Repairs)
@@ -1447,6 +1465,32 @@ public sealed class MainActivity : Activity
         return best < 0 ? "" : best.ToString(CultureInfo.InvariantCulture);
     }
 
+    private string LastFuelPricePerLiter(string car)
+    {
+        List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+        string bestDate = "";
+        string bestPrice = "";
+        int bestIndex = -1;
+        for (int i = 0; i < fuels.Count; i++)
+        {
+            if (fuels[i].Length < 6 || fuels[i][1] != car)
+                continue;
+            string price = (fuels[i][5] ?? "").Trim();
+            if (price.Length == 0)
+                continue;
+            string date = fuels[i][0] ?? "";
+            if (bestIndex < 0 ||
+                String.Compare(date, bestDate, StringComparison.Ordinal) > 0 ||
+                (date == bestDate && i > bestIndex))
+            {
+                bestDate = date;
+                bestPrice = price;
+                bestIndex = i;
+            }
+        }
+        return bestPrice;
+    }
+
     private string MileageWarningForSave(string[] values, string fileName, int excludeIndex)
     {
         if (values == null || values.Length < 3)
@@ -1647,6 +1691,84 @@ public sealed class MainActivity : Activity
             return;
         }
         ShowMessage("Запись найдена, но скрыта фильтром. Сбросьте фильтр или смените авто.");
+    }
+
+    private void ShowDuplicates()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала загрузите или создайте данные.");
+            return;
+        }
+        List<DuplicateFinder.Group> groups;
+        try
+        {
+            groups = DuplicateFinder.FindAll(DataDirectory);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Не удалось найти дубликаты: " + ex.Message);
+            return;
+        }
+        if (groups.Count == 0)
+        {
+            ShowMessage("Дубликатов не найдено.");
+            return;
+        }
+
+        List<string> labels = new List<string>();
+        List<DuplicateFinder.Group> labelGroups = new List<DuplicateFinder.Group>();
+        for (int g = 0; g < groups.Count; g++)
+        {
+            DuplicateFinder.Group group = groups[g];
+            labels.Add(group.Title + " · " + group.Reason + " ×" + group.Indexes.Count);
+            labelGroups.Add(group);
+        }
+
+        new AlertDialog.Builder(this)
+            .SetTitle("Дубликаты")
+            .SetItems(labels.ToArray(), (sender, args) =>
+            {
+                if (args.Which < 0 || args.Which >= labelGroups.Count)
+                    return;
+                ShowDuplicateGroup(labelGroups[args.Which]);
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void ShowDuplicateGroup(DuplicateFinder.Group group)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append(group.Title).Append(" · ").Append(group.Reason).Append('\n');
+        for (int i = 0; i < group.Rows.Count; i++)
+        {
+            sb.Append(i == 0 ? "\n✓ оставить: " : "\n· лишняя: ");
+            sb.Append(DuplicateFinder.FormatRow(group.Rows[i]));
+        }
+        new AlertDialog.Builder(this)
+            .SetTitle("Группа дубликатов")
+            .SetMessage(sb.ToString())
+            .SetPositiveButton("Удалить лишние", (sender, args) =>
+            {
+                try
+                {
+                    List<int> toDelete = new List<int>();
+                    for (int i = 1; i < group.Indexes.Count; i++)
+                        toDelete.Add(group.Indexes[i]);
+                    toDelete.Sort();
+                    for (int i = toDelete.Count - 1; i >= 0; i--)
+                        ExpenseDataStore.DeleteRecord(DataDirectory, group.FileName, toDelete[i]);
+                    RefreshRecords();
+                    ShowMessage("Лишние записи удалены (оставлена первая).");
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage("Не удалось удалить: " + ex.Message);
+                }
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
     }
 
     private void ManageCars()
@@ -2483,16 +2605,49 @@ public sealed class MainActivity : Activity
             body.SetTextColor(AndroidColor.Rgb(35, 51, 70));
             content.AddView(body, MatchWrap());
             scroll.AddView(content);
+            string summaryText = body.Text;
             new AlertDialog.Builder(this)
                 .SetTitle("Сводка и ТО · " + currentCar)
                 .SetView(scroll)
-                .SetPositiveButton("Закрыть", delegate { })
+                .SetPositiveButton("Поделиться", (sender, args) =>
+                {
+                    ShareSummaryText(summaryText);
+                })
+                .SetNeutralButton("Экспорт", (sender, args) =>
+                {
+                    ExportSummaryText(summaryText);
+                })
+                .SetNegativeButton("Закрыть", delegate { })
                 .Show();
         }
         catch (Exception ex)
         {
             ShowMessage("Не удалось построить сводку: " + ex.Message);
         }
+    }
+
+    private void ShareSummaryText(string text)
+    {
+        if (String.IsNullOrEmpty(text))
+            return;
+        Intent share = new Intent(Intent.ActionSend);
+        share.SetType("text/plain");
+        share.PutExtra(Intent.ExtraSubject, "Alfa 156 · сводка · " + currentCar);
+        share.PutExtra(Intent.ExtraText, text);
+        StartActivity(Intent.CreateChooser(share, "Поделиться сводкой"));
+    }
+
+    private void ExportSummaryText(string text)
+    {
+        if (String.IsNullOrEmpty(text))
+            return;
+        pendingSummaryText = text;
+        Intent intent = new Intent(Intent.ActionCreateDocument);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType("text/plain");
+        intent.PutExtra(Intent.ExtraTitle,
+            "Summary_" + DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt");
+        StartActivityForResult(intent, SummaryExportRequest);
     }
 
     private void BuildMonthlyChartData(out List<string> months, out List<decimal[]> totals)

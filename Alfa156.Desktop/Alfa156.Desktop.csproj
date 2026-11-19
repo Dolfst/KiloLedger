@@ -46,6 +46,7 @@
     <Compile Include="Data\AlfaRepository.cs" />
     <Compile Include="Data\ReceiptStore.cs" />
     <Compile Include="Data\RecordIds.cs" />
+    <Compile Include="Data\DuplicateFinder.cs" />
     <Compile Include="Data\SyncMerge.cs" />
     <Compile Include="Data\ToSettings.cs" />
     <Compile Include="Exchange\CsvExchange.cs" />

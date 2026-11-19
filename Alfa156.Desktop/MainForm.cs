@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.17.0";
+        private const string AppVersion = "1.18.0";
 
         private string Cur()
         {
@@ -142,6 +142,7 @@ namespace Alfa156.Desktop
             globalSearchBox.KeyDown += GlobalSearchKeyDown;
             toolbar.Controls.Add(globalSearchBox);
             toolbar.Controls.Add(MakeButton("Найти", OpenGlobalSearch));
+            toolbar.Controls.Add(MakeButton("Дубликаты", OpenDuplicates));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -194,7 +195,7 @@ namespace Alfa156.Desktop
                 RowCount = 3,
                 Padding = new Padding(8)
             };
-            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 108));
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 120));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             FlowLayoutPanel intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
@@ -216,6 +217,7 @@ namespace Alfa156.Desktop
             currencyBox.Text = "BYN";
             intervalRow.Controls.Add(currencyBox);
             intervalRow.Controls.Add(MakeButton("Сохранить валюту", SaveCurrency));
+            intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
             summaryLayout.Controls.Add(summaryChart, 0, 1);
@@ -408,6 +410,38 @@ namespace Alfa156.Desktop
         {
             if (e.Row.Cells.Count > 7)
                 e.Row.Cells[7].Value = true;
+            // Liters stay empty; pre-fill last known price/l when available.
+            if (e.Row.Cells.Count > 5)
+            {
+                string lastPrice = LastFuelPricePerLiterFromGrid();
+                if (!String.IsNullOrEmpty(lastPrice) &&
+                    (e.Row.Cells[5].Value == null ||
+                     String.IsNullOrEmpty(Convert.ToString(e.Row.Cells[5].Value))))
+                    e.Row.Cells[5].Value = lastPrice;
+            }
+        }
+
+        private string LastFuelPricePerLiterFromGrid()
+        {
+            string bestDate = "";
+            string bestPrice = "";
+            for (int i = 0; i < fuelGrid.Rows.Count; i++)
+            {
+                DataGridViewRow row = fuelGrid.Rows[i];
+                if (row.IsNewRow)
+                    continue;
+                string price = CellText(row, 5).Trim();
+                if (price.Length == 0)
+                    continue;
+                string date = CellText(row, 0);
+                if (bestPrice.Length == 0 ||
+                    String.Compare(date, bestDate, StringComparison.Ordinal) >= 0)
+                {
+                    bestDate = date;
+                    bestPrice = price;
+                }
+            }
+            return bestPrice;
         }
 
         private static Button MakeButton(string text, EventHandler click)
@@ -1868,6 +1902,175 @@ namespace Alfa156.Desktop
                 e.SuppressKeyPress = true;
                 OpenGlobalSearch(sender, e);
             }
+        }
+
+        private void SaveSummaryText(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!String.IsNullOrEmpty(repository.DirectoryPath) ||
+                    carsGrid.Rows.Count > 1 || fuelGrid.Rows.Count > 1)
+                    PullAll();
+                RefreshSummaryText();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+                return;
+            }
+            string text = summaryBox.Text ?? "";
+            if (text.Length == 0 || text.IndexOf("Откройте папку", StringComparison.Ordinal) >= 0)
+            {
+                MessageBox.Show(this, "Сначала откройте папку данных.", "Сводка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "Текст (*.txt)|*.txt";
+                dialog.FileName = "Summary_" +
+                    DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+                try
+                {
+                    File.WriteAllText(dialog.FileName, text, Encoding.UTF8);
+                    SetStatus("Сводка сохранена: " + dialog.FileName);
+                }
+                catch (Exception ex)
+                {
+                    ShowError(ex);
+                }
+            }
+        }
+
+        private void OpenDuplicates(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!String.IsNullOrEmpty(repository.DirectoryPath))
+                    PullAll();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+                return;
+            }
+
+            List<DuplicateFinder.Group> groups = DuplicateFinder.FindAll(repository);
+            if (groups.Count == 0)
+            {
+                MessageBox.Show(this, "Дубликатов не найдено.", "Дубликаты",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "Дубликаты";
+                dialog.Width = 720;
+                dialog.Height = 520;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowIcon = false;
+
+                ListBox list = new ListBox { Left = 12, Top = 12, Width = 680, Height = 400 };
+                Button deleteExtras = new Button
+                {
+                    Text = "Удалить лишние в группе",
+                    Left = 12,
+                    Top = 430,
+                    Width = 200
+                };
+                Button close = new Button { Text = "Закрыть", Left = 580, Top = 430, Width = 110 };
+                dialog.Controls.Add(list);
+                dialog.Controls.Add(deleteExtras);
+                dialog.Controls.Add(close);
+
+                List<DuplicateFinder.Group> rowGroup = new List<DuplicateFinder.Group>();
+                for (int g = 0; g < groups.Count; g++)
+                {
+                    DuplicateFinder.Group group = groups[g];
+                    list.Items.Add("--- " + group.Title + " · " + group.Reason +
+                        " (" + group.Indexes.Count + ") ---");
+                    rowGroup.Add(null);
+                    for (int i = 0; i < group.Rows.Count; i++)
+                    {
+                        list.Items.Add((i == 0 ? "  ✓ " : "  · ") +
+                            DuplicateFinder.FormatRow(group.Rows[i]));
+                        rowGroup.Add(group);
+                    }
+                }
+
+                deleteExtras.Click += delegate
+                {
+                    int selected = list.SelectedIndex;
+                    if (selected < 0 || selected >= rowGroup.Count || rowGroup[selected] == null)
+                    {
+                        MessageBox.Show(dialog, "Выберите запись внутри группы.", "Дубликаты",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                    DuplicateFinder.Group group = rowGroup[selected];
+                    if (MessageBox.Show(dialog,
+                        "Удалить " + (group.Indexes.Count - 1) +
+                        " лишних записей, оставив первую?",
+                        "Дубликаты", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                        MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                        return;
+                    try
+                    {
+                        DeleteDuplicateExtras(group);
+                        BindAll();
+                        MarkDirty();
+                        dialog.DialogResult = DialogResult.OK;
+                        dialog.Close();
+                        SetStatus("Лишние дубликаты удалены (" + group.Title + ").");
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowError(ex);
+                    }
+                };
+                close.Click += delegate { dialog.Close(); };
+                dialog.CancelButton = close;
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private void DeleteDuplicateExtras(DuplicateFinder.Group group)
+        {
+            List<string[]> table = TableForFile(group.FileName);
+            if (table == null)
+                return;
+            List<int> toDelete = new List<int>();
+            for (int i = 1; i < group.Indexes.Count; i++)
+                toDelete.Add(group.Indexes[i]);
+            toDelete.Sort();
+            for (int i = toDelete.Count - 1; i >= 0; i--)
+            {
+                int index = toDelete[i];
+                if (index < 0 || index >= table.Count)
+                    continue;
+                string id = RecordIds.GetId(table[index]);
+                if (!String.IsNullOrEmpty(id))
+                    repository.NoteDeleted(group.FileName, id);
+                table.RemoveAt(index);
+            }
+        }
+
+        private List<string[]> TableForFile(string fileName)
+        {
+            if (fileName == "fuel.dat")
+                return repository.Fuel;
+            if (fileName == "repairs.dat")
+                return repository.Repairs;
+            if (fileName == AlfaCodec.ExpensesFile)
+                return repository.Expenses;
+            if (fileName == "utilities.dat")
+                return repository.Utilities;
+            return null;
         }
 
         private void OpenGlobalSearch(object sender, EventArgs e)

@@ -75,10 +75,12 @@ namespace CarExpenses
             data.MenuItems.Add(CreateMenuItem("Создать копию на SD", new EventHandler(CreateBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("Экспорт сводки", new EventHandler(ExportSummaryFromMenu)));
             data.MenuItems.Add(CreateMenuItem("О программе", new EventHandler(ShowAbout)));
             menu.MenuItems.Add(data);
             MenuItem actionsHome = CreateMenuItem("Действия");
             actionsHome.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Дубликаты", new EventHandler(ShowDuplicatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             menu.MenuItems.Add(actionsHome);
@@ -1298,7 +1300,7 @@ namespace CarExpenses
                     : "Пробег, км", lastMileage, "number", true),
                 new EntryField("Литры", "", "number", true),
                 new EntryField("Стоимость, " + Cur(), "", "number", true),
-                new EntryField("Цена за литр, " + Cur(), "", "number", false),
+                new EntryField("Цена за литр, " + Cur(), LastFuelPricePerLiter(currentCar), "number", false),
                 new EntryField("АЗС / комментарий", "", "text", false),
                 new EntryField("Полный бак", "1", "check", false)
             };
@@ -1320,6 +1322,34 @@ namespace CarExpenses
         {
             decimal best = LastKnownMileage(car, null, -1);
             return best < 0 ? "" : best.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string LastFuelPricePerLiter(string car)
+        {
+            List<string[]> fuels = DataStore.LoadFuel();
+            string bestDate = "";
+            string bestPrice = "";
+            int bestIndex = -1;
+            for (int i = 0; i < fuels.Count; i++)
+            {
+                if (fuels[i].Length < 6)
+                    continue;
+                if ((fuels[i][1] ?? "") != (car ?? ""))
+                    continue;
+                string price = fuels[i][5] == null ? "" : fuels[i][5].Trim();
+                if (price.Length == 0)
+                    continue;
+                string date = fuels[i][0] == null ? "" : fuels[i][0];
+                if (bestIndex < 0 ||
+                    String.Compare(date, bestDate, false, CultureInfo.InvariantCulture) > 0 ||
+                    (date == bestDate && i > bestIndex))
+                {
+                    bestDate = date;
+                    bestPrice = price;
+                    bestIndex = i;
+                }
+            }
+            return bestPrice;
         }
 
         private bool ConfirmMileageIfNeeded(string[] values, string fileName, int excludeIndex)
@@ -1992,11 +2022,132 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.17.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
-                "Проверка пробега при сохранении; поиск по записям (Действия → Поиск).\r\n" +
-                "Фото чеков (Receipts/) — ZIP и Wi‑Fi sync (до 50 файлов ≤2 МБ); камеры на КПК нет.\r\n" +
+                "Alfa 156\r\nВерсия 1.18.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Экспорт сводки (Данные → Экспорт сводки); дубликаты (Действия → Дубликаты).\r\n" +
+                "Проверка пробега; поиск; фото чеков (Receipts/) — ZIP и Wi‑Fi.\r\n" +
                 "Полный бак: частичные заправки не входят в расчёт л/100 км.",
                 "О программе");
+        }
+
+        private void ExportSummaryFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                string text = BuildSummary();
+                string fileName = "Summary_" + DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt";
+                string folder = @"\My Documents\Alfa156";
+                if (!Directory.Exists(folder))
+                    Directory.CreateDirectory(folder);
+                string path = Path.Combine(folder, fileName);
+                using (StreamWriter writer = new StreamWriter(path, false))
+                    writer.Write(text);
+                MessageBox.Show("Сводка сохранена:\r\n" + path, "Экспорт сводки");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось сохранить сводку: " + ex.Message, "Ошибка");
+            }
+        }
+
+        private void ShowDuplicatesFromMenu(object sender, EventArgs e)
+        {
+            List<DuplicateFinder.Group> groups;
+            try
+            {
+                groups = DuplicateFinder.FindAll();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось найти дубликаты: " + ex.Message, "Ошибка");
+                return;
+            }
+            if (groups.Count == 0)
+            {
+                MessageBox.Show("Дубликатов не найдено.", "Дубликаты");
+                return;
+            }
+
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "Дубликаты";
+                dialog.WindowState = FormWindowState.Maximized;
+                dialog.MinimizeBox = false;
+
+                ListBox list = new ListBox();
+                list.Location = new Point(4, 4);
+                dialog.Controls.Add(list);
+
+                List<object> items = new List<object>();
+                for (int g = 0; g < groups.Count; g++)
+                {
+                    DuplicateFinder.Group group = groups[g];
+                    list.Items.Add("--- " + group.Title + " · " + group.Reason +
+                        " (" + group.Indexes.Count.ToString() + ") ---");
+                    items.Add(null);
+                    for (int i = 0; i < group.Rows.Count; i++)
+                    {
+                        list.Items.Add((i == 0 ? "  ✓ " : "  · ") +
+                            DuplicateFinder.FormatRow(group.Rows[i]));
+                        items.Add(group);
+                    }
+                }
+
+                MainMenu menu = new MainMenu();
+                MenuItem actions = CreateMenuItem("Действия");
+                actions.MenuItems.Add(CreateMenuItem("Удалить лишние (оставить первую)",
+                    new EventHandler(delegate
+                    {
+                        int selected = list.SelectedIndex;
+                        if (selected < 0 || selected >= items.Count || items[selected] == null)
+                        {
+                            MessageBox.Show("Выберите запись внутри группы дубликатов.", "Дубликаты");
+                            return;
+                        }
+                        DuplicateFinder.Group group = (DuplicateFinder.Group)items[selected];
+                        if (MessageBox.Show(
+                            "Удалить " + (group.Indexes.Count - 1).ToString() +
+                            " лишних записей, оставив первую?",
+                            "Дубликаты", MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                            return;
+                        List<int> toDelete = new List<int>();
+                        for (int i = 1; i < group.Indexes.Count; i++)
+                            toDelete.Add(group.Indexes[i]);
+                        toDelete.Sort();
+                        bool ok = TrySave(delegate
+                        {
+                            for (int i = toDelete.Count - 1; i >= 0; i--)
+                            {
+                                int index = toDelete[i];
+                                if (group.FileName == "fuel.dat")
+                                    DataStore.DeleteFuelAt(index);
+                                else if (group.FileName == "repairs.dat")
+                                    DataStore.DeleteRepairAt(index);
+                                else if (group.FileName == "expenses.dat")
+                                    DataStore.DeleteExpenseAt(index);
+                                else if (group.FileName == "utilities.dat")
+                                    DataStore.DeleteUtilityAt(index);
+                            }
+                        });
+                        if (!ok)
+                            return;
+                        dialog.Close();
+                        MessageBox.Show("Лишние записи удалены.", "Дубликаты");
+                    })));
+                menu.MenuItems.Add(actions);
+                menu.MenuItems.Add(CreateMenuItem("Закрыть", new EventHandler(delegate
+                {
+                    dialog.Close();
+                })));
+                dialog.Menu = menu;
+
+                dialog.Resize += new EventHandler(delegate
+                {
+                    list.Size = new Size(dialog.ClientSize.Width - 8, dialog.ClientSize.Height - 8);
+                });
+                list.Size = new Size(dialog.ClientSize.Width - 8, dialog.ClientSize.Height - 8);
+                dialog.ShowDialog();
+            }
         }
 
         private void ShowGlobalSearch(object sender, EventArgs e)
