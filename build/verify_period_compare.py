@@ -61,20 +61,22 @@ def main() -> int:
         "ShowPeriodCompare",
         "PromptCustomPeriodCompare",
         "ShowPeriodCompareResult",
-        'version = "1.24.0"',
     ):
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
+    if 'version = "1.24.0"' not in android and 'version = "1.25.0"' not in android:
+        errors.append("Android MainActivity: missing version fallback 1.24+/1.25+")
 
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompare",
-        'AppVersion = "1.24.0"',
         "Этот / прошлый месяц",
     ):
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
+    if 'AppVersion = "1.24.0"' not in desktop and 'AppVersion = "1.25.0"' not in desktop:
+        errors.append("Desktop MainForm: missing AppVersion 1.24+/1.25+")
 
     desktop_csproj = (ROOT / "Alfa156.Desktop/Alfa156.Desktop.csproj").read_text()
     if "PeriodCompare.cs" not in desktop_csproj:
@@ -84,10 +86,11 @@ def main() -> int:
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompareFromMenu",
-        "1.24.0",
     ):
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
+    if "1.24.0" not in kpk and "1.25.0" not in kpk:
+        errors.append("KPK Form1: missing version 1.24+/1.25+")
 
     kpk_csproj = (ROOT / "Alfa156/Alfa156/Alfa156.csproj").read_text()
     if "PeriodCompare.cs" not in kpk_csproj:
@@ -106,8 +109,8 @@ def main() -> int:
         errors.append("build-kpk.ps1: PeriodCompare.cs not in sources")
 
     android_csproj = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
-    if "1.24.0" not in android_csproj:
-        errors.append("Android csproj: missing ApplicationDisplayVersion 1.24.0")
+    if "1.24.0" not in android_csproj and "1.25.0" not in android_csproj:
+        errors.append("Android csproj: missing ApplicationDisplayVersion 1.24+/1.25+")
 
     readme = (ROOT / "README.md").read_text()
     if "## Что нового в 1.24.0" not in readme:

@@ -22,6 +22,7 @@ namespace CarExpenses
         private const string ExpenseCategoriesFile = "expense-categories.dat";
         private const string SettingsFile = "settings.dat";
         private const string CarsMetaFile = CarsMeta.FileName;
+        private const string TemplatesFile = RecordTemplates.FileName;
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
@@ -32,7 +33,7 @@ namespace CarExpenses
         private static readonly string[] DataFiles = new string[]
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile,
-            ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, DeletedFile
+            ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile, DeletedFile
         };
 
         private static readonly string[] DefaultRepairCategories = new string[]
@@ -64,6 +65,7 @@ namespace CarExpenses
             EnsureExpenseCategories();
             ToSettings.EnsureFile();
             CarsMeta.EnsureFile();
+            RecordTemplates.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
         }
@@ -589,6 +591,8 @@ namespace CarExpenses
                 return length == 6 || length == 7;
             if (fileName == CarsMetaFile)
                 return length >= 1 && length <= 7;
+            if (fileName == TemplatesFile)
+                return length >= 4 && length <= 11;
             return false;
         }
 
@@ -653,6 +657,15 @@ namespace CarExpenses
                     if (!CarsMeta.IsValidRow(meta[i]))
                         throw new InvalidDataException("Неверный формат cars-meta.dat.");
             }
+
+            string templatesPath = Path.Combine(directory, TemplatesFile);
+            if (File.Exists(templatesPath))
+            {
+                List<string[]> templates = ReadRowsFromPath(templatesPath);
+                for (int i = 0; i < templates.Count; i++)
+                    if (!RecordTemplates.IsValidRow(templates[i]))
+                        throw new InvalidDataException("Неверный формат templates.dat.");
+            }
         }
 
         private static void EnsureDeletedFile()
@@ -676,6 +689,7 @@ namespace CarExpenses
             EnsureIdsInFile(ExpensesFile);
             EnsureIdsInFile(ExpenseCategoriesFile);
             EnsureIdsInFile(CarsMetaFile);
+            EnsureIdsInFile(TemplatesFile);
         }
 
         private static void EnsureIdsInFile(string fileName)
@@ -941,6 +955,7 @@ namespace CarExpenses
                 File.Copy(carsMetaSource, GetPath(CarsMetaFile), true);
             else
                 CarsMeta.EnsureFile();
+            RecordTemplates.EnsureFile();
             string deletedSource = Path.Combine(backupPath, DeletedFile);
             if (File.Exists(deletedSource))
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
@@ -1612,6 +1627,8 @@ namespace CarExpenses
                 SaveRows(RepairsFile, repairs);
                 SaveRows(ExpensesFile, expenses);
                 CarsMeta.RenameCar(previousName, newName);
+                RecordTemplates.RenameCar(previousName, newName);
+                ToSettings.RenameDefaultCar(previousName, newName);
             }
             catch (Exception renameError)
             {

@@ -98,6 +98,11 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "cars-meta.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCarMeta)));
+            diffs.Add(AnalyzeTable("Шаблоны",
+                DataStore.ReadSyncTable(localDirectory, "templates.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "templates.dat"),
+                new int[] { 0, 1 }, new bool[] { true, true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeTemplate)));
             return diffs;
         }
 
@@ -195,6 +200,8 @@ namespace CarExpenses
                 new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
             MergeFile("cars-meta.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
+            MergeFile("templates.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0, 1 }, new bool[] { true, true }, plan, resolveConflict, tombs, journal, writeOutput);
             if (writeOutput && destinationDirectory != null)
             {
                 ToSettings.MergeDirectories(localDirectory, remoteDirectory, destinationDirectory,

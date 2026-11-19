@@ -376,6 +376,10 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditBudget(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
+                labels.Add("Авто по умолчанию");
+                actions.Add(delegate { EditDefaultCar(); });
+                labels.Add("Шаблоны");
+                actions.Add(delegate { ManageTemplates(); });
                 labels.Add("Копия на телефоне");
                 actions.Add(delegate { CreateLocalBackup(); });
                 labels.Add("Восстановить копию");
@@ -561,7 +565,13 @@ public sealed class MainActivity : Activity
         ExpenseDataStore.EnsureRepairCategories(DataDirectory);
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
         if (cars.IndexOf(currentCar) < 0)
-            currentCar = cars[0];
+        {
+            string preferred = ToSettings.GetDefaultCar(DataDirectory);
+            if (cars.IndexOf(preferred) >= 0)
+                currentCar = preferred;
+            else
+                currentCar = cars[0];
+        }
         SetCarOptions(cars);
         GetSharedPreferences("settings", FileCreationMode.Private)
             .Edit().PutString("currentCar", currentCar).Apply();
@@ -1447,6 +1457,8 @@ public sealed class MainActivity : Activity
             };
         }
 
+        bool templatesOk = !editing && (selectedSection == Fuel || selectedSection == Repairs ||
+            selectedSection == Expenses);
         RenderEditor(editing ? "Изменить запись" : "Новая запись", fields,
             delegate(string[] values)
             {
@@ -1471,7 +1483,7 @@ public sealed class MainActivity : Activity
                     if (tankHint != null)
                         ShowMessage(tankHint);
                 }
-            }, selectedSection == Fuel, receiptId, mileageConfirm);
+            }, selectedSection == Fuel, receiptId, mileageConfirm, templatesOk);
     }
 
     private static string FieldAt(string[] row, int index)
@@ -1916,7 +1928,7 @@ public sealed class MainActivity : Activity
     {
         new AlertDialog.Builder(this)
             .SetTitle(name)
-            .SetItems(new string[] { "Выбрать", "Свойства", "Лента", "Переименовать", "Удалить" },
+            .SetItems(new string[] { "Выбрать", "Свойства", "По умолчанию", "Лента", "Переименовать", "Удалить" },
                 delegate(object sender, DialogClickEventArgs e)
                 {
                     if (e.Which == 0)
@@ -1927,8 +1939,15 @@ public sealed class MainActivity : Activity
                     else if (e.Which == 1)
                         EditCarPassport(name);
                     else if (e.Which == 2)
-                        ShowCarTimeline(name);
+                    {
+                        ToSettings.SetDefaultCar(DataDirectory, name);
+                        SetCurrentCar(name);
+                        RefreshRecords();
+                        ShowMessage("Авто по умолчанию: " + name);
+                    }
                     else if (e.Which == 3)
+                        ShowCarTimeline(name);
+                    else if (e.Which == 4)
                         RenameCar(name);
                     else
                         DeleteCar(name);
@@ -1939,13 +1958,16 @@ public sealed class MainActivity : Activity
     private void EditCarPassport(string carName)
     {
         CarPassport meta = CarsMeta.Get(DataDirectory, carName);
+        bool isDefault = String.Equals(ToSettings.GetDefaultCar(DataDirectory), carName,
+            StringComparison.OrdinalIgnoreCase);
         RenderEditor("Свойства · " + carName, new List<EditorField>
         {
             EditorField.Text("Год", meta.Year, false),
             EditorField.Text("Госномер", meta.Plate, false),
             EditorField.Text("VIN", meta.Vin, false),
             EditorField.Number("Объём бака, л", meta.TankLiters, false),
-            EditorField.Text("Заметка", meta.Note, false, true)
+            EditorField.Text("Заметка", meta.Note, false, true),
+            EditorField.Check("Авто по умолчанию", isDefault)
         }, delegate(string[] values)
         {
             meta.CarName = carName;
@@ -1955,6 +1977,13 @@ public sealed class MainActivity : Activity
             meta.TankLiters = values[3];
             meta.Note = values[4];
             CarsMeta.Upsert(DataDirectory, meta);
+            if (values.Length > 5 && values[5] != "0")
+            {
+                ToSettings.SetDefaultCar(DataDirectory, carName);
+                SetCurrentCar(carName);
+            }
+            else if (isDefault)
+                ToSettings.SetDefaultCar(DataDirectory, "");
             RefreshRecords();
         });
     }
@@ -2084,7 +2113,7 @@ public sealed class MainActivity : Activity
 
     private void RenderEditor(string title, List<EditorField> fields, Action<string[]> save,
         bool wireFuelPrice = false, string receiptRecordId = null,
-        Func<string[], string> confirmMessage = null)
+        Func<string[], string> confirmMessage = null, bool enableTemplates = false)
     {
         ScrollView scroll = new ScrollView(this);
         LinearLayout form = new LinearLayout(this);
@@ -2101,6 +2130,23 @@ public sealed class MainActivity : Activity
         if (!String.IsNullOrEmpty(receiptRecordId))
             AddReceiptControls(form, receiptRecordId);
 
+        AlertDialog dialog = null;
+        if (enableTemplates)
+        {
+            LinearLayout templateRow = NewRow();
+            Button fromTemplate = CreateButton("Из шаблона", null);
+            Button saveTemplate = CreateButton("Сохранить как шаблон", null);
+            templateRow.AddView(fromTemplate, WeightedButton());
+            templateRow.AddView(saveTemplate, WeightedButton());
+            form.AddView(templateRow, MatchWrap());
+            fromTemplate.Click += delegate { PickTemplateForEditor(fields); };
+            saveTemplate.Click += delegate
+            {
+                string[] values = ReadEditorValuesLoose(fields);
+                PromptSaveTemplate(values);
+            };
+        }
+
         LinearLayout buttons = NewRow();
         Button saveButton = CreateButton("Сохранить", null);
         Button cancelButton = CreateButton("Отмена", null);
@@ -2109,7 +2155,7 @@ public sealed class MainActivity : Activity
         form.AddView(buttons, MatchWrap());
         scroll.AddView(form);
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        dialog = new AlertDialog.Builder(this)
             .SetTitle(title)
             .SetView(scroll)
             .Create();
@@ -3819,7 +3865,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.24.0";
+        string version = "1.25.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -3994,6 +4040,212 @@ public sealed class MainActivity : Activity
                 .SetNegativeButton("Отмена", delegate { })
                 .Show();
         }, false);
+    }
+
+
+    private string TemplateTypeForSection()
+    {
+        if (selectedSection == Fuel)
+            return RecordTemplates.TypeFuel;
+        if (selectedSection == Repairs)
+            return RecordTemplates.TypeRepair;
+        if (selectedSection == Expenses)
+            return RecordTemplates.TypeExpense;
+        return null;
+    }
+
+    private void PickTemplateForEditor(List<EditorField> fields)
+    {
+        string type = TemplateTypeForSection();
+        if (type == null)
+            return;
+        List<RecordTemplate> list = RecordTemplates.LoadByType(DataDirectory, type);
+        if (list.Count == 0)
+        {
+            ShowMessage("Нет шаблонов этого типа. Заполните форму и нажмите «Сохранить как шаблон».");
+            return;
+        }
+        string[] labels = new string[list.Count];
+        for (int i = 0; i < list.Count; i++)
+            labels[i] = RecordTemplates.DisplayLine(list[i]);
+        new AlertDialog.Builder(this)
+            .SetTitle("Из шаблона")
+            .SetItems(labels, delegate(object sender, DialogClickEventArgs e)
+            {
+                ApplyTemplateToFields(fields, list[e.Which]);
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void ApplyTemplateToFields(List<EditorField> fields, RecordTemplate template)
+    {
+        if (fields == null || template == null)
+            return;
+        string today = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        string[] entity = RecordTemplates.EntityFromTemplate(template, today);
+        for (int i = 1; i < fields.Count && i < entity.Length; i++)
+            SetEditorFieldValue(fields[i], entity[i] ?? "");
+        if (entity.Length > 1 && (entity[1] ?? "").Trim().Length > 0)
+            SetCurrentCar(entity[1]);
+    }
+
+    private static void SetEditorFieldValue(EditorField field, string value)
+    {
+        if (field == null)
+            return;
+        value = value ?? "";
+        field.Value = value;
+        if (field.Kind == "check" && field.CheckInput != null)
+            field.CheckInput.Checked = value != "0" && value.Length > 0;
+        else if (field.Spinner != null && field.Options != null)
+        {
+            int selected = Array.IndexOf(field.Options, value);
+            if (selected < 0)
+                selected = 0;
+            field.Spinner.SetSelection(selected);
+        }
+        else if (field.TextInput != null)
+            field.TextInput.Text = value;
+        else if (field.DateButton != null)
+        {
+            field.Value = value;
+            field.DateButton.Text = value.Length > 0 ? value : "Выбрать";
+        }
+    }
+
+    private string[] ReadEditorValuesLoose(List<EditorField> fields)
+    {
+        string[] values = new string[fields.Count];
+        for (int i = 0; i < fields.Count; i++)
+        {
+            EditorField field = fields[i];
+            if (field.Kind == "check" && field.CheckInput != null)
+                values[i] = field.CheckInput.Checked ? "1" : "0";
+            else if (field.Spinner != null)
+                values[i] = field.Spinner.SelectedItem != null
+                    ? field.Spinner.SelectedItem.ToString() : (field.Value ?? "");
+            else if (field.TextInput != null)
+                values[i] = field.TextInput.Text ?? "";
+            else
+                values[i] = field.Value ?? "";
+        }
+        return values;
+    }
+
+    private void PromptSaveTemplate(string[] entityValues)
+    {
+        string type = TemplateTypeForSection();
+        if (type == null || entityValues == null)
+            return;
+        RenderEditor("Название шаблона", new List<EditorField>
+        {
+            EditorField.Text("Название", "", true)
+        }, delegate(string[] raw)
+        {
+            RecordTemplate item = new RecordTemplate();
+            item.Type = type;
+            item.Name = raw[0];
+            item.Payload = RecordTemplates.PayloadFromEntity(type, entityValues);
+            RecordTemplates.Upsert(DataDirectory, item);
+            ShowMessage("Шаблон «" + item.Name + "» сохранён.");
+        });
+    }
+
+    private void ManageTemplates()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте или создайте данные.");
+            return;
+        }
+        RecordTemplates.EnsureFile(DataDirectory);
+        List<RecordTemplate> list = RecordTemplates.LoadAll(DataDirectory);
+        if (list.Count == 0)
+        {
+            ShowMessage("Шаблонов пока нет. В форме добавления нажмите «Сохранить как шаблон».");
+            return;
+        }
+        string[] labels = new string[list.Count];
+        for (int i = 0; i < list.Count; i++)
+            labels[i] = RecordTemplates.DisplayLine(list[i]);
+        new AlertDialog.Builder(this)
+            .SetTitle("Шаблоны")
+            .SetItems(labels, delegate(object sender, DialogClickEventArgs e)
+            {
+                RecordTemplate item = list[e.Which];
+                new AlertDialog.Builder(this)
+                    .SetTitle(item.Name)
+                    .SetItems(new string[] { "Использовать", "Удалить" },
+                        delegate(object s2, DialogClickEventArgs e2)
+                        {
+                            if (e2.Which == 0)
+                                UseTemplate(item);
+                            else if (!String.IsNullOrEmpty(item.Id))
+                            {
+                                RecordTemplates.Delete(DataDirectory, item.Id);
+                                ShowMessage("Шаблон удалён.");
+                            }
+                        })
+                    .SetNegativeButton("Закрыть", delegate { })
+                    .Show();
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void UseTemplate(RecordTemplate item)
+    {
+        if (item == null)
+            return;
+        if (item.Type == RecordTemplates.TypeFuel)
+            selectedSection = Fuel;
+        else if (item.Type == RecordTemplates.TypeRepair)
+            selectedSection = Repairs;
+        else if (item.Type == RecordTemplates.TypeExpense)
+            selectedSection = Expenses;
+        else
+            return;
+        UpdateSectionButtons();
+        string today = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        string[] row = RecordTemplates.EntityFromTemplate(item, today);
+        if (row.Length > 1 && (row[1] ?? "").Trim().Length > 0)
+            SetCurrentCar(row[1]);
+        RefreshRecords();
+        ShowRecordEditor(false, row, -1);
+    }
+
+    private void EditDefaultCar()
+    {
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        if (cars.Count == 0)
+        {
+            ShowMessage("Сначала добавьте автомобиль.");
+            return;
+        }
+        string current = ToSettings.GetDefaultCar(DataDirectory);
+        List<string> options = new List<string>();
+        options.Add("(не задано)");
+        options.AddRange(cars);
+        string selected = current.Length > 0 && cars.IndexOf(current) >= 0 ? current : "(не задано)";
+        RenderEditor("Авто по умолчанию", new List<EditorField>
+        {
+            EditorField.Option("Автомобиль", selected, options.ToArray(), true)
+        }, delegate(string[] raw)
+        {
+            string name = raw[0];
+            if (name == "(не задано)")
+                ToSettings.SetDefaultCar(DataDirectory, "");
+            else
+            {
+                ToSettings.SetDefaultCar(DataDirectory, name);
+                SetCurrentCar(name);
+            }
+            RefreshRecords();
+            ShowMessage(name == "(не задано)"
+                ? "Авто по умолчанию сброшено."
+                : "Авто по умолчанию: " + name);
+        });
     }
 
     private void EditToIntervals()

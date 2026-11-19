@@ -320,6 +320,8 @@ internal static class ExpenseSyncService
             new int[] { 0 }, new bool[] { true }, plan, null, tombs, journal, false);
         MergeRows(ExpenseDataCodec.CarsMetaFile, localDirectory, remoteDirectory, null,
             new int[] { 0 }, new bool[] { true }, plan, null, tombs, journal, false);
+        MergeRows(ExpenseDataCodec.TemplatesFile, localDirectory, remoteDirectory, null,
+            new int[] { 0, 1 }, new bool[] { true, true }, plan, null, tombs, journal, false);
         return journal;
     }
 
@@ -387,6 +389,11 @@ internal static class ExpenseSyncService
             File.Exists(remoteExpCat) ? ExpenseDataCodec.ReadRows(remoteExpCat) : new List<string[]>(),
             new int[] { 0 }, new bool[] { true },
             RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
+        diffs.Add(AnalyzeTable("Шаблоны",
+            ExpenseDataStore.LoadOptional(localDirectory, ExpenseDataCodec.TemplatesFile),
+            ExpenseDataStore.LoadOptional(remoteDirectory, ExpenseDataCodec.TemplatesFile),
+            new int[] { 0, 1 }, new bool[] { true, true },
+            RecordIds.IdsForType(tombs, RecordIds.TypeTemplate)));
         return diffs;
     }
 
@@ -506,6 +513,8 @@ internal static class ExpenseSyncService
                 mergedTombs, journal, true);
             MergeRows(ExpenseDataCodec.CarsMetaFile, dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0 }, new bool[] { true }, plan, resolveConflict, mergedTombs, journal, true);
+            MergeRows(ExpenseDataCodec.TemplatesFile, dataDirectory, incomingDirectory, mergedDirectory,
+                new int[] { 0, 1 }, new bool[] { true, true }, plan, resolveConflict, mergedTombs, journal, true);
             ToSettings.MergeFiles(dataDirectory, incomingDirectory, mergedDirectory,
                 plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
         }
@@ -572,6 +581,8 @@ internal static class ExpenseSyncService
             RecordIds.TypeCategory, tombs, journal);
         FilterFileByTombstones(directory, ExpenseDataCodec.CarsMetaFile,
             RecordIds.TypeCarMeta, tombs, journal);
+        FilterFileByTombstones(directory, ExpenseDataCodec.TemplatesFile,
+            RecordIds.TypeTemplate, tombs, journal);
     }
 
     private static void FilterFileByTombstones(
@@ -608,9 +619,11 @@ internal static class ExpenseSyncService
         EnsureIdsFile(directory, ExpenseDataCodec.ExpensesFile);
         EnsureIdsFile(directory, ExpenseDataCodec.ExpenseCategoriesFile);
         EnsureIdsFile(directory, ExpenseDataCodec.CarsMetaFile);
+        EnsureIdsFile(directory, ExpenseDataCodec.TemplatesFile);
         RecordIds.EnsureDeletedFile(directory);
         ToSettings.EnsureFile(directory);
         CarsMeta.EnsureFile(directory);
+        RecordTemplates.EnsureFile(directory);
     }
 
     private static void EnsureIdsFile(string directory, string fileName)
@@ -814,6 +827,8 @@ internal static class ExpenseSyncService
             return "Категория прочих";
         if (fileName == ExpenseDataCodec.CarsMetaFile)
             return "Паспорт авто";
+        if (fileName == ExpenseDataCodec.TemplatesFile)
+            return "Шаблон";
         return "Коммунальные";
     }
 
@@ -954,7 +969,8 @@ internal static class ExpenseSyncService
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.ExpensesFile ||
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.ExpenseCategoriesFile ||
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.SettingsFile ||
-                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.CarsMetaFile)
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.CarsMetaFile ||
+                    ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.TemplatesFile)
                     continue;
                 throw new InvalidDataException("Нет файла " + ExpenseDataCodec.DataFiles[i]);
             }

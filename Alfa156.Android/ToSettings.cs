@@ -22,6 +22,7 @@ internal static class ToSettings
     internal const string CurrencyKey = "currency";
     internal const string DefaultCurrency = "BYN";
     internal const string OnboardingSeenKey = "onboarding_seen";
+    internal const string DefaultCarKey = "default_car";
     internal const string BudgetMonthKey = "budget_month";
     internal const string BudgetWarnPctKey = "budget_warn_pct";
     internal const decimal DefaultBudgetWarnPct = 80;
@@ -105,6 +106,41 @@ internal static class ToSettings
         map[OnboardingSeenKey] = seen ? "1" : "0";
         WriteMap(directory, map);
     }
+
+    internal static string GetDefaultCar(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string name;
+        if (!map.TryGetValue(DefaultCarKey, out name))
+            return "";
+        return (name ?? "").Trim();
+    }
+
+    internal static void SetDefaultCar(string directory, string carName)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        string name = (carName ?? "").Trim();
+        if (name.Length == 0)
+            map.Remove(DefaultCarKey);
+        else
+            map[DefaultCarKey] = name;
+        WriteMap(directory, map);
+    }
+
+    internal static void RenameDefaultCar(string directory, string oldName, string newName)
+    {
+        oldName = (oldName ?? "").Trim();
+        newName = (newName ?? "").Trim();
+        if (oldName.Length == 0)
+            return;
+        string current = GetDefaultCar(directory);
+        if (String.Equals(current, oldName, StringComparison.OrdinalIgnoreCase))
+            SetDefaultCar(directory, newName);
+    }
+
 
     /// <summary>0 = disabled. Soft monthly budget for fuel+repair+expenses.</summary>
     internal static decimal GetBudgetMonth(string directory)

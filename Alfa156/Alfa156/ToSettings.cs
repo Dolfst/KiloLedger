@@ -24,6 +24,7 @@ namespace CarExpenses
         internal const string CurrencyKey = "currency";
         internal const string DefaultCurrency = "BYN";
         internal const string OnboardingSeenKey = "onboarding_seen";
+        internal const string DefaultCarKey = "default_car";
         internal const string BudgetMonthKey = "budget_month";
         internal const string BudgetWarnPctKey = "budget_warn_pct";
         internal const decimal DefaultBudgetWarnPct = 80;
@@ -124,6 +125,51 @@ namespace CarExpenses
         {
             SetOnboardingSeenInDirectory(DataDirectory, seen);
         }
+
+        internal static string GetDefaultCar()
+        {
+            return GetDefaultCarFromDirectory(DataDirectory);
+        }
+
+        internal static string GetDefaultCarFromDirectory(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string name;
+            if (!map.TryGetValue(DefaultCarKey, out name))
+                return "";
+            return name == null ? "" : name.Trim();
+        }
+
+        internal static void SetDefaultCar(string carName)
+        {
+            SetDefaultCarInDirectory(DataDirectory, carName);
+        }
+
+        internal static void SetDefaultCarInDirectory(string directory, string carName)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
+            string name = carName == null ? "" : carName.Trim();
+            if (name.Length == 0)
+                map.Remove(DefaultCarKey);
+            else
+                map[DefaultCarKey] = name;
+            WriteMap(directory, map);
+        }
+
+        internal static void RenameDefaultCar(string oldName, string newName)
+        {
+            oldName = oldName == null ? "" : oldName.Trim();
+            newName = newName == null ? "" : newName.Trim();
+            if (oldName.Length == 0)
+                return;
+            string current = GetDefaultCar();
+            if (String.Compare(current, oldName, true, System.Globalization.CultureInfo.InvariantCulture) == 0)
+                SetDefaultCar(newName);
+        }
+
 
         internal static void SetOnboardingSeenInDirectory(string directory, bool seen)
         {

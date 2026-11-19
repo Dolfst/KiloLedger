@@ -12,7 +12,7 @@
 
 ## Возможности
 
-- Открыть папку с `cars.dat`, `cars-meta.dat`, `fuel.dat`, `repairs.dat`, `utilities.dat`, `expenses.dat`, `expense-categories.dat`, `settings.dat`, `repair-categories.dat`, `deleted.dat`
+- Открыть папку с `cars.dat`, `cars-meta.dat`, `templates.dat`, `fuel.dat`, `repairs.dat`, `utilities.dat`, `expenses.dat`, `expense-categories.dat`, `settings.dat`, `repair-categories.dat`, `deleted.dat`
 - Открыть/сохранить ZIP (как на Android)
 - Редактирование таблиц прямо в окне
 - **Экспорт / импорт Excel** (`.xlsx`, листы: Автомобили, Заправки, Ремонт, Коммуналка, Категории)

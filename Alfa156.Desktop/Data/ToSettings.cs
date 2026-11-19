@@ -22,6 +22,7 @@ namespace Alfa156.Desktop.Data
         internal const string CurrencyKey = "currency";
         internal const string DefaultCurrency = "BYN";
         internal const string OnboardingSeenKey = "onboarding_seen";
+        internal const string DefaultCarKey = "default_car";
         internal const string BudgetMonthKey = "budget_month";
         internal const string BudgetWarnPctKey = "budget_warn_pct";
         internal const decimal DefaultBudgetWarnPct = 80;
@@ -145,6 +146,42 @@ namespace Alfa156.Desktop.Data
             map[OnboardingSeenKey] = seen ? "1" : "0";
             return MapToRows(map);
         }
+
+        internal static string GetDefaultCar(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string name;
+            if (!map.TryGetValue(DefaultCarKey, out name))
+                return "";
+            return (name ?? "").Trim();
+        }
+
+        internal static List<string[]> SetDefaultCar(List<string[]> existing, string carName)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            string name = (carName ?? "").Trim();
+            if (name.Length == 0)
+                map.Remove(DefaultCarKey);
+            else
+                map[DefaultCarKey] = name;
+            return MapToRows(map);
+        }
+
+        internal static List<string[]> RenameDefaultCar(List<string[]> existing, string oldName, string newName)
+        {
+            oldName = (oldName ?? "").Trim();
+            newName = (newName ?? "").Trim();
+            if (oldName.Length == 0)
+                return existing ?? new List<string[]>();
+            string current = GetDefaultCar(existing);
+            if (String.Equals(current, oldName, StringComparison.OrdinalIgnoreCase))
+                return SetDefaultCar(existing, newName);
+            return existing ?? new List<string[]>();
+        }
+
 
         /// <summary>0 = disabled. Soft monthly budget for fuel+repair+expenses.</summary>
         internal static decimal GetBudgetMonth(List<string[]> rows)

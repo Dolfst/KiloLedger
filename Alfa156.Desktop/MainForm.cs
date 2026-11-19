@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.24.0";
+        private const string AppVersion = "1.25.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -42,6 +42,13 @@ namespace Alfa156.Desktop
         private readonly TextBox budgetBox = new TextBox();
         private readonly TextBox budgetWarnBox = new TextBox();
         private readonly TextBox backupRemindBox = new TextBox();
+        private readonly ComboBox defaultCarBox = new ComboBox();
+        private readonly ComboBox fuelFilterCar = new ComboBox();
+        private readonly ComboBox repairFilterCar = new ComboBox();
+        private readonly ComboBox expenseFilterCar = new ComboBox();
+        private string fuelFilterCarValue = "";
+        private string repairFilterCarValue = "";
+        private string expenseFilterCarValue = "";
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
@@ -150,6 +157,8 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Найти", OpenGlobalSearch));
             toolbar.Controls.Add(MakeButton("Дубликаты", OpenDuplicates));
             toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
+            toolbar.Controls.Add(MakeButton("Из шаблона", UseTemplateFromUi));
+            toolbar.Controls.Add(MakeButton("Сохранить шаблон", SaveTemplateFromUi));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -238,6 +247,11 @@ namespace Alfa156.Desktop
             backupRemindBox.Text = "7";
             intervalRow.Controls.Add(backupRemindBox);
             intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
+            intervalRow.Controls.Add(new Label { Text = "Авто по умолч.", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            defaultCarBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            defaultCarBox.Width = 140;
+            intervalRow.Controls.Add(defaultCarBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить авто по умолч.", SaveDefaultCar));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Сравнить периоды", ShowPeriodCompare));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
@@ -341,10 +355,25 @@ namespace Alfa156.Desktop
 
         private FlowLayoutPanel BuildFuelFilterBar()
         {
-            FlowLayoutPanel bar = BuildPeriodTextFilterBar(
-                fuelFilterFrom, fuelFilterTo, fuelFilterText,
-                delegate { ApplyFuelFilterFromUi(); },
-                delegate { ResetFuelFilter(); });
+            FlowLayoutPanel bar = new FlowLayoutPanel
+            {
+                WrapContents = true,
+                AutoSize = false,
+                Padding = new Padding(2)
+            };
+            fuelFilterCar.DropDownStyle = ComboBoxStyle.DropDownList;
+            fuelFilterCar.Width = 120;
+            bar.Controls.Add(FilterLabel("Авто"));
+            bar.Controls.Add(fuelFilterCar);
+            bar.Controls.Add(FilterLabel("С"));
+            fuelFilterFrom.Width = 90;
+            bar.Controls.Add(fuelFilterFrom);
+            bar.Controls.Add(FilterLabel("По"));
+            fuelFilterTo.Width = 90;
+            bar.Controls.Add(fuelFilterTo);
+            bar.Controls.Add(FilterLabel("Поиск"));
+            fuelFilterText.Width = 140;
+            bar.Controls.Add(fuelFilterText);
             fuelFilterPurpose.DropDownStyle = ComboBoxStyle.DropDownList;
             fuelFilterPurpose.Width = 110;
             fuelFilterPurpose.Items.Clear();
@@ -354,43 +383,40 @@ namespace Alfa156.Desktop
             fuelFilterPurpose.SelectedIndex = 0;
             bar.Controls.Add(FilterLabel("Цель"));
             bar.Controls.Add(fuelFilterPurpose);
-            // Move apply/reset after purpose: rebuild order by bringing buttons to end.
-            Control apply = null;
-            Control reset = null;
-            for (int i = bar.Controls.Count - 1; i >= 0; i--)
-            {
-                Button button = bar.Controls[i] as Button;
-                if (button == null)
-                    continue;
-                if (reset == null)
-                    reset = button;
-                else if (apply == null)
-                {
-                    apply = button;
-                    break;
-                }
-            }
-            if (apply != null)
-                bar.Controls.SetChildIndex(apply, bar.Controls.Count - 1);
-            if (reset != null)
-                bar.Controls.SetChildIndex(reset, bar.Controls.Count - 1);
+            bar.Controls.Add(MakeButton("Применить", delegate { ApplyFuelFilterFromUi(); }));
+            bar.Controls.Add(MakeButton("Сбросить", delegate { ResetFuelFilter(); }));
             return bar;
         }
 
         private FlowLayoutPanel BuildRepairFilterBar()
         {
-            return BuildCategoryPeriodTextFilterBar(
+            FlowLayoutPanel bar = BuildCategoryPeriodTextFilterBar(
                 repairFilterCategory, repairFilterFrom, repairFilterTo, repairFilterText,
                 delegate { ApplyRepairFilterFromUi(); },
                 delegate { ResetRepairFilter(); });
+            PrependCarFilter(bar, repairFilterCar);
+            return bar;
         }
 
         private FlowLayoutPanel BuildExpenseFilterBar()
         {
-            return BuildCategoryPeriodTextFilterBar(
+            FlowLayoutPanel bar = BuildCategoryPeriodTextFilterBar(
                 expenseFilterCategory, expenseFilterFrom, expenseFilterTo, expenseFilterText,
                 delegate { ApplyExpenseFilterFromUi(); },
                 delegate { ResetExpenseFilter(); });
+            PrependCarFilter(bar, expenseFilterCar);
+            return bar;
+        }
+
+        private static void PrependCarFilter(FlowLayoutPanel bar, ComboBox carBox)
+        {
+            carBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            carBox.Width = 120;
+            Label label = FilterLabel("Авто");
+            bar.Controls.Add(label);
+            bar.Controls.Add(carBox);
+            bar.Controls.SetChildIndex(label, 0);
+            bar.Controls.SetChildIndex(carBox, 1);
         }
 
         private FlowLayoutPanel BuildUtilityFilterBar()
@@ -467,6 +493,14 @@ namespace Alfa156.Desktop
 
         private void FuelGridDefaultValuesNeeded(object sender, DataGridViewRowEventArgs e)
         {
+            if (e.Row.Cells.Count > 1)
+            {
+                string preferred = PreferredCarName();
+                if (preferred.Length > 0 &&
+                    (e.Row.Cells[1].Value == null ||
+                     String.IsNullOrEmpty(Convert.ToString(e.Row.Cells[1].Value))))
+                    e.Row.Cells[1].Value = preferred;
+            }
             if (e.Row.Cells.Count > 7)
                 e.Row.Cells[7].Value = true;
             if (e.Row.Cells.Count > 8)
@@ -738,6 +772,323 @@ namespace Alfa156.Desktop
             catch (Exception ex)
             {
                 ShowError(ex);
+            }
+        }
+
+
+        private void SaveDefaultCar(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string name = defaultCarBox.SelectedItem == null ? "" : defaultCarBox.SelectedItem.ToString();
+                if (name == "(не задано)")
+                    name = "";
+                repository.Settings = ToSettings.SetDefaultCar(repository.Settings, name);
+                PullAll();
+                repository.Save();
+                dirty = false;
+                if (name.Length == 0)
+                {
+                    fuelFilterCarValue = repairFilterCarValue = expenseFilterCarValue = "";
+                    SetStatus("Авто по умолчанию сброшено.");
+                }
+                else
+                {
+                    fuelFilterCarValue = repairFilterCarValue = expenseFilterCarValue = name;
+                    SetStatus("Авто по умолчанию: " + name);
+                }
+                RefreshCarFilterLists(false);
+                ApplyAllFilterVisibility();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private string PreferredCarName()
+        {
+            string preferred = ToSettings.GetDefaultCar(repository.Settings);
+            if (preferred.Length == 0)
+                return "";
+            for (int i = 0; i < repository.Cars.Count; i++)
+            {
+                string[] content = RecordIds.StripId(repository.Cars[i]);
+                string name = content.Length > 0 ? (content[0] ?? "").Trim() : "";
+                if (String.Equals(name, preferred, StringComparison.OrdinalIgnoreCase))
+                    return name;
+            }
+            return "";
+        }
+
+        private void RefreshDefaultCarUi()
+        {
+            defaultCarBox.Items.Clear();
+            defaultCarBox.Items.Add("(не задано)");
+            string preferred = ToSettings.GetDefaultCar(repository.Settings);
+            int selected = 0;
+            for (int i = 0; i < repository.Cars.Count; i++)
+            {
+                string[] content = RecordIds.StripId(repository.Cars[i]);
+                string name = content.Length > 0 ? (content[0] ?? "").Trim() : "";
+                if (name.Length == 0)
+                    continue;
+                defaultCarBox.Items.Add(name);
+                if (String.Equals(name, preferred, StringComparison.OrdinalIgnoreCase))
+                    selected = defaultCarBox.Items.Count - 1;
+            }
+            if (defaultCarBox.Items.Count > 0)
+                defaultCarBox.SelectedIndex = selected;
+        }
+
+        private void RefreshCarFilterLists(bool applyPreferred)
+        {
+            string preferred = applyPreferred ? PreferredCarName() : "";
+            FillCarFilter(fuelFilterCar, preferred.Length > 0 ? preferred : fuelFilterCarValue);
+            FillCarFilter(repairFilterCar, preferred.Length > 0 ? preferred : repairFilterCarValue);
+            FillCarFilter(expenseFilterCar, preferred.Length > 0 ? preferred : expenseFilterCarValue);
+            if (applyPreferred && preferred.Length > 0)
+            {
+                fuelFilterCarValue = preferred;
+                repairFilterCarValue = preferred;
+                expenseFilterCarValue = preferred;
+            }
+        }
+
+        private void FillCarFilter(ComboBox box, string selected)
+        {
+            box.Items.Clear();
+            box.Items.Add("Все авто");
+            int index = 0;
+            for (int i = 0; i < repository.Cars.Count; i++)
+            {
+                string[] content = RecordIds.StripId(repository.Cars[i]);
+                string name = content.Length > 0 ? (content[0] ?? "").Trim() : "";
+                if (name.Length == 0)
+                    continue;
+                box.Items.Add(name);
+                if (String.Equals(name, selected, StringComparison.OrdinalIgnoreCase))
+                    index = box.Items.Count - 1;
+            }
+            if (box.Items.Count > 0)
+                box.SelectedIndex = index;
+        }
+
+        private static string SelectedCarFilter(ComboBox box)
+        {
+            if (box.SelectedItem == null)
+                return "";
+            string value = box.SelectedItem.ToString();
+            if (String.Equals(value, "Все авто", StringComparison.OrdinalIgnoreCase))
+                return "";
+            return value ?? "";
+        }
+
+        private static void SelectCarFilter(ComboBox box, string car)
+        {
+            if (box.Items.Count == 0)
+                return;
+            if (String.IsNullOrEmpty(car))
+            {
+                box.SelectedIndex = 0;
+                return;
+            }
+            for (int i = 0; i < box.Items.Count; i++)
+            {
+                if (String.Equals(Convert.ToString(box.Items[i]), car, StringComparison.OrdinalIgnoreCase))
+                {
+                    box.SelectedIndex = i;
+                    return;
+                }
+            }
+            box.SelectedIndex = 0;
+        }
+
+        private void UseTemplateFromUi(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string type = TemplateTypeForActiveTab();
+                if (type == null)
+                {
+                    MessageBox.Show(this, "Откройте вкладку Заправки, Ремонт или Прочие.",
+                        "Шаблоны", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                List<RecordTemplate> list = RecordTemplates.FilterByType(
+                    RecordTemplates.FromRows(repository.Templates), type);
+                if (list.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет шаблонов этого типа. Выберите строку и нажмите «Сохранить шаблон».",
+                        "Шаблоны", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                string[] labels = new string[list.Count];
+                for (int i = 0; i < list.Count; i++)
+                    labels[i] = RecordTemplates.DisplayLine(list[i]);
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Из шаблона";
+                    dialog.Width = 420;
+                    dialog.Height = 320;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    ListBox box = new ListBox { Dock = DockStyle.Fill };
+                    box.Items.AddRange(labels);
+                    Button ok = new Button { Text = "Вставить", DialogResult = DialogResult.OK, Dock = DockStyle.Bottom };
+                    dialog.Controls.Add(box);
+                    dialog.Controls.Add(ok);
+                    dialog.AcceptButton = ok;
+                    if (dialog.ShowDialog(this) != DialogResult.OK || box.SelectedIndex < 0)
+                        return;
+                    InsertTemplateRow(list[box.SelectedIndex]);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void SaveTemplateFromUi(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string type = TemplateTypeForActiveTab();
+                DataGridView grid = ActiveTemplateGrid();
+                if (type == null || grid == null)
+                {
+                    MessageBox.Show(this, "Откройте вкладку Заправки, Ремонт или Прочие и выберите строку.",
+                        "Шаблоны", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (grid.CurrentRow == null || grid.CurrentRow.IsNewRow)
+                {
+                    MessageBox.Show(this, "Выберите заполненную строку для шаблона.",
+                        "Шаблоны", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                string[] entity = ReadGridRowAsEntity(grid.CurrentRow, type);
+                string name = PromptTemplateName();
+                if (name == null)
+                    return;
+                RecordTemplate item = new RecordTemplate();
+                item.Type = type;
+                item.Name = name;
+                item.Payload = RecordTemplates.PayloadFromEntity(type, entity);
+                if (repository.Templates == null)
+                    repository.Templates = new List<string[]>();
+                repository.Templates.Add(RecordTemplates.ToRow(item));
+                PullAll();
+                repository.Save();
+                dirty = false;
+                SetStatus("Шаблон «" + name + "» сохранён.");
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private string TemplateTypeForActiveTab()
+        {
+            if (tabs.SelectedTab == null)
+                return null;
+            string title = tabs.SelectedTab.Text ?? "";
+            if (title.IndexOf("Заправ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return RecordTemplates.TypeFuel;
+            if (title.IndexOf("Ремонт", StringComparison.OrdinalIgnoreCase) >= 0)
+                return RecordTemplates.TypeRepair;
+            if (title.IndexOf("Проч", StringComparison.OrdinalIgnoreCase) >= 0)
+                return RecordTemplates.TypeExpense;
+            return null;
+        }
+
+        private DataGridView ActiveTemplateGrid()
+        {
+            string type = TemplateTypeForActiveTab();
+            if (type == RecordTemplates.TypeFuel) return fuelGrid;
+            if (type == RecordTemplates.TypeRepair) return repairsGrid;
+            if (type == RecordTemplates.TypeExpense) return expensesGrid;
+            return null;
+        }
+
+        private string[] ReadGridRowAsEntity(DataGridViewRow row, string type)
+        {
+            if (type == RecordTemplates.TypeFuel)
+            {
+                string full = "1";
+                object fullObj = row.Cells.Count > 7 ? row.Cells[7].Value : null;
+                if (fullObj is bool && !(bool)fullObj)
+                    full = "0";
+                else if (fullObj != null && Convert.ToString(fullObj) == "0")
+                    full = "0";
+                return new string[]
+                {
+                    CellText(row, 0), CellText(row, 1), CellText(row, 2), CellText(row, 3),
+                    CellText(row, 4), CellText(row, 5), CellText(row, 6), full, CellText(row, 8)
+                };
+            }
+            if (type == RecordTemplates.TypeRepair)
+            {
+                return new string[]
+                {
+                    CellText(row, 0), CellText(row, 1), CellText(row, 2), CellText(row, 3),
+                    CellText(row, 4), CellText(row, 5), CellText(row, 6), CellText(row, 7),
+                    CellText(row, 8)
+                };
+            }
+            return new string[]
+            {
+                CellText(row, 0), CellText(row, 1), CellText(row, 2), CellText(row, 3),
+                CellText(row, 4), CellText(row, 5)
+            };
+        }
+
+        private void InsertTemplateRow(RecordTemplate item)
+        {
+            string today = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            string[] entity = RecordTemplates.EntityFromTemplate(item, today);
+            DataGridView grid = ActiveTemplateGrid();
+            if (grid == null)
+                return;
+            int index = grid.Rows.Add();
+            DataGridViewRow row = grid.Rows[index];
+            for (int i = 0; i < entity.Length && i < row.Cells.Count; i++)
+            {
+                if (item.Type == RecordTemplates.TypeFuel && i == 7)
+                    row.Cells[i].Value = entity[i] != "0";
+                else
+                    row.Cells[i].Value = entity[i];
+            }
+            dirty = true;
+            SetStatus("Шаблон «" + item.Name + "» вставлен. Сохраните .dat.");
+        }
+
+        private string PromptTemplateName()
+        {
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "Название шаблона";
+                dialog.Width = 360;
+                dialog.Height = 140;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                TextBox box = new TextBox { Left = 12, Top = 16, Width = 320 };
+                Button ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Left = 170, Top = 55 };
+                Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 250, Top = 55 };
+                dialog.Controls.Add(box);
+                dialog.Controls.Add(ok);
+                dialog.Controls.Add(cancel);
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return null;
+                string name = (box.Text ?? "").Trim();
+                if (name.Length == 0)
+                    throw new InvalidOperationException("Введите название шаблона.");
+                return name;
             }
         }
 
@@ -1228,6 +1579,7 @@ namespace Alfa156.Desktop
                     .ToString(CultureInfo.InvariantCulture);
                 backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
+                RefreshDefaultCarUi();
                 // Column headers include currency code — refresh before binding rows.
                 SetupFuelGrid();
                 SetupRepairsGrid();
@@ -1240,6 +1592,7 @@ namespace Alfa156.Desktop
                 BindGrid(utilitiesGrid, repository.Utilities, 8);
                 BindGrid(categoriesGrid, repository.Categories, 1);
                 RefreshCategoryFilterLists();
+                RefreshCarFilterLists(true);
                 ApplyAllFilterVisibility();
                 RefreshSummaryText();
             }
@@ -2249,6 +2602,7 @@ namespace Alfa156.Desktop
                 ? "" : fuelFilterPurpose.SelectedItem.ToString();
             fuelFilterPurposeValue = String.Equals(purpose, "Все цели", StringComparison.OrdinalIgnoreCase)
                 ? "" : (purpose ?? "").Trim();
+            fuelFilterCarValue = SelectedCarFilter(fuelFilterCar);
             ApplyFuelFilterVisibility();
             SetStatus("Фильтр заправок применён (данные не удаляются).");
         }
@@ -2256,9 +2610,11 @@ namespace Alfa156.Desktop
         private void ResetFuelFilter()
         {
             fuelFilterFromValue = fuelFilterToValue = fuelFilterTextValue = fuelFilterPurposeValue = "";
+            fuelFilterCarValue = "";
             fuelFilterFrom.Text = fuelFilterTo.Text = fuelFilterText.Text = "";
             if (fuelFilterPurpose.Items.Count > 0)
                 fuelFilterPurpose.SelectedIndex = 0;
+            SelectCarFilter(fuelFilterCar, "");
             ApplyFuelFilterVisibility();
             SetStatus("Фильтр заправок сброшен.");
         }
@@ -2270,6 +2626,7 @@ namespace Alfa156.Desktop
             repairFilterTextValue = (repairFilterText.Text ?? "").Trim();
             repairFilterCategoryValue = repairFilterCategory.SelectedItem == null
                 ? "" : repairFilterCategory.SelectedItem.ToString();
+            repairFilterCarValue = SelectedCarFilter(repairFilterCar);
             ApplyRepairFilterVisibility();
             SetStatus("Фильтр ремонта применён (данные не удаляются).");
         }
@@ -2278,9 +2635,11 @@ namespace Alfa156.Desktop
         {
             repairFilterFromValue = repairFilterToValue = repairFilterTextValue = "";
             repairFilterCategoryValue = "Все категории";
+            repairFilterCarValue = "";
             repairFilterFrom.Text = repairFilterTo.Text = repairFilterText.Text = "";
             if (repairFilterCategory.Items.Count > 0)
                 repairFilterCategory.SelectedIndex = 0;
+            SelectCarFilter(repairFilterCar, "");
             ApplyRepairFilterVisibility();
             SetStatus("Фильтр ремонта сброшен.");
         }
@@ -2292,6 +2651,7 @@ namespace Alfa156.Desktop
             expenseFilterTextValue = (expenseFilterText.Text ?? "").Trim();
             expenseFilterCategoryValue = expenseFilterCategory.SelectedItem == null
                 ? "" : expenseFilterCategory.SelectedItem.ToString();
+            expenseFilterCarValue = SelectedCarFilter(expenseFilterCar);
             ApplyExpenseFilterVisibility();
             SetStatus("Фильтр прочих расходов применён (данные не удаляются).");
         }
@@ -2300,9 +2660,11 @@ namespace Alfa156.Desktop
         {
             expenseFilterFromValue = expenseFilterToValue = expenseFilterTextValue = "";
             expenseFilterCategoryValue = "Все категории";
+            expenseFilterCarValue = "";
             expenseFilterFrom.Text = expenseFilterTo.Text = expenseFilterText.Text = "";
             if (expenseFilterCategory.Items.Count > 0)
                 expenseFilterCategory.SelectedIndex = 0;
+            SelectCarFilter(expenseFilterCar, "");
             ApplyExpenseFilterVisibility();
             SetStatus("Фильтр прочих расходов сброшен.");
         }
@@ -2329,6 +2691,9 @@ namespace Alfa156.Desktop
             ApplyRowVisibility(fuelGrid, delegate(DataGridViewRow row)
             {
                 string date = CellText(row, 0);
+                if (fuelFilterCarValue.Length > 0 &&
+                    !String.Equals(CellText(row, 1), fuelFilterCarValue, StringComparison.OrdinalIgnoreCase))
+                    return false;
                 if (fuelFilterFromValue.Length > 0 && String.CompareOrdinal(date, fuelFilterFromValue) < 0)
                     return false;
                 if (fuelFilterToValue.Length > 0 && String.CompareOrdinal(date, fuelFilterToValue) > 0)
@@ -2352,6 +2717,9 @@ namespace Alfa156.Desktop
         {
             ApplyRowVisibility(repairsGrid, delegate(DataGridViewRow row)
             {
+                if (repairFilterCarValue.Length > 0 &&
+                    !String.Equals(CellText(row, 1), repairFilterCarValue, StringComparison.OrdinalIgnoreCase))
+                    return false;
                 string date = CellText(row, 0);
                 if (repairFilterFromValue.Length > 0 && String.CompareOrdinal(date, repairFilterFromValue) < 0)
                     return false;
@@ -2376,6 +2744,9 @@ namespace Alfa156.Desktop
         {
             ApplyRowVisibility(expensesGrid, delegate(DataGridViewRow row)
             {
+                if (expenseFilterCarValue.Length > 0 &&
+                    !String.Equals(CellText(row, 1), expenseFilterCarValue, StringComparison.OrdinalIgnoreCase))
+                    return false;
                 string date = CellText(row, 0);
                 if (expenseFilterFromValue.Length > 0 && String.CompareOrdinal(date, expenseFilterFromValue) < 0)
                     return false;
