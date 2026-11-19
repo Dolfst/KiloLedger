@@ -102,7 +102,7 @@ namespace CarExpenses
         {
             if (code == null)
                 return null;
-            string trimmed = code.Trim().ToUpperInvariant();
+            string trimmed = code.Trim().ToUpper(CultureInfo.InvariantCulture);
             if (trimmed.Length < 1 || trimmed.Length > 8)
                 return null;
             for (int i = 0; i < trimmed.Length; i++)
