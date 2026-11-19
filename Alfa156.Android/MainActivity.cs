@@ -391,6 +391,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { ManageDateReminders(); });
                 labels.Add("Срок напоминаний");
                 actions.Add(delegate { EditReminderWarnDays(); });
+                labels.Add("Заметки");
+                actions.Add(delegate { ManageCarNotes(); });
                 labels.Add("Копия на телефоне");
                 actions.Add(delegate { CreateLocalBackup(); });
                 labels.Add("Восстановить копию");
@@ -3456,6 +3458,7 @@ public sealed class MainActivity : Activity
             DateTime.Today, "\n"));
         int warnDays = ToSettings.GetReminderWarnDays(DataDirectory);
         result.Append(DateReminders.FormatUpcomingBlock(DataDirectory, warnDays, DateTime.Today, "\n"));
+        result.Append(CarNotes.FormatRecentBlock(DataDirectory, currentCar, 3, "\n"));
         return result.ToString();
     }
 
@@ -3624,6 +3627,7 @@ public sealed class MainActivity : Activity
         List<string[]> expenses = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.ExpensesFile);
         List<string[]> templates = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.TemplatesFile);
         List<string[]> reminders = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.RemindersFile);
+        List<string[]> notes = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.NotesFile);
         int receiptCount = 0;
         string receiptsDir = Path.Combine(source, "Receipts");
         if (Directory.Exists(receiptsDir))
@@ -3652,6 +3656,8 @@ public sealed class MainActivity : Activity
             summary.Append("\nШаблоны: ").Append(templates.Count);
         if (reminders.Count > 0)
             summary.Append("\nНапоминания: ").Append(reminders.Count);
+        if (notes.Count > 0)
+            summary.Append("\nЗаметки: ").Append(notes.Count);
         if (receiptCount > 0)
             summary.Append("\nФото чеков: ").Append(receiptCount);
         summary.Append(IsCompleteData(DataDirectory)
@@ -3792,6 +3798,7 @@ public sealed class MainActivity : Activity
         CarsMeta.EnsureFile(DataDirectory);
         RecordTemplates.EnsureFile(DataDirectory);
         DateReminders.EnsureFile(DataDirectory);
+        CarNotes.EnsureFile(DataDirectory);
         RecordIds.EnsureDeletedFile(DataDirectory);
         ExpenseDataCodec.ValidateDirectory(DataDirectory);
         Stream output = ContentResolver.OpenOutputStream(destination);
@@ -4226,7 +4233,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.30.0";
+        string version = "1.31.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -4241,6 +4248,7 @@ public sealed class MainActivity : Activity
                 "\nОценка пробега в сводке: средний км/день и срок до ТО масла/ремня." +
                 "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), избранный авто (default_car)." +
                 "\nНапоминания по дате (reminders.dat): страховка / техосмотр / своё." +
+                "\nЗаметки по авто (notes.dat): свободный журнал date|car|text|id." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +
                 "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
@@ -4269,6 +4277,100 @@ public sealed class MainActivity : Activity
             })
             .SetNegativeButton("ОК", delegate { })
             .Show();
+    }
+
+    private void ManageCarNotes()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте данные.");
+            return;
+        }
+        CarNotes.EnsureFile(DataDirectory);
+        string car = String.IsNullOrEmpty(currentCar) ? "" : currentCar;
+        List<CarNote> list = CarNotes.ListForCar(DataDirectory, car);
+        string message = CarNotes.FormatAllBlock(DataDirectory, car, "\n");
+        new AlertDialog.Builder(this)
+            .SetTitle(String.IsNullOrEmpty(car) ? "Заметки" : "Заметки · " + car)
+            .SetMessage(message)
+            .SetPositiveButton("Добавить", (sender, args) => { AddCarNote(); })
+            .SetNeutralButton(list.Count > 0 ? "Изменить…" : "Закрыть", (sender, args) =>
+            {
+                if (list.Count > 0)
+                    EditOrDeleteCarNote(list);
+            })
+            .SetNegativeButton("ОК", delegate { })
+            .Show();
+    }
+
+    private void AddCarNote()
+    {
+        string car = String.IsNullOrEmpty(currentCar) ? "" : currentCar;
+        string defaultDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        RenderEditor("Новая заметка", new List<EditorField>
+        {
+            EditorField.Date("Дата", defaultDate, true),
+            EditorField.Text("Автомобиль", car, true),
+            EditorField.Text("Текст", "", true, true)
+        }, delegate(string[] raw)
+        {
+            CarNote item = new CarNote();
+            item.Date = raw[0];
+            item.Car = raw[1];
+            item.Text = raw[2];
+            CarNotes.Upsert(DataDirectory, item);
+            ShowMessage("Заметка сохранена.");
+        }, false);
+    }
+
+    private void EditOrDeleteCarNote(List<CarNote> list)
+    {
+        if (list == null || list.Count == 0)
+            return;
+        string[] labels = new string[list.Count];
+        for (int i = 0; i < list.Count; i++)
+            labels[i] = CarNotes.FormatLine(list[i]);
+        new AlertDialog.Builder(this)
+            .SetTitle("Выберите заметку")
+            .SetItems(labels, (sender, args) =>
+            {
+                if (args.Which < 0 || args.Which >= list.Count)
+                    return;
+                CarNote item = list[args.Which];
+                new AlertDialog.Builder(this)
+                    .SetTitle(CarNotes.FormatLine(item))
+                    .SetMessage(item.Text ?? "")
+                    .SetPositiveButton("Изменить", (s2, a2) => { EditCarNote(item); })
+                    .SetNeutralButton("Удалить", (s2, a2) =>
+                    {
+                        if (!String.IsNullOrEmpty(item.Id))
+                            CarNotes.DeleteById(DataDirectory, item.Id);
+                        ShowMessage("Удалено.");
+                    })
+                    .SetNegativeButton("Отмена", delegate { })
+                    .Show();
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
+    }
+
+    private void EditCarNote(CarNote item)
+    {
+        if (item == null)
+            return;
+        RenderEditor("Изменить заметку", new List<EditorField>
+        {
+            EditorField.Date("Дата", item.Date ?? "", true),
+            EditorField.Text("Автомобиль", item.Car ?? "", true),
+            EditorField.Text("Текст", item.Text ?? "", true, true)
+        }, delegate(string[] raw)
+        {
+            item.Date = raw[0];
+            item.Car = raw[1];
+            item.Text = raw[2];
+            CarNotes.Upsert(DataDirectory, item);
+            ShowMessage("Заметка сохранена.");
+        }, false);
     }
 
     private void AddDateReminder()

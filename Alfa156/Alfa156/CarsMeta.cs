@@ -306,6 +306,19 @@ namespace CarExpenses
                 list.Add(entry);
             }
 
+            List<CarNote> notes = CarNotes.ListForCar(carName);
+            for (int i = 0; i < notes.Count; i++)
+            {
+                TimelineEntry entry = new TimelineEntry();
+                entry.Date = notes[i].Date ?? "";
+                entry.TypeKey = "note";
+                entry.TypeLabel = "Заметка";
+                entry.Text = CarNotes.Truncate(notes[i].Text, 80);
+                entry.Sum = 0;
+                entry.SortKey = entry.Date + "|3|" + i.ToString("0000", CultureInfo.InvariantCulture);
+                list.Add(entry);
+            }
+
             list.Sort(delegate(TimelineEntry a, TimelineEntry b)
             {
                 return String.CompareOrdinal(b.SortKey, a.SortKey);
@@ -317,6 +330,8 @@ namespace CarExpenses
         {
             if (entry == null)
                 return "";
+            if (entry.TypeKey == "note")
+                return entry.Date + "  " + entry.TypeLabel + "  " + entry.Text;
             return entry.Date + "  " + entry.TypeLabel + "  " + entry.Text + "  " +
                 entry.Sum.ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
         }
@@ -325,7 +340,7 @@ namespace CarExpenses
         {
             List<TimelineEntry> list = Build(carName);
             if (list.Count == 0)
-                return "Нет записей топлива, ремонта и прочих расходов для «" + carName + "».";
+                return "Нет записей топлива, ремонта, прочих расходов и заметок для «" + carName + "».";
             StringBuilder sb = new StringBuilder();
             sb.Append("Лента · ").Append(carName).Append(CarsMeta.HeaderSuffix(carName));
             sb.Append("\r\n\r\n");

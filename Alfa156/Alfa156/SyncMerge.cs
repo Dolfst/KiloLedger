@@ -108,6 +108,11 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "reminders.dat"),
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeReminder)));
+            diffs.Add(AnalyzeTable("Заметки",
+                DataStore.ReadSyncTable(localDirectory, "notes.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "notes.dat"),
+                new int[] { 0, 1, 2 }, new bool[] { false, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeNote)));
             return diffs;
         }
 
@@ -210,6 +215,9 @@ namespace CarExpenses
                 writeOutput);
             MergeFile("reminders.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true }, plan,
+                resolveConflict, tombs, journal, writeOutput);
+            MergeFile("notes.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
                 resolveConflict, tombs, journal, writeOutput);
             if (writeOutput && destinationDirectory != null)
             {
@@ -427,6 +435,8 @@ namespace CarExpenses
                 return "Шаблоны";
             if (fileName == "reminders.dat")
                 return "Напоминания";
+            if (fileName == "notes.dat")
+                return "Заметки";
             return fileName;
         }
 

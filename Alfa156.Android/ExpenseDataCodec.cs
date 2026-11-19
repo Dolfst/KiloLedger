@@ -20,6 +20,7 @@ internal static class ExpenseDataCodec
     internal const string CarsMetaFile = CarsMeta.FileName;
     internal const string TemplatesFile = RecordTemplates.FileName;
     internal const string RemindersFile = DateReminders.FileName;
+    internal const string NotesFile = CarNotes.FileName;
 
     internal static readonly string[] DefaultExpenseCategories =
     {
@@ -30,7 +31,7 @@ internal static class ExpenseDataCodec
     {
         "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
         ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-        RemindersFile, RecordIds.DeletedFile
+        RemindersFile, NotesFile, RecordIds.DeletedFile
     };
 
     internal static bool IsDataFile(string name)
@@ -219,6 +220,15 @@ internal static class ExpenseDataCodec
                 if (!DateReminders.IsValidRow(reminders[i]))
                     throw new InvalidDataException("Неверный формат записи в " + RemindersFile + ".");
         }
+
+        string notesPath = Path.Combine(directory, NotesFile);
+        if (File.Exists(notesPath))
+        {
+            List<string[]> notes = ReadRows(notesPath);
+            for (int i = 0; i < notes.Count; i++)
+                if (!CarNotes.IsValidRow(notes[i]))
+                    throw new InvalidDataException("Неверный формат записи в " + NotesFile + ".");
+        }
     }
 
     internal static bool IsValidCategoryRow(string[] row)
@@ -254,6 +264,9 @@ internal static class ExpenseDataCodec
         // reminders: date|car|title|type|[id]
         if (fileName == RemindersFile)
             return length == 4 || length == 5;
+        // notes: date|car|text|[id]
+        if (fileName == NotesFile)
+            return length == 3 || length == 4;
         return false;
     }
 

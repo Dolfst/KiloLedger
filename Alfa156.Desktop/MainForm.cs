@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.30.0";
+        private const string AppVersion = "1.31.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -254,6 +254,9 @@ namespace Alfa156.Desktop
             intervalRow.Controls.Add(MakeButton("Сохранить авто", SaveDefaultCar));
             intervalRow.Controls.Add(MakeButton("Добавить напоминание", AddDateReminder));
             intervalRow.Controls.Add(MakeButton("Удалить напоминание", DeleteDateReminder));
+            intervalRow.Controls.Add(MakeButton("Добавить заметку", AddCarNote));
+            intervalRow.Controls.Add(MakeButton("Изменить заметку", EditCarNote));
+            intervalRow.Controls.Add(MakeButton("Удалить заметку", DeleteCarNote));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Сравнить периоды", ShowPeriodCompare));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
@@ -1220,6 +1223,215 @@ namespace Alfa156.Desktop
                     repository.Save();
                     dirty = false;
                     SetStatus("Напоминание удалено.");
+                    RefreshSummaryText();
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private string ResolveSummaryCar()
+        {
+            return ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
+        }
+
+        private void AddCarNote(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                string car = ResolveSummaryCar();
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Новая заметка";
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.ClientSize = new Size(460, 220);
+                    dialog.MaximizeBox = false;
+                    dialog.MinimizeBox = false;
+                    Label dateLabel = new Label { Text = "Дата (ГГГГ-ММ-ДД)", Left = 12, Top = 14, Width = 160 };
+                    TextBox dateBox = new TextBox
+                    {
+                        Left = 180, Top = 12, Width = 260,
+                        Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    };
+                    Label carLabel = new Label { Text = "Автомобиль", Left = 12, Top = 44, Width = 160 };
+                    TextBox carBox = new TextBox { Left = 180, Top = 42, Width = 260, Text = car };
+                    Label textLabel = new Label { Text = "Текст", Left = 12, Top = 74, Width = 160 };
+                    TextBox textBox = new TextBox
+                    {
+                        Left = 180, Top = 72, Width = 260, Height = 80, Multiline = true,
+                        ScrollBars = ScrollBars.Vertical
+                    };
+                    Button ok = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, Left = 260, Top = 170, Width = 90 };
+                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 360, Top = 170, Width = 80 };
+                    dialog.Controls.Add(dateLabel);
+                    dialog.Controls.Add(dateBox);
+                    dialog.Controls.Add(carLabel);
+                    dialog.Controls.Add(carBox);
+                    dialog.Controls.Add(textLabel);
+                    dialog.Controls.Add(textBox);
+                    dialog.Controls.Add(ok);
+                    dialog.Controls.Add(cancel);
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK)
+                        return;
+                    CarNote item = new CarNote();
+                    item.Date = (dateBox.Text ?? "").Trim();
+                    item.Car = (carBox.Text ?? "").Trim();
+                    item.Text = (textBox.Text ?? "").Trim();
+                    if (repository.NotesRows == null)
+                        repository.NotesRows = new List<string[]>();
+                    CarNotes.Upsert(repository.NotesRows, repository.Deleted, item);
+                    repository.Save();
+                    dirty = false;
+                    SetStatus("Заметка сохранена.");
+                    RefreshSummaryText();
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void EditCarNote(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                string car = ResolveSummaryCar();
+                List<CarNote> list = CarNotes.ListForCar(repository.NotesRows, car);
+                if (list.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет заметок для выбранного авто.", "Заметки",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                using (Form pickDialog = new Form())
+                {
+                    pickDialog.Text = "Изменить заметку";
+                    pickDialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    pickDialog.StartPosition = FormStartPosition.CenterParent;
+                    pickDialog.ClientSize = new Size(520, 140);
+                    pickDialog.MaximizeBox = false;
+                    pickDialog.MinimizeBox = false;
+                    ComboBox pick = new ComboBox
+                    {
+                        Left = 12, Top = 16, Width = 490, DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+                    for (int i = 0; i < list.Count; i++)
+                        pick.Items.Add(CarNotes.FormatLine(list[i]));
+                    pick.SelectedIndex = 0;
+                    Button ok = new Button { Text = "Изменить", DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
+                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
+                    pickDialog.Controls.Add(pick);
+                    pickDialog.Controls.Add(ok);
+                    pickDialog.Controls.Add(cancel);
+                    pickDialog.AcceptButton = ok;
+                    pickDialog.CancelButton = cancel;
+                    if (pickDialog.ShowDialog(this) != DialogResult.OK || pick.SelectedIndex < 0)
+                        return;
+                    CarNote item = list[pick.SelectedIndex];
+                    using (Form dialog = new Form())
+                    {
+                        dialog.Text = "Изменить заметку";
+                        dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                        dialog.StartPosition = FormStartPosition.CenterParent;
+                        dialog.ClientSize = new Size(460, 220);
+                        dialog.MaximizeBox = false;
+                        dialog.MinimizeBox = false;
+                        Label dateLabel = new Label { Text = "Дата (ГГГГ-ММ-ДД)", Left = 12, Top = 14, Width = 160 };
+                        TextBox dateBox = new TextBox { Left = 180, Top = 12, Width = 260, Text = item.Date };
+                        Label carLabel = new Label { Text = "Автомобиль", Left = 12, Top = 44, Width = 160 };
+                        TextBox carBox = new TextBox { Left = 180, Top = 42, Width = 260, Text = item.Car };
+                        Label textLabel = new Label { Text = "Текст", Left = 12, Top = 74, Width = 160 };
+                        TextBox textBox = new TextBox
+                        {
+                            Left = 180, Top = 72, Width = 260, Height = 80, Multiline = true,
+                            ScrollBars = ScrollBars.Vertical, Text = item.Text
+                        };
+                        Button save = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, Left = 260, Top = 170, Width = 90 };
+                        Button cancelEdit = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 360, Top = 170, Width = 80 };
+                        dialog.Controls.Add(dateLabel);
+                        dialog.Controls.Add(dateBox);
+                        dialog.Controls.Add(carLabel);
+                        dialog.Controls.Add(carBox);
+                        dialog.Controls.Add(textLabel);
+                        dialog.Controls.Add(textBox);
+                        dialog.Controls.Add(save);
+                        dialog.Controls.Add(cancelEdit);
+                        dialog.AcceptButton = save;
+                        dialog.CancelButton = cancelEdit;
+                        if (dialog.ShowDialog(this) != DialogResult.OK)
+                            return;
+                        item.Date = (dateBox.Text ?? "").Trim();
+                        item.Car = (carBox.Text ?? "").Trim();
+                        item.Text = (textBox.Text ?? "").Trim();
+                        if (repository.NotesRows == null)
+                            repository.NotesRows = new List<string[]>();
+                        CarNotes.Upsert(repository.NotesRows, repository.Deleted, item);
+                        repository.Save();
+                        dirty = false;
+                        SetStatus("Заметка сохранена.");
+                        RefreshSummaryText();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void DeleteCarNote(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                string car = ResolveSummaryCar();
+                List<CarNote> list = CarNotes.ListForCar(repository.NotesRows, car);
+                if (list.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет заметок для выбранного авто.", "Заметки",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Удалить заметку";
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.ClientSize = new Size(520, 140);
+                    dialog.MaximizeBox = false;
+                    dialog.MinimizeBox = false;
+                    ComboBox pick = new ComboBox
+                    {
+                        Left = 12, Top = 16, Width = 490, DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+                    for (int i = 0; i < list.Count; i++)
+                        pick.Items.Add(CarNotes.FormatLine(list[i]));
+                    pick.SelectedIndex = 0;
+                    Button ok = new Button { Text = "Удалить", DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
+                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
+                    dialog.Controls.Add(pick);
+                    dialog.Controls.Add(ok);
+                    dialog.Controls.Add(cancel);
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK || pick.SelectedIndex < 0)
+                        return;
+                    CarNote item = list[pick.SelectedIndex];
+                    CarNotes.DeleteById(repository.NotesRows, repository.Deleted, item.Id);
+                    repository.Save();
+                    dirty = false;
+                    SetStatus("Заметка удалена.");
                     RefreshSummaryText();
                 }
             }
@@ -2330,7 +2542,8 @@ namespace Alfa156.Desktop
                     throw new InvalidOperationException("Нет автомобиля для ленты.");
                 CarPassport passport = FindPassport(car);
                 string text = CarTimeline.FormatList(
-                    CarTimeline.Build(repository.Fuel, repository.Repairs, repository.Expenses, car),
+                    CarTimeline.Build(repository.Fuel, repository.Repairs, repository.Expenses,
+                        repository.NotesRows, car),
                     car,
                     FormatPassportSuffix(passport));
                 using (Form dialog = new Form())
@@ -2782,6 +2995,7 @@ namespace Alfa156.Desktop
             int warnDays = ToSettings.GetReminderWarnDays(repository.Settings);
             result.Append(DateReminders.FormatUpcomingBlock(
                 repository.RemindersRows, warnDays, DateTime.Today));
+            result.Append(CarNotes.FormatRecentBlock(repository.NotesRows, currentCar, 3));
             return result.ToString();
         }
 

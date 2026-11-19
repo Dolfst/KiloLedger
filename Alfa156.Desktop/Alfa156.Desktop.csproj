@@ -47,6 +47,7 @@
     <Compile Include="Data\CarsMeta.cs" />
     <Compile Include="Data\RecordTemplates.cs" />
     <Compile Include="Data\DateReminders.cs" />
+    <Compile Include="Data\CarNotes.cs" />
     <Compile Include="Data\ReceiptStore.cs" />
     <Compile Include="Data\RecordIds.cs" />
     <Compile Include="Data\DuplicateFinder.cs" />

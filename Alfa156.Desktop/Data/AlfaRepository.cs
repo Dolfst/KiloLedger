@@ -20,6 +20,7 @@ namespace Alfa156.Desktop.Data
         public List<string[]> CarsMetaRows { get; set; }
         public List<string[]> TemplatesRows { get; set; }
         public List<string[]> RemindersRows { get; set; }
+        public List<string[]> NotesRows { get; set; }
         public List<Tombstone> Deleted { get; set; }
 
         public AlfaRepository()
@@ -35,6 +36,7 @@ namespace Alfa156.Desktop.Data
             CarsMetaRows = new List<string[]>();
             TemplatesRows = new List<string[]>();
             RemindersRows = new List<string[]>();
+            NotesRows = new List<string[]>();
             Deleted = new List<Tombstone>();
         }
 
@@ -56,6 +58,7 @@ namespace Alfa156.Desktop.Data
             CarsMetaRows = new List<string[]>();
             TemplatesRows = new List<string[]>();
             RemindersRows = new List<string[]>();
+            NotesRows = new List<string[]>();
             Deleted = new List<Tombstone>();
             DirectoryPath = directory;
             Save();
@@ -96,6 +99,10 @@ namespace Alfa156.Desktop.Data
             RemindersRows = File.Exists(remindersPath)
                 ? AlfaCodec.ReadRows(remindersPath)
                 : new List<string[]>();
+            string notesPath = Path.Combine(directory, AlfaCodec.NotesFile);
+            NotesRows = File.Exists(notesPath)
+                ? AlfaCodec.ReadRows(notesPath)
+                : new List<string[]>();
             Deleted = RecordIds.ReadTombstones(directory);
             EnsureCategoriesFromRepairs();
             EnsureExpenseCategoriesFromExpenses();
@@ -131,6 +138,8 @@ namespace Alfa156.Desktop.Data
                 TemplatesRows ?? new List<string[]>());
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.RemindersFile),
                 RemindersRows ?? new List<string[]>());
+            AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.NotesFile),
+                NotesRows ?? new List<string[]>());
             RecordIds.WriteTombstones(DirectoryPath, Deleted ?? new List<Tombstone>());
             AlfaCodec.ValidateDirectory(DirectoryPath);
         }
@@ -489,6 +498,18 @@ namespace Alfa156.Desktop.Data
             }
             RemindersRows = validReminders;
             RecordIds.EnsureIds(RemindersRows, AlfaCodec.RemindersFile);
+
+            if (NotesRows == null)
+                NotesRows = new List<string[]>();
+            List<string[]> validNotes = new List<string[]>();
+            for (int i = 0; i < NotesRows.Count; i++)
+            {
+                if (!CarNotes.IsValidRow(NotesRows[i]))
+                    continue;
+                validNotes.Add(CarNotes.ToRow(CarNotes.FromRow(NotesRows[i])));
+            }
+            NotesRows = validNotes;
+            RecordIds.EnsureIds(NotesRows, AlfaCodec.NotesFile);
 
             if (Deleted == null)
                 Deleted = new List<Tombstone>();

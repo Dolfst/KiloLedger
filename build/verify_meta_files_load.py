@@ -20,6 +20,7 @@ DATA_FILES = [
     "cars-meta.dat",
     "templates.dat",
     "reminders.dat",
+    "notes.dat",
     "deleted.dat",
 ]
 
@@ -84,6 +85,7 @@ def main() -> int:
                 "CarsMetaFile",
                 "TemplatesFile",
                 "RemindersFile",
+                "NotesFile",
                 "DeletedFile",
                 "DataFiles",
             ),
@@ -95,6 +97,7 @@ def main() -> int:
                 "CarsMetaFile",
                 "TemplatesFile",
                 "RemindersFile",
+                "NotesFile",
                 "DataFiles",
                 'FileName = "cars-meta.dat"',  # via CarsMeta
             ),
@@ -106,6 +109,7 @@ def main() -> int:
                 "CarsMetaFile",
                 "TemplatesFile",
                 "RemindersFile",
+                "NotesFile",
                 "DataFiles",
                 "RecordIds.DeletedFile",
             ),
@@ -124,10 +128,12 @@ def main() -> int:
         ("Alfa156.Android/CarsMeta.cs", 'FileName = "cars-meta.dat"'),
         ("Alfa156.Android/RecordTemplates.cs", 'FileName = "templates.dat"'),
         ("Alfa156.Android/DateReminders.cs", 'FileName = "reminders.dat"'),
+        ("Alfa156.Android/CarNotes.cs", 'FileName = "notes.dat"'),
         ("Alfa156.Android/RecordIds.cs", 'DeletedFile = "deleted.dat"'),
         ("Alfa156.Desktop/Data/CarsMeta.cs", 'FileName = "cars-meta.dat"'),
         ("Alfa156.Desktop/Data/RecordTemplates.cs", 'FileName = "templates.dat"'),
         ("Alfa156.Desktop/Data/DateReminders.cs", 'FileName = "reminders.dat"'),
+        ("Alfa156.Desktop/Data/CarNotes.cs", 'FileName = "notes.dat"'),
     ):
         if needle not in (ROOT / rel).read_text(encoding="utf-8"):
             errors.append(f"{rel}: missing {needle!r}")
@@ -148,7 +154,7 @@ def main() -> int:
         ),
         (
             "Alfa156.Android/ExpenseDataStore.cs",
-            ["TemplatesFile", "RemindersFile", "CarsMetaFile", "CopyOptionalFile"],
+            ["TemplatesFile", "RemindersFile", "NotesFile", "CarsMetaFile", "CopyOptionalFile"],
         ),
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
@@ -168,6 +174,7 @@ def main() -> int:
             for needle in (
                 "RecordTemplates.EnsureFile",
                 "DateReminders.EnsureFile",
+                "CarNotes.EnsureFile",
                 "CarsMeta.EnsureFile",
             ):
                 if needle not in chunk and needle not in android:
@@ -198,6 +205,10 @@ def main() -> int:
             root / "reminders.dat",
             [["2026-12-01", "Alfa", "ОСАГО", "insurance", "n_22222222"]],
         )
+        write_dat(
+            root / "notes.dat",
+            [["2026-11-10", "Alfa", "Замена дворников", "j_33333333"]],
+        )
         write_dat(root / "deleted.dat", [["fuel", "f_deadbeef", "2026-11-01T00:00:00Z"]])
 
         expenses = read_dat(root / "expenses.dat")
@@ -212,6 +223,9 @@ def main() -> int:
         reminders = read_dat(root / "reminders.dat")
         if len(reminders) != 1 or reminders[0][3] != "insurance":
             errors.append("reminders.dat load failed")
+        notes = read_dat(root / "notes.dat")
+        if len(notes) != 1 or notes[0][2] != "Замена дворников":
+            errors.append("notes.dat load failed")
 
         # Column-count rules (content + optional id)
         if not (6 <= len(expenses[0]) <= 7):
@@ -222,6 +236,8 @@ def main() -> int:
             errors.append(f"templates columns unexpected: {len(templates[0])}")
         if not (4 <= len(reminders[0]) <= 5):
             errors.append(f"reminders columns unexpected: {len(reminders[0])}")
+        if not (3 <= len(notes[0]) <= 4):
+            errors.append(f"notes columns unexpected: {len(notes[0])}")
 
         # Simulate ZIP member list from DataFiles presence
         present = [name for name in DATA_FILES if (root / name).is_file()]
@@ -230,6 +246,7 @@ def main() -> int:
             "cars-meta.dat",
             "templates.dat",
             "reminders.dat",
+            "notes.dat",
             "deleted.dat",
         ):
             if required not in present:
