@@ -5,7 +5,7 @@
     <ApplicationId>com.alfa156.mobile</ApplicationId>
     <ApplicationTitle>Alfa 156</ApplicationTitle>
     <ApplicationVersion>9</ApplicationVersion>
-    <ApplicationDisplayVersion>1.8.0</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>1.9.0</ApplicationDisplayVersion>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>

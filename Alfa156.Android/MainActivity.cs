@@ -19,6 +19,7 @@ using AndroidLayout = global::Android.Resource.Layout;
 using Uri = global::Android.Net.Uri;
 
 [assembly: Android.App.UsesPermission(Android.Manifest.Permission.Internet)]
+[assembly: Android.App.UsesPermission("android.permission.POST_NOTIFICATIONS")]
 
 namespace Alfa156.Android;
 
@@ -36,6 +37,7 @@ public sealed class MainActivity : Activity
     private const string Repairs = "repairs";
     private const string Utilities = "utilities";
     private const string AllCategories = "Все категории";
+    private const string ToReminderChannelId = "to_reminders";
     private static readonly string[] DataFiles = ExpenseDataCodec.DataFiles;
 
     private TextView status;
@@ -92,11 +94,26 @@ public sealed class MainActivity : Activity
             if (savedSection == Fuel || savedSection == Repairs || savedSection == Utilities)
                 selectedSection = savedSection;
             CreateLayout();
+            EnsureNotificationChannel();
             RefreshRecords();
+            RefreshServiceNotifications();
         }
         catch (Exception ex)
         {
             ShowStartupError(ex);
+        }
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        try
+        {
+            RefreshServiceNotifications();
+        }
+        catch
+        {
+            // уведомления не должны ломать основной UI
         }
     }
 
@@ -1040,12 +1057,18 @@ public sealed class MainActivity : Activity
                 .Append("\nПробег: ").Append(row[2]).Append(" км")
                 .Append("\nЛитры: ").Append(row[3])
                 .Append("\nСтоимость: ").Append(row[4]).Append(" BYN");
+            string storedPrice = FieldAt(row, 5).Trim();
             decimal liters;
             decimal cost;
-            if (TryNumber(row[3], out liters) && liters > 0 && TryNumber(row[4], out cost))
+            if (storedPrice.Length > 0)
+                details.Append("\nЦена за литр: ").Append(storedPrice).Append(" BYN");
+            else if (TryNumber(row[3], out liters) && liters > 0 && TryNumber(row[4], out cost))
                 details.Append("\nЦена за литр: ")
                     .Append((cost / liters).ToString("0.00", CultureInfo.InvariantCulture))
                     .Append(" BYN");
+            string comment = FieldAt(row, 6).Trim();
+            if (comment.Length > 0)
+                details.Append("\nАЗС / комментарий: ").Append(comment);
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
                 details.Append("\nРасход: ")
@@ -1112,7 +1135,7 @@ public sealed class MainActivity : Activity
             ShowRecordEditor(false, new string[]
             {
                 DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                currentCar, lastMileage, "", ""
+                currentCar, lastMileage, "", "", "", ""
             }, -1);
         }
         else if (selectedSection == Repairs)
@@ -1179,6 +1202,8 @@ public sealed class MainActivity : Activity
                 row[2], true));
             fields.Add(EditorField.Number("Литры", row[3], true));
             fields.Add(EditorField.Number("Стоимость, BYN", row[4], true));
+            fields.Add(EditorField.Number("Цена за литр, BYN", FieldAt(row, 5), false));
+            fields.Add(EditorField.Text("АЗС / комментарий", FieldAt(row, 6), false));
         }
         else if (selectedSection == Repairs)
         {
@@ -1212,6 +1237,8 @@ public sealed class MainActivity : Activity
             {
                 if (selectedSection == Utilities && !HasUtilityAmount(values))
                     throw new InvalidOperationException("Введите хотя бы одну сумму.");
+                if (selectedSection == Fuel)
+                    values = NormalizeFuelValues(values);
                 if (editing)
                     ExpenseDataStore.UpdateRecord(DataDirectory, fileName, sourceIndex, values);
                 else
@@ -1220,7 +1247,49 @@ public sealed class MainActivity : Activity
                 if (selectedSection != Utilities)
                     SetCurrentCar(values[1]);
                 RefreshRecords();
-            });
+                RefreshServiceNotifications();
+            }, selectedSection == Fuel);
+    }
+
+    private static string FieldAt(string[] row, int index)
+    {
+        return row != null && index < row.Length ? (row[index] ?? "") : "";
+    }
+
+    private static string[] NormalizeFuelValues(string[] values)
+    {
+        if (values == null || values.Length < 5)
+            return values;
+        string[] row = values;
+        if (row.Length > 7)
+        {
+            row = new string[7];
+            Array.Copy(values, row, 7);
+        }
+        if (row.Length > 5)
+        {
+            string price = (row[5] ?? "").Trim();
+            if (price.Length == 0)
+            {
+                decimal liters;
+                decimal cost;
+                if (TryNumber(row[3], out liters) && liters > 0 &&
+                    TryNumber(row[4], out cost) && cost > 0)
+                    row[5] = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
+            }
+        }
+        int length = row.Length;
+        while (length > 5)
+        {
+            if ((row[length - 1] ?? "").Trim().Length > 0)
+                break;
+            length--;
+        }
+        if (length == row.Length)
+            return row;
+        string[] trimmed = new string[length];
+        Array.Copy(row, trimmed, length);
+        return trimmed;
     }
 
     private string LastCarMileage(string car)
@@ -1392,7 +1461,8 @@ public sealed class MainActivity : Activity
             .Edit().PutString("currentCar", currentCar).Apply();
     }
 
-    private void RenderEditor(string title, List<EditorField> fields, Action<string[]> save)
+    private void RenderEditor(string title, List<EditorField> fields, Action<string[]> save,
+        bool wireFuelPrice = false)
     {
         ScrollView scroll = new ScrollView(this);
         LinearLayout form = new LinearLayout(this);
@@ -1401,6 +1471,9 @@ public sealed class MainActivity : Activity
 
         for (int i = 0; i < fields.Count; i++)
             AddEditorField(form, fields[i]);
+
+        if (wireFuelPrice && fields.Count >= 7)
+            WireFuelPriceAutoCalc(fields[3], fields[4], fields[5]);
 
         LinearLayout buttons = NewRow();
         Button saveButton = CreateButton("Сохранить", null);
@@ -1435,6 +1508,33 @@ public sealed class MainActivity : Activity
         };
         cancelButton.Click += delegate { dialog.Dismiss(); };
         dialog.Show();
+    }
+
+    private void WireFuelPriceAutoCalc(EditorField litersField, EditorField costField, EditorField priceField)
+    {
+        if (litersField.TextInput == null || costField.TextInput == null || priceField.TextInput == null)
+            return;
+        bool priceTouched = (priceField.TextInput.Text ?? "").Trim().Length > 0;
+        priceField.TextInput.TextChanged += delegate
+        {
+            if (priceField.TextInput.HasFocus)
+                priceTouched = true;
+        };
+        EventHandler<Android.Text.TextChangedEventArgs> recalc = delegate
+        {
+            if (priceTouched && (priceField.TextInput.Text ?? "").Trim().Length > 0)
+                return;
+            decimal liters;
+            decimal cost;
+            if (!TryNumber(litersField.TextInput.Text, out liters) || liters <= 0 ||
+                !TryNumber(costField.TextInput.Text, out cost) || cost <= 0)
+                return;
+            string next = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
+            if (priceField.TextInput.Text != next)
+                priceField.TextInput.Text = next;
+        };
+        litersField.TextInput.TextChanged += recalc;
+        costField.TextInput.TextChanged += recalc;
     }
 
     private void AddEditorField(LinearLayout form, EditorField field)
@@ -1817,7 +1917,8 @@ public sealed class MainActivity : Activity
             return false;
         if (fuelFilterText.Length > 0)
         {
-            string text = (row[2] + " " + row[3] + " " + row[4]).ToLowerInvariant();
+            string text = (row[2] + " " + row[3] + " " + row[4] + " " +
+                FieldAt(row, 5) + " " + FieldAt(row, 6)).ToLowerInvariant();
             if (text.IndexOf(fuelFilterText.Trim().ToLowerInvariant(),
                 StringComparison.Ordinal) < 0)
                 return false;
@@ -2332,6 +2433,161 @@ public sealed class MainActivity : Activity
                 Money(interval - since) + " км)";
         return name + ": " + lastService + "в норме (" +
             Money(interval - since) + " км)";
+    }
+
+    private void EnsureNotificationChannel()
+    {
+        if (Build.VERSION.SdkInt < BuildVersionCodes.O)
+            return;
+        NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
+        if (manager == null)
+            return;
+        NotificationChannel channel = new NotificationChannel(
+            ToReminderChannelId,
+            "Напоминания о ТО",
+            NotificationImportance.Default);
+        channel.Description = "Замена масла и ремня ГРМ";
+        manager.CreateNotificationChannel(channel);
+    }
+
+    private void RefreshServiceNotifications()
+    {
+        if (!ExpenseDataStore.HasCompleteCoreFiles(DataDirectory))
+            return;
+        EnsureNotificationChannel();
+        MaybeRequestNotificationPermission();
+
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+        List<string[]> repairs = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
+        NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
+        if (manager == null)
+            return;
+        for (int i = 0; i < cars.Count; i++)
+        {
+            string car = cars[i];
+            decimal currentMileage;
+            decimal lastOilMileage;
+            decimal lastTimingMileage;
+            string lastOilDate;
+            string lastTimingDate;
+            ComputeServiceMileage(car, fuels, repairs,
+                out currentMileage, out lastOilMileage, out lastTimingMileage,
+                out lastOilDate, out lastTimingDate);
+
+            PostServiceNotification(manager, car, "ТО Масло", "Масло",
+                currentMileage, lastOilMileage, 10000, 1000, 1000 + i * 10);
+            PostServiceNotification(manager, car, "ТО ГРМ", "Ремень ГРМ",
+                currentMileage, lastTimingMileage, 60000, 5000, 1001 + i * 10);
+        }
+    }
+
+    private void MaybeRequestNotificationPermission()
+    {
+        if (Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu)
+            return;
+        if (CheckSelfPermission(Android.Manifest.Permission.PostNotifications) ==
+            Android.Content.PM.Permission.Granted)
+            return;
+        RequestPermissions(new string[] { Android.Manifest.Permission.PostNotifications }, 2001);
+    }
+
+    private static void ComputeServiceMileage(
+        string car,
+        List<string[]> fuels,
+        List<string[]> repairs,
+        out decimal currentMileage,
+        out decimal lastOilMileage,
+        out decimal lastTimingMileage,
+        out string lastOilDate,
+        out string lastTimingDate)
+    {
+        currentMileage = 0;
+        lastOilMileage = 0;
+        lastTimingMileage = 0;
+        lastOilDate = "";
+        lastTimingDate = "";
+        decimal minimumMileage = Decimal.MaxValue;
+        decimal maximumMileage = 0;
+        for (int i = 0; i < fuels.Count; i++)
+        {
+            if (fuels[i].Length > 2 && fuels[i][1] == car)
+                AddMileageReading(fuels[i][2], ref currentMileage, ref minimumMileage, ref maximumMileage);
+        }
+        for (int i = 0; i < repairs.Count; i++)
+        {
+            string[] row = repairs[i];
+            if (row.Length < 4 || row[1] != car)
+                continue;
+            decimal mileage;
+            if (TryNumber(row[2], out mileage) && mileage >= 0)
+                AddMileageReading(row[2], ref currentMileage, ref minimumMileage, ref maximumMileage);
+            if (!TryNumber(row[2], out mileage) || mileage < 0)
+                continue;
+            if (row[3] == "ТО Масло" &&
+                (mileage > lastOilMileage ||
+                (mileage == lastOilMileage && String.CompareOrdinal(row[0], lastOilDate) > 0)))
+            {
+                lastOilMileage = mileage;
+                lastOilDate = row[0];
+            }
+            if (row[3] == "ТО ГРМ" &&
+                (mileage > lastTimingMileage ||
+                (mileage == lastTimingMileage && String.CompareOrdinal(row[0], lastTimingDate) > 0)))
+            {
+                lastTimingMileage = mileage;
+                lastTimingDate = row[0];
+            }
+        }
+    }
+
+    private void PostServiceNotification(
+        NotificationManager manager,
+        string car,
+        string categoryLabel,
+        string shortName,
+        decimal currentMileage,
+        decimal lastMileage,
+        decimal interval,
+        decimal warningDistance,
+        int notificationId)
+    {
+        if (lastMileage <= 0)
+        {
+            manager.Cancel(notificationId);
+            return;
+        }
+        decimal since = currentMileage - lastMileage;
+        string text;
+        if (since >= interval)
+            text = "Alfa 156: пора заменить " + shortName + " — " + car;
+        else if (since >= interval - warningDistance)
+            text = "Alfa 156: скоро ТО " + shortName + " — осталось " +
+                Money(interval - since) + " км · " + car;
+        else
+        {
+            manager.Cancel(notificationId);
+            return;
+        }
+
+        Intent intent = new Intent(this, typeof(MainActivity));
+        intent.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ClearTop);
+        PendingIntentFlags flags = PendingIntentFlags.UpdateCurrent;
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.M)
+            flags |= PendingIntentFlags.Immutable;
+        PendingIntent pending = PendingIntent.GetActivity(this, notificationId, intent, flags);
+
+        Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
+            ? new Notification.Builder(this, ToReminderChannelId)
+            : new Notification.Builder(this);
+        builder.SetContentTitle("Alfa 156 · " + categoryLabel)
+            .SetContentText(text)
+            .SetStyle(new Notification.BigTextStyle().BigText(text))
+            .SetSmallIcon(Resource.Drawable.icon)
+            .SetContentIntent(pending)
+            .SetAutoCancel(true)
+            .SetOnlyAlertOnce(true);
+        manager.Notify(notificationId, builder.Build());
     }
 
     private void ShowMessage(string message)

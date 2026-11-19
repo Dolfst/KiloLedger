@@ -153,12 +153,7 @@ namespace Alfa156.Desktop.Data
 
             for (int i = 0; i < Fuel.Count; i++)
             {
-                Fuel[i] = Resize(Fuel[i], 5);
-                Fuel[i][0] = AlfaCodec.NormalizeDate(Fuel[i][0]);
-                Fuel[i][1] = (Fuel[i][1] ?? "").Trim();
-                Fuel[i][2] = AlfaCodec.FormatNumber(Fuel[i][2]);
-                Fuel[i][3] = AlfaCodec.FormatNumber(Fuel[i][3]);
-                Fuel[i][4] = AlfaCodec.FormatNumber(Fuel[i][4]);
+                Fuel[i] = NormalizeFuelRow(Fuel[i]);
             }
 
             for (int i = 0; i < Repairs.Count; i++)
@@ -199,6 +194,49 @@ namespace Alfa156.Desktop.Data
             }
             Categories.RemoveAll(delegate(string[] row) { return row.Length == 0 || String.IsNullOrEmpty(row[0]); });
             EnsureCategoriesFromRepairs();
+        }
+
+        private static string[] NormalizeFuelRow(string[] source)
+        {
+            int length = source == null ? 5 : source.Length;
+            if (length < 5)
+                length = 5;
+            if (length > 7)
+                length = 7;
+            string[] row = Resize(source ?? new string[0], length);
+            row[0] = AlfaCodec.NormalizeDate(row[0]);
+            row[1] = (row[1] ?? "").Trim();
+            row[2] = AlfaCodec.FormatNumber(row[2]);
+            row[3] = AlfaCodec.FormatNumber(row[3]);
+            row[4] = AlfaCodec.FormatNumber(row[4]);
+            if (row.Length > 5)
+            {
+                string price = (row[5] ?? "").Trim();
+                if (price.Length == 0)
+                {
+                    decimal liters;
+                    decimal cost;
+                    if (AlfaCodec.TryNumber(row[3], out liters) && liters > 0 &&
+                        AlfaCodec.TryNumber(row[4], out cost) && cost > 0)
+                        row[5] = AlfaCodec.FormatNumber((cost / liters).ToString(
+                            System.Globalization.CultureInfo.InvariantCulture));
+                    else
+                        row[5] = "";
+                }
+                else
+                    row[5] = AlfaCodec.FormatNumber(price);
+            }
+            if (row.Length > 6)
+                row[6] = (row[6] ?? "").Trim();
+
+            while (row.Length > 5)
+            {
+                string last = row[row.Length - 1] ?? "";
+                if (last.Trim().Length > 0)
+                    break;
+                row = Resize(row, row.Length - 1);
+            }
+            return row;
         }
 
         private static string[] Resize(string[] source, int length)

@@ -17,7 +17,7 @@ namespace Alfa156.Desktop.Exchange
             Directory.CreateDirectory(folder);
             WriteCsv(Path.Combine(folder, "cars.csv"), new string[] { "Автомобиль" }, repo.Cars);
             WriteCsv(Path.Combine(folder, "fuel.csv"),
-                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", "Сумма_BYN" }, repo.Fuel);
+                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", "Сумма_BYN", "Цена_за_литр", "Комментарий" }, repo.Fuel);
             WriteCsv(Path.Combine(folder, "repairs.csv"),
                 new string[]
                 {
@@ -32,7 +32,7 @@ namespace Alfa156.Desktop.Exchange
         internal static void ImportFolder(AlfaRepository repo, string folder)
         {
             List<string[]> cars = ReadCsv(Path.Combine(folder, "cars.csv"), 1, true);
-            List<string[]> fuel = ReadCsv(Path.Combine(folder, "fuel.csv"), 5, true);
+            List<string[]> fuel = ReadCsv(Path.Combine(folder, "fuel.csv"), 7, true);
             List<string[]> repairs = ReadCsv(Path.Combine(folder, "repairs.csv"), 9, true);
             List<string[]> utilities = ReadCsv(Path.Combine(folder, "utilities.csv"), 8, true);
             string categoriesPath = Path.Combine(folder, "repair-categories.csv");
@@ -87,7 +87,7 @@ namespace Alfa156.Desktop.Exchange
                 throw new InvalidDataException(
                     "Похоже, импортировался лист с месяцами вместо автомобилей. Для таблицы «Деньги» нужны листы «Заправки …», «Ремонт …», «Коммунальные», «Справочник» и доступ по ссылке.");
 
-            List<string[]> canonicalFuel = DownloadSheetOptional(id, new string[] { "Заправки", "fuel" }, 5, true);
+            List<string[]> canonicalFuel = DownloadSheetOptional(id, new string[] { "Заправки", "fuel" }, 7, true);
             List<string[]> canonicalRepairs = DownloadSheetOptional(id, new string[] { "Ремонт", "repairs" }, 9, true);
             List<string[]> canonicalUtilities = DownloadSheetOptional(id, new string[] { "Коммуналка", "utilities" }, 8, true);
             List<string[]> canonicalCategories = DownloadSheetOptional(id, new string[] { "Категории", "repair-categories" }, 1, true);

@@ -134,12 +134,11 @@ internal static class ExpenseDataCodec
             if (!File.Exists(Path.Combine(directory, CoreDataFiles[i])))
                 throw new InvalidDataException("Нужны все четыре файла: cars.dat, fuel.dat, repairs.dat и utilities.dat.");
 
-        int[] columns = { 1, 5, 9, 8 };
         for (int i = 0; i < CoreDataFiles.Length; i++)
         {
             List<string[]> rows = ReadRows(Path.Combine(directory, CoreDataFiles[i]));
             for (int j = 0; j < rows.Count; j++)
-                if (rows[j].Length != columns[i])
+                if (!IsValidColumnCount(CoreDataFiles[i], rows[j].Length))
                     throw new InvalidDataException("Неверный формат записи в " + CoreDataFiles[i] + ".");
             if (i == 0 && rows.Count == 0)
                 throw new InvalidDataException("В cars.dat нет автомобилей.");
@@ -153,6 +152,19 @@ internal static class ExpenseDataCodec
                 if (categories[i].Length != 1 || categories[i][0].Trim().Length == 0)
                     throw new InvalidDataException("Неверный формат записи в " + RepairCategoriesFile + ".");
         }
+    }
+
+    internal static bool IsValidColumnCount(string fileName, int length)
+    {
+        if (fileName == "fuel.dat")
+            return length >= 5 && length <= 7;
+        if (fileName == "cars.dat")
+            return length == 1;
+        if (fileName == "repairs.dat")
+            return length == 9;
+        if (fileName == "utilities.dat")
+            return length == 8;
+        return false;
     }
 
     internal static decimal Sum(string[] row, int startIndex)

@@ -93,6 +93,8 @@ namespace Alfa156.Desktop.Exchange
                     repo.Fuel[i][2] = StripMoney(repo.Fuel[i][2]);
                     repo.Fuel[i][3] = StripMoney(repo.Fuel[i][3]);
                     repo.Fuel[i][4] = StripMoney(repo.Fuel[i][4]);
+                    if (repo.Fuel[i].Length > 5)
+                        repo.Fuel[i][5] = StripMoney(repo.Fuel[i][5]);
                 }
             }
             for (int i = 0; i < repo.Repairs.Count; i++)

@@ -306,9 +306,21 @@ namespace CarExpenses
             stream.Flush();
         }
 
+        private static bool IsValidSyncColumnCount(string fileName, int length)
+        {
+            if (fileName == FuelFile)
+                return length >= 5 && length <= 7;
+            if (fileName == CarsFile)
+                return length == 1;
+            if (fileName == RepairsFile)
+                return length == 9;
+            if (fileName == UtilitiesFile)
+                return length == 8;
+            return false;
+        }
+
         private static void ValidateSyncDirectory(string directory)
         {
-            int[] columns = new int[] { 1, 5, 9, 8 };
             for (int i = 0; i < CoreDataFiles.Length; i++)
             {
                 string path = Path.Combine(directory, CoreDataFiles[i]);
@@ -316,7 +328,7 @@ namespace CarExpenses
                     throw new InvalidDataException("Не получен файл " + CoreDataFiles[i] + ".");
                 List<string[]> rows = ReadRowsFromPath(path);
                 for (int j = 0; j < rows.Count; j++)
-                    if (rows[j].Length != columns[i])
+                    if (!IsValidSyncColumnCount(CoreDataFiles[i], rows[j].Length))
                         throw new InvalidDataException("Неверный формат записи в " +
                             CoreDataFiles[i] + ".");
                 if (i == 0 && rows.Count == 0)

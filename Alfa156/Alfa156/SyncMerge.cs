@@ -266,11 +266,14 @@ namespace CarExpenses
 
         private static bool RowsEqual(string[] first, string[] second)
         {
-            if (first.Length != second.Length)
-                return false;
-            for (int i = 0; i < first.Length; i++)
-                if (first[i] != second[i])
+            int max = first.Length > second.Length ? first.Length : second.Length;
+            for (int i = 0; i < max; i++)
+            {
+                string a = i < first.Length ? (first[i] != null ? first[i] : "") : "";
+                string b = i < second.Length ? (second[i] != null ? second[i] : "") : "";
+                if (a != b)
                     return false;
+            }
             return true;
         }
     }

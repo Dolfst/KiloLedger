@@ -493,11 +493,14 @@ internal static class ExpenseSyncService
 
     private static bool RowsEqual(string[] first, string[] second)
     {
-        if (first.Length != second.Length)
-            return false;
-        for (int i = 0; i < first.Length; i++)
-            if (!String.Equals(first[i], second[i], StringComparison.Ordinal))
+        int max = Math.Max(first.Length, second.Length);
+        for (int i = 0; i < max; i++)
+        {
+            string a = i < first.Length ? (first[i] ?? "") : "";
+            string b = i < second.Length ? (second[i] ?? "") : "";
+            if (!String.Equals(a, b, StringComparison.Ordinal))
                 return false;
+        }
         return true;
     }
 

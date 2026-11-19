@@ -126,7 +126,14 @@ function readFuel_(sheet, car) {
     var liters = num_(display[r][2]);
     var cost = num_(display[r][3]);
     if (!km && !liters && !cost) continue;
-    rows.push([date, car, km, liters, cost]);
+    // Колонки: Дата | Пробег | Литры | Стоимость | [Расход] | [Цена за литр] | [Комментарий]
+    // Новые поля — с индекса 5 (после «Расход на 100км»), старые листы без них остаются 5-полевыми.
+    var price = display[r].length > 5 ? num_(display[r][5]) : '';
+    var comment = display[r].length > 6 ? clean_(display[r][6]) : '';
+    if (price || comment)
+      rows.push([date, car, km, liters, cost, price, comment]);
+    else
+      rows.push([date, car, km, liters, cost]);
   }
   return rows;
 }
@@ -202,9 +209,17 @@ function readCategories_(ss) {
 function writeFuel_(ss, car, rows) {
   var sheet = ensureSheet_(ss, FUEL_PREFIX + car);
   clearSheetForWrite_(sheet);
-  var out = [['Дата', 'Пробег (км)', 'Литры', 'Стоимость', 'Расход на 100км']];
+  var out = [['Дата', 'Пробег (км)', 'Литры', 'Стоимость', 'Расход на 100км', 'Цена за литр', 'Комментарий']];
   for (var i = 0; i < rows.length; i++) {
-    out.push([rows[i][0], rows[i][2], rows[i][3], rows[i][4], '']);
+    out.push([
+      rows[i][0],
+      rows[i][2],
+      rows[i][3],
+      rows[i][4],
+      '',
+      rows[i].length > 5 ? (rows[i][5] || '') : '',
+      rows[i].length > 6 ? (rows[i][6] || '') : ''
+    ]);
   }
   sheet.getRange(1, 1, out.length, out[0].length).setValues(out);
 }

@@ -82,7 +82,7 @@ internal static class GoogleSyncService
     private static void WriteSnapshotFromJson(string json, string directory)
     {
         WriteTable(directory, "cars.dat", ExtractTable(json, "cars"), 1);
-        WriteTable(directory, "fuel.dat", ExtractTable(json, "fuel"), 5);
+        WriteFuelTable(directory, ExtractTable(json, "fuel"));
         WriteTable(directory, "repairs.dat", ExtractTable(json, "repairs"), 9);
         WriteTable(directory, "utilities.dat", ExtractTable(json, "utilities"), 8);
         WriteTable(directory, ExpenseDataCodec.RepairCategoriesFile, ExtractTable(json, "categories"), 1);
@@ -101,6 +101,31 @@ internal static class GoogleSyncService
         if (fileName == "cars.dat" && normalized.Count == 0)
             normalized.Add(new string[] { "Alfa Romeo 156" });
         ExpenseDataCodec.SaveRows(Path.Combine(directory, fileName), normalized);
+    }
+
+    private static void WriteFuelTable(string directory, List<string[]> rows)
+    {
+        List<string[]> normalized = new List<string[]>();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            int length = rows[i].Length;
+            if (length < 5)
+                length = 5;
+            if (length > 7)
+                length = 7;
+            while (length > 5)
+            {
+                string trailing = length - 1 < rows[i].Length ? (rows[i][length - 1] ?? "") : "";
+                if (trailing.Trim().Length > 0)
+                    break;
+                length--;
+            }
+            string[] row = new string[length];
+            for (int c = 0; c < length; c++)
+                row[c] = c < rows[i].Length ? (rows[i][c] ?? "") : "";
+            normalized.Add(row);
+        }
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), normalized);
     }
 
     private static string BuildPushJson(string token, string dataDirectory)

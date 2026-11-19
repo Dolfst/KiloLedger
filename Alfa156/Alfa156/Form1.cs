@@ -274,7 +274,8 @@ namespace CarExpenses
                 return false;
             if (fuelFilterText != "")
             {
-                string searchableText = (row[2] + " " + row[3] + " " + row[4])
+                string searchableText = (row[2] + " " + row[3] + " " + row[4] + " " +
+                    FieldAt(row, 5) + " " + FieldAt(row, 6))
                     .ToLower(CultureInfo.CurrentCulture);
                 if (searchableText.IndexOf(
                     fuelFilterText.ToLower(CultureInfo.CurrentCulture)) < 0)
@@ -506,12 +507,18 @@ namespace CarExpenses
                 details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
                     "\r\nПробег: " + row[2] + " км\r\nЛитры: " + row[3] +
                     "\r\nСтоимость: " + row[4] + " BYN";
+                string storedPrice = FieldAt(row, 5).Trim();
                 decimal liters;
                 decimal cost;
-                if (DataStore.TryNumber(row[3], out liters) && liters > 0 &&
+                if (storedPrice.Length > 0)
+                    details += "\r\nЦена за литр: " + storedPrice + " BYN";
+                else if (DataStore.TryNumber(row[3], out liters) && liters > 0 &&
                     DataStore.TryNumber(row[4], out cost))
                     details += "\r\nЦена за литр: " +
                         (cost / liters).ToString("0.00", CultureInfo.InvariantCulture) + " BYN";
+                string comment = FieldAt(row, 6).Trim();
+                if (comment.Length > 0)
+                    details += "\r\nАЗС / комментарий: " + comment;
                 decimal consumption = FuelConsumption(row, DataStore.LoadFuel());
                 if (consumption > 0)
                     details += "\r\nРасход: " +
@@ -556,13 +563,15 @@ namespace CarExpenses
                     new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
                     new EntryField("Пробег, км", row[2], "number", true),
                     new EntryField("Литры", row[3], "number", true),
-                    new EntryField("Стоимость, BYN", row[4], "number", true)
+                    new EntryField("Стоимость, BYN", row[4], "number", true),
+                    new EntryField("Цена за литр, BYN", FieldAt(row, 5), "number", false),
+                    new EntryField("АЗС / комментарий", FieldAt(row, 6), "text", false)
                 };
                 using (EntryEditorForm editor = new EntryEditorForm("Изменить заправку", fields))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
-                    string[] values = editor.Values;
+                    string[] values = NormalizeFuelValues(editor.Values);
                     if (!TrySave(delegate { DataStore.UpdateFuelAt(sourceIndex, values); }))
                         return;
                     currentCar = values[1];
@@ -1222,17 +1231,16 @@ namespace CarExpenses
                     ? "Пробег, км (последняя запись)"
                     : "Пробег, км", lastMileage, "number", true),
                 new EntryField("Литры", "", "number", true),
-                new EntryField("Стоимость, BYN", "", "number", true)
+                new EntryField("Стоимость, BYN", "", "number", true),
+                new EntryField("Цена за литр, BYN", "", "number", false),
+                new EntryField("АЗС / комментарий", "", "text", false)
             };
             using (EntryEditorForm editor = new EntryEditorForm("Новая заправка", fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
-                string[] values = editor.Values;
-                if (!TrySave(delegate
-                {
-                    DataStore.AddFuel(new string[] { values[0], values[1], values[2], values[3], values[4] });
-                }))
+                string[] values = NormalizeFuelValues(editor.Values);
+                if (!TrySave(delegate { DataStore.AddFuel(values); }))
                     return;
                 currentCar = values[1];
             }
@@ -1767,6 +1775,51 @@ namespace CarExpenses
         private static string Money(decimal value)
         {
             return value.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private static string FieldAt(string[] row, int index)
+        {
+            if (row == null || index >= row.Length || row[index] == null)
+                return "";
+            return row[index];
+        }
+
+        private static string[] NormalizeFuelValues(string[] values)
+        {
+            if (values == null || values.Length < 5)
+                return values;
+            string[] row = values;
+            if (row.Length > 7)
+            {
+                row = new string[7];
+                for (int i = 0; i < 7; i++)
+                    row[i] = i < values.Length ? values[i] : "";
+            }
+            if (row.Length > 5)
+            {
+                string price = FieldAt(row, 5).Trim();
+                if (price.Length == 0)
+                {
+                    decimal liters;
+                    decimal cost;
+                    if (DataStore.TryNumber(row[3], out liters) && liters > 0 &&
+                        DataStore.TryNumber(row[4], out cost) && cost > 0)
+                        row[5] = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
+                }
+            }
+            int length = row.Length;
+            while (length > 5)
+            {
+                if (FieldAt(row, length - 1).Trim().Length > 0)
+                    break;
+                length--;
+            }
+            if (length == row.Length)
+                return row;
+            string[] trimmed = new string[length];
+            for (int i = 0; i < length; i++)
+                trimmed[i] = row[i];
+            return trimmed;
         }
 
         private bool TrySave(Action saveAction)

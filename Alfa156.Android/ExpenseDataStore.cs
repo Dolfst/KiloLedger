@@ -436,11 +436,7 @@ internal static class ExpenseDataStore
 
     private static void ValidateRecord(string fileName, string[] row)
     {
-        if (fileName == "fuel.dat" && row.Length == 5)
-            return;
-        if (fileName == "repairs.dat" && row.Length == 9)
-            return;
-        if (fileName == "utilities.dat" && row.Length == 8)
+        if (ExpenseDataCodec.IsValidColumnCount(fileName, row.Length))
             return;
         throw new InvalidDataException("Неверное количество полей в записи.");
     }

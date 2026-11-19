@@ -139,7 +139,11 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 ### Скачать готовые сборки
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию из [`VERSION`](VERSION) (сейчас `1.8.0`) — `Alfa156-1.8.0.apk` (Android), `Alfa156-1.8.0-Desktop.exe` (ПК), `Alfa156-1.8.0-KPK.exe` / `Alfa156-1.8.0-KPK.zip` (КПК).
+Текущая версия: **1.9.0** (файл [`VERSION`](VERSION)).
+
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.9.0.apk` (Android), `Alfa156-1.9.0-Desktop.exe` (ПК), `Alfa156-1.9.0-KPK.exe` / `Alfa156-1.9.0-KPK.zip` (КПК).
+
+**Что нового в 1.9.0:** вкладка «Сводка» на ПК (расходы, км, ТО масло 10 тыс. / ГРМ 60 тыс.); у заправок опциональные «Цена/л» и «АЗС/коммент» (старые 5-полевые `fuel.dat` читаются); на Android — уведомления о скором/просроченном ТО.
 
 **Обновление КПК:** скопируйте свежий `Alfa156-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
 

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Windows.Forms;
 using Alfa156.Desktop.Data;
 using Alfa156.Desktop.Exchange;
@@ -18,11 +20,14 @@ namespace Alfa156.Desktop
         private readonly DataGridView repairsGrid = CreateGrid();
         private readonly DataGridView utilitiesGrid = CreateGrid();
         private readonly DataGridView categoriesGrid = CreateGrid();
+        private readonly TextBox summaryBox = new TextBox();
+        private readonly TabPage summaryTab = new TabPage("Сводка");
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
         private bool suppressDirty;
         private bool dirty;
+        private bool refreshingSummary;
 
         public MainForm()
         {
@@ -103,6 +108,19 @@ namespace Alfa156.Desktop
             tabs.TabPages.Add(WrapGrid("Ремонт", repairsGrid));
             tabs.TabPages.Add(WrapGrid("Коммуналка", utilitiesGrid));
             tabs.TabPages.Add(WrapGrid("Категории", categoriesGrid));
+
+            summaryBox.Multiline = true;
+            summaryBox.ReadOnly = true;
+            summaryBox.ScrollBars = ScrollBars.Vertical;
+            summaryBox.Dock = DockStyle.Fill;
+            summaryBox.Font = new Font("Consolas", 10F);
+            summaryBox.BackColor = Color.White;
+            summaryBox.ForeColor = Color.FromArgb(35, 51, 70);
+            summaryBox.BorderStyle = BorderStyle.None;
+            summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
+            summaryTab.Controls.Add(summaryBox);
+            tabs.TabPages.Add(summaryTab);
+            tabs.SelectedIndexChanged += SummaryTabSelected;
 
             statusStrip.Items.Add(statusLabel);
             statusStrip.Dock = DockStyle.Fill;
@@ -254,6 +272,8 @@ namespace Alfa156.Desktop
             fuelGrid.Columns.Add("km", "Пробег, км");
             fuelGrid.Columns.Add("liters", "Литры");
             fuelGrid.Columns.Add("sum", "Сумма, BYN");
+            fuelGrid.Columns.Add("price", "Цена/л");
+            fuelGrid.Columns.Add("comment", "АЗС/коммент");
         }
 
         private void SetupRepairsGrid()
@@ -559,10 +579,11 @@ namespace Alfa156.Desktop
             try
             {
                 BindGrid(carsGrid, repository.Cars, 1);
-                BindGrid(fuelGrid, repository.Fuel, 5);
+                BindGrid(fuelGrid, repository.Fuel, 7);
                 BindGrid(repairsGrid, repository.Repairs, 9);
                 BindGrid(utilitiesGrid, repository.Utilities, 8);
                 BindGrid(categoriesGrid, repository.Categories, 1);
+                RefreshSummaryText();
             }
             finally
             {
@@ -586,10 +607,275 @@ namespace Alfa156.Desktop
         {
             repository.ReplaceAll(
                 ReadGrid(carsGrid, 1),
-                ReadGrid(fuelGrid, 5),
+                ReadGrid(fuelGrid, 7),
                 ReadGrid(repairsGrid, 9),
                 ReadGrid(utilitiesGrid, 8),
                 ReadGrid(categoriesGrid, 1));
+        }
+
+        private void SummaryTabSelected(object sender, EventArgs e)
+        {
+            if (tabs.SelectedTab != summaryTab || refreshingSummary)
+                return;
+            try
+            {
+                refreshingSummary = true;
+                if (!String.IsNullOrEmpty(repository.DirectoryPath) ||
+                    carsGrid.Rows.Count > 1 || fuelGrid.Rows.Count > 1)
+                    PullAll();
+                RefreshSummaryText();
+            }
+            catch (Exception ex)
+            {
+                summaryBox.Text = "Не удалось обновить сводку: " + ex.Message;
+            }
+            finally
+            {
+                refreshingSummary = false;
+            }
+        }
+
+        private void RefreshSummaryText()
+        {
+            if (repository.Cars.Count == 0 && repository.Fuel.Count == 0 &&
+                repository.Repairs.Count == 0 && repository.Utilities.Count == 0)
+            {
+                summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
+                return;
+            }
+            string car = repository.Cars.Count > 0 ? (repository.Cars[0][0] ?? "") : "";
+            summaryBox.Text = BuildSummary(car);
+        }
+
+        private string BuildSummary(string currentCar)
+        {
+            decimal fuelTotal = 0;
+            List<string[]> fuels = repository.Fuel;
+            Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
+            Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
+            List<string> cars = new List<string>();
+            for (int i = 0; i < repository.Cars.Count; i++)
+            {
+                if (repository.Cars[i].Length == 0)
+                    continue;
+                string name = (repository.Cars[i][0] ?? "").Trim();
+                if (name.Length == 0)
+                    continue;
+                cars.Add(name);
+                if (!carTotals.ContainsKey(name))
+                    carTotals.Add(name, 0);
+            }
+
+            for (int i = 0; i < fuels.Count; i++)
+            {
+                string[] row = fuels[i];
+                if (row.Length < 5)
+                    continue;
+                decimal amount = NumberOrZero(row[4]);
+                AddMonthlyAmount(monthlyTotals, row[0], 0, amount);
+                if (carTotals.ContainsKey(row[1]))
+                    carTotals[row[1]] += amount;
+                if (row[1] == currentCar)
+                    fuelTotal += amount;
+            }
+
+            decimal repairTotal = 0;
+            Dictionary<string, decimal> byCategory = new Dictionary<string, decimal>();
+            List<string[]> repairs = repository.Repairs;
+            for (int i = 0; i < repairs.Count; i++)
+            {
+                string[] row = repairs[i];
+                if (row.Length < 8)
+                    continue;
+                decimal amount = NumberOrZero(row[7]);
+                AddMonthlyAmount(monthlyTotals, row[0], 1, amount);
+                if (carTotals.ContainsKey(row[1]))
+                    carTotals[row[1]] += amount;
+                if (row[1] != currentCar)
+                    continue;
+                repairTotal += amount;
+                string category = row[3];
+                if (!byCategory.ContainsKey(category))
+                    byCategory.Add(category, 0);
+                byCategory[category] += amount;
+            }
+
+            decimal utilityTotal = 0;
+            List<string[]> utilities = repository.Utilities;
+            for (int i = 0; i < utilities.Count; i++)
+            {
+                decimal amount = UtilityTotal(utilities[i]);
+                utilityTotal += amount;
+                AddMonthlyAmount(monthlyTotals, utilities[i][0], 2, amount);
+            }
+
+            StringBuilder result = new StringBuilder();
+            result.Append(currentCar).Append("\r\n\r\nЗаправки: ").Append(Money(fuelTotal))
+                .Append(" BYN\r\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" BYN\r\n");
+
+            decimal minimumMileage = Decimal.MaxValue;
+            decimal maximumMileage = 0;
+            decimal currentMileage = 0;
+            decimal lastOilMileage = 0;
+            decimal lastTimingMileage = 0;
+            string lastOilDate = "";
+            string lastTimingDate = "";
+            for (int i = 0; i < fuels.Count; i++)
+                if (fuels[i].Length > 2 && fuels[i][1] == currentCar)
+                    AddMileageReading(fuels[i][2], ref currentMileage,
+                        ref minimumMileage, ref maximumMileage);
+            for (int i = 0; i < repairs.Count; i++)
+            {
+                string[] row = repairs[i];
+                if (row.Length < 4 || row[1] != currentCar)
+                    continue;
+                decimal mileage;
+                if (AlfaCodec.TryNumber(row[2], out mileage) && mileage >= 0)
+                    AddMileageReading(row[2], ref currentMileage,
+                        ref minimumMileage, ref maximumMileage);
+                if (!AlfaCodec.TryNumber(row[2], out mileage) || mileage < 0)
+                    continue;
+                if (row[3] == "ТО Масло" &&
+                    (mileage > lastOilMileage ||
+                    (mileage == lastOilMileage && String.CompareOrdinal(row[0], lastOilDate) > 0)))
+                {
+                    lastOilMileage = mileage;
+                    lastOilDate = row[0];
+                }
+                if (row[3] == "ТО ГРМ" &&
+                    (mileage > lastTimingMileage ||
+                    (mileage == lastTimingMileage && String.CompareOrdinal(row[0], lastTimingDate) > 0)))
+                {
+                    lastTimingMileage = mileage;
+                    lastTimingDate = row[0];
+                }
+            }
+            result.Append("Учтённые расходы на км (примерно): ");
+            if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
+                result.Append(Money((fuelTotal + repairTotal) /
+                    (maximumMileage - minimumMileage))).Append(" BYN/км\r\n");
+            else
+                result.Append("недостаточно данных о пробеге\r\n");
+
+            result.Append("\r\nРемонт по категориям:\r\n");
+            foreach (KeyValuePair<string, decimal> pair in byCategory)
+                result.Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" BYN\r\n");
+            result.Append("\r\nКоммунальные за весь период:\r\n").Append(Money(utilityTotal))
+                .Append(" BYN\r\n\r\nРасходы по месяцам (последние 12):\r\n");
+            List<string> months = new List<string>(monthlyTotals.Keys);
+            months.Sort(StringComparer.Ordinal);
+            int firstMonth = Math.Max(0, months.Count - 12);
+            for (int i = firstMonth; i < months.Count; i++)
+            {
+                decimal[] totals = monthlyTotals[months[i]];
+                result.Append(months[i]).Append(": топливо ").Append(Money(totals[0]))
+                    .Append(", ремонт ").Append(Money(totals[1])).Append(", коммунальные ")
+                    .Append(Money(totals[2])).Append(" BYN\r\n");
+            }
+            result.Append("\r\nТопливо и ремонт по автомобилям:\r\n");
+            for (int i = 0; i < cars.Count; i++)
+                result.Append(cars[i]).Append(": ").Append(Money(carTotals[cars[i]])).Append(" BYN\r\n");
+            result.Append("\r\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км\r\n");
+            result.Append(ServiceStatus("Замена масла", currentMileage, lastOilMileage,
+                lastOilDate, 10000, 1000)).Append("\r\n");
+            result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
+                lastTimingDate, 60000, 5000));
+            return result.ToString();
+        }
+
+        private static bool TryParseYearMonth(string value, out DateTime month)
+        {
+            month = DateTime.MinValue;
+            if (value == null || value.Length < 7 || value[4] != '-')
+                return false;
+            try
+            {
+                int year = int.Parse(value.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
+                int monthNumber = int.Parse(value.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                if (year < 1 || monthNumber < 1 || monthNumber > 12)
+                    return false;
+                month = new DateTime(year, monthNumber, 1);
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+            catch (OverflowException)
+            {
+                return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
+        }
+
+        private static void AddMonthlyAmount(Dictionary<string, decimal[]> totals,
+            string date, int category, decimal amount)
+        {
+            DateTime month;
+            if (date == null || date.Length < 7 || !TryParseYearMonth(date.Substring(0, 7), out month))
+                return;
+
+            string key = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            decimal[] monthly;
+            if (!totals.TryGetValue(key, out monthly))
+            {
+                monthly = new decimal[3];
+                totals.Add(key, monthly);
+            }
+            monthly[category] += amount;
+        }
+
+        private static void AddMileageReading(string value, ref decimal currentMileage,
+            ref decimal minimumMileage, ref decimal maximumMileage)
+        {
+            decimal mileage;
+            if (!AlfaCodec.TryNumber(value, out mileage) || mileage < 0)
+                return;
+            if (mileage > currentMileage)
+                currentMileage = mileage;
+            if (mileage < minimumMileage)
+                minimumMileage = mileage;
+            if (mileage > maximumMileage)
+                maximumMileage = mileage;
+        }
+
+        private static string ServiceStatus(string name, decimal currentMileage,
+            decimal lastMileage, string lastDate, decimal interval, decimal warningDistance)
+        {
+            if (lastMileage == 0)
+                return name + ": замена не зафиксирована";
+            string lastService = "последняя запись " + lastDate + ", " +
+                Money(lastMileage) + " км; ";
+            decimal since = currentMileage - lastMileage;
+            if (since >= interval)
+                return name + ": " + lastService + "требуется замена";
+            if (since >= interval - warningDistance)
+                return name + ": " + lastService + "скоро замена (" +
+                    Money(interval - since) + " км)";
+            return name + ": " + lastService + "в норме (" +
+                Money(interval - since) + " км)";
+        }
+
+        private static decimal UtilityTotal(string[] row)
+        {
+            decimal total = 0;
+            for (int i = 1; i < row.Length && i < 8; i++)
+                total += NumberOrZero(row[i]);
+            return total;
+        }
+
+        private static decimal NumberOrZero(string value)
+        {
+            decimal number;
+            return AlfaCodec.TryNumber(value, out number) ? number : 0;
+        }
+
+        private static string Money(decimal value)
+        {
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         private static List<string[]> ReadGrid(DataGridView grid, int columns)
