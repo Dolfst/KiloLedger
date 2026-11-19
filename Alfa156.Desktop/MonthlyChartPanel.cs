@@ -13,6 +13,10 @@ namespace Alfa156.Desktop
     {
         private List<string> months = new List<string>();
         private List<decimal[]> series = new List<decimal[]>();
+        private bool compareMode;
+        private List<string> compareLabels = new List<string>();
+        private List<decimal> compareValues = new List<decimal>();
+        private string compareUnit = "";
 
         private static readonly Color[] Colors =
         {
@@ -34,6 +38,7 @@ namespace Alfa156.Desktop
 
         public void SetData(IList<string> monthKeys, IList<decimal[]> totals)
         {
+            compareMode = false;
             months = new List<string>();
             series = new List<decimal[]>();
             if (monthKeys != null && totals != null)
@@ -47,6 +52,24 @@ namespace Alfa156.Desktop
                     for (int c = 0; c < 4; c++)
                         copy[c] = c < src.Length ? src[c] : 0;
                     series.Add(copy);
+                }
+            }
+            Invalidate();
+        }
+
+        public void SetCompareData(IList<string> labels, IList<decimal> values, string unit)
+        {
+            compareMode = true;
+            compareLabels = new List<string>();
+            compareValues = new List<decimal>();
+            compareUnit = unit ?? "";
+            if (labels != null && values != null)
+            {
+                int count = Math.Min(labels.Count, values.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    compareLabels.Add(labels[i] ?? "");
+                    compareValues.Add(values[i]);
                 }
             }
             Invalidate();
@@ -77,6 +100,47 @@ namespace Alfa156.Desktop
             using (Pen axis = new Pen(Color.FromArgb(35, 51, 70), 1.2f))
             using (Pen grid = new Pen(Color.FromArgb(225, 231, 237)))
             {
+                if (compareMode)
+                {
+                    g.DrawString("Сравнение: стоимость/км" +
+                        (compareUnit.Length > 0 ? " (" + compareUnit + ")" : ""),
+                        font, textBrush, left, h - legendH + 3);
+                    if (compareValues.Count == 0)
+                    {
+                        g.DrawString("Нет данных для сравнения /км", font, textBrush,
+                            w / 2f - 80, (top + bottom) / 2f);
+                        return;
+                    }
+                    decimal maxTotal = 1;
+                    for (int i = 0; i < compareValues.Count; i++)
+                        if (compareValues[i] > maxTotal)
+                            maxTotal = compareValues[i];
+                    for (int gi = 0; gi <= 4; gi++)
+                    {
+                        float y = bottom - (bottom - top) * gi / 4f;
+                        g.DrawLine(grid, left, y, right, y);
+                        string label = FormatAxis(maxTotal * gi / 4m);
+                        SizeF sz = g.MeasureString(label, font);
+                        g.DrawString(label, font, textBrush, left - sz.Width - 4, y - sz.Height / 2f);
+                    }
+                    g.DrawLine(axis, left, top, left, bottom);
+                    g.DrawLine(axis, left, bottom, right, bottom);
+                    float group = (right - left) / compareValues.Count;
+                    float barW = Math.Max(10f, group * 0.55f);
+                    for (int i = 0; i < compareValues.Count; i++)
+                    {
+                        float cx = left + group * (i + 0.5f);
+                        float x0 = cx - barW / 2f;
+                        float bh = (float)((double)compareValues[i] / (double)maxTotal) * (bottom - top);
+                        using (Brush brush = new SolidBrush(Colors[0]))
+                            g.FillRectangle(brush, x0, bottom - bh, barW, bh);
+                        string m = ShortLabel(compareLabels[i]);
+                        SizeF ms = g.MeasureString(m, font);
+                        g.DrawString(m, font, textBrush, cx - ms.Width / 2f, bottom + 4);
+                    }
+                    return;
+                }
+
                 float lx = left;
                 for (int i = 0; i < 4; i++)
                 {
@@ -92,39 +156,39 @@ namespace Alfa156.Desktop
                     return;
                 }
 
-                decimal maxTotal = 1;
+                decimal maxStacked = 1;
                 for (int i = 0; i < series.Count; i++)
                 {
                     decimal sum = series[i][0] + series[i][1] + series[i][2] + series[i][3];
-                    if (sum > maxTotal)
-                        maxTotal = sum;
+                    if (sum > maxStacked)
+                        maxStacked = sum;
                 }
 
                 for (int gi = 0; gi <= 4; gi++)
                 {
                     float y = bottom - (bottom - top) * gi / 4f;
                     g.DrawLine(grid, left, y, right, y);
-                    string label = FormatAxis(maxTotal * gi / 4m);
+                    string label = FormatAxis(maxStacked * gi / 4m);
                     SizeF sz = g.MeasureString(label, font);
                     g.DrawString(label, font, textBrush, left - sz.Width - 4, y - sz.Height / 2f);
                 }
                 g.DrawLine(axis, left, top, left, bottom);
                 g.DrawLine(axis, left, bottom, right, bottom);
 
-                float group = (right - left) / series.Count;
-                float barW = Math.Max(6f, group * 0.62f);
+                float groupM = (right - left) / series.Count;
+                float barWM = Math.Max(6f, groupM * 0.62f);
                 for (int i = 0; i < series.Count; i++)
                 {
-                    float cx = left + group * (i + 0.5f);
-                    float x0 = cx - barW / 2f;
+                    float cx = left + groupM * (i + 0.5f);
+                    float x0 = cx - barWM / 2f;
                     float y = bottom;
                     for (int c = 0; c < 4; c++)
                     {
                         if (series[i][c] <= 0)
                             continue;
-                        float bh = (float)((double)series[i][c] / (double)maxTotal) * (bottom - top);
+                        float bh = (float)((double)series[i][c] / (double)maxStacked) * (bottom - top);
                         using (Brush brush = new SolidBrush(Colors[c]))
-                            g.FillRectangle(brush, x0, y - bh, barW, bh);
+                            g.FillRectangle(brush, x0, y - bh, barWM, bh);
                         y -= bh;
                     }
                     string m = months[i];
@@ -132,6 +196,13 @@ namespace Alfa156.Desktop
                     g.DrawString(m, font, textBrush, cx - ms.Width / 2f, bottom + 4);
                 }
             }
+        }
+
+        private static string ShortLabel(string text)
+        {
+            if (String.IsNullOrEmpty(text))
+                return "";
+            return text.Length <= 10 ? text : text.Substring(0, 9) + "…";
         }
 
         private static string ShortMonth(string yyyyMm)
