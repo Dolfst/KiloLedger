@@ -62,14 +62,19 @@ namespace Alfa156.Desktop.Exchange
             GoogleSyncSettings settings,
             SyncPlan plan)
         {
-            SyncMerge.ApplyPlan(local, remote, plan);
+            SyncJournal journal = SyncMerge.ApplyPlan(local, remote, plan);
             CleanCurrencyInPlace(local);
             Push(settings, local);
-            return "Синхронизация с Google: авто=" + local.Cars.Count +
+            string counts = "Синхронизация с Google: авто=" + local.Cars.Count +
                 ", заправки=" + local.Fuel.Count +
                 ", ремонт=" + local.Repairs.Count +
                 ", коммуналка=" + local.Utilities.Count +
                 " (из Google: ремонт " + remote.Repairs.Count + ", заправки " + remote.Fuel.Count + ")";
+            if (journal != null)
+                return counts + "\r\n\r\n" + journal.FormatSummary() +
+                    "\r\n\r\nПримечание: Google Sheets по-прежнему сопоставляет записи по естественным ключам; " +
+                    "стабильные id хранятся в локальных .dat / ZIP и не пишутся в таблицу Dengi.";
+            return counts;
         }
 
         internal static string SyncBidirectional(AlfaRepository local, GoogleSyncSettings settings)
@@ -88,28 +93,37 @@ namespace Alfa156.Desktop.Exchange
         {
             for (int i = 0; i < repo.Fuel.Count; i++)
             {
-                if (repo.Fuel[i].Length > 4)
+                string id = RecordIds.GetId(repo.Fuel[i]);
+                string[] content = RecordIds.StripId(repo.Fuel[i]);
+                if (content.Length > 4)
                 {
-                    repo.Fuel[i][2] = StripMoney(repo.Fuel[i][2]);
-                    repo.Fuel[i][3] = StripMoney(repo.Fuel[i][3]);
-                    repo.Fuel[i][4] = StripMoney(repo.Fuel[i][4]);
-                    if (repo.Fuel[i].Length > 5)
-                        repo.Fuel[i][5] = StripMoney(repo.Fuel[i][5]);
+                    content[2] = StripMoney(content[2]);
+                    content[3] = StripMoney(content[3]);
+                    content[4] = StripMoney(content[4]);
+                    if (content.Length > 5)
+                        content[5] = StripMoney(content[5]);
                 }
+                repo.Fuel[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
             for (int i = 0; i < repo.Repairs.Count; i++)
             {
-                if (repo.Repairs[i].Length > 7)
+                string id = RecordIds.GetId(repo.Repairs[i]);
+                string[] content = RecordIds.StripId(repo.Repairs[i]);
+                if (content.Length > 7)
                 {
-                    repo.Repairs[i][2] = StripMoney(repo.Repairs[i][2]);
-                    repo.Repairs[i][6] = StripMoney(repo.Repairs[i][6]);
-                    repo.Repairs[i][7] = StripMoney(repo.Repairs[i][7]);
+                    content[2] = StripMoney(content[2]);
+                    content[6] = StripMoney(content[6]);
+                    content[7] = StripMoney(content[7]);
                 }
+                repo.Repairs[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
             for (int i = 0; i < repo.Utilities.Count; i++)
             {
-                for (int c = 1; c < repo.Utilities[i].Length && c < 8; c++)
-                    repo.Utilities[i][c] = StripMoney(repo.Utilities[i][c]);
+                string id = RecordIds.GetId(repo.Utilities[i]);
+                string[] content = RecordIds.StripId(repo.Utilities[i]);
+                for (int c = 1; c < content.Length && c < 8; c++)
+                    content[c] = StripMoney(content[c]);
+                repo.Utilities[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
         }
 
@@ -187,15 +201,24 @@ namespace Alfa156.Desktop.Exchange
 
         private static string BuildPushJson(string token, AlfaRepository repo)
         {
+            // Google/Dengi layout stays key-based; do not push trailing record ids.
             StringBuilder sb = new StringBuilder();
             sb.Append("{\"token\":").Append(JsonUtil.Quote(token ?? "")).Append(",");
-            sb.Append("\"cars\":").Append(JsonUtil.Table(repo.Cars)).Append(",");
-            sb.Append("\"fuel\":").Append(JsonUtil.Table(repo.Fuel)).Append(",");
-            sb.Append("\"repairs\":").Append(JsonUtil.Table(repo.Repairs)).Append(",");
-            sb.Append("\"utilities\":").Append(JsonUtil.Table(repo.Utilities)).Append(",");
-            sb.Append("\"categories\":").Append(JsonUtil.Table(repo.Categories));
+            sb.Append("\"cars\":").Append(JsonUtil.Table(StripIds(repo.Cars))).Append(",");
+            sb.Append("\"fuel\":").Append(JsonUtil.Table(StripIds(repo.Fuel))).Append(",");
+            sb.Append("\"repairs\":").Append(JsonUtil.Table(StripIds(repo.Repairs))).Append(",");
+            sb.Append("\"utilities\":").Append(JsonUtil.Table(StripIds(repo.Utilities))).Append(",");
+            sb.Append("\"categories\":").Append(JsonUtil.Table(StripIds(repo.Categories)));
             sb.Append("}");
             return sb.ToString();
+        }
+
+        private static List<string[]> StripIds(List<string[]> rows)
+        {
+            List<string[]> result = new List<string[]>();
+            for (int i = 0; i < rows.Count; i++)
+                result.Add(RecordIds.StripId(rows[i]));
+            return result;
         }
 
         private static string AppendQuery(string url, string query)

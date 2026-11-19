@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Data\AlfaCodec.cs" />
     <Compile Include="Data\AlfaRepository.cs" />
+    <Compile Include="Data\RecordIds.cs" />
     <Compile Include="Data\SyncMerge.cs" />
     <Compile Include="Exchange\CsvExchange.cs" />
     <Compile Include="Exchange\DengiFormat.cs" />

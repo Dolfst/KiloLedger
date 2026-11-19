@@ -66,6 +66,7 @@
     </Compile>
     <Compile Include="DataStore.cs" />
     <Compile Include="EntryEditorForm.cs" />
+    <Compile Include="RecordIds.cs" />
     <Compile Include="SyncMerge.cs" />
     <Compile Include="SyncOptionsForm.cs">
       <SubType>Form</SubType>

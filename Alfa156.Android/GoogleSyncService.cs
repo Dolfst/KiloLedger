@@ -71,7 +71,12 @@ internal static class GoogleSyncService
                 pushJson.IndexOf("\"ok\":true", StringComparison.OrdinalIgnoreCase) < 0)
                 throw new InvalidDataException("Запись в Google не удалась: " + ExtractError(pushJson));
 
-            return "Синхронизация с Google завершена.";
+            SyncJournal journal = ExpenseSyncService.LastJournal;
+            string message = "Синхронизация с Google завершена.";
+            if (journal != null)
+                message += "\n\n" + journal.FormatSummary();
+            message += "\n\nGoogle Sheets: сопоставление по естественным ключам; id остаются в локальных .dat.";
+            return message;
         }
         finally
         {
@@ -130,19 +135,32 @@ internal static class GoogleSyncService
 
     private static string BuildPushJson(string token, string dataDirectory)
     {
+        // Strip trailing record ids so Dengi sheet columns stay unchanged.
         StringBuilder sb = new StringBuilder();
         sb.Append("{\"token\":").Append(Quote(token)).Append(',');
-        sb.Append("\"cars\":").Append(TableJson(ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "cars.dat")))).Append(',');
-        sb.Append("\"fuel\":").Append(TableJson(ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "fuel.dat")))).Append(',');
-        sb.Append("\"repairs\":").Append(TableJson(ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "repairs.dat")))).Append(',');
-        sb.Append("\"utilities\":").Append(TableJson(ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "utilities.dat")))).Append(',');
+        sb.Append("\"cars\":").Append(TableJson(StripIds(
+            ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "cars.dat"))))).Append(',');
+        sb.Append("\"fuel\":").Append(TableJson(StripIds(
+            ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "fuel.dat"))))).Append(',');
+        sb.Append("\"repairs\":").Append(TableJson(StripIds(
+            ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "repairs.dat"))))).Append(',');
+        sb.Append("\"utilities\":").Append(TableJson(StripIds(
+            ExpenseDataCodec.ReadRows(Path.Combine(dataDirectory, "utilities.dat"))))).Append(',');
         string categoriesPath = Path.Combine(dataDirectory, ExpenseDataCodec.RepairCategoriesFile);
         List<string[]> categories = File.Exists(categoriesPath)
             ? ExpenseDataCodec.ReadRows(categoriesPath)
             : new List<string[]>();
-        sb.Append("\"categories\":").Append(TableJson(categories));
+        sb.Append("\"categories\":").Append(TableJson(StripIds(categories)));
         sb.Append('}');
         return sb.ToString();
+    }
+
+    private static List<string[]> StripIds(List<string[]> rows)
+    {
+        List<string[]> result = new List<string[]>();
+        for (int i = 0; i < rows.Count; i++)
+            result.Add(RecordIds.StripId(rows[i]));
+        return result;
     }
 
     private static string TableJson(List<string[]> rows)

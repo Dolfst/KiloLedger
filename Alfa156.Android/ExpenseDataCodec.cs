@@ -17,7 +17,8 @@ internal static class ExpenseDataCodec
 
     internal static readonly string[] DataFiles =
     {
-        "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile
+        "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
+        RecordIds.DeletedFile
     };
 
     internal static bool IsDataFile(string name)
@@ -149,21 +150,33 @@ internal static class ExpenseDataCodec
         {
             List<string[]> categories = ReadRows(categoriesPath);
             for (int i = 0; i < categories.Count; i++)
-                if (categories[i].Length != 1 || categories[i][0].Trim().Length == 0)
+                if (!IsValidCategoryRow(categories[i]))
                     throw new InvalidDataException("Неверный формат записи в " + RepairCategoriesFile + ".");
         }
     }
 
+    internal static bool IsValidCategoryRow(string[] row)
+    {
+        if (row == null || row.Length < 1 || row.Length > 2)
+            return false;
+        if (row[0].Trim().Length == 0)
+            return false;
+        if (row.Length == 2 && !RecordIds.LooksLikeId(row[1]))
+            return false;
+        return true;
+    }
+
     internal static bool IsValidColumnCount(string fileName, int length)
     {
+        // Content fields, optionally + trailing stable id.
         if (fileName == "fuel.dat")
-            return length >= 5 && length <= 7;
+            return length >= 5 && length <= 8;
         if (fileName == "cars.dat")
-            return length == 1;
+            return length == 1 || length == 2;
         if (fileName == "repairs.dat")
-            return length == 9;
+            return length == 9 || length == 10;
         if (fileName == "utilities.dat")
-            return length == 8;
+            return length == 8 || length == 9;
         return false;
     }
 

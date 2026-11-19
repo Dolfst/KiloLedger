@@ -20,6 +20,7 @@ namespace Alfa156.Desktop.Data
         public int OnlyRemote;
         public int Conflicts;
         public int Identical;
+        public int TombstoneHits;
     }
 
     internal sealed class SyncPlan
@@ -31,15 +32,28 @@ namespace Alfa156.Desktop.Data
 
     internal static class SyncMerge
     {
+        private static SyncJournal lastJournal;
+
+        internal static SyncJournal LastJournal
+        {
+            get { return lastJournal; }
+        }
+
         internal static List<SyncTableDiff> Analyze(AlfaRepository local, AlfaRepository remote)
         {
+            List<Tombstone> tombs = RecordIds.UnionTombstones(local.Deleted, remote.Deleted);
             List<SyncTableDiff> diffs = new List<SyncTableDiff>();
-            diffs.Add(AnalyzeTable("Автомобили", local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }));
-            diffs.Add(AnalyzeTable("Заправки", local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }));
+            diffs.Add(AnalyzeTable("Автомобили", local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeCar)));
+            diffs.Add(AnalyzeTable("Заправки", local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeFuel)));
             diffs.Add(AnalyzeTable("Ремонт", local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
-                new bool[] { false, true, false, true, false }));
-            diffs.Add(AnalyzeTable("Коммуналка", local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }));
-            diffs.Add(AnalyzeTable("Категории", local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }));
+                new bool[] { false, true, false, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeRepair)));
+            diffs.Add(AnalyzeTable("Коммуналка", local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
+            diffs.Add(AnalyzeTable("Категории", local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
             return diffs;
         }
 
@@ -54,20 +68,32 @@ namespace Alfa156.Desktop.Data
                 sb.AppendLine(d.Title + ": локально " + d.LocalCount + ", в Google " + d.RemoteCount +
                     " | только локально " + d.OnlyLocal +
                     ", только в Google " + d.OnlyRemote +
-                    ", отличаются " + d.Conflicts);
+                    ", отличаются " + d.Conflicts +
+                    (d.TombstoneHits > 0 ? ", удалений " + d.TombstoneHits : ""));
             }
             return sb.ToString();
         }
 
-        internal static void ApplyPlan(AlfaRepository local, AlfaRepository remote, SyncPlan plan)
+        internal static SyncJournal ApplyPlan(AlfaRepository local, AlfaRepository remote, SyncPlan plan)
         {
+            SyncJournal journal = new SyncJournal();
+            lastJournal = journal;
+            List<Tombstone> tombs = RecordIds.UnionTombstones(local.Deleted, remote.Deleted);
+
             local.ReplaceAll(
-                ApplyList(local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }, plan),
-                ApplyList(local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan),
+                ApplyList(local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeCar), "cars.dat", journal),
+                ApplyList(local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeFuel), "fuel.dat", journal),
                 ApplyList(local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
-                    new bool[] { false, true, false, true, false }, plan),
-                ApplyList(local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }, plan),
-                ApplyList(local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }, plan));
+                    new bool[] { false, true, false, true, false }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeRepair), "repairs.dat", journal),
+                ApplyList(local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeUtility), "utilities.dat", journal),
+                ApplyList(local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }, plan,
+                    RecordIds.IdsForType(tombs, RecordIds.TypeCategory), AlfaCodec.RepairCategoriesFile, journal));
+            local.Deleted = tombs;
+            return journal;
         }
 
         internal static void MergeInto(
@@ -89,7 +115,8 @@ namespace Alfa156.Desktop.Data
             List<string[]> localRows,
             List<string[]> remoteRows,
             int[] keyColumns,
-            bool[] ignoreCase)
+            bool[] ignoreCase,
+            HashSet<string> deletedIds)
         {
             SyncTableDiff diff = new SyncTableDiff
             {
@@ -101,6 +128,12 @@ namespace Alfa156.Desktop.Data
             bool[] localMatched = new bool[localRows.Count];
             for (int i = 0; i < remoteRows.Count; i++)
             {
+                string remoteId = RecordIds.GetId(remoteRows[i]);
+                if (remoteId != null && deletedIds.Contains(remoteId))
+                {
+                    diff.TombstoneHits++;
+                    continue;
+                }
                 int match = FindIdentity(localRows, remoteRows[i], keyColumns, ignoreCase);
                 if (match < 0)
                 {
@@ -108,14 +141,23 @@ namespace Alfa156.Desktop.Data
                     continue;
                 }
                 localMatched[match] = true;
-                if (RowsEqual(localRows[match], remoteRows[i]))
+                if (RecordIds.ContentEqual(localRows[match], remoteRows[i]))
                     diff.Identical++;
                 else
                     diff.Conflicts++;
             }
             for (int i = 0; i < localMatched.Length; i++)
-                if (!localMatched[i])
-                    diff.OnlyLocal++;
+            {
+                if (localMatched[i])
+                    continue;
+                string localId = RecordIds.GetId(localRows[i]);
+                if (localId != null && deletedIds.Contains(localId))
+                {
+                    diff.TombstoneHits++;
+                    continue;
+                }
+                diff.OnlyLocal++;
+            }
             return diff;
         }
 
@@ -124,47 +166,96 @@ namespace Alfa156.Desktop.Data
             List<string[]> remoteRows,
             int[] keyColumns,
             bool[] ignoreCase,
-            SyncPlan plan)
+            SyncPlan plan,
+            HashSet<string> deletedIds,
+            string fileName,
+            SyncJournal journal)
         {
-            List<string[]> merged = new List<string[]>();
-            bool[] localMatched = new bool[localRows.Count];
+            List<string[]> local = CloneRows(localRows);
+            List<string[]> remote = CloneRows(remoteRows);
+            RecordIds.EnsureIds(local, fileName);
+            RecordIds.EnsureIds(remote, fileName);
 
-            for (int i = 0; i < remoteRows.Count; i++)
+            List<string[]> merged = new List<string[]>();
+            bool[] localMatched = new bool[local.Count];
+            string title = fileName;
+
+            for (int i = 0; i < remote.Count; i++)
             {
-                string[] remote = remoteRows[i];
-                int match = FindIdentity(localRows, remote, keyColumns, ignoreCase);
+                string[] remoteRow = remote[i];
+                string remoteId = RecordIds.GetId(remoteRow);
+                if (remoteId != null && deletedIds.Contains(remoteId))
+                {
+                    journal.Removed++;
+                    journal.AddExample("удалено " + title + " " + remoteId);
+                    continue;
+                }
+
+                int match = FindIdentity(local, remoteRow, keyColumns, ignoreCase);
                 if (match < 0)
                 {
                     if (plan.AddFromGoogle)
-                        merged.Add((string[])remote.Clone());
+                    {
+                        merged.Add((string[])remoteRow.Clone());
+                        journal.Added++;
+                    }
                     continue;
                 }
 
                 localMatched[match] = true;
-                string[] local = localRows[match];
-                if (RowsEqual(local, remote))
+                string[] localRow = local[match];
+                string localId = RecordIds.GetId(localRow);
+                if (localId != null && deletedIds.Contains(localId))
                 {
-                    merged.Add((string[])local.Clone());
+                    journal.Removed++;
+                    journal.AddExample("удалено " + title + " " + localId);
                     continue;
                 }
 
+                if (RecordIds.ContentEqual(localRow, remoteRow))
+                {
+                    merged.Add(RecordIds.PreferId(localRow, remoteRow));
+                    continue;
+                }
+
+                journal.Conflicts++;
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
-                    merged.Add((string[])remote.Clone());
+                    merged.Add(RecordIds.PreferId((string[])remoteRow.Clone(), localRow));
                 else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
-                    merged.Add((string[])local.Clone());
+                    merged.Add(RecordIds.PreferId((string[])localRow.Clone(), remoteRow));
                 else
-                    merged.Add(MergeFields(local, remote));
+                    merged.Add(RecordIds.EnsureId(MergeFields(RecordIds.StripId(localRow),
+                        RecordIds.StripId(remoteRow)), RecordIds.PrefixForFile(fileName)));
             }
 
-            for (int i = 0; i < localRows.Count; i++)
+            for (int i = 0; i < local.Count; i++)
             {
                 if (localMatched[i])
                     continue;
+                string localId = RecordIds.GetId(local[i]);
+                if (localId != null && deletedIds.Contains(localId))
+                {
+                    journal.Removed++;
+                    continue;
+                }
                 if (!plan.RemoveMissingInGoogle)
-                    merged.Add((string[])localRows[i].Clone());
+                {
+                    merged.Add((string[])local[i].Clone());
+                    journal.KeptLocalOnly++;
+                }
+                else
+                    journal.Removed++;
             }
 
             return merged;
+        }
+
+        private static List<string[]> CloneRows(List<string[]> rows)
+        {
+            List<string[]> copy = new List<string[]>();
+            for (int i = 0; i < rows.Count; i++)
+                copy.Add((string[])rows[i].Clone());
+            return copy;
         }
 
         private static string[] MergeFields(string[] local, string[] incoming)
@@ -189,9 +280,22 @@ namespace Alfa156.Desktop.Data
 
         private static int FindIdentity(List<string[]> rows, string[] candidate, int[] columns, bool[] ignoreCase)
         {
+            string candidateId = RecordIds.GetId(candidate);
+            if (candidateId != null)
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    string id = RecordIds.GetId(rows[i]);
+                    if (id != null && String.Equals(id, candidateId, StringComparison.OrdinalIgnoreCase))
+                        return i;
+                }
+            }
+
+            string[] candidateContent = RecordIds.StripId(candidate);
             for (int i = 0; i < rows.Count; i++)
             {
-                if (rows[i].Length <= columns[columns.Length - 1] || candidate.Length <= columns[columns.Length - 1])
+                string[] row = RecordIds.StripId(rows[i]);
+                if (row.Length <= columns[columns.Length - 1] || candidateContent.Length <= columns[columns.Length - 1])
                     continue;
                 bool matches = true;
                 for (int j = 0; j < columns.Length; j++)
@@ -199,7 +303,7 @@ namespace Alfa156.Desktop.Data
                     StringComparison comparison = ignoreCase[j]
                         ? StringComparison.OrdinalIgnoreCase
                         : StringComparison.Ordinal;
-                    if (!String.Equals(rows[i][columns[j]], candidate[columns[j]], comparison))
+                    if (!String.Equals(row[columns[j]], candidateContent[columns[j]], comparison))
                     {
                         matches = false;
                         break;
@@ -209,19 +313,6 @@ namespace Alfa156.Desktop.Data
                     return i;
             }
             return -1;
-        }
-
-        private static bool RowsEqual(string[] first, string[] second)
-        {
-            int max = Math.Max(first.Length, second.Length);
-            for (int i = 0; i < max; i++)
-            {
-                string a = i < first.Length ? (first[i] ?? "") : "";
-                string b = i < second.Length ? (second[i] ?? "") : "";
-                if (!String.Equals(a, b, StringComparison.Ordinal))
-                    return false;
-            }
-            return true;
         }
     }
 }

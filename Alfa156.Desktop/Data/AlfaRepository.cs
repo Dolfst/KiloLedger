@@ -13,6 +13,7 @@ namespace Alfa156.Desktop.Data
         public List<string[]> Repairs { get; private set; }
         public List<string[]> Utilities { get; private set; }
         public List<string[]> Categories { get; private set; }
+        public List<Tombstone> Deleted { get; set; }
 
         public AlfaRepository()
         {
@@ -21,6 +22,7 @@ namespace Alfa156.Desktop.Data
             Repairs = new List<string[]>();
             Utilities = new List<string[]>();
             Categories = new List<string[]>();
+            Deleted = new List<Tombstone>();
         }
 
         public void CreateNew(string directory)
@@ -33,6 +35,7 @@ namespace Alfa156.Desktop.Data
             Categories = new List<string[]>();
             for (int i = 0; i < AlfaCodec.DefaultRepairCategories.Length; i++)
                 Categories.Add(new string[] { AlfaCodec.DefaultRepairCategories[i] });
+            Deleted = new List<Tombstone>();
             DirectoryPath = directory;
             Save();
         }
@@ -48,6 +51,7 @@ namespace Alfa156.Desktop.Data
             Categories = File.Exists(categoriesPath)
                 ? AlfaCodec.ReadRows(categoriesPath)
                 : new List<string[]>();
+            Deleted = RecordIds.ReadTombstones(directory);
             EnsureCategoriesFromRepairs();
             DirectoryPath = directory;
         }
@@ -72,6 +76,7 @@ namespace Alfa156.Desktop.Data
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, "repairs.dat"), Repairs);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, "utilities.dat"), Utilities);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.RepairCategoriesFile), Categories);
+            RecordIds.WriteTombstones(DirectoryPath, Deleted ?? new List<Tombstone>());
             AlfaCodec.ValidateDirectory(DirectoryPath);
         }
 
@@ -107,6 +112,13 @@ namespace Alfa156.Desktop.Data
             EnsureCategoriesFromRepairs();
         }
 
+        public void NoteDeleted(string fileName, string id)
+        {
+            if (Deleted == null)
+                Deleted = new List<Tombstone>();
+            RecordIds.AddTombstone(Deleted, fileName, id);
+        }
+
         private void EnsureCategoriesFromRepairs()
         {
             Dictionary<string, string> known = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -123,9 +135,10 @@ namespace Alfa156.Desktop.Data
 
             for (int i = 0; i < Repairs.Count; i++)
             {
-                if (Repairs[i].Length < 4)
+                string[] content = RecordIds.StripId(Repairs[i]);
+                if (content.Length < 4)
                     continue;
-                string category = (Repairs[i][3] ?? "").Trim();
+                string category = (content[3] ?? "").Trim();
                 if (category.Length == 0 || known.ContainsKey(category))
                     continue;
                 known[category] = category;
@@ -143,67 +156,92 @@ namespace Alfa156.Desktop.Data
         {
             for (int i = 0; i < Cars.Count; i++)
             {
-                if (Cars[i].Length != 1)
-                    Cars[i] = Resize(Cars[i], 1);
-                Cars[i][0] = (Cars[i][0] ?? "").Trim();
+                string id = RecordIds.GetId(Cars[i]);
+                string[] content = RecordIds.StripId(Cars[i]);
+                content = Resize(content, 1);
+                content[0] = (content[0] ?? "").Trim();
+                Cars[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
-            Cars.RemoveAll(delegate(string[] row) { return row.Length == 0 || String.IsNullOrEmpty(row[0]); });
+            Cars.RemoveAll(delegate(string[] row)
+            {
+                string[] content = RecordIds.StripId(row);
+                return content.Length == 0 || String.IsNullOrEmpty(content[0]);
+            });
             if (Cars.Count == 0)
                 throw new InvalidDataException("Нужен хотя бы один автомобиль.");
+            RecordIds.EnsureIds(Cars, "cars.dat");
 
             for (int i = 0; i < Fuel.Count; i++)
-            {
                 Fuel[i] = NormalizeFuelRow(Fuel[i]);
-            }
+            RecordIds.EnsureIds(Fuel, "fuel.dat");
 
             for (int i = 0; i < Repairs.Count; i++)
             {
-                Repairs[i] = Resize(Repairs[i], 9);
-                Repairs[i][0] = AlfaCodec.NormalizeDate(Repairs[i][0]);
-                Repairs[i][1] = (Repairs[i][1] ?? "").Trim();
-                if (!String.IsNullOrEmpty((Repairs[i][2] ?? "").Trim()))
-                    Repairs[i][2] = AlfaCodec.FormatNumber(Repairs[i][2]);
+                string id = RecordIds.GetId(Repairs[i]);
+                string[] content = Resize(RecordIds.StripId(Repairs[i]), 9);
+                content[0] = AlfaCodec.NormalizeDate(content[0]);
+                content[1] = (content[1] ?? "").Trim();
+                if (!String.IsNullOrEmpty((content[2] ?? "").Trim()))
+                    content[2] = AlfaCodec.FormatNumber(content[2]);
                 else
-                    Repairs[i][2] = "";
-                Repairs[i][3] = (Repairs[i][3] ?? "").Trim();
-                Repairs[i][4] = (Repairs[i][4] ?? "").Trim();
-                Repairs[i][5] = Repairs[i][5] ?? "";
-                if (!String.IsNullOrEmpty((Repairs[i][6] ?? "").Trim()))
-                    Repairs[i][6] = AlfaCodec.FormatNumber(Repairs[i][6]);
+                    content[2] = "";
+                content[3] = (content[3] ?? "").Trim();
+                content[4] = (content[4] ?? "").Trim();
+                content[5] = content[5] ?? "";
+                if (!String.IsNullOrEmpty((content[6] ?? "").Trim()))
+                    content[6] = AlfaCodec.FormatNumber(content[6]);
                 else
-                    Repairs[i][6] = "1";
-                Repairs[i][7] = AlfaCodec.FormatNumber(Repairs[i][7]);
-                Repairs[i][8] = Repairs[i][8] ?? "";
+                    content[6] = "1";
+                content[7] = AlfaCodec.FormatNumber(content[7]);
+                content[8] = content[8] ?? "";
+                Repairs[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
+            RecordIds.EnsureIds(Repairs, "repairs.dat");
 
             for (int i = 0; i < Utilities.Count; i++)
             {
-                Utilities[i] = Resize(Utilities[i], 8);
-                Utilities[i][0] = AlfaCodec.NormalizeMonth(Utilities[i][0]);
+                string id = RecordIds.GetId(Utilities[i]);
+                string[] content = Resize(RecordIds.StripId(Utilities[i]), 8);
+                content[0] = AlfaCodec.NormalizeMonth(content[0]);
                 for (int c = 1; c < 8; c++)
                 {
-                    string amount = (Utilities[i][c] ?? "").Trim();
-                    Utilities[i][c] = amount.Length == 0 ? "" : AlfaCodec.FormatNumber(amount);
+                    string amount = (content[c] ?? "").Trim();
+                    content[c] = amount.Length == 0 ? "" : AlfaCodec.FormatNumber(amount);
                 }
+                Utilities[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
+            RecordIds.EnsureIds(Utilities, "utilities.dat");
 
             for (int i = 0; i < Categories.Count; i++)
             {
-                Categories[i] = Resize(Categories[i], 1);
-                Categories[i][0] = (Categories[i][0] ?? "").Trim();
+                string id = RecordIds.GetId(Categories[i]);
+                string[] content = Resize(RecordIds.StripId(Categories[i]), 1);
+                content[0] = (content[0] ?? "").Trim();
+                Categories[i] = id != null ? RecordIds.WithId(content, id) : content;
             }
-            Categories.RemoveAll(delegate(string[] row) { return row.Length == 0 || String.IsNullOrEmpty(row[0]); });
+            Categories.RemoveAll(delegate(string[] row)
+            {
+                string[] content = RecordIds.StripId(row);
+                return content.Length == 0 || String.IsNullOrEmpty(content[0]);
+            });
             EnsureCategoriesFromRepairs();
+            RecordIds.EnsureIds(Categories, AlfaCodec.RepairCategoriesFile);
+
+            if (Deleted == null)
+                Deleted = new List<Tombstone>();
+            Deleted = RecordIds.CapTombstones(Deleted);
         }
 
         private static string[] NormalizeFuelRow(string[] source)
         {
-            int length = source == null ? 5 : source.Length;
+            string id = RecordIds.GetId(source);
+            string[] content = RecordIds.StripId(source ?? new string[0]);
+            int length = content.Length;
             if (length < 5)
                 length = 5;
             if (length > 7)
                 length = 7;
-            string[] row = Resize(source ?? new string[0], length);
+            string[] row = Resize(content, length);
             row[0] = AlfaCodec.NormalizeDate(row[0]);
             row[1] = (row[1] ?? "").Trim();
             row[2] = AlfaCodec.FormatNumber(row[2]);
@@ -236,7 +274,7 @@ namespace Alfa156.Desktop.Data
                     break;
                 row = Resize(row, row.Length - 1);
             }
-            return row;
+            return id != null ? RecordIds.WithId(row, id) : row;
         }
 
         private static string[] Resize(string[] source, int length)

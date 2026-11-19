@@ -246,6 +246,10 @@ namespace Alfa156.Desktop
                     repository.Save();
                     dirty = false;
                     SetStatus(message);
+                    SyncJournal journal = SyncMerge.LastJournal;
+                    if (journal != null)
+                        MessageBox.Show(this, journal.FormatSummary(), "Синхронизация Google",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
@@ -308,7 +312,28 @@ namespace Alfa156.Desktop
         {
             grid.CellValueChanged += delegate { MarkDirty(); };
             grid.UserAddedRow += delegate { MarkDirty(); };
+            grid.UserDeletingRow += GridUserDeletingRow;
             grid.UserDeletedRow += delegate { MarkDirty(); };
+        }
+
+        private void GridUserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
+        {
+            DataGridView grid = sender as DataGridView;
+            if (grid == null || e.Row == null || e.Row.IsNewRow)
+                return;
+            string id = e.Row.Tag as string;
+            if (String.IsNullOrEmpty(id) || !RecordIds.LooksLikeId(id))
+                return;
+            string fileName = "fuel.dat";
+            if (Object.ReferenceEquals(grid, carsGrid))
+                fileName = "cars.dat";
+            else if (Object.ReferenceEquals(grid, repairsGrid))
+                fileName = "repairs.dat";
+            else if (Object.ReferenceEquals(grid, utilitiesGrid))
+                fileName = "utilities.dat";
+            else if (Object.ReferenceEquals(grid, categoriesGrid))
+                fileName = AlfaCodec.RepairCategoriesFile;
+            repository.NoteDeleted(fileName, id);
         }
 
         private void MarkDirty()
@@ -596,10 +621,12 @@ namespace Alfa156.Desktop
             grid.Rows.Clear();
             for (int i = 0; i < rows.Count; i++)
             {
+                string[] content = RecordIds.StripId(rows[i]);
                 object[] values = new object[columns];
                 for (int c = 0; c < columns; c++)
-                    values[c] = c < rows[i].Length ? rows[i][c] : "";
-                grid.Rows.Add(values);
+                    values[c] = c < content.Length ? content[c] : "";
+                int index = grid.Rows.Add(values);
+                grid.Rows[index].Tag = RecordIds.GetId(rows[i]);
             }
         }
 
@@ -895,8 +922,12 @@ namespace Alfa156.Desktop
                     if (!String.IsNullOrEmpty(values[c].Trim()))
                         empty = false;
                 }
-                if (!empty)
-                    rows.Add(values);
+                if (empty)
+                    continue;
+                string id = row.Tag as string;
+                if (!String.IsNullOrEmpty(id) && RecordIds.LooksLikeId(id))
+                    values = RecordIds.WithId(values, id);
+                rows.Add(values);
             }
             return rows;
         }

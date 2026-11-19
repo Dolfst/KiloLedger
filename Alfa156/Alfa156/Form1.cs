@@ -961,7 +961,11 @@ namespace CarExpenses
 
             currentCar = DataStore.LoadCarNames()[0];
             ShowHome();
-            MessageBox.Show("Синхронизация завершена.", "Синхронизация");
+            SyncJournal journal = SyncMerge.LastJournal;
+            if (journal != null)
+                MessageBox.Show(journal.FormatSummary(), "Синхронизация");
+            else
+                MessageBox.Show("Синхронизация завершена.", "Синхронизация");
         }
 
         private SyncPlan ResolveAndroidSyncPlan(string summary)
@@ -1779,9 +1783,10 @@ namespace CarExpenses
 
         private static string FieldAt(string[] row, int index)
         {
-            if (row == null || index >= row.Length || row[index] == null)
+            string[] content = RecordIds.StripId(row);
+            if (content == null || index >= content.Length || content[index] == null)
                 return "";
-            return row[index];
+            return content[index];
         }
 
         private static string[] NormalizeFuelValues(string[] values)

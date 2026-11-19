@@ -38,6 +38,7 @@ internal sealed class SyncTableDiff
     public int OnlyLocal;
     public int OnlyRemote;
     public int Conflicts;
+    public int TombstoneHits;
 }
 
 internal delegate SyncConflictChoice SyncConflictResolver(
@@ -52,6 +53,14 @@ internal static class ExpenseSyncService
     private const string ProtocolHeader = "ALFA156SYNC1|";
 
     private const int HandshakeTimeoutMs = 10000;
+
+    [ThreadStatic]
+    private static SyncJournal lastJournal;
+
+    internal static SyncJournal LastJournal
+    {
+        get { return lastJournal; }
+    }
 
     internal static string Serve(
         TcpListener listener,
@@ -254,29 +263,38 @@ internal static class ExpenseSyncService
 
     internal static List<SyncTableDiff> AnalyzeDirectories(string localDirectory, string remoteDirectory)
     {
+        List<Tombstone> tombs = RecordIds.UnionTombstones(
+            RecordIds.ReadTombstones(localDirectory),
+            RecordIds.ReadTombstones(remoteDirectory));
+
         List<SyncTableDiff> diffs = new List<SyncTableDiff>();
         diffs.Add(AnalyzeTable("Автомобили",
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "cars.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "cars.dat")),
-            new int[] { 0 }, new bool[] { true }));
+            new int[] { 0 }, new bool[] { true },
+            RecordIds.IdsForType(tombs, RecordIds.TypeCar)));
         diffs.Add(AnalyzeTable("Заправки",
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "fuel.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "fuel.dat")),
-            new int[] { 0, 1, 2 }, new bool[] { false, true, false }));
+            new int[] { 0, 1, 2 }, new bool[] { false, true, false },
+            RecordIds.IdsForType(tombs, RecordIds.TypeFuel)));
         diffs.Add(AnalyzeTable("Ремонт",
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "repairs.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "repairs.dat")),
-            new int[] { 0, 1, 2, 3, 4 }, new bool[] { false, true, false, true, false }));
+            new int[] { 0, 1, 2, 3, 4 }, new bool[] { false, true, false, true, false },
+            RecordIds.IdsForType(tombs, RecordIds.TypeRepair)));
         diffs.Add(AnalyzeTable("Коммуналка",
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "utilities.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "utilities.dat")),
-            new int[] { 0 }, new bool[] { false }));
+            new int[] { 0 }, new bool[] { false },
+            RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
         string localCat = Path.Combine(localDirectory, ExpenseDataCodec.RepairCategoriesFile);
         string remoteCat = Path.Combine(remoteDirectory, ExpenseDataCodec.RepairCategoriesFile);
         diffs.Add(AnalyzeTable("Категории",
             File.Exists(localCat) ? ExpenseDataCodec.ReadRows(localCat) : new List<string[]>(),
             File.Exists(remoteCat) ? ExpenseDataCodec.ReadRows(remoteCat) : new List<string[]>(),
-            new int[] { 0 }, new bool[] { true }));
+            new int[] { 0 }, new bool[] { true },
+            RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
         return diffs;
     }
 
@@ -293,13 +311,15 @@ internal static class ExpenseSyncService
                 .Append("\n  только ").Append(localName).Append(": ").Append(d.OnlyLocal)
                 .Append(", только ").Append(remoteName).Append(": ").Append(d.OnlyRemote)
                 .Append(", отличаются: ").Append(d.Conflicts);
+            if (d.TombstoneHits > 0)
+                sb.Append(", удалений: ").Append(d.TombstoneHits);
         }
         return sb.ToString();
     }
 
     private static SyncTableDiff AnalyzeTable(
         string title, List<string[]> localRows, List<string[]> remoteRows,
-        int[] keyColumns, bool[] ignoreCase)
+        int[] keyColumns, bool[] ignoreCase, HashSet<string> deletedIds)
     {
         SyncTableDiff diff = new SyncTableDiff
         {
@@ -310,6 +330,12 @@ internal static class ExpenseSyncService
         bool[] localMatched = new bool[localRows.Count];
         for (int i = 0; i < remoteRows.Count; i++)
         {
+            string remoteId = RecordIds.GetId(remoteRows[i]);
+            if (remoteId != null && deletedIds.Contains(remoteId))
+            {
+                diff.TombstoneHits++;
+                continue;
+            }
             int match = FindIdentity(localRows, remoteRows[i], keyColumns, ignoreCase);
             if (match < 0)
             {
@@ -317,12 +343,21 @@ internal static class ExpenseSyncService
                 continue;
             }
             localMatched[match] = true;
-            if (!RowsEqual(localRows[match], remoteRows[i]))
+            if (!RecordIds.ContentEqual(localRows[match], remoteRows[i]))
                 diff.Conflicts++;
         }
         for (int i = 0; i < localMatched.Length; i++)
-            if (!localMatched[i])
-                diff.OnlyLocal++;
+        {
+            if (localMatched[i])
+                continue;
+            string localId = RecordIds.GetId(localRows[i]);
+            if (localId != null && deletedIds.Contains(localId))
+            {
+                diff.TombstoneHits++;
+                continue;
+            }
+            diff.OnlyLocal++;
+        }
         return diff;
     }
 
@@ -339,28 +374,41 @@ internal static class ExpenseSyncService
             throw new InvalidDataException("На телефоне неполный набор данных. Сначала восстановите копию.");
 
         Directory.CreateDirectory(mergedDirectory);
+        SyncJournal journal = new SyncJournal();
+        lastJournal = journal;
+
+        List<Tombstone> mergedTombs = RecordIds.UnionTombstones(
+            RecordIds.ReadTombstones(dataDirectory),
+            RecordIds.ReadTombstones(incomingDirectory));
+
         if (!hasCompleteLocalData)
         {
             ExpenseDataStore.CopyDataFiles(incomingDirectory, mergedDirectory);
+            ApplyTombstonesToCopied(mergedDirectory, mergedTombs, journal);
         }
         else
         {
             ExpenseDataCodec.ValidateDirectory(dataDirectory);
             ExpenseDataStore.EnsureRepairCategories(dataDirectory);
             MergeRows("cars.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, mergedTombs, journal);
             MergeRows(ExpenseDataCodec.RepairCategoriesFile, dataDirectory, incomingDirectory,
-                mergedDirectory, new int[] { 0 }, new bool[] { true }, plan, resolveConflict);
+                mergedDirectory, new int[] { 0 }, new bool[] { true }, plan, resolveConflict,
+                mergedTombs, journal);
             MergeRows("fuel.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict);
+                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict,
+                mergedTombs, journal);
             MergeRows("repairs.dat", dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1, 2, 3, 4 },
-                new bool[] { false, true, false, true, false }, plan, resolveConflict);
+                new bool[] { false, true, false, true, false }, plan, resolveConflict,
+                mergedTombs, journal);
             MergeRows("utilities.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0 }, new bool[] { false }, plan, resolveConflict);
+                new int[] { 0 }, new bool[] { false }, plan, resolveConflict, mergedTombs, journal);
         }
 
+        RecordIds.WriteTombstones(mergedDirectory, mergedTombs);
         ExpenseDataStore.EnsureRepairCategories(mergedDirectory);
+        EnsureIdsInDirectory(mergedDirectory);
         ExpenseDataCodec.ValidateDirectory(mergedDirectory);
         ValidateSnapshotSizes(mergedDirectory);
 
@@ -410,6 +458,61 @@ internal static class ExpenseSyncService
         }
     }
 
+    private static void ApplyTombstonesToCopied(
+        string directory, List<Tombstone> tombs, SyncJournal journal)
+    {
+        FilterFileByTombstones(directory, "cars.dat", RecordIds.TypeCar, tombs, journal);
+        FilterFileByTombstones(directory, "fuel.dat", RecordIds.TypeFuel, tombs, journal);
+        FilterFileByTombstones(directory, "repairs.dat", RecordIds.TypeRepair, tombs, journal);
+        FilterFileByTombstones(directory, "utilities.dat", RecordIds.TypeUtility, tombs, journal);
+        FilterFileByTombstones(directory, ExpenseDataCodec.RepairCategoriesFile,
+            RecordIds.TypeCategory, tombs, journal);
+    }
+
+    private static void FilterFileByTombstones(
+        string directory, string fileName, string entityType,
+        List<Tombstone> tombs, SyncJournal journal)
+    {
+        string path = Path.Combine(directory, fileName);
+        if (!File.Exists(path))
+            return;
+        HashSet<string> deleted = RecordIds.IdsForType(tombs, entityType);
+        List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+        List<string[]> kept = new List<string[]>();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            string id = RecordIds.GetId(rows[i]);
+            if (id != null && deleted.Contains(id))
+            {
+                journal.Removed++;
+                journal.AddExample("удалено " + entityType + " " + id);
+                continue;
+            }
+            kept.Add(RecordIds.EnsureId(rows[i], RecordIds.PrefixForFile(fileName)));
+        }
+        ExpenseDataCodec.SaveRows(path, kept);
+    }
+
+    private static void EnsureIdsInDirectory(string directory)
+    {
+        EnsureIdsFile(directory, "cars.dat");
+        EnsureIdsFile(directory, "fuel.dat");
+        EnsureIdsFile(directory, "repairs.dat");
+        EnsureIdsFile(directory, "utilities.dat");
+        EnsureIdsFile(directory, ExpenseDataCodec.RepairCategoriesFile);
+        RecordIds.EnsureDeletedFile(directory);
+    }
+
+    private static void EnsureIdsFile(string directory, string fileName)
+    {
+        string path = Path.Combine(directory, fileName);
+        if (!File.Exists(path))
+            return;
+        List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+        RecordIds.EnsureIds(rows, fileName);
+        ExpenseDataCodec.SaveRows(path, rows);
+    }
+
     private static void MergeRows(
         string fileName,
         string localDirectory,
@@ -418,31 +521,61 @@ internal static class ExpenseSyncService
         int[] keyColumns,
         bool[] ignoreCase,
         SyncPlan plan,
-        SyncConflictResolver resolveConflict)
+        SyncConflictResolver resolveConflict,
+        List<Tombstone> tombs,
+        SyncJournal journal)
     {
         List<string[]> localRows = ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, fileName));
         List<string[]> incoming = ExpenseDataCodec.ReadRows(Path.Combine(incomingDirectory, fileName));
+        RecordIds.EnsureIds(localRows, fileName);
+        RecordIds.EnsureIds(incoming, fileName);
+
+        HashSet<string> deleted = RecordIds.IdsForType(tombs, RecordIds.EntityTypeForFile(fileName));
         List<string[]> merged = new List<string[]>();
         bool[] localMatched = new bool[localRows.Count];
+        string title = ConflictTitle(fileName);
 
         for (int i = 0; i < incoming.Count; i++)
         {
             string[] row = incoming[i];
+            string remoteId = RecordIds.GetId(row);
+            if (remoteId != null && deleted.Contains(remoteId))
+            {
+                journal.Removed++;
+                journal.AddExample("удалено " + title + " " + remoteId);
+                continue;
+            }
+
             int matchIndex = FindIdentity(localRows, row, keyColumns, ignoreCase);
             if (matchIndex < 0)
             {
                 if (plan.AddIncoming)
+                {
                     merged.Add(row);
+                    journal.Added++;
+                    journal.AddExample("+ " + title + ": " + FormatRow(RecordIds.StripId(row)));
+                }
                 continue;
             }
 
             localMatched[matchIndex] = true;
             string[] local = localRows[matchIndex];
-            if (RowsEqual(local, row))
+            string localId = RecordIds.GetId(local);
+            if (localId != null && deleted.Contains(localId))
             {
-                merged.Add(local);
+                journal.Removed++;
+                journal.AddExample("удалено " + title + " " + localId);
                 continue;
             }
+
+            if (RecordIds.ContentEqual(local, row))
+            {
+                merged.Add(RecordIds.PreferId(local, row));
+                continue;
+            }
+
+            journal.Conflicts++;
+            journal.AddExample("~ " + title + ": " + FormatRow(RecordIds.StripId(local)));
 
             SyncConflictChoice choice;
             if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
@@ -450,19 +583,37 @@ internal static class ExpenseSyncService
             else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
                 choice = SyncConflictChoice.KeepLocal;
             else
-                choice = resolveConflict(ConflictTitle(fileName), FormatRow(local), FormatRow(row));
+                choice = resolveConflict(title, FormatRow(local), FormatRow(row));
 
             if (choice == SyncConflictChoice.Cancel)
                 throw new System.OperationCanceledException("Синхронизация отменена пользователем.");
-            merged.Add(choice == SyncConflictChoice.KeepIncoming ? row : local);
+            if (choice == SyncConflictChoice.KeepIncoming)
+                merged.Add(RecordIds.PreferId(row, local));
+            else
+                merged.Add(RecordIds.PreferId(local, row));
         }
 
         for (int i = 0; i < localRows.Count; i++)
         {
             if (localMatched[i])
                 continue;
+            string localId = RecordIds.GetId(localRows[i]);
+            if (localId != null && deleted.Contains(localId))
+            {
+                journal.Removed++;
+                journal.AddExample("удалено " + title + " " + localId);
+                continue;
+            }
             if (!plan.RemoveLocalOnly)
+            {
                 merged.Add(localRows[i]);
+                journal.KeptLocalOnly++;
+            }
+            else
+            {
+                journal.Removed++;
+                journal.AddExample("удалено локальное " + title);
+            }
         }
 
         ExpenseDataCodec.SaveRows(Path.Combine(destinationDirectory, fileName), merged);
@@ -471,15 +622,31 @@ internal static class ExpenseSyncService
     private static int FindIdentity(
         List<string[]> rows, string[] candidate, int[] columns, bool[] ignoreCase)
     {
+        string candidateId = RecordIds.GetId(candidate);
+        if (candidateId != null)
+        {
+            for (int i = 0; i < rows.Count; i++)
+            {
+                string id = RecordIds.GetId(rows[i]);
+                if (id != null && String.Equals(id, candidateId, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+        }
+
+        string[] candidateContent = RecordIds.StripId(candidate);
         for (int i = 0; i < rows.Count; i++)
         {
+            string[] rowContent = RecordIds.StripId(rows[i]);
+            if (rowContent.Length <= columns[columns.Length - 1] ||
+                candidateContent.Length <= columns[columns.Length - 1])
+                continue;
             bool matches = true;
             for (int j = 0; j < columns.Length; j++)
             {
                 StringComparison comparison = ignoreCase[j]
                     ? StringComparison.OrdinalIgnoreCase
                     : StringComparison.Ordinal;
-                if (!String.Equals(rows[i][columns[j]], candidate[columns[j]], comparison))
+                if (!String.Equals(rowContent[columns[j]], candidateContent[columns[j]], comparison))
                 {
                     matches = false;
                     break;
@@ -491,19 +658,6 @@ internal static class ExpenseSyncService
         return -1;
     }
 
-    private static bool RowsEqual(string[] first, string[] second)
-    {
-        int max = Math.Max(first.Length, second.Length);
-        for (int i = 0; i < max; i++)
-        {
-            string a = i < first.Length ? (first[i] ?? "") : "";
-            string b = i < second.Length ? (second[i] ?? "") : "";
-            if (!String.Equals(a, b, StringComparison.Ordinal))
-                return false;
-        }
-        return true;
-    }
-
     private static string ConflictTitle(string fileName)
     {
         if (fileName == "cars.dat")
@@ -511,23 +665,23 @@ internal static class ExpenseSyncService
         if (fileName == ExpenseDataCodec.RepairCategoriesFile)
             return "Категория ремонта";
         if (fileName == "fuel.dat")
-            return "Заправка с той же датой и пробегом";
+            return "Заправка";
         if (fileName == "repairs.dat")
-            return "Ремонт с теми же датой, авто и товаром";
-        return "Коммунальные данные за тот же месяц";
+            return "Ремонт";
+        return "Коммунальные";
     }
 
     private static string FormatRow(string[] row)
     {
-        return String.Join(" | ", row);
+        return String.Join(" | ", RecordIds.StripId(row));
     }
 
     private static bool HasAnyDataFile(string directory)
     {
         if (!Directory.Exists(directory))
             return false;
-        for (int i = 0; i < ExpenseDataCodec.DataFiles.Length; i++)
-            if (File.Exists(Path.Combine(directory, ExpenseDataCodec.DataFiles[i])))
+        for (int i = 0; i < ExpenseDataCodec.CoreDataFiles.Length; i++)
+            if (File.Exists(Path.Combine(directory, ExpenseDataCodec.CoreDataFiles[i])))
                 return true;
         return false;
     }
@@ -557,12 +711,14 @@ internal static class ExpenseSyncService
 
     private static void SendSnapshot(NetworkStream stream, string directory)
     {
+        RecordIds.EnsureDeletedFile(directory);
         for (int i = 0; i < ExpenseDataCodec.DataFiles.Length; i++)
         {
-            byte[] content = File.ReadAllBytes(
-                Path.Combine(directory, ExpenseDataCodec.DataFiles[i]));
+            string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
+            byte[] content = File.Exists(path) ? File.ReadAllBytes(path) : Array.Empty<byte>();
             WriteInt32(stream, content.Length);
-            stream.Write(content, 0, content.Length);
+            if (content.Length > 0)
+                stream.Write(content, 0, content.Length);
         }
         stream.Flush();
     }
@@ -571,7 +727,14 @@ internal static class ExpenseSyncService
     {
         for (int i = 0; i < ExpenseDataCodec.DataFiles.Length; i++)
         {
-            long length = new FileInfo(Path.Combine(directory, ExpenseDataCodec.DataFiles[i])).Length;
+            string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
+            if (!File.Exists(path))
+            {
+                if (ExpenseDataCodec.DataFiles[i] == RecordIds.DeletedFile)
+                    continue;
+                throw new InvalidDataException("Нет файла " + ExpenseDataCodec.DataFiles[i]);
+            }
+            long length = new FileInfo(path).Length;
             if (length > MaximumFileSize)
                 throw new InvalidDataException("Файл " + ExpenseDataCodec.DataFiles[i] +
                     " превышает допустимый размер синхронизации.");

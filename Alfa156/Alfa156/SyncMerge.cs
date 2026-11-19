@@ -26,6 +26,7 @@ namespace CarExpenses
         public int OnlyLocal;
         public int OnlyRemote;
         public int Conflicts;
+        public int TombstoneHits;
     }
 
     internal sealed class SyncPlan
@@ -42,30 +43,46 @@ namespace CarExpenses
 
     internal static class SyncMerge
     {
+        private static SyncJournal lastJournal;
+
+        internal static SyncJournal LastJournal
+        {
+            get { return lastJournal; }
+        }
+
         internal static List<SyncTableDiff> AnalyzeDirectories(string localDirectory, string remoteDirectory)
         {
+            List<Tombstone> tombs = RecordIds.UnionTombstones(
+                RecordIds.ReadTombstones(localDirectory),
+                RecordIds.ReadTombstones(remoteDirectory));
+
             List<SyncTableDiff> diffs = new List<SyncTableDiff>();
             diffs.Add(AnalyzeTable("Автомобили",
                 DataStore.ReadSyncTable(localDirectory, "cars.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "cars.dat"),
-                new int[] { 0 }, new bool[] { true }));
+                new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeCar)));
             diffs.Add(AnalyzeTable("Заправки",
                 DataStore.ReadSyncTable(localDirectory, "fuel.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "fuel.dat"),
-                new int[] { 0, 1, 2 }, new bool[] { false, true, false }));
+                new int[] { 0, 1, 2 }, new bool[] { false, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeFuel)));
             diffs.Add(AnalyzeTable("Ремонт",
                 DataStore.ReadSyncTable(localDirectory, "repairs.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "repairs.dat"),
                 new int[] { 0, 1, 2, 3, 4 },
-                new bool[] { false, true, false, true, false }));
+                new bool[] { false, true, false, true, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeRepair)));
             diffs.Add(AnalyzeTable("Коммуналка",
                 DataStore.ReadSyncTable(localDirectory, "utilities.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "utilities.dat"),
-                new int[] { 0 }, new bool[] { false }));
+                new int[] { 0 }, new bool[] { false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
             diffs.Add(AnalyzeTable("Категории",
                 DataStore.ReadSyncTable(localDirectory, "repair-categories.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "repair-categories.dat"),
-                new int[] { 0 }, new bool[] { true }));
+                new int[] { 0 }, new bool[] { true },
+                RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
             return diffs;
         }
 
@@ -88,28 +105,44 @@ namespace CarExpenses
                 sb.Append(d.OnlyRemote.ToString());
                 sb.Append(", отличаются: ");
                 sb.Append(d.Conflicts.ToString());
+                if (d.TombstoneHits > 0)
+                {
+                    sb.Append(", удалений: ");
+                    sb.Append(d.TombstoneHits.ToString());
+                }
             }
             return sb.ToString();
         }
 
-        internal static void ApplyPlan(
+        internal static SyncJournal ApplyPlan(
             string localDirectory,
             string remoteDirectory,
             string destinationDirectory,
             SyncPlan plan,
             SyncConflictResolver resolveConflict)
         {
+            SyncJournal journal = new SyncJournal();
+            lastJournal = journal;
+
+            List<Tombstone> tombs = RecordIds.UnionTombstones(
+                RecordIds.ReadTombstones(localDirectory),
+                RecordIds.ReadTombstones(remoteDirectory));
+
             MergeFile("cars.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
             MergeFile("fuel.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict);
+                new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict,
+                tombs, journal);
             MergeFile("repairs.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2, 3, 4 },
-                new bool[] { false, true, false, true, false }, plan, resolveConflict);
+                new bool[] { false, true, false, true, false }, plan, resolveConflict, tombs, journal);
             MergeFile("utilities.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { false }, plan, resolveConflict);
+                new int[] { 0 }, new bool[] { false }, plan, resolveConflict, tombs, journal);
             MergeFile("repair-categories.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
+
+            RecordIds.WriteTombstones(destinationDirectory, tombs);
+            return journal;
         }
 
         private static SyncTableDiff AnalyzeTable(
@@ -117,7 +150,8 @@ namespace CarExpenses
             List<string[]> localRows,
             List<string[]> remoteRows,
             int[] keyColumns,
-            bool[] ignoreCase)
+            bool[] ignoreCase,
+            Dictionary<string, bool> deletedIds)
         {
             SyncTableDiff diff = new SyncTableDiff();
             diff.Title = title;
@@ -128,6 +162,12 @@ namespace CarExpenses
             for (int i = 0; i < remoteRows.Count; i++)
             {
                 string[] remote = remoteRows[i];
+                string remoteId = RecordIds.GetId(remote);
+                if (remoteId != null && deletedIds.ContainsKey(remoteId))
+                {
+                    diff.TombstoneHits++;
+                    continue;
+                }
                 int match = FindIdentity(localRows, remote, keyColumns, ignoreCase);
                 if (match < 0)
                 {
@@ -135,12 +175,21 @@ namespace CarExpenses
                     continue;
                 }
                 localMatched[match] = true;
-                if (!RowsEqual(localRows[match], remote))
+                if (!RecordIds.ContentEqual(localRows[match], remote))
                     diff.Conflicts++;
             }
             for (int i = 0; i < localMatched.Length; i++)
-                if (!localMatched[i])
-                    diff.OnlyLocal++;
+            {
+                if (localMatched[i])
+                    continue;
+                string localId = RecordIds.GetId(localRows[i]);
+                if (localId != null && deletedIds.ContainsKey(localId))
+                {
+                    diff.TombstoneHits++;
+                    continue;
+                }
+                diff.OnlyLocal++;
+            }
             return diff;
         }
 
@@ -152,31 +201,62 @@ namespace CarExpenses
             int[] keyColumns,
             bool[] ignoreCase,
             SyncPlan plan,
-            SyncConflictResolver resolveConflict)
+            SyncConflictResolver resolveConflict,
+            List<Tombstone> tombs,
+            SyncJournal journal)
         {
             List<string[]> localRows = DataStore.ReadSyncTable(localDirectory, fileName);
             List<string[]> remoteRows = DataStore.ReadSyncTable(remoteDirectory, fileName);
+            RecordIds.EnsureIds(localRows, fileName);
+            RecordIds.EnsureIds(remoteRows, fileName);
+
+            Dictionary<string, bool> deleted = RecordIds.IdsForType(
+                tombs, RecordIds.EntityTypeForFile(fileName));
             List<string[]> merged = new List<string[]>();
             bool[] localMatched = new bool[localRows.Count];
+            string title = ConflictTitle(fileName);
 
             for (int i = 0; i < remoteRows.Count; i++)
             {
                 string[] remote = remoteRows[i];
+                string remoteId = RecordIds.GetId(remote);
+                if (remoteId != null && deleted.ContainsKey(remoteId))
+                {
+                    journal.Removed++;
+                    journal.AddExample("удалено " + title + " " + remoteId);
+                    continue;
+                }
+
                 int match = FindIdentity(localRows, remote, keyColumns, ignoreCase);
                 if (match < 0)
                 {
                     if (plan.AddIncoming)
+                    {
                         merged.Add(remote);
+                        journal.Added++;
+                        journal.AddExample("+ " + title + ": " + FormatRow(RecordIds.StripId(remote)));
+                    }
                     continue;
                 }
 
                 localMatched[match] = true;
                 string[] local = localRows[match];
-                if (RowsEqual(local, remote))
+                string localId = RecordIds.GetId(local);
+                if (localId != null && deleted.ContainsKey(localId))
                 {
-                    merged.Add(local);
+                    journal.Removed++;
+                    journal.AddExample("удалено " + title + " " + localId);
                     continue;
                 }
+
+                if (RecordIds.ContentEqual(local, remote))
+                {
+                    merged.Add(RecordIds.PreferId(local, remote));
+                    continue;
+                }
+
+                journal.Conflicts++;
+                journal.AddExample("~ " + title + ": " + FormatRow(RecordIds.StripId(local)));
 
                 SyncConflictChoice choice;
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
@@ -184,22 +264,37 @@ namespace CarExpenses
                 else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
                     choice = SyncConflictChoice.KeepLocal;
                 else
-                    choice = resolveConflict(ConflictTitle(fileName), FormatRow(local), FormatRow(remote));
+                    choice = resolveConflict(title, FormatRow(local), FormatRow(remote));
 
                 if (choice == SyncConflictChoice.Cancel)
                     throw new InvalidOperationException("Синхронизация отменена пользователем.");
                 if (choice == SyncConflictChoice.KeepIncoming)
-                    merged.Add(remote);
+                    merged.Add(RecordIds.PreferId(remote, local));
                 else
-                    merged.Add(local);
+                    merged.Add(RecordIds.PreferId(local, remote));
             }
 
             for (int i = 0; i < localRows.Count; i++)
             {
                 if (localMatched[i])
                     continue;
+                string localId = RecordIds.GetId(localRows[i]);
+                if (localId != null && deleted.ContainsKey(localId))
+                {
+                    journal.Removed++;
+                    journal.AddExample("удалено " + title + " " + localId);
+                    continue;
+                }
                 if (!plan.RemoveLocalOnly)
+                {
                     merged.Add(localRows[i]);
+                    journal.KeptLocalOnly++;
+                }
+                else
+                {
+                    journal.Removed++;
+                    journal.AddExample("удалено локальное " + title);
+                }
             }
 
             DataStore.WriteSyncTable(destinationDirectory, fileName, merged);
@@ -223,36 +318,50 @@ namespace CarExpenses
         private static string FormatRow(string[] row)
         {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < row.Length; i++)
+            string[] content = RecordIds.StripId(row);
+            for (int i = 0; i < content.Length; i++)
             {
                 if (i > 0)
                     sb.Append(" | ");
-                sb.Append(row[i] == null ? "" : row[i]);
+                sb.Append(content[i] == null ? "" : content[i]);
             }
             return sb.ToString();
         }
 
         private static int FindIdentity(List<string[]> rows, string[] candidate, int[] columns, bool[] ignoreCase)
         {
+            string candidateId = RecordIds.GetId(candidate);
+            if (candidateId != null)
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    string id = RecordIds.GetId(rows[i]);
+                    if (id != null && String.Compare(id, candidateId, true,
+                        System.Globalization.CultureInfo.InvariantCulture) == 0)
+                        return i;
+                }
+            }
+
+            string[] candidateContent = RecordIds.StripId(candidate);
             for (int i = 0; i < rows.Count; i++)
             {
-                string[] row = rows[i];
+                string[] row = RecordIds.StripId(rows[i]);
                 if (row.Length <= columns[columns.Length - 1] ||
-                    candidate.Length <= columns[columns.Length - 1])
+                    candidateContent.Length <= columns[columns.Length - 1])
                     continue;
                 bool matches = true;
                 for (int j = 0; j < columns.Length; j++)
                 {
                     if (ignoreCase[j])
                     {
-                        if (String.Compare(row[columns[j]], candidate[columns[j]], true,
+                        if (String.Compare(row[columns[j]], candidateContent[columns[j]], true,
                             System.Globalization.CultureInfo.InvariantCulture) != 0)
                         {
                             matches = false;
                             break;
                         }
                     }
-                    else if (row[columns[j]] != candidate[columns[j]])
+                    else if (row[columns[j]] != candidateContent[columns[j]])
                     {
                         matches = false;
                         break;
@@ -262,19 +371,6 @@ namespace CarExpenses
                     return i;
             }
             return -1;
-        }
-
-        private static bool RowsEqual(string[] first, string[] second)
-        {
-            int max = first.Length > second.Length ? first.Length : second.Length;
-            for (int i = 0; i < max; i++)
-            {
-                string a = i < first.Length ? (first[i] != null ? first[i] : "") : "";
-                string b = i < second.Length ? (second[i] != null ? second[i] : "") : "";
-                if (a != b)
-                    return false;
-            }
-            return true;
         }
     }
 }

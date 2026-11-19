@@ -775,7 +775,12 @@ public sealed class MainActivity : Activity
                             if (error == null)
                             {
                                 RefreshRecords();
-                                ShowMessage("Синхронизация с КПК завершена.");
+                                SyncJournal journal = ExpenseSyncService.LastJournal;
+                                if (journal != null)
+                                    ShowMessage("Синхронизация с КПК завершена.\n\n" +
+                                        journal.FormatSummary());
+                                else
+                                    ShowMessage("Синхронизация с КПК завершена.");
                             }
                             else
                                 ShowMessage("Синхронизация не выполнена: " + error);
@@ -1253,7 +1258,8 @@ public sealed class MainActivity : Activity
 
     private static string FieldAt(string[] row, int index)
     {
-        return row != null && index < row.Length ? (row[index] ?? "") : "";
+        string[] content = RecordIds.StripId(row);
+        return content != null && index < content.Length ? (content[index] ?? "") : "";
     }
 
     private static string[] NormalizeFuelValues(string[] values)
@@ -2368,6 +2374,7 @@ public sealed class MainActivity : Activity
         if (destination == null)
             throw new InvalidDataException("Не выбрано место сохранения ZIP-файла.");
         ExpenseDataStore.EnsureRepairCategories(DataDirectory);
+        RecordIds.EnsureDeletedFile(DataDirectory);
         ExpenseDataCodec.ValidateDirectory(DataDirectory);
         Stream output = ContentResolver.OpenOutputStream(destination);
         if (output == null)
