@@ -2925,14 +2925,15 @@ namespace CarExpenses
                 {
                     List<DateReminder> list = DateReminders.ListAll();
                     string numText = editor.Values[1] == null ? "" : editor.Values[1].Trim();
-                    int index;
-                    if (!int.TryParse(numText, NumberStyles.Integer, CultureInfo.InvariantCulture, out index) ||
-                        index < 1 || index > list.Count)
+                    decimal number;
+                    // CF 3.5 has no int.TryParse — use DataStore.TryNumber.
+                    if (!DataStore.TryNumber(numText, out number) ||
+                        number < 1 || number > list.Count || number != Decimal.Truncate(number))
                     {
                         MessageBox.Show("Укажите номер из списка.", "Напоминания");
                         return;
                     }
-                    DateReminder item = list[index - 1];
+                    DateReminder item = list[(int)number - 1];
                     if (!TrySave(delegate { DateReminders.DeleteById(item.Id); }))
                         return;
                     MessageBox.Show("Удалено.", "Напоминания");
