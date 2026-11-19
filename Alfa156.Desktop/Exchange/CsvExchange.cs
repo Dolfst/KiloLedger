@@ -17,7 +17,8 @@ namespace Alfa156.Desktop.Exchange
             Directory.CreateDirectory(folder);
             WriteCsv(Path.Combine(folder, "cars.csv"), new string[] { "Автомобиль" }, repo.Cars);
             WriteCsv(Path.Combine(folder, "fuel.csv"),
-                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", "Сумма_BYN", "Цена_за_литр", "Комментарий" }, repo.Fuel);
+                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", "Сумма_BYN", "Цена_за_литр", "Комментарий", "Полный_бак" },
+                repo.Fuel);
             WriteCsv(Path.Combine(folder, "repairs.csv"),
                 new string[]
                 {
@@ -37,7 +38,7 @@ namespace Alfa156.Desktop.Exchange
         internal static void ImportFolder(AlfaRepository repo, string folder)
         {
             List<string[]> cars = ReadCsv(Path.Combine(folder, "cars.csv"), 1, true);
-            List<string[]> fuel = ReadCsv(Path.Combine(folder, "fuel.csv"), 7, true);
+            List<string[]> fuel = ReadCsvFlexible(Path.Combine(folder, "fuel.csv"), 7, 8);
             List<string[]> repairs = ReadCsv(Path.Combine(folder, "repairs.csv"), 9, true);
             List<string[]> utilities = ReadCsv(Path.Combine(folder, "utilities.csv"), 8, true);
             string categoriesPath = Path.Combine(folder, "repair-categories.csv");
@@ -101,7 +102,7 @@ namespace Alfa156.Desktop.Exchange
                 throw new InvalidDataException(
                     "Похоже, импортировался лист с месяцами вместо автомобилей. Для таблицы «Деньги» нужны листы «Заправки …», «Ремонт …», «Коммунальные», «Справочник» и доступ по ссылке.");
 
-            List<string[]> canonicalFuel = DownloadSheetOptional(id, new string[] { "Заправки", "fuel" }, 7, true);
+            List<string[]> canonicalFuel = DownloadSheetOptional(id, new string[] { "Заправки", "fuel" }, 8, true);
             List<string[]> canonicalRepairs = DownloadSheetOptional(id, new string[] { "Ремонт", "repairs" }, 9, true);
             List<string[]> canonicalUtilities = DownloadSheetOptional(id, new string[] { "Коммуналка", "utilities" }, 8, true);
             List<string[]> canonicalCategories = DownloadSheetOptional(id, new string[] { "Категории", "repair-categories" }, 1, true);
@@ -205,8 +206,37 @@ namespace Alfa156.Desktop.Exchange
             {
                 writer.WriteLine(JoinCsv(headers));
                 for (int i = 0; i < rows.Count; i++)
-                    writer.WriteLine(JoinCsv(Pad(rows[i], headers.Length)));
+                    writer.WriteLine(JoinCsv(Pad(RecordIds.StripId(rows[i]), headers.Length)));
             }
+        }
+
+        private static List<string[]> ReadCsvFlexible(string path, int minColumns, int maxColumns)
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException("Не найден файл: " + path, path);
+            string text = File.ReadAllText(path, Encoding.UTF8);
+            List<string[]> raw = ParseCsvRecords(text);
+            List<string[]> rows = new List<string[]>();
+            int start = raw.Count > 0 ? 1 : 0;
+            for (int i = start; i < raw.Count; i++)
+            {
+                int columns = Math.Max(minColumns, Math.Min(maxColumns, raw[i].Length));
+                if (columns < minColumns)
+                    columns = minColumns;
+                string[] row = Pad(raw[i], columns);
+                bool empty = true;
+                for (int c = 0; c < row.Length; c++)
+                {
+                    if (!String.IsNullOrEmpty((row[c] ?? "").Trim()))
+                    {
+                        empty = false;
+                        break;
+                    }
+                }
+                if (!empty)
+                    rows.Add(row);
+            }
+            return rows;
         }
 
         internal static List<string[]> ReadCsv(string path, int columns, bool hasHeader)

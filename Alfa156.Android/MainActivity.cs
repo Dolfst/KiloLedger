@@ -293,6 +293,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { RestoreLocalBackup(); });
             }
         }
+        labels.Add("О программе");
+        actions.Add(delegate { ShowAbout(); });
 
         new AlertDialog.Builder(this)
             .SetTitle(syncActive ? "Данные · идёт синхронизация" : "Данные")
@@ -1090,6 +1092,9 @@ public sealed class MainActivity : Activity
 
     private decimal FuelConsumption(string[] row)
     {
+        // л/100км только между полными баками; частичная заправка не замыкает интервал.
+        if (!ExpenseDataCodec.IsFullTank(row))
+            return 0;
         decimal mileage;
         if (!TryNumber(row[2], out mileage))
             return 0;
@@ -1097,6 +1102,8 @@ public sealed class MainActivity : Activity
         for (int i = index - 1; i >= 0; i--)
         {
             if (allRows[i][1] != row[1])
+                continue;
+            if (!ExpenseDataCodec.IsFullTank(allRows[i]))
                 continue;
             decimal previousMileage;
             decimal liters;
@@ -1129,6 +1136,7 @@ public sealed class MainActivity : Activity
             string comment = FieldAt(row, 6).Trim();
             if (comment.Length > 0)
                 details.Append("\nАЗС / комментарий: ").Append(comment);
+            details.Append("\nПолный бак: ").Append(ExpenseDataCodec.IsFullTank(row) ? "да" : "нет");
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
                 details.Append("\nРасход: ")
@@ -1195,7 +1203,7 @@ public sealed class MainActivity : Activity
             ShowRecordEditor(false, new string[]
             {
                 DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                currentCar, lastMileage, "", "", "", ""
+                currentCar, lastMileage, "", "", "", "", "1"
             }, -1);
         }
         else if (selectedSection == Repairs)
@@ -1279,6 +1287,10 @@ public sealed class MainActivity : Activity
             fields.Add(EditorField.Number("Стоимость, BYN", row[4], true));
             fields.Add(EditorField.Number("Цена за литр, BYN", FieldAt(row, 5), false));
             fields.Add(EditorField.Text("АЗС / комментарий", FieldAt(row, 6), false));
+            string fullTank = FieldAt(row, 7);
+            if (fullTank.Length == 0)
+                fullTank = "1";
+            fields.Add(EditorField.Check("Полный бак", fullTank != "0"));
         }
         else if (selectedSection == Repairs)
         {
@@ -1350,10 +1362,10 @@ public sealed class MainActivity : Activity
         if (values == null || values.Length < 5)
             return values;
         string[] row = values;
-        if (row.Length > 7)
+        if (row.Length > 8)
         {
-            row = new string[7];
-            Array.Copy(values, row, 7);
+            row = new string[8];
+            Array.Copy(values, row, 8);
         }
         if (row.Length > 5)
         {
@@ -1367,6 +1379,8 @@ public sealed class MainActivity : Activity
                     row[5] = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
             }
         }
+        if (row.Length > 7)
+            row[7] = ExpenseDataCodec.NormalizeFullTankFlag(row[7]);
         int length = row.Length;
         while (length > 5)
         {
@@ -1563,6 +1577,7 @@ public sealed class MainActivity : Activity
 
         if (wireFuelPrice && fields.Count >= 7)
             WireFuelPriceAutoCalc(fields[3], fields[4], fields[5]);
+        // fields[7] = Полный бак when editing fuel
 
         LinearLayout buttons = NewRow();
         Button saveButton = CreateButton("Сохранить", null);
@@ -1628,12 +1643,25 @@ public sealed class MainActivity : Activity
 
     private void AddEditorField(LinearLayout form, EditorField field)
     {
+        if (field.Kind == "check")
+        {
+            CheckBox check = new CheckBox(this);
+            check.Text = field.Label;
+            check.Checked = field.Value != "0";
+            check.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+            check.SetPadding(0, Dp(6), 0, 0);
+            field.CheckInput = check;
+            form.AddView(check, MatchWrap());
+            return;
+        }
+
         TextView label = new TextView(this);
         label.Text = field.Label;
         label.TextSize = 14;
         label.SetTextColor(AndroidColor.Rgb(35, 51, 70));
         label.SetPadding(0, Dp(6), 0, 0);
         form.AddView(label, MatchWrap());
+
 
         if (field.Options != null)
         {
@@ -1721,7 +1749,9 @@ public sealed class MainActivity : Activity
         for (int i = 0; i < fields.Count; i++)
         {
             EditorField field = fields[i];
-            if (field.Spinner != null)
+            if (field.CheckInput != null)
+                values[i] = field.CheckInput.Checked ? "1" : "0";
+            else if (field.Spinner != null)
                 values[i] = field.Spinner.SelectedItem == null
                     ? "" : field.Spinner.SelectedItem.ToString();
             else if (field.TextInput != null)
@@ -2702,6 +2732,25 @@ public sealed class MainActivity : Activity
 #pragma warning restore CA1416, CA1422
     }
 
+    private void ShowAbout()
+    {
+        string version = "1.13.0";
+        try
+        {
+            var info = PackageManager.GetPackageInfo(PackageName, 0);
+            if (info != null && !String.IsNullOrEmpty(info.VersionName))
+                version = info.VersionName;
+        }
+        catch { }
+        new AlertDialog.Builder(this)
+            .SetTitle("О программе")
+            .SetMessage("Alfa 156\nВерсия " + version +
+                "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
+                "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
+            .SetPositiveButton("ОК", delegate { })
+            .Show();
+    }
+
     private void ShowMessage(string message)
     {
         bool looksLikeError = message != null && (
@@ -2735,6 +2784,7 @@ public sealed class MainActivity : Activity
         internal Spinner Spinner;
         internal Button DateButton;
         internal CheckBox DateEnabled;
+        internal CheckBox CheckInput;
 
         private EditorField(string label, string value, string kind, bool required)
         {
@@ -2771,6 +2821,11 @@ public sealed class MainActivity : Activity
             EditorField field = new EditorField(label, value, "option", required);
             field.Options = options;
             return field;
+        }
+
+        internal static EditorField Check(string label, bool isChecked)
+        {
+            return new EditorField(label, isChecked ? "1" : "0", "check", false);
         }
     }
 

@@ -350,8 +350,8 @@ namespace Alfa156.Desktop.Data
             int length = content.Length;
             if (length < 5)
                 length = 5;
-            if (length > 7)
-                length = 7;
+            if (length > 8)
+                length = 8;
             string[] row = Resize(content, length);
             row[0] = AlfaCodec.NormalizeDate(row[0]);
             row[1] = (row[1] ?? "").Trim();
@@ -377,6 +377,8 @@ namespace Alfa156.Desktop.Data
             }
             if (row.Length > 6)
                 row[6] = (row[6] ?? "").Trim();
+            if (row.Length > 7)
+                row[7] = AlfaCodec.NormalizeFullTankFlag(row[7]);
 
             while (row.Length > 5)
             {

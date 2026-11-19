@@ -357,8 +357,9 @@ namespace CarExpenses
 
         private static bool IsValidSyncColumnCount(string fileName, int length)
         {
+            // fuel: date|car|km|liters|cost|[price]|[comment]|[fullTank]|[id] — max 9
             if (fileName == FuelFile)
-                return length >= 5 && length <= 8;
+                return length >= 5 && length <= 9;
             if (fileName == CarsFile)
                 return length == 1 || length == 2;
             if (fileName == RepairsFile)

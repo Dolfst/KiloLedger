@@ -206,8 +206,9 @@ namespace Alfa156.Desktop.Data
         internal static bool IsValidColumnCount(string fileName, int length)
         {
             // Content fields, optionally + trailing stable id.
+            // fuel: date|car|km|liters|cost|[price]|[comment]|[fullTank]|[id] — max 9
             if (fileName == "fuel.dat")
-                return length >= 5 && length <= 8;
+                return length >= 5 && length <= 9;
             if (fileName == "cars.dat")
                 return length == 1 || length == 2;
             if (fileName == "repairs.dat")
@@ -294,6 +295,29 @@ namespace Alfa156.Desktop.Data
             if (DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out date))
                 return date.ToString("yyyy-MM", CultureInfo.InvariantCulture);
             return value;
+        }
+
+        /// <summary>
+        /// fullTank flag at content index 7: empty/missing/"1" = full, "0" = partial.
+        /// </summary>
+        internal static bool IsFullTank(string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            if (content == null || content.Length <= 7)
+                return true;
+            string flag = (content[7] ?? "").Trim();
+            return flag.Length == 0 || flag == "1";
+        }
+
+        internal static string NormalizeFullTankFlag(string value)
+        {
+            string flag = (value ?? "").Trim();
+            if (flag == "0" || String.Equals(flag, "false", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(flag, "нет", StringComparison.OrdinalIgnoreCase))
+                return "0";
+            if (flag.Length == 0)
+                return "1";
+            return "1";
         }
     }
 }

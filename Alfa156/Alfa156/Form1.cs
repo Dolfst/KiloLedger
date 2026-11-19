@@ -75,6 +75,7 @@ namespace CarExpenses
             data.MenuItems.Add(CreateMenuItem("Создать копию на SD", new EventHandler(CreateBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("О программе", new EventHandler(ShowAbout)));
             menu.MenuItems.Add(data);
             MenuItem actionsHome = CreateMenuItem("Действия");
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
@@ -462,6 +463,10 @@ namespace CarExpenses
 
         private decimal FuelConsumption(string[] row, List<string[]> allRows)
         {
+            // л/100км только между полными баками; частичная заправка не замыкает интервал.
+            if (!IsFullTank(row))
+                return 0;
+
             decimal mileage;
             if (!DataStore.TryNumber(row[2], out mileage))
                 return 0;
@@ -469,6 +474,8 @@ namespace CarExpenses
             for (int i = allRows.IndexOf(row) - 1; i >= 0; i--)
             {
                 if (allRows[i][1] != row[1])
+                    continue;
+                if (!IsFullTank(allRows[i]))
                     continue;
 
                 decimal previousMileage;
@@ -537,6 +544,7 @@ namespace CarExpenses
                 string comment = FieldAt(row, 6).Trim();
                 if (comment.Length > 0)
                     details += "\r\nАЗС / комментарий: " + comment;
+                details += "\r\nПолный бак: " + (IsFullTank(row) ? "да" : "нет");
                 decimal consumption = FuelConsumption(row, DataStore.LoadFuel());
                 if (consumption > 0)
                     details += "\r\nРасход: " +
@@ -583,7 +591,8 @@ namespace CarExpenses
                     new EntryField("Литры", row[3], "number", true),
                     new EntryField("Стоимость, BYN", row[4], "number", true),
                     new EntryField("Цена за литр, BYN", FieldAt(row, 5), "number", false),
-                    new EntryField("АЗС / комментарий", FieldAt(row, 6), "text", false)
+                    new EntryField("АЗС / комментарий", FieldAt(row, 6), "text", false),
+                    new EntryField("Полный бак", FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false)
                 };
                 using (EntryEditorForm editor = new EntryEditorForm("Изменить заправку", fields))
                 {
@@ -1283,7 +1292,8 @@ namespace CarExpenses
                 new EntryField("Литры", "", "number", true),
                 new EntryField("Стоимость, BYN", "", "number", true),
                 new EntryField("Цена за литр, BYN", "", "number", false),
-                new EntryField("АЗС / комментарий", "", "text", false)
+                new EntryField("АЗС / комментарий", "", "text", false),
+                new EntryField("Полный бак", "1", "check", false)
             };
             using (EntryEditorForm editor = new EntryEditorForm("Новая заправка", fields))
             {
@@ -1853,15 +1863,35 @@ namespace CarExpenses
             return content[index];
         }
 
+        private static bool IsFullTank(string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            if (content == null || content.Length <= 7)
+                return true;
+            string flag = content[7] == null ? "" : content[7].Trim();
+            return flag.Length == 0 || flag == "1";
+        }
+
+        private static string NormalizeFullTankFlag(string value)
+        {
+            string flag = value == null ? "" : value.Trim();
+            if (flag == "0" || String.Equals(flag, "false", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(flag, "нет", StringComparison.OrdinalIgnoreCase))
+                return "0";
+            if (flag.Length == 0)
+                return "1";
+            return "1";
+        }
+
         private static string[] NormalizeFuelValues(string[] values)
         {
             if (values == null || values.Length < 5)
                 return values;
             string[] row = values;
-            if (row.Length > 7)
+            if (row.Length > 8)
             {
-                row = new string[7];
-                for (int i = 0; i < 7; i++)
+                row = new string[8];
+                for (int i = 0; i < 8; i++)
                     row[i] = i < values.Length ? values[i] : "";
             }
             if (row.Length > 5)
@@ -1876,6 +1906,8 @@ namespace CarExpenses
                         row[5] = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
                 }
             }
+            if (row.Length > 7)
+                row[7] = NormalizeFullTankFlag(row[7]);
             int length = row.Length;
             while (length > 5)
             {
@@ -1903,6 +1935,14 @@ namespace CarExpenses
                 MessageBox.Show("Не удалось сохранить данные: " + ex.Message, "Ошибка");
                 return false;
             }
+        }
+
+        private void ShowAbout(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Alfa 156\r\nВерсия 1.13.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Полный бак: частичные заправки не входят в расчёт л/100 км.",
+                "О программе");
         }
 
         private static MenuItem CreateMenuItem(string text)

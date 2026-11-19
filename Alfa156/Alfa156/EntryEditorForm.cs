@@ -67,6 +67,12 @@ namespace CarExpenses
                 string[] values = new string[inputs.Length];
                 for (int i = 0; i < inputs.Length; i++)
                 {
+                    CheckBox check = inputs[i] as CheckBox;
+                    if (check != null && fields[i].Kind == "check")
+                    {
+                        values[i] = check.Checked ? "1" : "0";
+                        continue;
+                    }
                     ComboBox combo = inputs[i] as ComboBox;
                     if (combo != null)
                         values[i] = combo.SelectedItem == null ? "" : combo.SelectedItem.ToString();
@@ -102,7 +108,17 @@ namespace CarExpenses
             Controls.Add(label);
 
             Control input;
-            if (fields[index].Options != null)
+            if (fields[index].Kind == "check")
+            {
+                CheckBox check = new CheckBox();
+                check.Text = fields[index].Label;
+                check.Checked = fields[index].Value != "0";
+                check.BackColor = BackColor;
+                check.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                input = check;
+                labels[index].Text = "";
+            }
+            else if (fields[index].Options != null)
             {
                 ComboBox combo = new ComboBox();
                 combo.DropDownStyle = ComboBoxStyle.DropDownList;
