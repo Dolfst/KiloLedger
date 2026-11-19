@@ -71,7 +71,8 @@ namespace CarExpenses
             if (raw.Length == 0)
                 return TypeCustom;
             string lower = raw.ToLower(CultureInfo.InvariantCulture);
-            if (lower == TypeInsurance || lower == "страховка" || lower == "осаго")
+            if (lower == TypeInsurance || lower == "страховка" || lower == "osago" ||
+                lower == "осago" || lower == "осаго")
                 return TypeInsurance;
             if (lower == TypeInspection || lower == "техосмотр" || lower == "то")
                 return TypeInspection;

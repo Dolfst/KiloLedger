@@ -76,6 +76,15 @@ def main() -> int:
     if f'version = "{version}"' not in android:
         errors.append(f"Android MainActivity: missing version {version}")
 
+    for rel in (
+        "Alfa156/Alfa156/DateReminders.cs",
+        "Alfa156.Android/DateReminders.cs",
+        "Alfa156.Desktop/Data/DateReminders.cs",
+    ):
+        text = (ROOT / rel).read_text()
+        if 'lower == "osago"' not in text or 'lower == "осago"' not in text:
+            errors.append(f"{rel}: missing cross-platform OSAGO aliases")
+
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
         "AddDateReminder",

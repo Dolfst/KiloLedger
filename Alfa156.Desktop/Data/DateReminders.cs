@@ -33,7 +33,8 @@ namespace Alfa156.Desktop.Data
             if (raw.Length == 0)
                 return TypeCustom;
             string lower = raw.ToLowerInvariant();
-            if (lower == TypeInsurance || lower == "страховка" || lower == "осаго")
+            if (lower == TypeInsurance || lower == "страховка" || lower == "osago" ||
+                lower == "осago" || lower == "осаго")
                 return TypeInsurance;
             if (lower == TypeInspection || lower == "техосмотр" || lower == "то")
                 return TypeInspection;

@@ -56,7 +56,8 @@ internal static class DateReminders
         if (raw.Length == 0)
             return TypeCustom;
         string lower = raw.ToLowerInvariant();
-        if (lower == TypeInsurance || lower == "страховка" || lower == "осago" || lower == "осаго")
+        if (lower == TypeInsurance || lower == "страховка" || lower == "osago" ||
+            lower == "осago" || lower == "осаго")
             return TypeInsurance;
         if (lower == TypeInspection || lower == "техосмотр" || lower == "то" || lower == "inspection")
             return TypeInspection;
