@@ -3,15 +3,16 @@
 Приложения для **КПК (Windows Mobile)**, **Android** и **ПК (Windows)** с общим форматом данных, общим стилем и единым логотипом (красный круг с машинкой).
 
 
-## Что нового в 1.27.0
+## Что нового в 1.28.0
 
-- **Мастер «Импорт»** на Desktop: ZIP / папка `.dat` / CSV / Excel → предпросмотр счётчиков (авто, заправки, ремонт, прочие, коммуналка…) → применение с копией `Safety_`. Шаблоны CSV (пустые заголовки fuel/repairs/expenses).
-- **Android «Импорт копии»**: расширенный предпросмотр (прочие, шаблоны, напоминания, чеки) перед заменой.
+- **Стабилизация** после быстрого роста 1.25–1.27: smoke-проверки в CI (`build/verify_*.py`), CF-guard для КПК, полный набор `.dat` в ZIP (включая `templates.dat` / `reminders.dat` / `cars-meta.dat`).
+- Подтверждены layout заправок (`fullTank` / `purpose` / `id`), tombstones и сравнение периодов на sample `.dat`.
 
 ## История версий
 
+- **1.28.0** — smoke verifies в CI; CF API guard; полный ZIP backup list; полировка после 1.25–1.27.
 - **1.27.0** — мастер импорта на Desktop; расширенный предпросмотр импорта на Android; шаблоны CSV.
-- **1.26.0** — напоминания по дате (`reminders.dat`); `reminder_warn_days`.
+- **1.26.0** — напоминания по дате (`reminders.dat`); `reminder_warn_days` (по умолч. 14); срок в сводке/уведомлениях.
 - **1.25.0** — шаблоны записей (`templates.dat`); избранный авто (`default_car`).
 - **1.24.0** — сравнение периодов в сводке (Δ топливо/ремонт/прочие/коммунальные и /км).
 - **1.23.0** — напоминание о копии (`backup_remind_days` / `last_backup_utc`); полный экспорт ZIP; подтверждение SD-копии на КПК.
@@ -176,11 +177,11 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 ### Скачать готовые сборки
 
-Текущая версия: **1.27.0** (файл [`VERSION`](VERSION)).
+Текущая версия: **1.28.0** (файл [`VERSION`](VERSION)).
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.27.0.apk` (Android), `Alfa156-1.27.0-Desktop.exe` (ПК), `Alfa156-1.27.0-KPK.exe` / `Alfa156-1.27.0-KPK.zip` (КПК).
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.28.0.apk` (Android), `Alfa156-1.28.0-Desktop.exe` (ПК), `Alfa156-1.28.0-KPK.exe` / `Alfa156-1.28.0-KPK.zip` (КПК).
 
-См. **История версий** выше (1.9.0 → 1.27.0).
+См. **История версий** выше (1.9.0 → 1.28.0). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
 
 **Обновление КПК:** скопируйте свежий `Alfa156-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
-ID_RE = re.compile(r"^[cfrukepx]_[0-9a-fA-F]{8,}$")
+ID_RE = re.compile(r"^[cfrukepxmnt]_[0-9a-fA-F]{8,}$")
 
 
 def looks_like_id(value: str) -> bool:

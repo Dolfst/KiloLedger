@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.27.0";
+        private const string AppVersion = "1.28.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()

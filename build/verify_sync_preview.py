@@ -15,8 +15,16 @@ def must_contain(path: Path, needle: str) -> None:
         raise SystemExit(f"missing {needle!r} in {path.relative_to(ROOT)}")
 
 
+def version_at_least(min_major: int, min_minor: int) -> None:
+    raw = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    parts = raw.split(".")
+    major, minor = int(parts[0]), int(parts[1])
+    if major < min_major or (major == min_major and minor < min_minor):
+        raise SystemExit(f"VERSION {raw!r} expected >= {min_major}.{min_minor}.0")
+
+
 def main() -> int:
-    must_contain(ROOT / "VERSION", "1.17.0")
+    version_at_least(1, 16)
     must_contain(ROOT / "Alfa156" / "Alfa156" / "SyncMerge.cs", "BuildPreview")
     must_contain(ROOT / "Alfa156.Desktop" / "Data" / "SyncMerge.cs", "BuildPreview")
     must_contain(ROOT / "Alfa156.Android" / "ExpenseSyncService.cs", "BuildPreview")
@@ -28,8 +36,8 @@ def main() -> int:
     must_contain(ROOT / "Alfa156.Android" / "MainActivity.cs", "Применить")
     must_contain(ROOT / "Alfa156" / "Alfa156" / "RecordIds.cs", "FormatPreview")
     must_contain(ROOT / "Alfa156.Android" / "RecordIds.cs", "MaxExamples = 15")
-    must_contain(ROOT / "README.md", "Что нового в 1.16.0")
-    must_contain(ROOT / "README.md", "Что нового в 1.17.0")
+    must_contain(ROOT / "README.md", "**1.16.0**")
+    must_contain(ROOT / "README.md", "**1.17.0**")
     must_contain(ROOT / "Alfa156.Android" / "MainActivity.cs", "ShowGlobalSearch")
     must_contain(ROOT / "google-sync" / "Alfa156Sync.gs", "EXPENSE_PREFIX")
 

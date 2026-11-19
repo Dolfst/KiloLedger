@@ -192,7 +192,7 @@ public sealed class MainActivity : Activity
                 if (data == null)
                     return;
                 ExportTo(data.Data);
-                ShowMessage("Полный экспорт ZIP сохранён (.dat + Receipts/ + settings).");
+                ShowMessage("Полный экспорт ZIP сохранён (.dat включая templates/reminders/cars-meta + Receipts/).");
             }
             else if (requestCode == SummaryExportRequest)
             {
@@ -3665,6 +3665,10 @@ public sealed class MainActivity : Activity
         if (destination == null)
             throw new InvalidDataException("Не выбрано место сохранения ZIP-файла.");
         ExpenseDataStore.EnsureRepairCategories(DataDirectory);
+        ToSettings.EnsureFile(DataDirectory);
+        CarsMeta.EnsureFile(DataDirectory);
+        RecordTemplates.EnsureFile(DataDirectory);
+        DateReminders.EnsureFile(DataDirectory);
         RecordIds.EnsureDeletedFile(DataDirectory);
         ExpenseDataCodec.ValidateDirectory(DataDirectory);
         Stream output = ContentResolver.OpenOutputStream(destination);
@@ -4099,7 +4103,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.27.0";
+        string version = "1.28.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);

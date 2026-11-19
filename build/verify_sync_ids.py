@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 import uuid
 
-ID_RE = re.compile(r"^[cfrukepx]_[0-9a-fA-F]{8,}$")
+# Prefixes: cars/fuel/repairs/utilities/cars-meta/expenses/… + templates(t_)/reminders(n_)
+ID_RE = re.compile(r"^[cfrukepxmnt]_[0-9a-fA-F]{8,}$")
 
 
 def looks_like_id(value: str) -> bool:
@@ -150,9 +151,65 @@ def test_fuel_optional_fields_not_confused_with_id():
     assert not looks_like_id("Shell")
 
 
+def parse_tombstones(lines: list[str]) -> set[str]:
+    """deleted.dat lines: type|id|utc — return set of ids."""
+    ids: set[str] = set()
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) >= 2 and parts[1]:
+            ids.add(parts[1])
+    return ids
+
+
+def test_tombstone_round_trip_multi_type():
+    # Fuel deleted on A, still present on B → merge drops it.
+    fuel_id = "f_dead0001"
+    local_fuel: list[list[str]] = []
+    remote_fuel = [with_id(["2024-01-01", "Alfa", "100000", "40", "100"], fuel_id)]
+    deleted = parse_tombstones([f"fuel|{fuel_id}|2026-11-01T00:00:00Z"])
+    merged, removed = merge(local_fuel, remote_fuel, deleted, [0, 1, 2])
+    assert merged == []
+    assert removed == 1
+
+    # Expense tombstone (type expense) + natural key without id on remote.
+    exp_id = "e_dead0002"
+    local_exp = [with_id(["2024-02-01", "Alfa", "Мойка", "мойка", "20", ""], exp_id)]
+    remote_exp = [["2024-02-01", "Alfa", "Мойка", "мойка", "20", ""]]
+    deleted_exp = {exp_id}
+    # Local still has row but id is tombstoned → drop
+    merged_exp, removed_exp = merge([], remote_exp, deleted_exp, [0, 1, 2, 3])
+    # remote got an id assigned; without matching tombstone id it would survive —
+    # but when local had the id and deleted it, remote natural-key match uses local id
+    local_after_delete: list[list[str]] = []
+    remote_with_id = [with_id(["2024-02-01", "Alfa", "Мойка", "мойка", "20", ""], exp_id)]
+    merged2, removed2 = merge(local_after_delete, remote_with_id, deleted_exp, [0, 1, 2, 3])
+    assert merged2 == [] and removed2 == 1
+
+    # Reminder / template / car-meta id prefixes stay recognizable
+    assert looks_like_id("n_abcd1234")
+    assert looks_like_id("t_abcd1234")
+    assert looks_like_id("k_abcd1234")
+    assert looks_like_id("e_abcd1234")
+    assert not looks_like_id("insurance")
+    assert not looks_like_id("Личный")
+
+
+def test_both_sides_delete_idempotent():
+    rid = "f_abcdef01"
+    deleted = {rid}
+    merged, removed = merge([], [], deleted, [0, 1, 2])
+    assert merged == [] and removed == 0
+    # remote resurrect attempt
+    remote = [with_id(["2024-01-01", "Alfa", "1", "1", "1"], rid)]
+    merged2, removed2 = merge([], remote, deleted, [0, 1, 2])
+    assert merged2 == [] and removed2 == 1
+
+
 if __name__ == "__main__":
     test_old_fuel_gets_id()
     test_delete_propagates()
     test_natural_key_fallback()
     test_fuel_optional_fields_not_confused_with_id()
+    test_tombstone_round_trip_multi_type()
+    test_both_sides_delete_idempotent()
     print("verify_sync_ids: OK")

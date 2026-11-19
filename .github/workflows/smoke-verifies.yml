@@ -1,0 +1,46 @@
+name: Smoke verifies
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Alfa156/**"
+      - "Alfa156.Android/**"
+      - "Alfa156.Desktop/**"
+      - "build/**"
+      - "VERSION"
+      - "README.md"
+      - "google-sync/**"
+      - ".github/workflows/smoke-verifies.yml"
+  pull_request:
+    paths:
+      - "Alfa156/**"
+      - "Alfa156.Android/**"
+      - "Alfa156.Desktop/**"
+      - "build/**"
+      - "VERSION"
+      - "README.md"
+      - "google-sync/**"
+      - ".github/workflows/smoke-verifies.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-verifies-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run smoke verifies
+        run: python3 build/run_verifies.py

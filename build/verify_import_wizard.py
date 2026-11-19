@@ -70,7 +70,7 @@ def main() -> int:
 
     mainform = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
-        'AppVersion = "1.27.0"',
+        f'AppVersion = "{version}"',
         "OpenImportWizard",
         "ExportCsvTemplates",
         'MakeButton("Импорт…"',
@@ -81,7 +81,7 @@ def main() -> int:
 
     android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
     for needle in (
-        'version = "1.27.0"',
+        f'version = "{version}"',
         'SetTitle("Импорт копии")',
         "Предпросмотр импорта",
         "Прочие расходы:",
@@ -93,17 +93,19 @@ def main() -> int:
             errors.append(f"Android MainActivity: missing {needle!r}")
 
     display = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
-    if "<ApplicationDisplayVersion>1.27.0</ApplicationDisplayVersion>" not in display:
-        errors.append("Android csproj: ApplicationDisplayVersion not 1.27.0")
-    if "<ApplicationVersion>27</ApplicationVersion>" not in display:
-        errors.append("Android csproj: ApplicationVersion not 27")
+    if f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>" not in display:
+        errors.append(f"Android csproj: ApplicationDisplayVersion not {version}")
+    # ApplicationVersion tracks minor for 1.x
+    minor = int(version.split(".")[1])
+    if f"<ApplicationVersion>{minor}</ApplicationVersion>" not in display:
+        errors.append(f"Android csproj: ApplicationVersion not {minor}")
 
     asm = (ROOT / "Alfa156.Desktop/Properties/AssemblyInfo.cs").read_text()
-    if 'AssemblyVersion("1.27.0.0")' not in asm:
-        errors.append("Desktop AssemblyInfo: not 1.27.0.0")
+    if f'AssemblyVersion("{version}.0")' not in asm:
+        errors.append(f"Desktop AssemblyInfo: not {version}.0")
 
     readme = (ROOT / "README.md").read_text()
-    if "1.27.0" not in readme or "Мастер «Импорт»" not in readme:
+    if "1.27.0" not in readme or "мастер импорта" not in readme.lower():
         errors.append("README.md: missing 1.27.0 import wizard notes")
 
     if errors:
