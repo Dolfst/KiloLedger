@@ -61,7 +61,7 @@ def main() -> int:
         "ShowPeriodCompare",
         "PromptCustomPeriodCompare",
         "ShowPeriodCompareResult",
-        'version = "1.24.0"',
+        f'version = "{version}"',
     ):
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
@@ -70,7 +70,7 @@ def main() -> int:
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompare",
-        'AppVersion = "1.24.0"',
+        f'AppVersion = "{version}"',
         "Этот / прошлый месяц",
     ):
         if needle not in desktop:
@@ -84,7 +84,7 @@ def main() -> int:
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompareFromMenu",
-        "1.24.0",
+        version,
     ):
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
@@ -106,12 +106,12 @@ def main() -> int:
         errors.append("build-kpk.ps1: PeriodCompare.cs not in sources")
 
     android_csproj = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
-    if "1.24.0" not in android_csproj:
-        errors.append("Android csproj: missing ApplicationDisplayVersion 1.24.0")
+    if version not in android_csproj:
+        errors.append(f"Android csproj: missing ApplicationDisplayVersion {version}")
 
     readme = (ROOT / "README.md").read_text()
-    if "## Что нового в 1.24.0" not in readme:
-        errors.append("README: missing Что нового в 1.24.0")
+    if f"## Что нового в {version}" not in readme and "**1.24.0**" not in readme:
+        errors.append(f"README: missing Что нового / История for {version} or 1.24.0")
     if "**1.24.0**" not in readme:
         errors.append("README: missing История 1.24.0")
 

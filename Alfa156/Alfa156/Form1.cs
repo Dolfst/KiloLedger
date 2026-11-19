@@ -49,7 +49,8 @@ namespace CarExpenses
             {
                 MessageBox.Show("Не удалось создать ярлык в меню «Пуск»: " + ex.Message, "Предупреждение");
             }
-            currentCar = DataStore.LoadCarNames()[0];
+            List<string> startCars = DataStore.LoadCarNames();
+            currentCar = ToSettings.ResolvePreferredCar(startCars, startCars[0]);
             Resize += new EventHandler(FormResized);
             ShowHome();
             MaybeShowOnboardingTip();
@@ -118,6 +119,7 @@ namespace CarExpenses
             MenuItem cars = CreateMenuItem("Авто");
             cars.MenuItems.Add(CreateMenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
             cars.MenuItems.Add(CreateMenuItem("Свойства", new EventHandler(EditCarPassport)));
+            cars.MenuItems.Add(CreateMenuItem("Избранный", new EventHandler(SetFavoriteCarFromMenu)));
             menu.MenuItems.Add(cars);
             MenuItem data = CreateMenuItem("Данные");
             data.MenuItems.Add(CreateMenuItem("Создать копию в памяти КПК", new EventHandler(CreateLocalBackupFromMenu)));
@@ -135,6 +137,8 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             actionsHome.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
@@ -296,6 +300,7 @@ namespace CarExpenses
             MainMenu menu = new MainMenu();
             MenuItem actions = CreateMenuItem("Действия");
             actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCurrentRecord)));
+            actions.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
             actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
@@ -1614,6 +1619,7 @@ namespace CarExpenses
             actions.MenuItems.Add(CreateMenuItem("Выбрать", new EventHandler(SelectCar)));
             actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCar)));
             actions.MenuItems.Add(CreateMenuItem("Свойства", new EventHandler(EditCarPassportFromList)));
+            actions.MenuItems.Add(CreateMenuItem("Избранный", new EventHandler(SetFavoriteCarFromMenu)));
             actions.MenuItems.Add(CreateMenuItem("Переименовать", new EventHandler(RenameCar)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCar)));
             menu.MenuItems.Add(actions);
@@ -2325,7 +2331,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.24.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.25.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Сравнение периодов: этот месяц vs прошлый.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
@@ -2842,6 +2848,322 @@ namespace CarExpenses
                     MessageBox.Show("Напоминание: если копии нет " +
                         ((int)value).ToString(CultureInfo.InvariantCulture) + " дн. и дольше.",
                         "Напоминание");
+            }
+        }
+
+        private void SetFavoriteCarFromMenu(object sender, EventArgs e)
+        {
+            string name = currentCar;
+            if (recordList != null && recordList.SelectedItem != null &&
+                screenType == "cars")
+                name = recordList.SelectedItem.ToString();
+            if (name == null || name.Length == 0)
+            {
+                MessageBox.Show("Выберите автомобиль.", "Авто");
+                return;
+            }
+            if (!TrySave(delegate { ToSettings.SetDefaultCar(name); }))
+                return;
+            currentCar = name;
+            MessageBox.Show("Избранный автомобиль: " + name, "Авто");
+        }
+
+        private void EditDefaultCar(object sender, EventArgs e)
+        {
+            List<string> cars = DataStore.LoadCarNames();
+            string current = ToSettings.GetDefaultCar();
+            string[] options = new string[cars.Count + 1];
+            options[0] = "(не задан)";
+            for (int i = 0; i < cars.Count; i++)
+                options[i + 1] = cars[i];
+            string selected = current.Length > 0 ? current : options[0];
+            using (EntryEditorForm editor = new EntryEditorForm("Авто по умолчанию",
+                new EntryField[] {
+                    new EntryField("Автомобиль", selected, options, true)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                string name = values[0] == "(не задан)" ? "" : values[0];
+                if (!TrySave(delegate { ToSettings.SetDefaultCar(name); }))
+                    return;
+                if (name.Length > 0)
+                    currentCar = name;
+                MessageBox.Show(name.Length == 0
+                    ? "Авто по умолчанию сброшен."
+                    : "Авто по умолчанию: " + name, "Авто по умолчанию");
+                if (screenType == "home")
+                    ShowHome();
+            }
+        }
+
+        private void ManageTemplatesFromMenu(object sender, EventArgs e)
+        {
+            string[] typeOptions = new string[] { "Заправка", "Ремонт", "Прочий расход" };
+            string[] typeKeys = new string[] {
+                RecordTemplates.TypeFuel, RecordTemplates.TypeRepair, RecordTemplates.TypeExpense
+            };
+            using (EntryEditorForm pick = new EntryEditorForm("Шаблоны",
+                new EntryField[] {
+                    new EntryField("Тип", typeOptions[0], typeOptions, true)
+                }))
+            {
+                if (pick.ShowDialog() != DialogResult.OK)
+                    return;
+                string chosen = pick.Values[0];
+                string type = RecordTemplates.TypeFuel;
+                for (int i = 0; i < typeOptions.Length; i++)
+                    if (typeOptions[i] == chosen)
+                        type = typeKeys[i];
+                ShowTemplatesForType(type);
+            }
+        }
+
+        private void ShowTemplatesForType(string type)
+        {
+            List<RecordTemplate> list = RecordTemplates.ListByType(type);
+            StringBuilder sb = new StringBuilder();
+            sb.Append("Шаблоны · ").Append(RecordTemplates.TypeLabelRu(type));
+            sb.Append("\r\n\r\n");
+            if (list.Count == 0)
+                sb.Append("Пока нет шаблонов.\r\n");
+            else
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (i > 0) sb.Append("\r\n");
+                    sb.Append(i + 1).Append(". ").Append(list[i].Name);
+                }
+            }
+            using (EntryEditorForm editor = new EntryEditorForm("Шаблоны",
+                new EntryField[] {
+                    new EntryField("Действие", "Добавить из шаблона",
+                        new string[] { "Добавить из шаблона", "Сохранить текущую как шаблон", "Удалить шаблон" }, true),
+                    new EntryField("Номер / имя", list.Count > 0 ? list[0].Name : "", "text", false)
+                }))
+            {
+                MessageBox.Show(sb.ToString(), "Шаблоны");
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string action = editor.Values[0];
+                string name = editor.Values[1] == null ? "" : editor.Values[1].Trim();
+                if (action == "Удалить шаблон")
+                {
+                    if (name.Length == 0)
+                    {
+                        MessageBox.Show("Укажите имя шаблона.", "Шаблоны");
+                        return;
+                    }
+                    if (!TrySave(delegate { RecordTemplates.Delete(type, name); }))
+                        return;
+                    MessageBox.Show("Удалено: " + name, "Шаблоны");
+                    return;
+                }
+                if (action == "Сохранить текущую как шаблон")
+                {
+                    PromptSaveTemplate(type);
+                    return;
+                }
+                // Добавить из шаблона
+                RecordTemplate chosen = null;
+                for (int i = 0; i < list.Count; i++)
+                    if (String.Compare(list[i].Name, name, true,
+                            System.Globalization.CultureInfo.InvariantCulture) == 0)
+                        chosen = list[i];
+                if (chosen == null && list.Count > 0 && name.Length == 0)
+                    chosen = list[0];
+                if (chosen == null)
+                {
+                    MessageBox.Show("Шаблон не найден.", "Шаблоны");
+                    return;
+                }
+                ApplyTemplate(chosen);
+            }
+        }
+
+        private void PromptSaveTemplate(string type)
+        {
+            if (type == RecordTemplates.TypeFuel)
+                SaveFuelAsTemplate();
+            else if (type == RecordTemplates.TypeRepair)
+                SaveRepairAsTemplate();
+            else
+                SaveExpenseAsTemplate();
+        }
+
+        private void SaveFuelAsTemplate()
+        {
+            string[] cars = DataStore.LoadCarNames().ToArray();
+            using (EntryEditorForm editor = new EntryEditorForm("Шаблон заправки",
+                new EntryField[] {
+                    new EntryField("Название шаблона", "", "text", true),
+                    new EntryField("Автомобиль", currentCar, cars, true),
+                    new EntryField("Пробег, км", LastCarMileage(currentCar), "number", false),
+                    new EntryField("Литры", "", "number", false),
+                    new EntryField("Стоимость", "", "number", false),
+                    new EntryField("Цена за литр", LastFuelPricePerLiter(currentCar), "number", false),
+                    new EntryField("АЗС / комментарий", "", "text", false),
+                    new EntryField("Полный бак (1/0)", "1", "text", false),
+                    new EntryField("Цель", "", "text", false)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] v = editor.Values;
+                RecordTemplate item = new RecordTemplate();
+                item.Type = RecordTemplates.TypeFuel;
+                item.Name = v[0];
+                item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8] };
+                if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
+                    return;
+                MessageBox.Show("Шаблон сохранён.", "Шаблоны");
+            }
+        }
+
+        private void SaveRepairAsTemplate()
+        {
+            string[] cars = DataStore.LoadCarNames().ToArray();
+            string[] cats = DataStore.LoadRepairCategories();
+            using (EntryEditorForm editor = new EntryEditorForm("Шаблон ремонта",
+                new EntryField[] {
+                    new EntryField("Название шаблона", "", "text", true),
+                    new EntryField("Автомобиль", currentCar, cars, true),
+                    new EntryField("Пробег, км", LastCarMileage(currentCar), "number", false),
+                    new EntryField("Категория", cats.Length > 0 ? cats[0] : "", cats, true),
+                    new EntryField("Товар", "", "text", false),
+                    new EntryField("Наименование", "", "text", false),
+                    new EntryField("Кол-во", "1", "number", false),
+                    new EntryField("Сумма", "", "number", false),
+                    new EntryField("Комментарий", "", "text", false)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] v = editor.Values;
+                RecordTemplate item = new RecordTemplate();
+                item.Type = RecordTemplates.TypeRepair;
+                item.Name = v[0];
+                item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8] };
+                if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
+                    return;
+                MessageBox.Show("Шаблон сохранён.", "Шаблоны");
+            }
+        }
+
+        private void SaveExpenseAsTemplate()
+        {
+            string[] cars = DataStore.LoadCarNames().ToArray();
+            string[] cats = DataStore.LoadExpenseCategories();
+            using (EntryEditorForm editor = new EntryEditorForm("Шаблон прочего",
+                new EntryField[] {
+                    new EntryField("Название шаблона", "", "text", true),
+                    new EntryField("Автомобиль", currentCar, cars, true),
+                    new EntryField("Категория", cats.Length > 0 ? cats[0] : "", cats, true),
+                    new EntryField("Название", "", "text", false),
+                    new EntryField("Сумма", "", "number", false),
+                    new EntryField("Комментарий", "", "text", false)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] v = editor.Values;
+                RecordTemplate item = new RecordTemplate();
+                item.Type = RecordTemplates.TypeExpense;
+                item.Name = v[0];
+                item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5] };
+                if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
+                    return;
+                MessageBox.Show("Шаблон сохранён.", "Шаблоны");
+            }
+        }
+
+        private void ApplyTemplate(RecordTemplate chosen)
+        {
+            string date = DateTime.Today.ToString("yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture);
+            string[] entity = RecordTemplates.BuildEntityRow(chosen, date, currentCar);
+            if (chosen.Type == RecordTemplates.TypeFuel)
+            {
+                // Open fuel editor with template values via existing AddFuel flow fields
+                string[] cars = DataStore.LoadCarNames().ToArray();
+                string km = entity.Length > 2 ? entity[2] : LastCarMileage(currentCar);
+                string liters = entity.Length > 3 ? entity[3] : "";
+                string cost = entity.Length > 4 ? entity[4] : "";
+                string price = entity.Length > 5 ? entity[5] : LastFuelPricePerLiter(currentCar);
+                string comment = entity.Length > 6 ? entity[6] : "";
+                string full = entity.Length > 7 && entity[7].Length > 0 ? entity[7] : "1";
+                string purpose = entity.Length > 8 ? entity[8] : "";
+                using (EntryEditorForm editor = new EntryEditorForm("Заправка из шаблона",
+                    new EntryField[] {
+                        new EntryField("Дата", date, "date", true),
+                        new EntryField("Автомобиль", currentCar, cars, true),
+                        new EntryField("Пробег, км", km, "number", true),
+                        new EntryField("Литры", liters, "number", true),
+                        new EntryField("Стоимость", cost, "number", true),
+                        new EntryField("Цена за литр", price, "number", false),
+                        new EntryField("АЗС / комментарий", comment, "text", false),
+                        new EntryField("Полный бак (1/0)", full, "text", false),
+                        new EntryField("Цель", purpose, "text", false)
+                    }))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.AddFuel(NormalizeFuelValues(values)); }))
+                        return;
+                    currentCar = values[1];
+                    MessageBox.Show("Заправка добавлена.", "Шаблоны");
+                }
+            }
+            else if (chosen.Type == RecordTemplates.TypeRepair)
+            {
+                string[] cars = DataStore.LoadCarNames().ToArray();
+                string[] cats = DataStore.LoadRepairCategories();
+                using (EntryEditorForm editor = new EntryEditorForm("Ремонт из шаблона",
+                    new EntryField[] {
+                        new EntryField("Дата", date, "date", true),
+                        new EntryField("Автомобиль", currentCar, cars, true),
+                        new EntryField("Пробег, км", entity.Length > 2 ? entity[2] : LastCarMileage(currentCar), "number", true),
+                        new EntryField("Категория", entity.Length > 3 ? entity[3] : (cats.Length > 0 ? cats[0] : ""), cats, true),
+                        new EntryField("Товар", entity.Length > 4 ? entity[4] : "", "text", false),
+                        new EntryField("Наименование", entity.Length > 5 ? entity[5] : "", "text", false),
+                        new EntryField("Кол-во", entity.Length > 6 ? entity[6] : "1", "number", true),
+                        new EntryField("Сумма", entity.Length > 7 ? entity[7] : "", "number", true),
+                        new EntryField("Комментарий", entity.Length > 8 ? entity[8] : "", "text", false)
+                    }))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.AddRepair(values); }))
+                        return;
+                    currentCar = values[1];
+                    MessageBox.Show("Ремонт добавлен.", "Шаблоны");
+                }
+            }
+            else
+            {
+                string[] cars = DataStore.LoadCarNames().ToArray();
+                string[] cats = DataStore.LoadExpenseCategories();
+                using (EntryEditorForm editor = new EntryEditorForm("Прочее из шаблона",
+                    new EntryField[] {
+                        new EntryField("Дата", date, "date", true),
+                        new EntryField("Автомобиль", currentCar, cars, true),
+                        new EntryField("Категория", entity.Length > 2 ? entity[2] : (cats.Length > 0 ? cats[0] : ""), cats, true),
+                        new EntryField("Название", entity.Length > 3 ? entity[3] : "", "text", true),
+                        new EntryField("Сумма", entity.Length > 4 ? entity[4] : "", "number", true),
+                        new EntryField("Комментарий", entity.Length > 5 ? entity[5] : "", "text", false)
+                    }))
+                {
+                    if (editor.ShowDialog() != DialogResult.OK)
+                        return;
+                    string[] values = editor.Values;
+                    if (!TrySave(delegate { DataStore.AddExpense(values); }))
+                        return;
+                    currentCar = values[1];
+                    MessageBox.Show("Прочий расход добавлен.", "Шаблоны");
+                }
             }
         }
 

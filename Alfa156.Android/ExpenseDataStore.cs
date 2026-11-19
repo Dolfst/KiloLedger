@@ -311,6 +311,7 @@ internal static class ExpenseDataStore
                 new List<string[]>());
         ToSettings.EnsureFile(directory);
         CarsMeta.EnsureFile(directory);
+        RecordTemplates.EnsureFile(directory);
     }
 
     internal static void AddCar(string directory, string name)
@@ -505,6 +506,7 @@ internal static class ExpenseDataStore
         EnsureExpenseCategories(directory);
         ToSettings.EnsureFile(directory);
         CarsMeta.EnsureFile(directory);
+        RecordTemplates.EnsureFile(directory);
         ExpenseDataCodec.ValidateDirectory(directory);
     }
 
@@ -728,6 +730,7 @@ internal static class ExpenseDataStore
         else
             ToSettings.EnsureFile(destination);
         CopyOptionalFile(source, destination, ExpenseDataCodec.CarsMetaFile, true);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.TemplatesFile, true);
         string deletedSource = Path.Combine(source, RecordIds.DeletedFile);
         string deletedDestination = Path.Combine(destination, RecordIds.DeletedFile);
         if (File.Exists(deletedSource))
@@ -738,6 +741,7 @@ internal static class ExpenseDataStore
         EnsureExpenseCategories(destination);
         ToSettings.EnsureFile(destination);
         CarsMeta.EnsureFile(destination);
+        RecordTemplates.EnsureFile(destination);
         // Replace Receipts/ only when the source snapshot includes that folder
         // (ZIP/копия с фото). Старые .dat-импорты без Receipts/ не стирают чеки.
         string receiptsSource = ReceiptStore.GetFolder(source);

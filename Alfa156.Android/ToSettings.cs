@@ -29,6 +29,7 @@ internal static class ToSettings
     internal const string LastBackupUtcKey = "last_backup_utc";
     internal const string LastBackupNagDateKey = "last_backup_nag_date";
     internal const int DefaultBackupRemindDays = 7;
+    internal const string DefaultCarKey = "default_car";
     private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
     private const string NagDateFormat = "yyyy-MM-dd";
 
@@ -145,6 +146,47 @@ internal static class ToSettings
         map[BudgetMonthKey] = Format(monthLimit);
         map[BudgetWarnPctKey] = Format(warnPct);
         WriteMap(directory, map);
+    }
+
+    /// <summary>Favorite/default car name; empty if unset.</summary>
+    internal static string GetDefaultCar(string directory)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        string name;
+        if (!map.TryGetValue(DefaultCarKey, out name) || name == null)
+            return "";
+        return name.Trim();
+    }
+
+    internal static void SetDefaultCar(string directory, string carName)
+    {
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
+        map[DefaultCarKey] = (carName ?? "").Trim();
+        WriteMap(directory, map);
+    }
+
+    /// <summary>Prefer default_car when present in cars; else current; else first.</summary>
+    internal static string ResolvePreferredCar(string directory, List<string> cars, string current)
+    {
+        if (cars == null || cars.Count == 0)
+            return current ?? "";
+        string preferred = GetDefaultCar(directory);
+        if (preferred.Length > 0)
+        {
+            for (int i = 0; i < cars.Count; i++)
+                if (String.Equals(cars[i], preferred, StringComparison.OrdinalIgnoreCase))
+                    return cars[i];
+        }
+        if (!String.IsNullOrEmpty(current))
+        {
+            for (int i = 0; i < cars.Count; i++)
+                if (String.Equals(cars[i], current, StringComparison.OrdinalIgnoreCase))
+                    return cars[i];
+        }
+        return cars[0];
     }
 
     /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>

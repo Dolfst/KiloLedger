@@ -18,6 +18,7 @@ internal static class ExpenseDataCodec
     internal const string ExpenseCategoriesFile = "expense-categories.dat";
     internal const string SettingsFile = "settings.dat";
     internal const string CarsMetaFile = CarsMeta.FileName;
+    internal const string TemplatesFile = RecordTemplates.FileName;
 
     internal static readonly string[] DefaultExpenseCategories =
     {
@@ -27,7 +28,8 @@ internal static class ExpenseDataCodec
     internal static readonly string[] DataFiles =
     {
         "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
-        ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, RecordIds.DeletedFile
+        ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
+        RecordIds.DeletedFile
     };
 
     internal static bool IsDataFile(string name)
@@ -198,6 +200,15 @@ internal static class ExpenseDataCodec
                 if (!CarsMeta.IsValidRow(meta[i]))
                     throw new InvalidDataException("Неверный формат записи в " + CarsMetaFile + ".");
         }
+
+        string templatesPath = Path.Combine(directory, TemplatesFile);
+        if (File.Exists(templatesPath))
+        {
+            List<string[]> templates = ReadRows(templatesPath);
+            for (int i = 0; i < templates.Count; i++)
+                if (!RecordTemplates.IsValidRow(templates[i]))
+                    throw new InvalidDataException("Неверный формат записи в " + TemplatesFile + ".");
+        }
     }
 
     internal static bool IsValidCategoryRow(string[] row)
@@ -227,6 +238,9 @@ internal static class ExpenseDataCodec
             return length == 6 || length == 7;
         if (fileName == CarsMetaFile)
             return length >= 1 && length <= 7;
+        // templates: type|name|payload...|id — fuel/repair max 11, expense max 8
+        if (fileName == TemplatesFile)
+            return length >= 3 && length <= 11;
         return false;
     }
 

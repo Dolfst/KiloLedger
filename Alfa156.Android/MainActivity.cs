@@ -374,6 +374,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditCurrency(); });
                 labels.Add("Бюджет месяца");
                 actions.Add(delegate { EditBudget(); });
+                labels.Add("Авто по умолчанию");
+                actions.Add(delegate { EditDefaultCar(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Копия на телефоне");
@@ -560,8 +562,7 @@ public sealed class MainActivity : Activity
 
         ExpenseDataStore.EnsureRepairCategories(DataDirectory);
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
-        if (cars.IndexOf(currentCar) < 0)
-            currentCar = cars[0];
+        currentCar = ToSettings.ResolvePreferredCar(DataDirectory, cars, currentCar);
         SetCarOptions(cars);
         GetSharedPreferences("settings", FileCreationMode.Private)
             .Edit().PutString("currentCar", currentCar).Apply();
@@ -1292,6 +1293,36 @@ public sealed class MainActivity : Activity
 
     private void AddRecord()
     {
+        if (selectedSection == Fuel || selectedSection == Repairs || selectedSection == Expenses)
+        {
+            string type = selectedSection == Fuel ? RecordTemplates.TypeFuel
+                : selectedSection == Repairs ? RecordTemplates.TypeRepair
+                : RecordTemplates.TypeExpense;
+            List<RecordTemplate> templates = RecordTemplates.ListByType(DataDirectory, type);
+            if (templates.Count > 0)
+            {
+                List<string> labels = new List<string>();
+                labels.Add("Пустая форма");
+                labels.Add("Из шаблона…");
+                new AlertDialog.Builder(this)
+                    .SetTitle("Добавить")
+                    .SetItems(labels.ToArray(), delegate(object sender, DialogClickEventArgs e)
+                    {
+                        if (e.Which == 1)
+                            AddRecordFromTemplate(type);
+                        else
+                            AddRecordBlank();
+                    })
+                    .SetNegativeButton("Отмена", delegate { })
+                    .Show();
+                return;
+            }
+        }
+        AddRecordBlank();
+    }
+
+    private void AddRecordBlank()
+    {
         if (selectedSection == Fuel)
         {
             string lastMileage = LastCarMileage(currentCar);
@@ -1340,6 +1371,127 @@ public sealed class MainActivity : Activity
                 "", "", "", "", "", "", ""
             }, -1);
         }
+    }
+
+    private void AddRecordFromTemplate(string type)
+    {
+        List<RecordTemplate> templates = RecordTemplates.ListByType(DataDirectory, type);
+        if (templates.Count == 0)
+        {
+            ShowMessage("Нет шаблонов. Сохраните запись как шаблон из формы.");
+            AddRecordBlank();
+            return;
+        }
+        string[] labels = new string[templates.Count];
+        for (int i = 0; i < templates.Count; i++)
+            labels[i] = templates[i].Name;
+        new AlertDialog.Builder(this)
+            .SetTitle("Из шаблона")
+            .SetItems(labels, delegate(object sender, DialogClickEventArgs e)
+            {
+                if (e.Which < 0 || e.Which >= templates.Count)
+                    return;
+                RecordTemplate tpl = templates[e.Which];
+                string date = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                string[] entity = RecordTemplates.BuildEntityRow(tpl, date, currentCar);
+                if (type == RecordTemplates.TypeFuel)
+                {
+                    // Ensure price/fullTank slots exist for editor.
+                    List<string> fields = new List<string>(entity);
+                    while (fields.Count < 8)
+                        fields.Add("");
+                    if (fields[7].Length == 0)
+                        fields[7] = "1";
+                    if (fields[5].Length == 0)
+                        fields[5] = LastFuelPricePerLiter(currentCar);
+                    if (fields[2].Length == 0)
+                        fields[2] = LastCarMileage(currentCar);
+                    entity = fields.ToArray();
+                }
+                else if (type == RecordTemplates.TypeRepair)
+                {
+                    List<string> fields = new List<string>(entity);
+                    while (fields.Count < 9)
+                        fields.Add("");
+                    if (fields[2].Length == 0)
+                        fields[2] = LastCarMileage(currentCar);
+                    entity = fields.ToArray();
+                }
+                ShowRecordEditor(false, entity, -1);
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
+    }
+
+    private void SaveTemplateFromValues(string type, string[] values)
+    {
+        EditText nameBox = new EditText(this);
+        nameBox.Hint = "Название шаблона";
+        new AlertDialog.Builder(this)
+            .SetTitle("Сохранить как шаблон")
+            .SetView(nameBox)
+            .SetPositiveButton("Сохранить", delegate
+            {
+                try
+                {
+                    RecordTemplate item = new RecordTemplate();
+                    item.Type = type;
+                    item.Name = (nameBox.Text ?? "").Trim();
+                    item.Payload = RecordTemplates.PayloadFromEntity(type, values);
+                    RecordTemplates.Upsert(DataDirectory, item);
+                    ShowMessage("Шаблон сохранён: " + item.Name);
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage(ex.Message);
+                }
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
+    }
+
+    private void EditDefaultCar()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте или создайте данные.");
+            return;
+        }
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        if (cars.Count == 0)
+        {
+            ShowMessage("Нет автомобилей.");
+            return;
+        }
+        string current = ToSettings.GetDefaultCar(DataDirectory);
+        List<string> labels = new List<string>();
+        labels.Add("(не задан)");
+        labels.AddRange(cars);
+        int selected = 0;
+        for (int i = 0; i < cars.Count; i++)
+            if (String.Equals(cars[i], current, StringComparison.OrdinalIgnoreCase))
+                selected = i + 1;
+        new AlertDialog.Builder(this)
+            .SetTitle("Авто по умолчанию")
+            .SetSingleChoiceItems(labels.ToArray(), selected, delegate(object sender, DialogClickEventArgs e)
+            {
+                selected = e.Which;
+            })
+            .SetPositiveButton("Сохранить", delegate
+            {
+                string name = selected <= 0 ? "" : cars[selected - 1];
+                ToSettings.SetDefaultCar(DataDirectory, name);
+                if (name.Length > 0)
+                {
+                    SetCurrentCar(name);
+                    RefreshRecords();
+                }
+                ShowMessage(name.Length == 0
+                    ? "Авто по умолчанию сброшен."
+                    : "Авто по умолчанию: " + name);
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
     }
 
     private void EditSelectedRecord()
@@ -1447,6 +1599,10 @@ public sealed class MainActivity : Activity
             };
         }
 
+        string templateType = selectedSection == Fuel ? RecordTemplates.TypeFuel
+            : selectedSection == Repairs ? RecordTemplates.TypeRepair
+            : selectedSection == Expenses ? RecordTemplates.TypeExpense
+            : null;
         RenderEditor(editing ? "Изменить запись" : "Новая запись", fields,
             delegate(string[] values)
             {
@@ -1471,7 +1627,7 @@ public sealed class MainActivity : Activity
                     if (tankHint != null)
                         ShowMessage(tankHint);
                 }
-            }, selectedSection == Fuel, receiptId, mileageConfirm);
+            }, selectedSection == Fuel, receiptId, mileageConfirm, templateType);
     }
 
     private static string FieldAt(string[] row, int index)
@@ -1916,7 +2072,7 @@ public sealed class MainActivity : Activity
     {
         new AlertDialog.Builder(this)
             .SetTitle(name)
-            .SetItems(new string[] { "Выбрать", "Свойства", "Лента", "Переименовать", "Удалить" },
+            .SetItems(new string[] { "Выбрать", "Свойства", "Избранный", "Лента", "Переименовать", "Удалить" },
                 delegate(object sender, DialogClickEventArgs e)
                 {
                     if (e.Which == 0)
@@ -1927,8 +2083,15 @@ public sealed class MainActivity : Activity
                     else if (e.Which == 1)
                         EditCarPassport(name);
                     else if (e.Which == 2)
-                        ShowCarTimeline(name);
+                    {
+                        ToSettings.SetDefaultCar(DataDirectory, name);
+                        SetCurrentCar(name);
+                        ShowMessage("Избранный автомобиль: " + name);
+                        RefreshRecords();
+                    }
                     else if (e.Which == 3)
+                        ShowCarTimeline(name);
+                    else if (e.Which == 4)
                         RenameCar(name);
                     else
                         DeleteCar(name);
@@ -2084,7 +2247,7 @@ public sealed class MainActivity : Activity
 
     private void RenderEditor(string title, List<EditorField> fields, Action<string[]> save,
         bool wireFuelPrice = false, string receiptRecordId = null,
-        Func<string[], string> confirmMessage = null)
+        Func<string[], string> confirmMessage = null, string templateType = null)
     {
         ScrollView scroll = new ScrollView(this);
         LinearLayout form = new LinearLayout(this);
@@ -2107,6 +2270,24 @@ public sealed class MainActivity : Activity
         buttons.AddView(saveButton, WeightedButton());
         buttons.AddView(cancelButton, WeightedButton());
         form.AddView(buttons, MatchWrap());
+        if (!String.IsNullOrEmpty(templateType))
+        {
+            Button templateButton = CreateButton("Сохранить как шаблон", null);
+            templateButton.Click += delegate
+            {
+                string validationError;
+                string[] values = ReadEditorValues(fields, out validationError);
+                if (validationError != null)
+                {
+                    ShowMessage(validationError);
+                    return;
+                }
+                if (templateType == RecordTemplates.TypeFuel)
+                    values = NormalizeFuelValues(values);
+                SaveTemplateFromValues(templateType, values);
+            };
+            form.AddView(templateButton, MatchWrap());
+        }
         scroll.AddView(form);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -3819,7 +4000,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.24.0";
+        string version = "1.25.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -3831,7 +4012,7 @@ public sealed class MainActivity : Activity
             .SetTitle("О программе")
             .SetMessage("Alfa 156\nВерсия " + version +
                 "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
-                "\nПаспорт авто (cars-meta.dat) и лента расходов." +
+                "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), избранный авто (default_car)." +
                 "\nСводка: столбчатый график расходов за 12 месяцев." +
                 "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")

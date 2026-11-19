@@ -65,6 +65,7 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="CarsMeta.cs" />
+    <Compile Include="RecordTemplates.cs" />
     <Compile Include="DataStore.cs" />
     <Compile Include="EntryEditorForm.cs" />
     <Compile Include="RecordIds.cs" />

@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.24.0";
+        private const string AppVersion = "1.25.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -42,6 +42,7 @@ namespace Alfa156.Desktop
         private readonly TextBox budgetBox = new TextBox();
         private readonly TextBox budgetWarnBox = new TextBox();
         private readonly TextBox backupRemindBox = new TextBox();
+        private readonly ComboBox defaultCarBox = new ComboBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
@@ -238,9 +239,15 @@ namespace Alfa156.Desktop
             backupRemindBox.Text = "7";
             intervalRow.Controls.Add(backupRemindBox);
             intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
+            intervalRow.Controls.Add(new Label { Text = "Авто по умолч.", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            defaultCarBox.Width = 140;
+            intervalRow.Controls.Add(defaultCarBox);
+            intervalRow.Controls.Add(MakeButton("Сохранить авто", SaveDefaultCar));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Сравнить периоды", ShowPeriodCompare));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
+            intervalRow.Controls.Add(MakeButton("Из шаблона", ApplyTemplateToActiveGrid));
+            intervalRow.Controls.Add(MakeButton("Сохранить как шаблон", SaveActiveRowAsTemplate));
             intervalRow.Controls.Add(MakeButton("График: /км", ToggleCostPerKmChart));
             summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
@@ -273,6 +280,8 @@ namespace Alfa156.Desktop
             WireDirty(expensesGrid);
             WireDirty(expenseCategoriesGrid);
             fuelGrid.DefaultValuesNeeded += FuelGridDefaultValuesNeeded;
+            repairsGrid.DefaultValuesNeeded += EntityGridDefaultCarNeeded;
+            expensesGrid.DefaultValuesNeeded += EntityGridDefaultCarNeeded;
             fuelGrid.CellEndEdit += MileageCellEndEdit;
             fuelGrid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
             {
@@ -282,6 +291,9 @@ namespace Alfa156.Desktop
             repairsGrid.CellEndEdit += MileageCellEndEdit;
             WireDirty(utilitiesGrid);
             WireDirty(categoriesGrid);
+
+            defaultCarBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            defaultCarBox.Width = 140;
         }
 
         private static DataGridView CreateGrid()
@@ -465,8 +477,28 @@ namespace Alfa156.Desktop
             };
         }
 
+        private void EntityGridDefaultCarNeeded(object sender, DataGridViewRowEventArgs e)
+        {
+            if (e.Row.Cells.Count > 1)
+            {
+                string preferred = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
+                if (!String.IsNullOrEmpty(preferred) &&
+                    (e.Row.Cells[1].Value == null ||
+                     String.IsNullOrEmpty(Convert.ToString(e.Row.Cells[1].Value))))
+                    e.Row.Cells[1].Value = preferred;
+            }
+        }
+
         private void FuelGridDefaultValuesNeeded(object sender, DataGridViewRowEventArgs e)
         {
+            if (e.Row.Cells.Count > 1)
+            {
+                string preferred = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
+                if (!String.IsNullOrEmpty(preferred) &&
+                    (e.Row.Cells[1].Value == null ||
+                     String.IsNullOrEmpty(Convert.ToString(e.Row.Cells[1].Value))))
+                    e.Row.Cells[1].Value = preferred;
+            }
             if (e.Row.Cells.Count > 7)
                 e.Row.Cells[7].Value = true;
             if (e.Row.Cells.Count > 8)
@@ -820,6 +852,278 @@ namespace Alfa156.Desktop
                 ShowError(ex);
             }
         }
+
+        private void RefreshDefaultCarBox()
+        {
+            defaultCarBox.Items.Clear();
+            defaultCarBox.Items.Add("(не задан)");
+            string preferred = ToSettings.GetDefaultCar(repository.Settings);
+            int selected = 0;
+            for (int i = 0; i < repository.Cars.Count; i++)
+            {
+                string[] content = RecordIds.StripId(repository.Cars[i]);
+                string name = content.Length > 0 ? (content[0] ?? "").Trim() : "";
+                if (name.Length == 0)
+                    continue;
+                int index = defaultCarBox.Items.Add(name);
+                if (String.Equals(name, preferred, StringComparison.OrdinalIgnoreCase))
+                    selected = index;
+            }
+            if (defaultCarBox.Items.Count > 0)
+                defaultCarBox.SelectedIndex = selected;
+        }
+
+        private void SaveDefaultCar(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string name = "";
+                if (defaultCarBox.SelectedIndex > 0)
+                    name = Convert.ToString(defaultCarBox.SelectedItem) ?? "";
+                repository.Settings = ToSettings.SetDefaultCar(repository.Settings, name);
+                MarkDirty();
+                repository.Save();
+                dirty = false;
+                SetStatus(name.Length == 0
+                    ? "Авто по умолчанию сброшен."
+                    : "Авто по умолчанию: " + name);
+                RefreshSummaryText();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Авто по умолчанию",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private string ActiveTemplateType()
+        {
+            if (tabs.SelectedTab == null)
+                return null;
+            string title = tabs.SelectedTab.Text ?? "";
+            if (title.StartsWith("Заправки"))
+                return RecordTemplates.TypeFuel;
+            if (title.StartsWith("Ремонт"))
+                return RecordTemplates.TypeRepair;
+            if (title.StartsWith("Прочие"))
+                return RecordTemplates.TypeExpense;
+            return null;
+        }
+
+        private DataGridView ActiveEntityGrid()
+        {
+            string type = ActiveTemplateType();
+            if (type == RecordTemplates.TypeFuel) return fuelGrid;
+            if (type == RecordTemplates.TypeRepair) return repairsGrid;
+            if (type == RecordTemplates.TypeExpense) return expensesGrid;
+            return null;
+        }
+
+        private void ApplyTemplateToActiveGrid(object sender, EventArgs e)
+        {
+            try
+            {
+                string type = ActiveTemplateType();
+                DataGridView grid = ActiveEntityGrid();
+                if (type == null || grid == null)
+                {
+                    MessageBox.Show(this,
+                        "Откройте вкладку Заправки, Ремонт или Прочие.",
+                        "Из шаблона", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (repository.TemplatesRows == null)
+                    repository.TemplatesRows = new List<string[]>();
+                List<RecordTemplate> list = RecordTemplates.ListByType(repository.TemplatesRows, type);
+                if (list.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет шаблонов этого типа. Сначала сохраните строку как шаблон.",
+                        "Из шаблона", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                string[] names = new string[list.Count];
+                for (int i = 0; i < list.Count; i++)
+                    names[i] = list[i].Name;
+                string chosen = PickFromList("Из шаблона", names);
+                if (chosen == null)
+                    return;
+                RecordTemplate tpl = null;
+                for (int i = 0; i < list.Count; i++)
+                    if (String.Equals(list[i].Name, chosen, StringComparison.OrdinalIgnoreCase))
+                        tpl = list[i];
+                if (tpl == null)
+                    return;
+                string date = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                string car = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
+                string[] entity = RecordTemplates.BuildEntityRow(tpl, date, car);
+                int cols = type == RecordTemplates.TypeFuel ? 9
+                    : type == RecordTemplates.TypeRepair ? 9 : 6;
+                object[] values = new object[cols];
+                for (int c = 0; c < cols; c++)
+                    values[c] = c < entity.Length ? entity[c] : "";
+                if (type == RecordTemplates.TypeFuel && cols > 7 &&
+                    (values[7] == null || Convert.ToString(values[7]).Length == 0))
+                    values[7] = true;
+                int index = grid.Rows.Add(values);
+                grid.ClearSelection();
+                if (index >= 0 && index < grid.Rows.Count)
+                    grid.Rows[index].Selected = true;
+                MarkDirty();
+                SetStatus("Строка из шаблона «" + chosen + "» добавлена. Сохраните .dat.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Из шаблона",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void SaveActiveRowAsTemplate(object sender, EventArgs e)
+        {
+            try
+            {
+                string type = ActiveTemplateType();
+                DataGridView grid = ActiveEntityGrid();
+                if (type == null || grid == null)
+                {
+                    MessageBox.Show(this,
+                        "Откройте вкладку Заправки, Ремонт или Прочие и выберите строку.",
+                        "Шаблон", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (grid.CurrentRow == null || grid.CurrentRow.IsNewRow)
+                {
+                    MessageBox.Show(this, "Выберите заполненную строку.",
+                        "Шаблон", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                DataGridViewRow row = grid.CurrentRow;
+                int cols = type == RecordTemplates.TypeFuel ? 9
+                    : type == RecordTemplates.TypeRepair ? 9 : 6;
+                string[] entity = new string[cols];
+                for (int c = 0; c < cols; c++)
+                {
+                    object val = c < row.Cells.Count ? row.Cells[c].Value : null;
+                    if (type == RecordTemplates.TypeFuel && c == 7)
+                    {
+                        bool full = true;
+                        if (val is bool)
+                            full = (bool)val;
+                        else
+                        {
+                            string raw = Convert.ToString(val) ?? "";
+                            full = raw != "0" && !String.Equals(raw, "false", StringComparison.OrdinalIgnoreCase);
+                        }
+                        entity[c] = full ? "1" : "0";
+                    }
+                    else
+                        entity[c] = Convert.ToString(val) ?? "";
+                }
+                string name = PromptText("Сохранить как шаблон", "Название шаблона:",
+                    RecordTemplates.TypeLabelRu(type));
+                if (name == null)
+                    return;
+                RecordTemplate item = new RecordTemplate();
+                item.Type = type;
+                item.Name = name;
+                item.Payload = RecordTemplates.PayloadFromEntity(type, entity);
+                if (repository.TemplatesRows == null)
+                    repository.TemplatesRows = new List<string[]>();
+                repository.TemplatesRows = RecordTemplates.Upsert(repository.TemplatesRows, item);
+                MarkDirty();
+                repository.Save();
+                dirty = false;
+                SetStatus("Шаблон сохранён: " + name);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Шаблон",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private static string PickFromList(string title, string[] items)
+        {
+            using (Form dialog = new Form())
+            {
+                dialog.Text = title;
+                dialog.Width = 360;
+                dialog.Height = 420;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                ListBox list = new ListBox { Dock = DockStyle.Fill };
+                list.Items.AddRange(items);
+                if (items.Length > 0)
+                    list.SelectedIndex = 0;
+                FlowLayoutPanel buttons = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Bottom,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    Height = 40
+                };
+                Button ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
+                Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
+                buttons.Controls.Add(ok);
+                buttons.Controls.Add(cancel);
+                dialog.Controls.Add(list);
+                dialog.Controls.Add(buttons);
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+                if (dialog.ShowDialog() != DialogResult.OK || list.SelectedItem == null)
+                    return null;
+                return Convert.ToString(list.SelectedItem);
+            }
+        }
+
+        private static string PromptText(string title, string label, string initial)
+        {
+            using (Form dialog = new Form())
+            {
+                dialog.Text = title;
+                dialog.Width = 360;
+                dialog.Height = 160;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                Label caption = new Label
+                {
+                    Text = label,
+                    Dock = DockStyle.Top,
+                    Height = 24,
+                    Padding = new Padding(8, 8, 8, 0)
+                };
+                TextBox box = new TextBox
+                {
+                    Dock = DockStyle.Top,
+                    Height = 28,
+                    Text = initial ?? ""
+                };
+                FlowLayoutPanel buttons = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Bottom,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    Height = 40
+                };
+                Button ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
+                Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
+                buttons.Controls.Add(ok);
+                buttons.Controls.Add(cancel);
+                dialog.Controls.Add(buttons);
+                dialog.Controls.Add(box);
+                dialog.Controls.Add(caption);
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return null;
+                string value = (box.Text ?? "").Trim();
+                return value.Length == 0 ? null : value;
+            }
+        }
+
 
         private void WireDirty(DataGridView grid)
         {
@@ -1228,6 +1532,7 @@ namespace Alfa156.Desktop
                     .ToString(CultureInfo.InvariantCulture);
                 backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
+                RefreshDefaultCarBox();
                 // Column headers include currency code — refresh before binding rows.
                 SetupFuelGrid();
                 SetupRepairsGrid();
@@ -1493,7 +1798,7 @@ namespace Alfa156.Desktop
                 summaryChart.SetData(new List<string>(), new List<decimal[]>());
                 return;
             }
-            string car = repository.Cars.Count > 0 ? (repository.Cars[0][0] ?? "") : "";
+            string car = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
             summaryBox.Text = BuildSummary(car);
             RefreshSummaryChart();
         }

@@ -29,6 +29,7 @@ namespace Alfa156.Desktop.Data
         internal const string LastBackupUtcKey = "last_backup_utc";
         internal const string LastBackupNagDateKey = "last_backup_nag_date";
         internal const int DefaultBackupRemindDays = 7;
+        internal const string DefaultCarKey = "default_car";
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
 
@@ -185,6 +186,46 @@ namespace Alfa156.Desktop.Data
             map[BudgetMonthKey] = Format(monthLimit);
             map[BudgetWarnPctKey] = Format(warnPct);
             return MapToRows(map);
+        }
+
+        /// <summary>Favorite/default car name; empty if unset.</summary>
+        internal static string GetDefaultCar(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string name;
+            if (!map.TryGetValue(DefaultCarKey, out name) || name == null)
+                return "";
+            return name.Trim();
+        }
+
+        internal static List<string[]> SetDefaultCar(List<string[]> existing, string carName)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[DefaultCarKey] = (carName ?? "").Trim();
+            return MapToRows(map);
+        }
+
+        /// <summary>Prefer default_car when present in cars; else first.</summary>
+        internal static string ResolvePreferredCar(List<string[]> cars, List<string[]> settings)
+        {
+            if (cars == null || cars.Count == 0)
+                return "";
+            string preferred = GetDefaultCar(settings);
+            if (preferred.Length > 0)
+            {
+                for (int i = 0; i < cars.Count; i++)
+                {
+                    string[] content = RecordIds.StripId(cars[i]);
+                    string name = content.Length > 0 ? (content[0] ?? "").Trim() : "";
+                    if (String.Equals(name, preferred, StringComparison.OrdinalIgnoreCase))
+                        return name;
+                }
+            }
+            string[] first = RecordIds.StripId(cars[0]);
+            return first.Length > 0 ? (first[0] ?? "").Trim() : "";
         }
 
         /// <summary>0 = off. Soft reminder if days since last backup &gt;= this value.</summary>
