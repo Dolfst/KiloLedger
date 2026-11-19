@@ -3,13 +3,16 @@
 Приложения для **КПК (Windows Mobile)**, **Android** и **ПК (Windows)** с общим форматом данных, общим стилем и единым логотипом (красный круг с машинкой).
 
 
-## Что нового в 1.28.0
+## Что нового в 1.29.0
 
-- **Стабилизация** после быстрого роста 1.25–1.27: smoke-проверки в CI (`build/verify_*.py`), CF-guard для КПК, полный набор `.dat` в ZIP (включая `templates.dat` / `reminders.dat` / `cars-meta.dat`).
-- Подтверждены layout заправок (`fullTank` / `purpose` / `id`), tombstones и сравнение периодов на sample `.dat`.
+- **Быстрая заправка** на всех платформах: авто (`default_car`), пробег (из последней записи), литры, стоимость; цена/л считается автоматически; флажок «полный бак»; сохранение.
+  - Android — кнопка и пункт «Данные»; одна компактная форма.
+  - Desktop — кнопка на панели инструментов и диалог.
+  - КПК — Действия → Быстрая заправка (компактная форма).
 
 ## История версий
 
+- **1.29.0** — быстрая заправка (Android / Desktop / КПК) с подстановкой из последней заправки.
 - **1.28.0** — smoke verifies в CI; CF API guard; полный ZIP backup list; полировка после 1.25–1.27.
 - **1.27.0** — мастер импорта на Desktop; расширенный предпросмотр импорта на Android; шаблоны CSV.
 - **1.26.0** — напоминания по дате (`reminders.dat`); `reminder_warn_days` (по умолч. 14); срок в сводке/уведомлениях.
@@ -177,11 +180,11 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 ### Скачать готовые сборки
 
-Текущая версия: **1.28.0** (файл [`VERSION`](VERSION)).
+Текущая версия: **1.29.0** (файл [`VERSION`](VERSION)).
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.28.0.apk` (Android), `Alfa156-1.28.0-Desktop.exe` (ПК), `Alfa156-1.28.0-KPK.exe` / `Alfa156-1.28.0-KPK.zip` (КПК).
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.29.0.apk` (Android), `Alfa156-1.29.0-Desktop.exe` (ПК), `Alfa156-1.29.0-KPK.exe` / `Alfa156-1.29.0-KPK.zip` (КПК).
 
-См. **История версий** выше (1.9.0 → 1.28.0). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
+См. **История версий** выше (1.9.0 → 1.29.0). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
 
 **Обновление КПК:** скопируйте свежий `Alfa156-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
 

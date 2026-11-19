@@ -291,7 +291,10 @@ public sealed class MainActivity : Activity
         LinearLayout sectionRow3 = NewRow();
         sectionRow3.SetPadding(0, 0, 0, Dp(2));
         summaryButton = CreateSectionButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
+        Button quickFuelButton = CreateSectionButton("Быстрая заправка", ButtonIcons.Fuel,
+            delegate { ShowQuickFuelEntry(); });
         sectionRow3.AddView(summaryButton, WeightedButton(Dp(3)));
+        sectionRow3.AddView(quickFuelButton, WeightedButton(Dp(3)));
         root.AddView(sectionRow3);
 
         LinearLayout recordActions = NewRow();
@@ -380,6 +383,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditBudget(); });
                 labels.Add("Авто по умолчанию");
                 actions.Add(delegate { EditDefaultCar(); });
+                labels.Add("Быстрая заправка");
+                actions.Add(delegate { ShowQuickFuelEntry(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Напоминания");
@@ -1456,6 +1461,119 @@ public sealed class MainActivity : Activity
             })
             .SetNegativeButton("Отмена", delegate { })
             .Show();
+    }
+
+    private void ShowQuickFuelEntry()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте или создайте данные.");
+            return;
+        }
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        if (cars.Count == 0)
+        {
+            ShowMessage("Нет автомобилей. Добавьте авто.");
+            return;
+        }
+        string car = ToSettings.ResolvePreferredCar(DataDirectory, cars, currentCar);
+        string lastKm = LastCarMileage(car);
+        string lastPrice = LastFuelPricePerLiter(car);
+        bool lastFull = LastFuelFullTank(car);
+        List<EditorField> fields = new List<EditorField>();
+        fields.Add(EditorField.Option("Автомобиль", car, cars.ToArray(), true));
+        fields.Add(EditorField.Number(
+            lastKm.Length > 0 ? "Пробег, км (последняя запись)" : "Пробег, км",
+            lastKm, true));
+        fields.Add(EditorField.Number("Литры", "", true));
+        fields.Add(EditorField.Number("Стоимость, " + Cur(), "", true));
+        fields.Add(EditorField.Number("Цена за литр, " + Cur(), lastPrice, false));
+        fields.Add(EditorField.Check("Полный бак", lastFull));
+
+        Func<string[], string> mileageConfirm = delegate(string[] values)
+        {
+            // Quick form: car|km|liters|cost|price|fullTank — map to fuel layout for check.
+            string[] fuelLike = new string[]
+            {
+                DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                values[0], values[1], values[2], values[3]
+            };
+            return MileageWarningForSave(fuelLike, "fuel.dat", -1);
+        };
+
+        RenderEditor("Быстрая заправка", fields,
+            delegate(string[] values)
+            {
+                string[] fuel = BuildQuickFuelRow(values);
+                fuel = NormalizeFuelValues(fuel);
+                ExpenseDataStore.AddRecord(DataDirectory, "fuel.dat", fuel);
+                SetCurrentCar(fuel[1]);
+                selectedSection = Fuel;
+                GetSharedPreferences("settings", FileCreationMode.Private)
+                    .Edit().PutString("selectedSection", selectedSection).Apply();
+                UpdateSectionButtons();
+                RefreshRecords();
+                RefreshServiceNotifications();
+                string tankHint = CarsMeta.TankNearHint(DataDirectory, fuel[1], fuel[3]);
+                if (tankHint != null)
+                    ShowMessage(tankHint);
+            }, false, null, mileageConfirm, null);
+        // liters/cost/price indices differ from full fuel editor — wire after fields bind.
+        WireQuickFuelPrice(fields);
+    }
+
+    /// <summary>car|km|liters|cost|price|fullTank → full fuel row (today, empty comment/purpose).</summary>
+    private static string[] BuildQuickFuelRow(string[] values)
+    {
+        string date = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        string fullTank = values != null && values.Length > 5
+            ? ExpenseDataCodec.NormalizeFullTankFlag(values[5])
+            : "1";
+        return new string[]
+        {
+            date,
+            values != null && values.Length > 0 ? (values[0] ?? "") : "",
+            values != null && values.Length > 1 ? (values[1] ?? "") : "",
+            values != null && values.Length > 2 ? (values[2] ?? "") : "",
+            values != null && values.Length > 3 ? (values[3] ?? "") : "",
+            values != null && values.Length > 4 ? (values[4] ?? "") : "",
+            "",
+            fullTank,
+            ""
+        };
+    }
+
+    private void WireQuickFuelPrice(List<EditorField> fields)
+    {
+        if (fields == null || fields.Count < 5)
+            return;
+        // liters=2, cost=3, price=4
+        if (fields[2].TextInput == null || fields[3].TextInput == null || fields[4].TextInput == null)
+            return;
+        WireFuelPriceAutoCalc(fields[2], fields[3], fields[4]);
+    }
+
+    private bool LastFuelFullTank(string car)
+    {
+        List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+        string bestDate = "";
+        int bestIndex = -1;
+        bool full = true;
+        for (int i = 0; i < fuels.Count; i++)
+        {
+            if (fuels[i].Length < 2 || fuels[i][1] != car)
+                continue;
+            string date = fuels[i][0] ?? "";
+            if (bestIndex < 0 ||
+                String.Compare(date, bestDate, StringComparison.Ordinal) > 0 ||
+                (date == bestDate && i > bestIndex))
+            {
+                bestDate = date;
+                bestIndex = i;
+                full = ExpenseDataCodec.IsFullTank(fuels[i]);
+            }
+        }
+        return full;
     }
 
     private void EditDefaultCar()
@@ -4103,7 +4221,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.28.0";
+        string version = "1.29.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
