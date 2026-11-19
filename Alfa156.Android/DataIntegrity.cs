@@ -330,7 +330,7 @@ internal static class DataIntegrity
         List<string[]> utilities, Dictionary<string, bool> cars,
         List<string> repairCats, List<string> expenseCats)
     {
-        List<RecordIds.Tombstone> tombs = RecordIds.ReadTombstones(directory);
+        List<Tombstone> tombs = RecordIds.ReadTombstones(directory);
         if (tombs.Count == 0)
             return;
         Dictionary<string, bool> live = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);

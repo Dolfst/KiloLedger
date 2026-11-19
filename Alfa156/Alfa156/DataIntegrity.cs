@@ -341,9 +341,7 @@ namespace CarExpenses
                 report.Findings.Add(new Finding("даты", "error", label + ": пустая дата."));
                 return;
             }
-            DateTime dt;
-            if (!DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                    DateTimeStyles.None, out dt))
+            if (!TryParseYmd(value))
                 report.Findings.Add(new Finding("даты", "error",
                     label + ": неверная дата «" + value + "» (ожидается yyyy-MM-dd)."));
         }
@@ -356,11 +354,7 @@ namespace CarExpenses
                 report.Findings.Add(new Finding("даты", "error", label + ": пустой месяц."));
                 return;
             }
-            DateTime dt;
-            if (!DateTime.TryParseExact(value, "yyyy-MM", CultureInfo.InvariantCulture,
-                    DateTimeStyles.None, out dt) &&
-                !DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                    DateTimeStyles.None, out dt))
+            if (!TryParseYm(value) && !TryParseYmd(value))
                 report.Findings.Add(new Finding("даты", "error",
                     label + ": неверный месяц «" + value + "»."));
         }
@@ -378,7 +372,7 @@ namespace CarExpenses
             if (value.Length == 0)
                 return;
             decimal n;
-            if (!Decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out n))
+            if (!DataStore.TryNumber(value, out n))
             {
                 report.Findings.Add(new Finding("поля", "error",
                     label + ": «" + field + "» не число («" + value + "»)."));
@@ -387,6 +381,39 @@ namespace CarExpenses
             if (n < 0)
                 report.Findings.Add(new Finding("поля", "error",
                     label + ": отрицательное «" + field + "» (" + value + ")."));
+        }
+
+        private static bool TryParseYmd(string value)
+        {
+            if (value == null || value.Length != 10 || value[4] != '-' || value[7] != '-')
+                return false;
+            try
+            {
+                int year = int.Parse(value.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
+                int month = int.Parse(value.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                int day = int.Parse(value.Substring(8, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                DateTime unused = new DateTime(year, month, day);
+                return true;
+            }
+            catch (FormatException) { return false; }
+            catch (OverflowException) { return false; }
+            catch (ArgumentOutOfRangeException) { return false; }
+        }
+
+        private static bool TryParseYm(string value)
+        {
+            if (value == null || value.Length != 7 || value[4] != '-')
+                return false;
+            try
+            {
+                int year = int.Parse(value.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
+                int month = int.Parse(value.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
+                DateTime unused = new DateTime(year, month, 1);
+                return true;
+            }
+            catch (FormatException) { return false; }
+            catch (OverflowException) { return false; }
+            catch (ArgumentOutOfRangeException) { return false; }
         }
 
         private static List<string> ReadCategoryNamesRaw(string fileName)
