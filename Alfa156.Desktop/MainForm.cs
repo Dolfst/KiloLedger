@@ -13,7 +13,8 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.20.0";
+        private const string AppVersion = "1.21.0";
+        private bool chartShowsCostPerKm;
 
         private string Cur()
         {
@@ -145,6 +146,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(globalSearchBox);
             toolbar.Controls.Add(MakeButton("Найти", OpenGlobalSearch));
             toolbar.Controls.Add(MakeButton("Дубликаты", OpenDuplicates));
+            toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -221,6 +223,7 @@ namespace Alfa156.Desktop
             intervalRow.Controls.Add(MakeButton("Сохранить валюту", SaveCurrency));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
+            intervalRow.Controls.Add(MakeButton("График: /км", ToggleCostPerKmChart));
             summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
             summaryLayout.Controls.Add(summaryChart, 0, 1);
@@ -1294,7 +1297,7 @@ namespace Alfa156.Desktop
         {
             if (row == null || column < 0 || column >= row.Cells.Count || row.Cells[column].Value == null)
                 return "";
-            return Convert.ToString(row.Cells[column].Value) ?? "";
+            return (Convert.ToString(row.Cells[column].Value) ?? "").Trim();
         }
 
         private List<string[]> ReadFuelGrid()
@@ -1378,6 +1381,7 @@ namespace Alfa156.Desktop
                 repository.Expenses.Count == 0)
             {
                 summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
+                chartShowsCostPerKm = false;
                 summaryChart.SetData(new List<string>(), new List<decimal[]>());
                 return;
             }
@@ -1388,6 +1392,34 @@ namespace Alfa156.Desktop
 
         private void RefreshSummaryChart()
         {
+            if (chartShowsCostPerKm)
+            {
+                List<string> cars = new List<string>();
+                for (int i = 0; i < repository.Cars.Count; i++)
+                {
+                    string[] content = RecordIds.StripId(repository.Cars[i]);
+                    if (content.Length == 0)
+                        continue;
+                    string name = (content[0] ?? "").Trim();
+                    if (name.Length > 0)
+                        cars.Add(name);
+                }
+                List<CarCompare.Stats> stats = CarCompare.Build(
+                    cars, repository.Fuel, repository.Repairs, repository.Expenses);
+                List<string> labels = new List<string>();
+                List<decimal> values = new List<decimal>();
+                for (int i = 0; i < stats.Count; i++)
+                {
+                    decimal cpk = CarCompare.CostPerKm(stats[i]);
+                    if (cpk <= 0)
+                        continue;
+                    labels.Add(stats[i].Name);
+                    values.Add(cpk);
+                }
+                summaryChart.SetCompareData(labels, values, Cur() + "/км");
+                return;
+            }
+
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
             for (int i = 0; i < repository.Fuel.Count; i++)
             {
@@ -1424,6 +1456,15 @@ namespace Alfa156.Desktop
                 totals.Add(values);
             }
             summaryChart.SetData(months, totals);
+        }
+
+        private void ToggleCostPerKmChart(object sender, EventArgs e)
+        {
+            chartShowsCostPerKm = !chartShowsCostPerKm;
+            RefreshSummaryChart();
+            SetStatus(chartShowsCostPerKm
+                ? "График: сравнение стоимости/км по автомобилям."
+                : "График: расходы по месяцам.");
         }
 
         private void AttachReceiptPhoto(object sender, EventArgs e)
@@ -1547,18 +1588,16 @@ namespace Alfa156.Desktop
             string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
             List<string[]> fuels = repository.Fuel;
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
-            Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
             List<string> cars = new List<string>();
             for (int i = 0; i < repository.Cars.Count; i++)
             {
-                if (repository.Cars[i].Length == 0)
+                string[] carRow = RecordIds.StripId(repository.Cars[i]);
+                if (carRow.Length == 0)
                     continue;
-                string name = (repository.Cars[i][0] ?? "").Trim();
+                string name = (carRow[0] ?? "").Trim();
                 if (name.Length == 0)
                     continue;
                 cars.Add(name);
-                if (!carTotals.ContainsKey(name))
-                    carTotals.Add(name, 0);
             }
 
             for (int i = 0; i < fuels.Count; i++)
@@ -1568,8 +1607,6 @@ namespace Alfa156.Desktop
                     continue;
                 decimal amount = NumberOrZero(row[4]);
                 AddMonthlyAmount(monthlyTotals, row[0], 0, amount);
-                if (carTotals.ContainsKey(row[1]))
-                    carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
                 {
                     fuelTotal += amount;
@@ -1599,8 +1636,6 @@ namespace Alfa156.Desktop
                     continue;
                 decimal amount = NumberOrZero(row[7]);
                 AddMonthlyAmount(monthlyTotals, row[0], 1, amount);
-                if (carTotals.ContainsKey(row[1]))
-                    carTotals[row[1]] += amount;
                 if (row[1] != currentCar)
                     continue;
                 repairTotal += amount;
@@ -1621,8 +1656,6 @@ namespace Alfa156.Desktop
                     continue;
                 decimal amount = NumberOrZero(row[4]);
                 AddMonthlyAmount(monthlyTotals, row[0], 3, amount);
-                if (carTotals.ContainsKey(row[1]))
-                    carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
                 {
                     expenseTotal += amount;
@@ -1737,9 +1770,8 @@ namespace Alfa156.Desktop
                     .Append(", ремонт ").Append(Money(totals[1])).Append(", коммунальные ").Append(Money(totals[2])).Append(", прочие ")
                     .Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" " + Cur() + "\r\n");
             }
-            result.Append("\r\nТопливо, ремонт и прочие по автомобилям:\r\n");
-            for (int i = 0; i < cars.Count; i++)
-                result.Append(cars[i]).Append(": ").Append(Money(carTotals[cars[i]])).Append(" " + Cur() + "\r\n");
+            result.Append("\r\n").Append(CarCompare.FormatBlock(
+                CarCompare.Build(cars, fuels, repairs, expenses), Cur(), Money)).Append("\r\n");
             result.Append("\r\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км\r\n");
             ToIntervals intervals = ToSettings.FromRows(repository.Settings);
             result.Append(ServiceStatus("Замена масла", currentMileage, lastOilMileage,
@@ -2112,14 +2144,6 @@ namespace Alfa156.Desktop
             }
         }
 
-        private static string CellText(DataGridViewRow row, int index)
-        {
-            if (index < 0 || index >= row.Cells.Count)
-                return "";
-            object value = row.Cells[index].Value;
-            return value == null ? "" : Convert.ToString(value).Trim();
-        }
-
         private void SetStatus(string text)
         {
             statusLabel.Text = text;
@@ -2293,6 +2317,77 @@ namespace Alfa156.Desktop
                 {
                     ShowError(ex);
                 }
+            }
+        }
+
+        private void OpenDataIntegrity(object sender, EventArgs e)
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(repository.DirectoryPath))
+                {
+                    MessageBox.Show(this, "Сначала откройте папку данных.", "Проверка данных",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                PullAll();
+                DataIntegrity.Report report = DataIntegrity.Check(repository);
+                string text = DataIntegrity.Format(report);
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Проверка данных";
+                    dialog.Width = 640;
+                    dialog.Height = 480;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.MinimizeBox = false;
+                    dialog.MaximizeBox = true;
+                    TextBox box = new TextBox
+                    {
+                        Multiline = true,
+                        ReadOnly = true,
+                        ScrollBars = ScrollBars.Vertical,
+                        Dock = DockStyle.Fill,
+                        Font = new Font("Consolas", 10F),
+                        Text = text
+                    };
+                    FlowLayoutPanel buttons = new FlowLayoutPanel
+                    {
+                        Dock = DockStyle.Bottom,
+                        Height = 40,
+                        FlowDirection = FlowDirection.RightToLeft
+                    };
+                    Button close = new Button { Text = "Закрыть", Width = 100 };
+                    close.Click += delegate { dialog.Close(); };
+                    buttons.Controls.Add(close);
+                    if (report.CanSimpleFix)
+                    {
+                        Button fix = new Button { Text = "Исправить простое", Width = 140 };
+                        fix.Click += delegate
+                        {
+                            try
+                            {
+                                int n = DataIntegrity.ApplySimpleFixes(repository, report);
+                                BindAll();
+                                MessageBox.Show(dialog,
+                                    n > 0 ? "Добавлено категорий: " + n + "." : "Нечего исправлять.",
+                                    "Проверка данных", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                dialog.Close();
+                            }
+                            catch (Exception ex)
+                            {
+                                ShowError(ex);
+                            }
+                        };
+                        buttons.Controls.Add(fix);
+                    }
+                    dialog.Controls.Add(box);
+                    dialog.Controls.Add(buttons);
+                    dialog.ShowDialog(this);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
             }
         }
 

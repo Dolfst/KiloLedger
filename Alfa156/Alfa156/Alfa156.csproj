@@ -69,6 +69,8 @@
     <Compile Include="EntryEditorForm.cs" />
     <Compile Include="RecordIds.cs" />
     <Compile Include="DuplicateFinder.cs" />
+    <Compile Include="CarCompare.cs" />
+    <Compile Include="DataIntegrity.cs" />
     <Compile Include="ToSettings.cs" />
     <Compile Include="SyncCrypto.cs" />
     <Compile Include="SyncMerge.cs" />

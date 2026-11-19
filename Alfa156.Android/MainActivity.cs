@@ -360,6 +360,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { ShowGlobalSearch(); });
                 labels.Add("Дубликаты");
                 actions.Add(delegate { ShowDuplicates(); });
+                labels.Add("Проверка данных");
+                actions.Add(delegate { ShowDataIntegrity(); });
                 labels.Add("Интервалы ТО");
                 actions.Add(delegate { EditToIntervals(); });
                 labels.Add("Валюта");
@@ -1752,6 +1754,48 @@ public sealed class MainActivity : Activity
         ShowMessage("Запись найдена, но скрыта фильтром. Сбросьте фильтр или смените авто.");
     }
 
+    private void ShowDataIntegrity()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала загрузите или создайте данные.");
+            return;
+        }
+        DataIntegrity.Report report;
+        try
+        {
+            report = DataIntegrity.Check(DataDirectory);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Не удалось проверить данные: " + ex.Message);
+            return;
+        }
+        string text = DataIntegrity.Format(report);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+            .SetTitle("Проверка данных")
+            .SetMessage(text)
+            .SetNegativeButton("Закрыть", delegate { });
+        if (report.CanSimpleFix)
+        {
+            builder.SetPositiveButton("Исправить простое", (sender, args) =>
+            {
+                try
+                {
+                    int n = DataIntegrity.ApplySimpleFixes(DataDirectory, report);
+                    ShowMessage(n > 0
+                        ? "Добавлено категорий: " + n + "."
+                        : "Нечего исправлять.");
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage("Не удалось исправить: " + ex.Message);
+                }
+            });
+        }
+        builder.Show();
+    }
+
     private void ShowDuplicates()
     {
         if (!IsCompleteData(DataDirectory))
@@ -2839,18 +2883,13 @@ public sealed class MainActivity : Activity
         string lastTimingDate = "";
         Dictionary<string, decimal> byCategory = new Dictionary<string, decimal>();
         Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
-        Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
-        for (int i = 0; i < cars.Count; i++)
-            carTotals.Add(cars[i], 0);
 
         for (int i = 0; i < fuels.Count; i++)
         {
             string[] row = fuels[i];
             decimal amount = NumberOrZero(row[4]);
             AddMonthlyAmount(monthlyTotals, row[0], 0, amount);
-            if (carTotals.ContainsKey(row[1]))
-                carTotals[row[1]] += amount;
             if (row[1] != currentCar)
                 continue;
             fuelTotal += amount;
@@ -2874,8 +2913,6 @@ public sealed class MainActivity : Activity
             string[] row = repairs[i];
             decimal amount = NumberOrZero(row[7]);
             AddMonthlyAmount(monthlyTotals, row[0], 1, amount);
-            if (carTotals.ContainsKey(row[1]))
-                carTotals[row[1]] += amount;
             if (row[1] != currentCar)
                 continue;
             repairTotal += amount;
@@ -2914,8 +2951,6 @@ public sealed class MainActivity : Activity
                 continue;
             decimal amount = NumberOrZero(row[4]);
             AddMonthlyAmount(monthlyTotals, row[0], 3, amount);
-            if (carTotals.ContainsKey(row[1]))
-                carTotals[row[1]] += amount;
             if (row[1] == currentCar)
             {
                 expenseTotal += amount;
@@ -2989,10 +3024,8 @@ public sealed class MainActivity : Activity
                 .Append(", коммунальные ").Append(Money(totals[2]))
                 .Append(", прочие ").Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" " + Cur());
         }
-        result.Append("\n\nТопливо, ремонт и прочие по автомобилям:");
-        for (int i = 0; i < cars.Count; i++)
-            result.Append("\n").Append(cars[i]).Append(": ")
-                .Append(Money(carTotals[cars[i]])).Append(" " + Cur());
+        result.Append("\n\n").Append(CarCompare.FormatBlock(
+            CarCompare.Build(cars, fuels, repairs, expenses), Cur(), Money));
         ToIntervals toIntervals = ToSettings.Load(DataDirectory);
         result
             .Append("\n\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км")
@@ -3550,7 +3583,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.20.0";
+        string version = "1.21.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);

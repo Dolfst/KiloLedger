@@ -110,6 +110,7 @@ namespace CarExpenses
             MenuItem actionsHome = CreateMenuItem("Действия");
             actionsHome.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
             actionsHome.MenuItems.Add(CreateMenuItem("Дубликаты", new EventHandler(ShowDuplicatesFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Проверка данных", new EventHandler(ShowDataIntegrityFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
@@ -1613,7 +1614,7 @@ namespace CarExpenses
                     return;
             }
             if (screenType == "cars")
-                ShowCars(sender, e);
+                ShowCars(null, EventArgs.Empty);
             else
                 ShowHome();
         }
@@ -1851,18 +1852,13 @@ namespace CarExpenses
             string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
             List<string[]> fuels = DataStore.LoadFuel();
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
-            Dictionary<string, decimal> carTotals = new Dictionary<string, decimal>();
             List<string> cars = DataStore.LoadCarNames();
-            for (int i = 0; i < cars.Count; i++)
-                carTotals.Add(cars[i], 0);
 
             for (int i = 0; i < fuels.Count; i++)
             {
                 string[] row = fuels[i];
                 decimal amount = DataStore.NumberOrZero(row[4]);
                 AddMonthlyAmount(monthlyTotals, row[0], 0, amount);
-                if (carTotals.ContainsKey(row[1]))
-                    carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
                 {
                     fuelTotal += amount;
@@ -1890,8 +1886,6 @@ namespace CarExpenses
                 string[] row = repairs[i];
                 decimal amount = DataStore.NumberOrZero(row[7]);
                 AddMonthlyAmount(monthlyTotals, row[0], 1, amount);
-                if (carTotals.ContainsKey(row[1]))
-                    carTotals[row[1]] += amount;
                 if (row[1] != currentCar)
                     continue;
                 repairTotal += amount;
@@ -1912,8 +1906,6 @@ namespace CarExpenses
                     continue;
                 decimal amount = DataStore.NumberOrZero(row[4]);
                 AddMonthlyAmount(monthlyTotals, row[0], 3, amount);
-                if (carTotals.ContainsKey(row[1]))
-                    carTotals[row[1]] += amount;
                 if (row[1] == currentCar)
                 {
                     expenseTotal += amount;
@@ -2027,9 +2019,8 @@ namespace CarExpenses
                     Money(totals[2]) + ", прочие " +
                     Money(totals.Length > 3 ? totals[3] : 0m) + " " + Cur() + "\r\n";
             }
-            result += "\r\nТопливо, ремонт и прочие по автомобилям:\r\n";
-            for (int i = 0; i < cars.Count; i++)
-                result += cars[i] + ": " + Money(carTotals[cars[i]]) + " " + Cur() + "\r\n";
+            result += "\r\n" + CarCompare.FormatBlock(
+                CarCompare.Build(cars, fuels, repairs, expenses), Cur()) + "\r\n";
             result += "\r\nТекущий пробег: " + Money(currentMileage) + " км\r\n";
             ToIntervals intervals = ToSettings.Load();
             result += ServiceStatus("Замена масла", currentMileage, lastOilMileage,
@@ -2244,7 +2235,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.20.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.21.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
@@ -2269,6 +2260,38 @@ namespace CarExpenses
             catch (Exception ex)
             {
                 MessageBox.Show("Не удалось сохранить сводку: " + ex.Message, "Ошибка");
+            }
+        }
+
+        private void ShowDataIntegrityFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                DataIntegrity.Report report = DataIntegrity.Check();
+                string text = DataIntegrity.Format(report);
+                if (report.CanSimpleFix)
+                {
+                    DialogResult answer = MessageBox.Show(
+                        text + "\r\n\r\nИсправить простое (добавить категории)?",
+                        "Проверка данных", MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                    if (answer == DialogResult.Yes)
+                    {
+                        int n = DataIntegrity.ApplySimpleFixes(report);
+                        MessageBox.Show(n > 0
+                            ? "Добавлено категорий: " + n + "."
+                            : "Нечего исправлять.",
+                            "Проверка данных");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(text, "Проверка данных");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось проверить данные: " + ex.Message, "Проверка данных");
             }
         }
 
