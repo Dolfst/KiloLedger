@@ -15,7 +15,7 @@ namespace Alfa156.Desktop.Data
         public List<string[]> Categories { get; private set; }
         public List<string[]> Expenses { get; private set; }
         public List<string[]> ExpenseCategories { get; private set; }
-        public List<string[]> Settings { get; private set; }
+        public List<string[]> Settings { get; set; }
         public List<Tombstone> Deleted { get; set; }
 
         public AlfaRepository()

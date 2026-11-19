@@ -175,11 +175,7 @@ namespace CarExpenses
 
         private static bool TryDecimal(string text, out decimal value)
         {
-            value = 0;
-            if (text == null)
-                return false;
-            string raw = text.Trim().Replace(',', '.');
-            return Decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out value);
+            return DataStore.TryNumber(text, out value);
         }
 
         private static string Format(decimal value)
