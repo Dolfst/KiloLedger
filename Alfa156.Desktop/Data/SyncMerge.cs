@@ -80,6 +80,43 @@ namespace Alfa156.Desktop.Data
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Dry-run: SyncJournal for the given plan without mutating local repository.
+        /// </summary>
+        internal static SyncJournal BuildPreview(AlfaRepository local, AlfaRepository remote, SyncPlan plan)
+        {
+            if (plan == null)
+            {
+                plan = new SyncPlan
+                {
+                    AddFromGoogle = true,
+                    RemoveMissingInGoogle = false,
+                    ConflictPolicy = SyncConflictPolicy.PreferLocal
+                };
+            }
+            SyncJournal journal = new SyncJournal();
+            List<Tombstone> tombs = RecordIds.UnionTombstones(local.Deleted, remote.Deleted);
+            ApplyList(local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeCar), "cars.dat", journal, false);
+            ApplyList(local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeFuel), "fuel.dat", journal, false);
+            ApplyList(local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
+                new bool[] { false, true, false, true, false }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeRepair), "repairs.dat", journal, false);
+            ApplyList(local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeUtility), "utilities.dat", journal, false);
+            ApplyList(local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeCategory), AlfaCodec.RepairCategoriesFile,
+                journal, false);
+            ApplyList(local.Expenses, remote.Expenses, new int[] { 0, 1, 2, 3 },
+                new bool[] { false, true, true, false }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeExpense), AlfaCodec.ExpensesFile, journal, false);
+            ApplyList(local.ExpenseCategories, remote.ExpenseCategories, new int[] { 0 }, new bool[] { true },
+                plan, RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory),
+                AlfaCodec.ExpenseCategoriesFile, journal, false);
+            return journal;
+        }
+
         internal static SyncJournal ApplyPlan(AlfaRepository local, AlfaRepository remote, SyncPlan plan)
         {
             SyncJournal journal = new SyncJournal();
@@ -88,22 +125,23 @@ namespace Alfa156.Desktop.Data
 
             local.ReplaceAll(
                 ApplyList(local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeCar), "cars.dat", journal),
+                    RecordIds.IdsForType(tombs, RecordIds.TypeCar), "cars.dat", journal, true),
                 ApplyList(local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeFuel), "fuel.dat", journal),
+                    RecordIds.IdsForType(tombs, RecordIds.TypeFuel), "fuel.dat", journal, true),
                 ApplyList(local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
                     new bool[] { false, true, false, true, false }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeRepair), "repairs.dat", journal),
+                    RecordIds.IdsForType(tombs, RecordIds.TypeRepair), "repairs.dat", journal, true),
                 ApplyList(local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeUtility), "utilities.dat", journal),
+                    RecordIds.IdsForType(tombs, RecordIds.TypeUtility), "utilities.dat", journal, true),
                 ApplyList(local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeCategory), AlfaCodec.RepairCategoriesFile, journal),
+                    RecordIds.IdsForType(tombs, RecordIds.TypeCategory), AlfaCodec.RepairCategoriesFile,
+                    journal, true),
                 ApplyList(local.Expenses, remote.Expenses, new int[] { 0, 1, 2, 3 },
                     new bool[] { false, true, true, false }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeExpense), AlfaCodec.ExpensesFile, journal),
-                ApplyList(local.ExpenseCategories, remote.ExpenseCategories, new int[] { 0 }, new bool[] { true }, plan,
-                    RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory),
-                    AlfaCodec.ExpenseCategoriesFile, journal),
+                    RecordIds.IdsForType(tombs, RecordIds.TypeExpense), AlfaCodec.ExpensesFile, journal, true),
+                ApplyList(local.ExpenseCategories, remote.ExpenseCategories, new int[] { 0 }, new bool[] { true },
+                    plan, RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory),
+                    AlfaCodec.ExpenseCategoriesFile, journal, true),
                 ToSettings.MergeRows(local.Settings, remote.Settings,
                     plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming));
             local.Deleted = tombs;
@@ -183,7 +221,8 @@ namespace Alfa156.Desktop.Data
             SyncPlan plan,
             HashSet<string> deletedIds,
             string fileName,
-            SyncJournal journal)
+            SyncJournal journal,
+            bool writeOutput)
         {
             List<string[]> local = CloneRows(localRows);
             List<string[]> remote = CloneRows(remoteRows);
@@ -192,7 +231,7 @@ namespace Alfa156.Desktop.Data
 
             List<string[]> merged = new List<string[]>();
             bool[] localMatched = new bool[local.Count];
-            string title = fileName;
+            string title = ConflictTitle(fileName);
 
             for (int i = 0; i < remote.Count; i++)
             {
@@ -201,7 +240,7 @@ namespace Alfa156.Desktop.Data
                 if (remoteId != null && deletedIds.Contains(remoteId))
                 {
                     journal.Removed++;
-                    journal.AddExample("удалено " + title + " " + remoteId);
+                    journal.AddExample(FormatExample("-", title, remoteRow));
                     continue;
                 }
 
@@ -210,8 +249,10 @@ namespace Alfa156.Desktop.Data
                 {
                     if (plan.AddFromGoogle)
                     {
-                        merged.Add((string[])remoteRow.Clone());
+                        if (writeOutput)
+                            merged.Add((string[])remoteRow.Clone());
                         journal.Added++;
+                        journal.AddExample(FormatExample("+", title, remoteRow));
                     }
                     continue;
                 }
@@ -222,17 +263,22 @@ namespace Alfa156.Desktop.Data
                 if (localId != null && deletedIds.Contains(localId))
                 {
                     journal.Removed++;
-                    journal.AddExample("удалено " + title + " " + localId);
+                    journal.AddExample(FormatExample("-", title, localRow));
                     continue;
                 }
 
                 if (RecordIds.ContentEqual(localRow, remoteRow))
                 {
-                    merged.Add(RecordIds.PreferId(localRow, remoteRow));
+                    if (writeOutput)
+                        merged.Add(RecordIds.PreferId(localRow, remoteRow));
                     continue;
                 }
 
                 journal.Conflicts++;
+                journal.AddExample(FormatExample("~", title, localRow));
+                if (!writeOutput)
+                    continue;
+
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
                     merged.Add(RecordIds.PreferId((string[])remoteRow.Clone(), localRow));
                 else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
@@ -250,18 +296,56 @@ namespace Alfa156.Desktop.Data
                 if (localId != null && deletedIds.Contains(localId))
                 {
                     journal.Removed++;
+                    journal.AddExample(FormatExample("-", title, local[i]));
                     continue;
                 }
                 if (!plan.RemoveMissingInGoogle)
                 {
-                    merged.Add((string[])local[i].Clone());
+                    if (writeOutput)
+                        merged.Add((string[])local[i].Clone());
                     journal.KeptLocalOnly++;
                 }
                 else
+                {
                     journal.Removed++;
+                    journal.AddExample(FormatExample("-", title, local[i]));
+                }
             }
 
             return merged;
+        }
+
+        private static string ConflictTitle(string fileName)
+        {
+            if (fileName == "cars.dat") return "Автомобили";
+            if (fileName == "fuel.dat") return "Заправки";
+            if (fileName == "repairs.dat") return "Ремонт";
+            if (fileName == "utilities.dat") return "Коммуналка";
+            if (fileName == AlfaCodec.RepairCategoriesFile) return "Категории";
+            if (fileName == AlfaCodec.ExpensesFile) return "Прочие расходы";
+            if (fileName == AlfaCodec.ExpenseCategoriesFile) return "Кат. прочих";
+            return fileName;
+        }
+
+        private static string FormatExample(string mark, string title, string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            string car = "";
+            string date = "";
+            if (title == "Автомобили" || title == "Категории" || title == "Кат. прочих")
+            {
+                if (content.Length > 0) car = content[0] ?? "";
+            }
+            else if (title == "Коммуналка")
+            {
+                if (content.Length > 0) date = content[0] ?? "";
+            }
+            else
+            {
+                if (content.Length > 0) date = content[0] ?? "";
+                if (content.Length > 1) car = content[1] ?? "";
+            }
+            return mark + " " + title + " | " + car + " | " + date;
         }
 
         private static List<string[]> CloneRows(List<string[]> rows)

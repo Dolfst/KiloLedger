@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 
@@ -105,6 +106,62 @@ namespace Alfa156.Desktop.Data
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.SettingsFile), Settings);
             RecordIds.WriteTombstones(DirectoryPath, Deleted ?? new List<Tombstone>());
             AlfaCodec.ValidateDirectory(DirectoryPath);
+        }
+
+        /// <summary>
+        /// Allocates Safety_yyyyMMdd_HHmmss next to the data folder (does not create it).
+        /// </summary>
+        public string AllocateSafetyBackupPath()
+        {
+            string parent = String.IsNullOrEmpty(DirectoryPath)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Alfa156")
+                : Path.GetDirectoryName(DirectoryPath);
+            if (String.IsNullOrEmpty(parent))
+                parent = DirectoryPath;
+            string baseName = "Safety_" +
+                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            string path = Path.Combine(parent, baseName);
+            int suffix = 1;
+            while (Directory.Exists(path))
+            {
+                path = Path.Combine(parent, baseName + "_" +
+                    suffix.ToString(CultureInfo.InvariantCulture));
+                suffix++;
+            }
+            return path;
+        }
+
+        /// <summary>
+        /// Copies current .dat (+ Receipts) into Safety_yyyyMMdd_HHmmss. Returns path.
+        /// </summary>
+        public string CreateSafetyBackup(string allocatedPath)
+        {
+            if (String.IsNullOrEmpty(DirectoryPath))
+                throw new InvalidOperationException("Нет открытой папки данных для копии.");
+            if (!File.Exists(Path.Combine(DirectoryPath, "cars.dat")))
+                return null;
+
+            string path = allocatedPath;
+            if (String.IsNullOrEmpty(path))
+                path = AllocateSafetyBackupPath();
+            Directory.CreateDirectory(path);
+            for (int i = 0; i < AlfaCodec.DataFiles.Length; i++)
+            {
+                string name = AlfaCodec.DataFiles[i];
+                string source = Path.Combine(DirectoryPath, name);
+                if (File.Exists(source))
+                    File.Copy(source, Path.Combine(path, name), true);
+            }
+            string receipts = Path.Combine(DirectoryPath, "Receipts");
+            if (Directory.Exists(receipts))
+            {
+                string destReceipts = Path.Combine(path, "Receipts");
+                Directory.CreateDirectory(destReceipts);
+                string[] files = Directory.GetFiles(receipts);
+                for (int i = 0; i < files.Length; i++)
+                    File.Copy(files[i], Path.Combine(destReceipts, Path.GetFileName(files[i])), true);
+            }
+            return path;
         }
 
         public void SaveZip(string zipPath)

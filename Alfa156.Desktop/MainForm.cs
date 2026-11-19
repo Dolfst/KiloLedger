@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.15.0";
+        private const string AppVersion = "1.16.0";
 
         private string Cur()
         {
@@ -474,8 +474,8 @@ namespace Alfa156.Desktop
                 AlfaRepository remote = GoogleSyncClient.PullRemote(settings);
                 Cursor = Cursors.Default;
 
-                List<SyncTableDiff> diffs = SyncMerge.Analyze(repository, remote);
-                using (SyncOptionsForm options = new SyncOptionsForm(diffs))
+                string safetyPath = repository.AllocateSafetyBackupPath();
+                using (SyncOptionsForm options = new SyncOptionsForm(repository, remote, safetyPath))
                 {
                     if (options.ShowDialog(this) != DialogResult.OK)
                     {
@@ -483,15 +483,17 @@ namespace Alfa156.Desktop
                         return;
                     }
                     Cursor = Cursors.WaitCursor;
+                    repository.CreateSafetyBackup(safetyPath);
                     string message = GoogleSyncClient.ApplyAndPush(
                         repository, remote, settings, options.Plan);
                     BindAll();
                     repository.Save();
                     dirty = false;
-                    SetStatus(message);
+                    SetStatus(message + "\r\nКопия: " + safetyPath);
                     SyncJournal journal = SyncMerge.LastJournal;
                     if (journal != null)
-                        MessageBox.Show(this, journal.FormatSummary(), "Синхронизация Google",
+                        MessageBox.Show(this, journal.FormatSummary() +
+                            "\r\n\r\nКопия: " + safetyPath, "Синхронизация Google",
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
@@ -810,10 +812,12 @@ namespace Alfa156.Desktop
                 try
                 {
                     EnsurePathForImport();
+                    string safety = CreateSafetyIfPossible();
                     XlsxExchange.Import(repository, dialog.FileName);
                     BindAll();
                     dirty = true;
-                    SetStatus("Импортировано из Excel. Нажмите «Сохранить .dat».");
+                    SetStatus("Импортировано из Excel. Нажмите «Сохранить .dat»." +
+                        (safety != null ? " Копия: " + safety : ""));
                 }
                 catch (Exception ex)
                 {
@@ -853,10 +857,12 @@ namespace Alfa156.Desktop
                 try
                 {
                     EnsurePathForImport();
+                    string safety = CreateSafetyIfPossible();
                     CsvExchange.ImportFolder(repository, dialog.SelectedPath);
                     BindAll();
                     dirty = true;
-                    SetStatus("Импортированы CSV. Нажмите «Сохранить .dat».");
+                    SetStatus("Импортированы CSV. Нажмите «Сохранить .dat»." +
+                        (safety != null ? " Копия: " + safety : ""));
                 }
                 catch (Exception ex)
                 {
@@ -879,10 +885,12 @@ namespace Alfa156.Desktop
             {
                 EnsurePathForImport();
                 Cursor = Cursors.WaitCursor;
+                string safety = CreateSafetyIfPossible();
                 CsvExchange.ImportGoogleSheetWorkbook(repository, url);
                 BindAll();
                 dirty = true;
-                SetStatus("Импортировано из Google Sheets. Нажмите «Сохранить .dat».");
+                SetStatus("Импортировано из Google Sheets. Нажмите «Сохранить .dat»." +
+                    (safety != null ? " Копия: " + safety : ""));
             }
             catch (Exception ex)
             {
@@ -891,6 +899,22 @@ namespace Alfa156.Desktop
             finally
             {
                 Cursor = Cursors.Default;
+            }
+        }
+
+        private string CreateSafetyIfPossible()
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(repository.DirectoryPath))
+                    return null;
+                if (!File.Exists(Path.Combine(repository.DirectoryPath, "cars.dat")))
+                    return null;
+                return repository.CreateSafetyBackup(null);
+            }
+            catch
+            {
+                return null;
             }
         }
 

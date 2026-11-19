@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Smoke-check SyncJournal preview formatting and Safety_ naming (no C# runtime)."""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def must_contain(path: Path, needle: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    if needle not in text:
+        raise SystemExit(f"missing {needle!r} in {path.relative_to(ROOT)}")
+
+
+def main() -> int:
+    must_contain(ROOT / "VERSION", "1.16.0")
+    must_contain(ROOT / "Alfa156" / "Alfa156" / "SyncMerge.cs", "BuildPreview")
+    must_contain(ROOT / "Alfa156.Desktop" / "Data" / "SyncMerge.cs", "BuildPreview")
+    must_contain(ROOT / "Alfa156.Android" / "ExpenseSyncService.cs", "BuildPreview")
+    must_contain(ROOT / "Alfa156.Android" / "ExpenseDataStore.cs", "Safety_")
+    must_contain(ROOT / "Alfa156" / "Alfa156" / "DataStore.cs", "Safety_")
+    must_contain(ROOT / "Alfa156.Desktop" / "Data" / "AlfaRepository.cs", "Safety_")
+    must_contain(ROOT / "Alfa156" / "Alfa156" / "SyncOptionsForm.cs", "Применить")
+    must_contain(ROOT / "Alfa156.Desktop" / "SyncOptionsForm.cs", "Применить")
+    must_contain(ROOT / "Alfa156.Android" / "MainActivity.cs", "Применить")
+    must_contain(ROOT / "Alfa156" / "Alfa156" / "RecordIds.cs", "FormatPreview")
+    must_contain(ROOT / "Alfa156.Android" / "RecordIds.cs", "MaxExamples = 15")
+    must_contain(ROOT / "README.md", "Что нового в 1.16.0")
+
+    safety_re = re.compile(r'Safety_"\s*\+\s*\n?\s*DateTime\.Now\.ToString\("yyyyMMdd_HHmmss"')
+    for rel in (
+        "Alfa156/Alfa156/DataStore.cs",
+        "Alfa156.Android/ExpenseDataStore.cs",
+        "Alfa156.Desktop/Data/AlfaRepository.cs",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        if not safety_re.search(text):
+            raise SystemExit(f"Safety_yyyyMMdd_HHmmss pattern not found in {rel}")
+
+    print("verify_sync_preview: OK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

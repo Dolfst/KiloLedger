@@ -298,15 +298,18 @@ namespace CarExpenses
 
     internal sealed class SyncJournal
     {
+        public const int MaxExamples = 15;
+
         public int Added;
         public int Removed;
         public int Conflicts;
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
+        public string SafetyPath;
 
         public void AddExample(string text)
         {
-            if (Examples.Count >= 8 || text == null || text.Length == 0)
+            if (Examples.Count >= MaxExamples || text == null || text.Length == 0)
                 return;
             Examples.Add(text);
         }
@@ -323,16 +326,44 @@ namespace CarExpenses
             sb.Append(Conflicts.ToString());
             sb.Append("\r\n  только локально: ");
             sb.Append(KeptLocalOnly.ToString());
-            if (Examples.Count > 0)
+            AppendExamples(sb, "\r\n");
+            return sb.ToString();
+        }
+
+        public string FormatPreview()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("Предпросмотр слияния:\r\n");
+            sb.Append("  только локально: ");
+            sb.Append(KeptLocalOnly.ToString());
+            sb.Append("\r\n  только удалённо: ");
+            sb.Append(Added.ToString());
+            sb.Append("\r\n  обновления/конфликты: ");
+            sb.Append(Conflicts.ToString());
+            sb.Append("\r\n  удаления (tombstone): ");
+            sb.Append(Removed.ToString());
+            AppendExamples(sb, "\r\n");
+            if (SafetyPath != null && SafetyPath.Length > 0)
             {
-                sb.Append("\r\n\r\nПримеры:");
-                for (int i = 0; i < Examples.Count; i++)
-                {
-                    sb.Append("\r\n  • ");
-                    sb.Append(Examples[i]);
-                }
+                sb.Append("\r\n\r\nПеред применением: ");
+                sb.Append(SafetyPath);
             }
             return sb.ToString();
+        }
+
+        private void AppendExamples(StringBuilder sb, string nl)
+        {
+            if (Examples.Count == 0)
+                return;
+            sb.Append(nl);
+            sb.Append(nl);
+            sb.Append("Примеры:");
+            for (int i = 0; i < Examples.Count; i++)
+            {
+                sb.Append(nl);
+                sb.Append("  • ");
+                sb.Append(Examples[i]);
+            }
         }
     }
 }

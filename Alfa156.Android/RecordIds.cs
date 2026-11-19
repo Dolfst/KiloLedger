@@ -261,15 +261,18 @@ internal sealed class Tombstone
 
 internal sealed class SyncJournal
 {
+    public const int MaxExamples = 15;
+
     public int Added;
     public int Removed;
     public int Conflicts;
     public int KeptLocalOnly;
     public readonly List<string> Examples = new List<string>();
+    public string SafetyPath;
 
     public void AddExample(string text)
     {
-        if (Examples.Count >= 8 || String.IsNullOrEmpty(text))
+        if (Examples.Count >= MaxExamples || String.IsNullOrEmpty(text))
             return;
         Examples.Add(text);
     }
@@ -282,12 +285,30 @@ internal sealed class SyncJournal
         sb.Append("  удалено (tombstone): ").Append(Removed).Append('\n');
         sb.Append("  конфликтов: ").Append(Conflicts).Append('\n');
         sb.Append("  только локально: ").Append(KeptLocalOnly);
-        if (Examples.Count > 0)
-        {
-            sb.Append("\n\nПримеры:");
-            for (int i = 0; i < Examples.Count; i++)
-                sb.Append("\n  • ").Append(Examples[i]);
-        }
+        AppendExamples(sb);
         return sb.ToString();
+    }
+
+    public string FormatPreview()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append("Предпросмотр слияния:\n");
+        sb.Append("  только локально: ").Append(KeptLocalOnly).Append('\n');
+        sb.Append("  только удалённо: ").Append(Added).Append('\n');
+        sb.Append("  обновления/конфликты: ").Append(Conflicts).Append('\n');
+        sb.Append("  удаления (tombstone): ").Append(Removed);
+        AppendExamples(sb);
+        if (!String.IsNullOrEmpty(SafetyPath))
+            sb.Append("\n\nПеред применением: ").Append(SafetyPath);
+        return sb.ToString();
+    }
+
+    private void AppendExamples(StringBuilder sb)
+    {
+        if (Examples.Count == 0)
+            return;
+        sb.Append("\n\nПримеры:");
+        for (int i = 0; i < Examples.Count; i++)
+            sb.Append("\n  • ").Append(Examples[i]);
     }
 }

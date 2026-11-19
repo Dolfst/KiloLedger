@@ -12,8 +12,18 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     errors: list[str] = []
     version = (ROOT / "VERSION").read_text().strip()
-    if version != "1.15.0":
-        errors.append(f"VERSION expected 1.15.0, got {version!r}")
+    # Currency + Wi‑Fi receipts shipped in 1.15.0; later versions keep the same contracts.
+    if not re.match(r"^1\.(1[5-9]|[2-9]\d)\.\d+$", version) and version != "1.15.0":
+        # Accept 1.15+ (1.15.x, 1.16+, 1.2x, …)
+        parts = version.split(".")
+        ok = False
+        try:
+            major, minor = int(parts[0]), int(parts[1])
+            ok = major > 1 or (major == 1 and minor >= 15)
+        except (ValueError, IndexError):
+            ok = False
+        if not ok:
+            errors.append(f"VERSION expected >= 1.15.0, got {version!r}")
 
     for rel in (
         "Alfa156/Alfa156/ToSettings.cs",

@@ -136,16 +136,20 @@ internal static class ExpenseSyncService
                     ReceiveReceipts(stream, incomingDirectory, crypto);
                     ExpenseDataCodec.ValidateDirectory(incomingDirectory);
 
-                    SyncPlan plan = resolvePlan(FormatSummary(
-                        AnalyzeDirectories(dataDirectory, incomingDirectory),
-                        "Android", "КПК"));
+                    SyncPlan defaultPlan = new SyncPlan();
+                    SyncJournal preview = BuildPreview(dataDirectory, incomingDirectory, defaultPlan);
+                    string safetyPath = ExpenseDataStore.AllocateSafetyBackupPath(dataDirectory);
+                    preview.SafetyPath = safetyPath;
+                    SyncPlan plan = resolvePlan(BuildPreviewText(
+                        dataDirectory, incomingDirectory, "Android", "КПК", preview));
                     if (plan == null || plan.Cancelled)
                     {
                         WriteResponse(stream, 1, "Синхронизация отменена на Android.");
                         return "Синхронизация отменена.";
                     }
 
-                    MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
+                    MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan,
+                        resolveConflict, safetyPath);
                     ReceiptStore.OverlayFrom(incomingDirectory, dataDirectory);
                     finalResponseStarted = true;
                     WriteInt32(stream, 0);
@@ -268,8 +272,71 @@ internal static class ExpenseSyncService
         SyncPlan plan,
         SyncConflictResolver resolveConflict)
     {
+        MergeFromIncoming(dataDirectory, incomingDirectory, stagingRoot, plan, resolveConflict, null);
+    }
+
+    internal static void MergeFromIncoming(
+        string dataDirectory,
+        string incomingDirectory,
+        string stagingRoot,
+        SyncPlan plan,
+        SyncConflictResolver resolveConflict,
+        string safetyPath)
+    {
         string mergedDirectory = Path.Combine(stagingRoot, "merged-" + Guid.NewGuid().ToString("N"));
-        MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
+        if (String.IsNullOrEmpty(safetyPath))
+            safetyPath = ExpenseDataStore.AllocateSafetyBackupPath(dataDirectory);
+        MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict,
+            safetyPath);
+    }
+
+    /// <summary>
+    /// Dry-run merge: returns SyncJournal without writing local data.
+    /// </summary>
+    internal static SyncJournal BuildPreview(
+        string localDirectory, string remoteDirectory, SyncPlan plan)
+    {
+        if (plan == null)
+            plan = new SyncPlan();
+        SyncJournal journal = new SyncJournal();
+        List<Tombstone> tombs = RecordIds.UnionTombstones(
+            RecordIds.ReadTombstones(localDirectory),
+            RecordIds.ReadTombstones(remoteDirectory));
+        MergeRows("cars.dat", localDirectory, remoteDirectory, null,
+            new int[] { 0 }, new bool[] { true }, plan, null, tombs, journal, false);
+        MergeRows(ExpenseDataCodec.RepairCategoriesFile, localDirectory, remoteDirectory, null,
+            new int[] { 0 }, new bool[] { true }, plan, null, tombs, journal, false);
+        MergeRows("fuel.dat", localDirectory, remoteDirectory, null,
+            new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, null, tombs, journal, false);
+        MergeRows("repairs.dat", localDirectory, remoteDirectory, null,
+            new int[] { 0, 1, 2, 3, 4 }, new bool[] { false, true, false, true, false },
+            plan, null, tombs, journal, false);
+        MergeRows("utilities.dat", localDirectory, remoteDirectory, null,
+            new int[] { 0 }, new bool[] { false }, plan, null, tombs, journal, false);
+        MergeRows(ExpenseDataCodec.ExpensesFile, localDirectory, remoteDirectory, null,
+            new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false },
+            plan, null, tombs, journal, false);
+        MergeRows(ExpenseDataCodec.ExpenseCategoriesFile, localDirectory, remoteDirectory, null,
+            new int[] { 0 }, new bool[] { true }, plan, null, tombs, journal, false);
+        return journal;
+    }
+
+    internal static string BuildPreviewText(
+        string localDirectory,
+        string remoteDirectory,
+        string localName,
+        string remoteName,
+        SyncJournal preview)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append(FormatSummary(AnalyzeDirectories(localDirectory, remoteDirectory),
+            localName, remoteName));
+        if (preview != null)
+        {
+            sb.Append("\n\n");
+            sb.Append(preview.FormatPreview());
+        }
+        return sb.ToString();
     }
 
     internal static List<SyncTableDiff> AnalyzeDirectories(string localDirectory, string remoteDirectory)
@@ -389,7 +456,8 @@ internal static class ExpenseSyncService
         string incomingDirectory,
         string mergedDirectory,
         SyncPlan plan,
-        SyncConflictResolver resolveConflict)
+        SyncConflictResolver resolveConflict,
+        string safetyPath)
     {
         bool hasLocalData = HasAnyDataFile(dataDirectory);
         bool hasCompleteLocalData = HasCompleteData(dataDirectory);
@@ -415,25 +483,25 @@ internal static class ExpenseSyncService
             ExpenseDataStore.EnsureRepairCategories(dataDirectory);
             ExpenseDataStore.EnsureCompanionFiles(dataDirectory);
             MergeRows("cars.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, mergedTombs, journal);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, mergedTombs, journal, true);
             MergeRows(ExpenseDataCodec.RepairCategoriesFile, dataDirectory, incomingDirectory,
                 mergedDirectory, new int[] { 0 }, new bool[] { true }, plan, resolveConflict,
-                mergedTombs, journal);
+                mergedTombs, journal, true);
             MergeRows("fuel.dat", dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict,
-                mergedTombs, journal);
+                mergedTombs, journal, true);
             MergeRows("repairs.dat", dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1, 2, 3, 4 },
                 new bool[] { false, true, false, true, false }, plan, resolveConflict,
-                mergedTombs, journal);
+                mergedTombs, journal, true);
             MergeRows("utilities.dat", dataDirectory, incomingDirectory, mergedDirectory,
-                new int[] { 0 }, new bool[] { false }, plan, resolveConflict, mergedTombs, journal);
+                new int[] { 0 }, new bool[] { false }, plan, resolveConflict, mergedTombs, journal, true);
             MergeRows(ExpenseDataCodec.ExpensesFile, dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false }, plan,
-                resolveConflict, mergedTombs, journal);
+                resolveConflict, mergedTombs, journal, true);
             MergeRows(ExpenseDataCodec.ExpenseCategoriesFile, dataDirectory, incomingDirectory,
                 mergedDirectory, new int[] { 0 }, new bool[] { true }, plan, resolveConflict,
-                mergedTombs, journal);
+                mergedTombs, journal, true);
             ToSettings.MergeFiles(dataDirectory, incomingDirectory, mergedDirectory,
                 plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
         }
@@ -447,7 +515,7 @@ internal static class ExpenseSyncService
 
         string safetyBackup = null;
         if (hasCompleteLocalData)
-            safetyBackup = ExpenseDataStore.CreateBackup(dataDirectory);
+            safetyBackup = ExpenseDataStore.CreateSafetyBackup(dataDirectory, safetyPath);
 
         try
         {
@@ -475,17 +543,15 @@ internal static class ExpenseSyncService
                 throw;
             }
 
-            string backupPath = Path.Combine(Path.GetDirectoryName(dataDirectory),
-                "Backups", safetyBackup);
             try
             {
-                ExpenseDataStore.CopyDataFiles(backupPath, dataDirectory);
+                ExpenseDataStore.CopyDataFiles(safetyBackup, dataDirectory);
             }
             catch (Exception rollbackError)
             {
                 throw new IOException("Синхронизация не завершена: " + installError.Message +
                     ". Не удалось вернуть прежние данные: " + rollbackError.Message +
-                    ". Копия сохранена в " + backupPath);
+                    ". Копия сохранена в " + safetyBackup);
             }
             throw;
         }
@@ -559,7 +625,8 @@ internal static class ExpenseSyncService
         SyncPlan plan,
         SyncConflictResolver resolveConflict,
         List<Tombstone> tombs,
-        SyncJournal journal)
+        SyncJournal journal,
+        bool writeOutput)
     {
         List<string[]> localRows = ExpenseDataStore.LoadOptional(localDirectory, fileName);
         List<string[]> incoming = ExpenseDataStore.LoadOptional(incomingDirectory, fileName);
@@ -578,7 +645,7 @@ internal static class ExpenseSyncService
             if (remoteId != null && deleted.Contains(remoteId))
             {
                 journal.Removed++;
-                journal.AddExample("удалено " + title + " " + remoteId);
+                journal.AddExample(FormatExample("-", title, row));
                 continue;
             }
 
@@ -589,7 +656,7 @@ internal static class ExpenseSyncService
                 {
                     merged.Add(row);
                     journal.Added++;
-                    journal.AddExample("+ " + title + ": " + FormatRow(RecordIds.StripId(row)));
+                    journal.AddExample(FormatExample("+", title, row));
                 }
                 continue;
             }
@@ -600,7 +667,7 @@ internal static class ExpenseSyncService
             if (localId != null && deleted.Contains(localId))
             {
                 journal.Removed++;
-                journal.AddExample("удалено " + title + " " + localId);
+                journal.AddExample(FormatExample("-", title, local));
                 continue;
             }
 
@@ -611,7 +678,10 @@ internal static class ExpenseSyncService
             }
 
             journal.Conflicts++;
-            journal.AddExample("~ " + title + ": " + FormatRow(RecordIds.StripId(local)));
+            journal.AddExample(FormatExample("~", title, local));
+
+            if (!writeOutput)
+                continue;
 
             SyncConflictChoice choice;
             if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
@@ -637,7 +707,7 @@ internal static class ExpenseSyncService
             if (localId != null && deleted.Contains(localId))
             {
                 journal.Removed++;
-                journal.AddExample("удалено " + title + " " + localId);
+                journal.AddExample(FormatExample("-", title, localRows[i]));
                 continue;
             }
             if (!plan.RemoveLocalOnly)
@@ -648,11 +718,37 @@ internal static class ExpenseSyncService
             else
             {
                 journal.Removed++;
-                journal.AddExample("удалено локальное " + title);
+                journal.AddExample(FormatExample("-", title, localRows[i]));
             }
         }
 
-        ExpenseDataCodec.SaveRows(Path.Combine(destinationDirectory, fileName), merged);
+        if (writeOutput && destinationDirectory != null)
+            ExpenseDataCodec.SaveRows(Path.Combine(destinationDirectory, fileName), merged);
+    }
+
+    private static string FormatExample(string mark, string title, string[] row)
+    {
+        string[] content = RecordIds.StripId(row);
+        string car = "";
+        string date = "";
+        if (title == "Автомобиль" || title.IndexOf("Категория", StringComparison.Ordinal) >= 0)
+        {
+            if (content.Length > 0)
+                car = content[0] ?? "";
+        }
+        else if (title == "Коммунальные")
+        {
+            if (content.Length > 0)
+                date = content[0] ?? "";
+        }
+        else
+        {
+            if (content.Length > 0)
+                date = content[0] ?? "";
+            if (content.Length > 1)
+                car = content[1] ?? "";
+        }
+        return mark + " " + title + " | " + car + " | " + date;
     }
 
     private static int FindIdentity(

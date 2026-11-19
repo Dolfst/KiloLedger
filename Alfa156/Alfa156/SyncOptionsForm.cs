@@ -17,7 +17,7 @@ namespace CarExpenses
         internal SyncOptionsForm(string summary)
         {
             plan = new SyncPlan();
-            Text = "Синхронизация";
+            Text = "Предпросмотр";
             // Design size for QVGA; Maximize + LayoutControls adapt to any resolution (QVGA/VGA).
             ClientSize = new Size(240, 268);
             AutoScroll = false;
@@ -26,7 +26,7 @@ namespace CarExpenses
             WindowState = FormWindowState.Maximized;
 
             summaryLabel = new Label();
-            summaryLabel.Text = "Сравнение данных:";
+            summaryLabel.Text = "Предпросмотр слияния:";
             summaryLabel.BackColor = BackColor;
             summaryLabel.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(summaryLabel);
@@ -71,7 +71,7 @@ namespace CarExpenses
             Controls.Add(conflictBox);
 
             MainMenu menu = new MainMenu();
-            menu.MenuItems.Add(CreateMenuItem("Синхрон.", new EventHandler(Accept)));
+            menu.MenuItems.Add(CreateMenuItem("Применить", new EventHandler(Accept)));
             menu.MenuItems.Add(CreateMenuItem("Отмена", new EventHandler(Cancel)));
             Menu = menu;
 

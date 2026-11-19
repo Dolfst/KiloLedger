@@ -248,15 +248,18 @@ namespace Alfa156.Desktop.Data
 
     internal sealed class SyncJournal
     {
+        public const int MaxExamples = 15;
+
         public int Added;
         public int Removed;
         public int Conflicts;
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
+        public string SafetyPath;
 
         public void AddExample(string text)
         {
-            if (Examples.Count >= 8 || String.IsNullOrEmpty(text))
+            if (Examples.Count >= MaxExamples || String.IsNullOrEmpty(text))
                 return;
             Examples.Add(text);
         }
@@ -269,15 +272,37 @@ namespace Alfa156.Desktop.Data
             sb.AppendLine("  удалено (tombstone): " + Removed);
             sb.AppendLine("  конфликтов: " + Conflicts);
             sb.Append("  только локально: " + KeptLocalOnly);
-            if (Examples.Count > 0)
+            AppendExamples(sb);
+            return sb.ToString();
+        }
+
+        public string FormatPreview()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Предпросмотр слияния:");
+            sb.AppendLine("  только локально: " + KeptLocalOnly);
+            sb.AppendLine("  только удалённо: " + Added);
+            sb.AppendLine("  обновления/конфликты: " + Conflicts);
+            sb.Append("  удаления (tombstone): " + Removed);
+            AppendExamples(sb);
+            if (!String.IsNullOrEmpty(SafetyPath))
             {
                 sb.AppendLine();
                 sb.AppendLine();
-                sb.Append("Примеры:");
-                for (int i = 0; i < Examples.Count; i++)
-                    sb.AppendLine().Append("  • ").Append(Examples[i]);
+                sb.Append("Перед применением: ").Append(SafetyPath);
             }
             return sb.ToString();
+        }
+
+        private void AppendExamples(StringBuilder sb)
+        {
+            if (Examples.Count == 0)
+                return;
+            sb.AppendLine();
+            sb.AppendLine();
+            sb.Append("Примеры:");
+            for (int i = 0; i < Examples.Count; i++)
+                sb.AppendLine().Append("  • ").Append(Examples[i]);
         }
     }
 }

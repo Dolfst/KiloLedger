@@ -925,7 +925,7 @@ public sealed class MainActivity : Activity
                     scroll.AddView(summaryView);
                     root.AddView(scroll, new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MatchParent,
-                        (int)(220 * Resources.DisplayMetrics.Density)));
+                        (int)(280 * Resources.DisplayMetrics.Density)));
 
                     CheckBox addBox = new CheckBox(this);
                     addBox.Text = "Добавить записи, которые есть только на " + remoteName;
@@ -959,10 +959,10 @@ public sealed class MainActivity : Activity
                     root.AddView(conflictGroup);
 
                     new AlertDialog.Builder(this)
-                        .SetTitle("Синхронизация с " + remoteName)
+                        .SetTitle("Предпросмотр: " + remoteName)
                         .SetView(root)
                         .SetCancelable(false)
-                        .SetPositiveButton("Синхронизировать", delegate
+                        .SetPositiveButton("Применить", delegate
                         {
                             plan.Cancelled = false;
                             plan.AddIncoming = addBox.Checked;
@@ -2722,7 +2722,7 @@ public sealed class MainActivity : Activity
     {
         string safetyBackup = null;
         if (IsCompleteData(DataDirectory))
-            safetyBackup = ExpenseDataStore.CreateBackup(DataDirectory);
+            safetyBackup = ExpenseDataStore.CreateSafetyBackup(DataDirectory, null);
 
         try
         {
@@ -2733,16 +2733,15 @@ public sealed class MainActivity : Activity
         {
             if (safetyBackup != null)
             {
-                string safetyPath = Path.Combine(Path.GetDirectoryName(DataDirectory),
-                    "Backups", safetyBackup);
                 try
                 {
-                    CopyData(safetyPath, DataDirectory);
+                    CopyData(safetyBackup, DataDirectory);
                 }
                 catch (Exception rollbackError)
                 {
                     throw new IOException("Импорт не завершён: " + importError.Message +
-                        ". Возврат прежних данных не удался: " + rollbackError.Message);
+                        ". Возврат прежних данных не удался: " + rollbackError.Message +
+                        ". Копия: " + safetyBackup);
                 }
             }
             else
@@ -3002,7 +3001,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.15.0";
+        string version = "1.16.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);

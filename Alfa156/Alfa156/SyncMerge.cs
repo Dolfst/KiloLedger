@@ -124,6 +124,25 @@ namespace CarExpenses
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Dry-run: build a SyncJournal for the given plan without writing files.
+        /// </summary>
+        internal static SyncJournal BuildPreview(
+            string localDirectory,
+            string remoteDirectory,
+            SyncPlan plan)
+        {
+            if (plan == null)
+            {
+                plan = new SyncPlan();
+                plan.AddIncoming = true;
+                plan.RemoveLocalOnly = false;
+                plan.ConflictPolicy = SyncConflictPolicy.PreferLocal;
+            }
+            SyncJournal journal = RunMerge(localDirectory, remoteDirectory, null, plan, null, false);
+            return journal;
+        }
+
         internal static SyncJournal ApplyPlan(
             string localDirectory,
             string remoteDirectory,
@@ -131,34 +150,50 @@ namespace CarExpenses
             SyncPlan plan,
             SyncConflictResolver resolveConflict)
         {
-            SyncJournal journal = new SyncJournal();
+            SyncJournal journal = RunMerge(localDirectory, remoteDirectory, destinationDirectory,
+                plan, resolveConflict, true);
             lastJournal = journal;
+            return journal;
+        }
+
+        private static SyncJournal RunMerge(
+            string localDirectory,
+            string remoteDirectory,
+            string destinationDirectory,
+            SyncPlan plan,
+            SyncConflictResolver resolveConflict,
+            bool writeOutput)
+        {
+            SyncJournal journal = new SyncJournal();
 
             List<Tombstone> tombs = RecordIds.UnionTombstones(
                 RecordIds.ReadTombstones(localDirectory),
                 RecordIds.ReadTombstones(remoteDirectory));
 
             MergeFile("cars.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
             MergeFile("fuel.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, resolveConflict,
-                tombs, journal);
+                tombs, journal, writeOutput);
             MergeFile("repairs.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2, 3, 4 },
-                new bool[] { false, true, false, true, false }, plan, resolveConflict, tombs, journal);
+                new bool[] { false, true, false, true, false }, plan, resolveConflict, tombs, journal,
+                writeOutput);
             MergeFile("utilities.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { false }, plan, resolveConflict, tombs, journal);
+                new int[] { 0 }, new bool[] { false }, plan, resolveConflict, tombs, journal, writeOutput);
             MergeFile("repair-categories.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
             MergeFile("expenses.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false }, plan,
-                resolveConflict, tombs, journal);
+                resolveConflict, tombs, journal, writeOutput);
             MergeFile("expense-categories.dat", localDirectory, remoteDirectory, destinationDirectory,
-                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal);
-            ToSettings.MergeDirectories(localDirectory, remoteDirectory, destinationDirectory,
-                plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
-
-            RecordIds.WriteTombstones(destinationDirectory, tombs);
+                new int[] { 0 }, new bool[] { true }, plan, resolveConflict, tombs, journal, writeOutput);
+            if (writeOutput && destinationDirectory != null)
+            {
+                ToSettings.MergeDirectories(localDirectory, remoteDirectory, destinationDirectory,
+                    plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
+                RecordIds.WriteTombstones(destinationDirectory, tombs);
+            }
             return journal;
         }
 
@@ -220,7 +255,8 @@ namespace CarExpenses
             SyncPlan plan,
             SyncConflictResolver resolveConflict,
             List<Tombstone> tombs,
-            SyncJournal journal)
+            SyncJournal journal,
+            bool writeOutput)
         {
             List<string[]> localRows = DataStore.ReadSyncTable(localDirectory, fileName);
             List<string[]> remoteRows = DataStore.ReadSyncTable(remoteDirectory, fileName);
@@ -240,7 +276,7 @@ namespace CarExpenses
                 if (remoteId != null && deleted.ContainsKey(remoteId))
                 {
                     journal.Removed++;
-                    journal.AddExample("удалено " + title + " " + remoteId);
+                    journal.AddExample(FormatExample("-", title, remote));
                     continue;
                 }
 
@@ -251,7 +287,7 @@ namespace CarExpenses
                     {
                         merged.Add(remote);
                         journal.Added++;
-                        journal.AddExample("+ " + title + ": " + FormatRow(RecordIds.StripId(remote)));
+                        journal.AddExample(FormatExample("+", title, remote));
                     }
                     continue;
                 }
@@ -262,7 +298,7 @@ namespace CarExpenses
                 if (localId != null && deleted.ContainsKey(localId))
                 {
                     journal.Removed++;
-                    journal.AddExample("удалено " + title + " " + localId);
+                    journal.AddExample(FormatExample("-", title, local));
                     continue;
                 }
 
@@ -273,7 +309,10 @@ namespace CarExpenses
                 }
 
                 journal.Conflicts++;
-                journal.AddExample("~ " + title + ": " + FormatRow(RecordIds.StripId(local)));
+                journal.AddExample(FormatExample("~", title, local));
+
+                if (!writeOutput)
+                    continue;
 
                 SyncConflictChoice choice;
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
@@ -299,7 +338,7 @@ namespace CarExpenses
                 if (localId != null && deleted.ContainsKey(localId))
                 {
                     journal.Removed++;
-                    journal.AddExample("удалено " + title + " " + localId);
+                    journal.AddExample(FormatExample("-", title, localRows[i]));
                     continue;
                 }
                 if (!plan.RemoveLocalOnly)
@@ -310,11 +349,37 @@ namespace CarExpenses
                 else
                 {
                     journal.Removed++;
-                    journal.AddExample("удалено локальное " + title);
+                    journal.AddExample(FormatExample("-", title, localRows[i]));
                 }
             }
 
-            DataStore.WriteSyncTable(destinationDirectory, fileName, merged);
+            if (writeOutput && destinationDirectory != null)
+                DataStore.WriteSyncTable(destinationDirectory, fileName, merged);
+        }
+
+        private static string FormatExample(string mark, string title, string[] row)
+        {
+            string[] content = RecordIds.StripId(row);
+            string car = "";
+            string date = "";
+            if (title == "Автомобили" || title == "Категории" || title == "Кат. прочих")
+            {
+                if (content.Length > 0)
+                    car = content[0] == null ? "" : content[0];
+            }
+            else if (title == "Коммуналка")
+            {
+                if (content.Length > 0)
+                    date = content[0] == null ? "" : content[0];
+            }
+            else
+            {
+                if (content.Length > 0)
+                    date = content[0] == null ? "" : content[0];
+                if (content.Length > 1)
+                    car = content[1] == null ? "" : content[1];
+            }
+            return mark + " " + title + " | " + car + " | " + date;
         }
 
         private static string ConflictTitle(string fileName)

@@ -54,13 +54,18 @@ internal static class GoogleSyncService
             WriteSnapshotFromJson(pullJson, incoming);
             ExpenseDataCodec.ValidateDirectory(incoming);
 
-            SyncPlan plan = resolvePlan(ExpenseSyncService.FormatSummary(
-                ExpenseSyncService.AnalyzeDirectories(dataDirectory, incoming),
-                "Android", "Google"));
+            SyncPlan defaultPlan = new SyncPlan();
+            SyncJournal preview = ExpenseSyncService.BuildPreview(
+                dataDirectory, incoming, defaultPlan);
+            string safetyPath = ExpenseDataStore.AllocateSafetyBackupPath(dataDirectory);
+            preview.SafetyPath = safetyPath;
+            SyncPlan plan = resolvePlan(ExpenseSyncService.BuildPreviewText(
+                dataDirectory, incoming, "Android", "Google", preview));
             if (plan == null || plan.Cancelled)
                 throw new System.OperationCanceledException("Синхронизация отменена.");
 
-            ExpenseSyncService.MergeFromIncoming(dataDirectory, incoming, staging, plan, resolveConflict);
+            ExpenseSyncService.MergeFromIncoming(dataDirectory, incoming, staging, plan,
+                resolveConflict, safetyPath);
             ExpenseDataCodec.ValidateDirectory(dataDirectory);
 
             string pushBody = BuildPushJson(token, dataDirectory);

@@ -189,7 +189,15 @@ namespace CarExpenses
             if (!HasCompleteBackup(backupPath))
                 throw new InvalidDataException("Резервная копия неполная или отсутствует.");
 
-            string safetyBackup = CreateBackup(backupRoot);
+            string safetyBackup = AllocateSafetyBackupPath(backupRoot);
+            Directory.CreateDirectory(safetyBackup);
+            for (int i = 0; i < DataFiles.Length; i++)
+            {
+                string sourcePath = GetPath(DataFiles[i]);
+                if (File.Exists(sourcePath))
+                    File.Copy(sourcePath, Path.Combine(safetyBackup, DataFiles[i]), true);
+            }
+            CopyReceiptsFolder(DataDirectory, safetyBackup);
             try
             {
                 CopyBackupFiles(backupPath);
@@ -263,16 +271,7 @@ namespace CarExpenses
             string parent = Path.GetDirectoryName(DataDirectory);
             string staging = Path.Combine(parent, "Alfa156_Sync_" + Guid.NewGuid().ToString("N"));
             string merged = Path.Combine(parent, "Alfa156_SyncMerged_" + Guid.NewGuid().ToString("N"));
-            string safetyName = "Alfa156_SyncSafety_" +
-                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-            string safety = Path.Combine(parent, safetyName);
-            int suffix = 1;
-            while (Directory.Exists(safety))
-            {
-                safety = Path.Combine(parent, safetyName + "_" +
-                    suffix.ToString(CultureInfo.InvariantCulture));
-                suffix++;
-            }
+            string safety = AllocateSafetyBackupPath(parent);
             Directory.CreateDirectory(staging);
             try
             {
@@ -293,8 +292,15 @@ namespace CarExpenses
                 }
                 ValidateSyncDirectory(staging);
 
-                SyncPlan plan = resolvePlan(SyncMerge.FormatSummary(
+                SyncPlan defaultPlan = new SyncPlan();
+                SyncJournal preview = SyncMerge.BuildPreview(DataDirectory, staging, defaultPlan);
+                preview.SafetyPath = safety;
+                StringBuilder previewText = new StringBuilder();
+                previewText.Append(SyncMerge.FormatSummary(
                     SyncMerge.AnalyzeDirectories(DataDirectory, staging)));
+                previewText.Append("\r\n\r\n");
+                previewText.Append(preview.FormatPreview());
+                SyncPlan plan = resolvePlan(previewText.ToString());
                 if (plan == null || plan.Cancelled)
                     throw new InvalidOperationException("Синхронизация отменена.");
 
@@ -838,6 +844,24 @@ namespace CarExpenses
         private static string GetLocalBackupRoot()
         {
             return Path.Combine(Path.GetDirectoryName(DataDirectory), "Alfa156_LocalBackups");
+        }
+
+        /// <summary>
+        /// Allocates Safety_yyyyMMdd_HHmmss under parent (does not create the directory).
+        /// </summary>
+        internal static string AllocateSafetyBackupPath(string parentDirectory)
+        {
+            string baseName = "Safety_" +
+                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            string path = Path.Combine(parentDirectory, baseName);
+            int suffix = 1;
+            while (Directory.Exists(path))
+            {
+                path = Path.Combine(parentDirectory, baseName + "_" +
+                    suffix.ToString(CultureInfo.InvariantCulture));
+                suffix++;
+            }
+            return path;
         }
 
         private static bool HasCompleteBackup(string backupPath)

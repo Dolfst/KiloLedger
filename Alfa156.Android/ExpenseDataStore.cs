@@ -586,6 +586,55 @@ internal static class ExpenseDataStore
         return backupName;
     }
 
+    /// <summary>
+    /// Allocates a unique Safety_yyyyMMdd_HHmmss path under Backups (does not create it).
+    /// </summary>
+    internal static string AllocateSafetyBackupPath(string dataDirectory)
+    {
+        string backupRoot = GetBackupRoot(dataDirectory);
+        string baseName = "Safety_" +
+            DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        string path = Path.Combine(backupRoot, baseName);
+        int suffix = 1;
+        while (Directory.Exists(path))
+        {
+            path = Path.Combine(backupRoot,
+                baseName + "_" + suffix.ToString(CultureInfo.InvariantCulture));
+            suffix++;
+        }
+        return path;
+    }
+
+    /// <summary>
+    /// Creates an automatic safety copy at the given path (or allocates Safety_* if null).
+    /// Returns the full path of the created directory.
+    /// </summary>
+    internal static string CreateSafetyBackup(string dataDirectory, string allocatedPath)
+    {
+        ExpenseDataCodec.ValidateDirectory(dataDirectory);
+        string path = allocatedPath;
+        if (String.IsNullOrEmpty(path))
+            path = AllocateSafetyBackupPath(dataDirectory);
+        string parent = Path.GetDirectoryName(path);
+        if (!String.IsNullOrEmpty(parent))
+            Directory.CreateDirectory(parent);
+        if (Directory.Exists(path))
+            Directory.Delete(path, true);
+        Directory.CreateDirectory(path);
+        try
+        {
+            CopyData(dataDirectory, path);
+            ExpenseDataCodec.ValidateDirectory(path);
+        }
+        catch
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, true);
+            throw;
+        }
+        return path;
+    }
+
     internal static List<string> ListBackupNames(string dataDirectory)
     {
         string backupRoot = GetBackupRoot(dataDirectory);
@@ -621,8 +670,7 @@ internal static class ExpenseDataStore
         string backupRoot = GetBackupRoot(dataDirectory);
         string source = Path.Combine(backupRoot, backupName);
         ExpenseDataCodec.ValidateDirectory(source);
-        string safetyBackup = CreateBackup(dataDirectory);
-        string safetyPath = Path.Combine(backupRoot, safetyBackup);
+        string safetyPath = CreateSafetyBackup(dataDirectory, null);
         try
         {
             CopyData(source, dataDirectory);
