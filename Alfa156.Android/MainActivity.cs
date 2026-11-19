@@ -1520,7 +1520,7 @@ public sealed class MainActivity : Activity
             if (priceField.TextInput.HasFocus)
                 priceTouched = true;
         };
-        EventHandler<Android.Text.TextChangedEventArgs> recalc = delegate
+        void Recalc(object sender, global::Android.Text.TextChangedEventArgs e)
         {
             if (priceTouched && (priceField.TextInput.Text ?? "").Trim().Length > 0)
                 return;
@@ -1532,9 +1532,9 @@ public sealed class MainActivity : Activity
             string next = (cost / liters).ToString("0.##", CultureInfo.InvariantCulture);
             if (priceField.TextInput.Text != next)
                 priceField.TextInput.Text = next;
-        };
-        litersField.TextInput.TextChanged += recalc;
-        costField.TextInput.TextChanged += recalc;
+        }
+        litersField.TextInput.TextChanged += Recalc;
+        costField.TextInput.TextChanged += Recalc;
     }
 
     private void AddEditorField(LinearLayout form, EditorField field)
@@ -2439,6 +2439,7 @@ public sealed class MainActivity : Activity
     {
         if (Build.VERSION.SdkInt < BuildVersionCodes.O)
             return;
+#pragma warning disable CA1416
         NotificationManager manager = (NotificationManager)GetSystemService(NotificationService);
         if (manager == null)
             return;
@@ -2448,6 +2449,7 @@ public sealed class MainActivity : Activity
             NotificationImportance.Default);
         channel.Description = "Замена масла и ремня ГРМ";
         manager.CreateNotificationChannel(channel);
+#pragma warning restore CA1416
     }
 
     private void RefreshServiceNotifications()
@@ -2486,10 +2488,10 @@ public sealed class MainActivity : Activity
     {
         if (Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu)
             return;
-        if (CheckSelfPermission(Android.Manifest.Permission.PostNotifications) ==
-            Android.Content.PM.Permission.Granted)
+        if (CheckSelfPermission(global::Android.Manifest.Permission.PostNotifications) ==
+            global::Android.Content.PM.Permission.Granted)
             return;
-        RequestPermissions(new string[] { Android.Manifest.Permission.PostNotifications }, 2001);
+        RequestPermissions(new string[] { global::Android.Manifest.Permission.PostNotifications }, 2001);
     }
 
     private static void ComputeServiceMileage(
@@ -2577,6 +2579,7 @@ public sealed class MainActivity : Activity
             flags |= PendingIntentFlags.Immutable;
         PendingIntent pending = PendingIntent.GetActivity(this, notificationId, intent, flags);
 
+#pragma warning disable CA1416, CA1422
         Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
             ? new Notification.Builder(this, ToReminderChannelId)
             : new Notification.Builder(this);
@@ -2588,6 +2591,7 @@ public sealed class MainActivity : Activity
             .SetAutoCancel(true)
             .SetOnlyAlertOnce(true);
         manager.Notify(notificationId, builder.Build());
+#pragma warning restore CA1416, CA1422
     }
 
     private void ShowMessage(string message)
