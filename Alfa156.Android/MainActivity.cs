@@ -2776,6 +2776,12 @@ public sealed class MainActivity : Activity
             chartParams.BottomMargin = Dp(8);
             content.AddView(chart, chartParams);
 
+            Button compareButton = CreateButton("Сравнить периоды", null);
+            LinearLayout.LayoutParams compareParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
+            compareParams.BottomMargin = Dp(8);
+            content.AddView(compareButton, compareParams);
+
             TextView body = new TextView(this);
             body.Text = BuildSummary();
             body.TextSize = 14;
@@ -2784,6 +2790,7 @@ public sealed class MainActivity : Activity
             content.AddView(body, MatchWrap());
             scroll.AddView(content);
             string summaryText = body.Text;
+            compareButton.Click += delegate { ShowPeriodCompare(); };
             new AlertDialog.Builder(this)
                 .SetTitle("Сводка и ТО · " + currentCar + CarsMeta.HeaderSuffix(DataDirectory, currentCar))
                 .SetView(scroll)
@@ -2801,6 +2808,86 @@ public sealed class MainActivity : Activity
         catch (Exception ex)
         {
             ShowMessage("Не удалось построить сводку: " + ex.Message);
+        }
+    }
+
+    private void ShowPeriodCompare()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            return;
+        }
+        string aFrom, aTo, bFrom, bTo;
+        PeriodCompare.ThisVsPreviousMonth(out aFrom, out aTo, out bFrom, out bTo);
+        new AlertDialog.Builder(this)
+            .SetTitle("Сравнить периоды · " + currentCar)
+            .SetItems(new string[]
+            {
+                "Этот месяц / прошлый месяц",
+                "Свои даты…"
+            }, (sender, args) =>
+            {
+                if (args.Which == 0)
+                    ShowPeriodCompareResult(aFrom, aTo, bFrom, bTo);
+                else if (args.Which == 1)
+                    PromptCustomPeriodCompare(aFrom, aTo, bFrom, bTo);
+            })
+            .SetNegativeButton("Закрыть", delegate { })
+            .Show();
+    }
+
+    private void PromptCustomPeriodCompare(string aFrom, string aTo, string bFrom, string bTo)
+    {
+        RenderEditor("Периоды A и B", new List<EditorField>
+        {
+            EditorField.Date("A с", aFrom, true),
+            EditorField.Date("A по", aTo, true),
+            EditorField.Date("B с", bFrom, true),
+            EditorField.Date("B по", bTo, true)
+        }, delegate(string[] raw)
+        {
+            if (String.CompareOrdinal(raw[0], raw[1]) > 0 ||
+                String.CompareOrdinal(raw[2], raw[3]) > 0)
+                throw new InvalidOperationException("В каждом периоде дата «с» не позже «по».");
+            ShowPeriodCompareResult(raw[0], raw[1], raw[2], raw[3]);
+        }, false);
+    }
+
+    private void ShowPeriodCompareResult(string aFrom, string aTo, string bFrom, string bTo)
+    {
+        try
+        {
+            List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+            List<string[]> repairs = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
+            List<string[]> expenses = ExpenseDataStore.LoadOptional(DataDirectory, ExpenseDataCodec.ExpensesFile);
+            List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
+            PeriodCompare.Totals a = PeriodCompare.Build(
+                currentCar, fuels, repairs, expenses, utilities, aFrom, aTo);
+            PeriodCompare.Totals b = PeriodCompare.Build(
+                currentCar, fuels, repairs, expenses, utilities, bFrom, bTo);
+            string text = PeriodCompare.FormatComparison(
+                a, b,
+                PeriodCompare.FormatRangeLabel(aFrom, aTo),
+                PeriodCompare.FormatRangeLabel(bFrom, bTo),
+                Cur(), Money, "\n");
+            ScrollView scroll = new ScrollView(this);
+            TextView body = new TextView(this);
+            body.Text = text;
+            body.TextSize = 14;
+            body.SetTextIsSelectable(true);
+            body.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+            body.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+            scroll.AddView(body);
+            new AlertDialog.Builder(this)
+                .SetTitle("Сравнение · " + currentCar)
+                .SetView(scroll)
+                .SetPositiveButton("ОК", delegate { })
+                .Show();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Не удалось сравнить периоды: " + ex.Message);
         }
     }
 
@@ -3732,7 +3819,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.23.0";
+        string version = "1.24.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);

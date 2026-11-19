@@ -49,6 +49,7 @@
     <Compile Include="Data\RecordIds.cs" />
     <Compile Include="Data\DuplicateFinder.cs" />
     <Compile Include="Data\CarCompare.cs" />
+    <Compile Include="Data\PeriodCompare.cs" />
     <Compile Include="Data\DataIntegrity.cs" />
     <Compile Include="Data\SyncMerge.cs" />
     <Compile Include="Data\ToSettings.cs" />

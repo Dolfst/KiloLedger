@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.23.0";
+        private const string AppVersion = "1.24.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -239,6 +239,7 @@ namespace Alfa156.Desktop
             intervalRow.Controls.Add(backupRemindBox);
             intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
             intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
+            intervalRow.Controls.Add(MakeButton("Сравнить периоды", ShowPeriodCompare));
             intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
             intervalRow.Controls.Add(MakeButton("График: /км", ToggleCostPerKmChart));
             summaryChart.Dock = DockStyle.Fill;
@@ -1631,6 +1632,157 @@ namespace Alfa156.Desktop
             {
                 ShowError(ex);
             }
+        }
+
+        private void ShowPeriodCompare(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                PullAll();
+                string car = repository.Cars.Count > 0
+                    ? (RecordIds.StripId(repository.Cars[0])[0] ?? "")
+                    : "";
+                if (car.Length == 0)
+                    throw new InvalidOperationException("Нет автомобиля для сравнения.");
+
+                string aFrom, aTo, bFrom, bTo;
+                PeriodCompare.ThisVsPreviousMonth(out aFrom, out aTo, out bFrom, out bTo);
+
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Сравнить периоды · " + car;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.Size = new Size(520, 420);
+                    dialog.MinimizeBox = false;
+                    dialog.MaximizeBox = false;
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+
+                    TableLayoutPanel layout = new TableLayoutPanel
+                    {
+                        Dock = DockStyle.Fill,
+                        ColumnCount = 2,
+                        RowCount = 7,
+                        Padding = new Padding(12)
+                    };
+                    layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+                    layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                    for (int r = 0; r < 6; r++)
+                        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+                    layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+                    TextBox aFromBox = new TextBox { Text = aFrom, Dock = DockStyle.Fill };
+                    TextBox aToBox = new TextBox { Text = aTo, Dock = DockStyle.Fill };
+                    TextBox bFromBox = new TextBox { Text = bFrom, Dock = DockStyle.Fill };
+                    TextBox bToBox = new TextBox { Text = bTo, Dock = DockStyle.Fill };
+                    layout.Controls.Add(new Label { Text = "A с", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+                    layout.Controls.Add(aFromBox, 1, 0);
+                    layout.Controls.Add(new Label { Text = "A по", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+                    layout.Controls.Add(aToBox, 1, 1);
+                    layout.Controls.Add(new Label { Text = "B с", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+                    layout.Controls.Add(bFromBox, 1, 2);
+                    layout.Controls.Add(new Label { Text = "B по", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
+                    layout.Controls.Add(bToBox, 1, 3);
+
+                    FlowLayoutPanel presets = new FlowLayoutPanel
+                    {
+                        Dock = DockStyle.Fill,
+                        WrapContents = true
+                    };
+                    Button thisVsPrev = new Button { Text = "Этот / прошлый месяц", AutoSize = true };
+                    thisVsPrev.Click += delegate
+                    {
+                        string af, at, bf, bt;
+                        PeriodCompare.ThisVsPreviousMonth(out af, out at, out bf, out bt);
+                        aFromBox.Text = af;
+                        aToBox.Text = at;
+                        bFromBox.Text = bf;
+                        bToBox.Text = bt;
+                    };
+                    presets.Controls.Add(thisVsPrev);
+                    layout.Controls.Add(new Label { Text = "Пресет", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 4);
+                    layout.Controls.Add(presets, 1, 4);
+
+                    FlowLayoutPanel buttons = new FlowLayoutPanel
+                    {
+                        Dock = DockStyle.Fill,
+                        FlowDirection = FlowDirection.RightToLeft
+                    };
+                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
+                    Button ok = new Button { Text = "Сравнить", DialogResult = DialogResult.OK, AutoSize = true };
+                    buttons.Controls.Add(ok);
+                    buttons.Controls.Add(cancel);
+                    layout.Controls.Add(buttons, 0, 5);
+                    layout.SetColumnSpan(buttons, 2);
+
+                    Label hint = new Label
+                    {
+                        Text = "Даты в формате yyyy-MM-dd. A — текущий период, B — база для Δ (A−B).",
+                        AutoSize = true,
+                        Dock = DockStyle.Top
+                    };
+                    layout.Controls.Add(hint, 0, 6);
+                    layout.SetColumnSpan(hint, 2);
+
+                    dialog.Controls.Add(layout);
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK)
+                        return;
+
+                    string af2 = (aFromBox.Text ?? "").Trim();
+                    string at2 = (aToBox.Text ?? "").Trim();
+                    string bf2 = (bFromBox.Text ?? "").Trim();
+                    string bt2 = (bToBox.Text ?? "").Trim();
+                    if (!IsDay(af2) || !IsDay(at2) || !IsDay(bf2) || !IsDay(bt2))
+                        throw new InvalidOperationException("Укажите даты в формате yyyy-MM-dd.");
+                    if (String.CompareOrdinal(af2, at2) > 0 || String.CompareOrdinal(bf2, bt2) > 0)
+                        throw new InvalidOperationException("В каждом периоде дата «с» не позже «по».");
+
+                    PeriodCompare.Totals ta = PeriodCompare.Build(
+                        car, repository.Fuel, repository.Repairs, repository.Expenses,
+                        repository.Utilities, af2, at2);
+                    PeriodCompare.Totals tb = PeriodCompare.Build(
+                        car, repository.Fuel, repository.Repairs, repository.Expenses,
+                        repository.Utilities, bf2, bt2);
+                    string text = PeriodCompare.FormatComparison(
+                        ta, tb,
+                        PeriodCompare.FormatRangeLabel(af2, at2),
+                        PeriodCompare.FormatRangeLabel(bf2, bt2),
+                        Cur(), Money);
+
+                    using (Form result = new Form())
+                    {
+                        result.Text = "Сравнение · " + car;
+                        result.StartPosition = FormStartPosition.CenterParent;
+                        result.Size = new Size(560, 480);
+                        result.MinimizeBox = false;
+                        TextBox box = new TextBox
+                        {
+                            Multiline = true,
+                            ReadOnly = true,
+                            ScrollBars = ScrollBars.Vertical,
+                            Dock = DockStyle.Fill,
+                            Font = new Font("Consolas", 10F),
+                            Text = text
+                        };
+                        result.Controls.Add(box);
+                        result.ShowDialog(this);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private static bool IsDay(string value)
+        {
+            DateTime parsed;
+            return value != null && value.Length == 10 &&
+                DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out parsed);
         }
 
         private CarPassport FindPassport(string carName)

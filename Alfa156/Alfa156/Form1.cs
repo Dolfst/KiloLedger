@@ -137,6 +137,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
             menu.MenuItems.Add(actionsHome);
             menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
             Menu = menu;
@@ -1805,9 +1806,39 @@ namespace CarExpenses
             Controls.Add(summaryBox);
 
             MainMenu menu = new MainMenu();
+            MenuItem actions = CreateMenuItem("Действия");
+            actions.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
+            menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
             LayoutScreen();
+        }
+
+        private void ShowPeriodCompareFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                string aFrom, aTo, bFrom, bTo;
+                PeriodCompare.ThisVsPreviousMonth(out aFrom, out aTo, out bFrom, out bTo);
+                List<string[]> fuels = DataStore.LoadFuel();
+                List<string[]> repairs = DataStore.LoadRepairs();
+                List<string[]> expenses = DataStore.LoadExpenses();
+                List<string[]> utilities = DataStore.LoadUtilities();
+                PeriodCompare.Totals a = PeriodCompare.Build(
+                    currentCar, fuels, repairs, expenses, utilities, aFrom, aTo);
+                PeriodCompare.Totals b = PeriodCompare.Build(
+                    currentCar, fuels, repairs, expenses, utilities, bFrom, bTo);
+                string text = PeriodCompare.FormatComparison(
+                    a, b,
+                    PeriodCompare.FormatRangeLabel(aFrom, aTo) + " (этот месяц)",
+                    PeriodCompare.FormatRangeLabel(bFrom, bTo) + " (прошлый)",
+                    Cur());
+                MessageBox.Show(text, "Сравнение периодов");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось сравнить периоды: " + ex.Message, "Ошибка");
+            }
         }
 
         private static void StyleHeading(Label label)
@@ -2294,8 +2325,9 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.23.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.24.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
+                "Сравнение периодов: этот месяц vs прошлый.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
                 "Полный бак: частичные заправки не входят в расчёт л/100 км.",

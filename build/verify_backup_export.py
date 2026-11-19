@@ -58,7 +58,7 @@ def main() -> int:
         "Экспорт всего (ZIP)",
         "MaybeShowBackupReminder",
         "SaveBackupRemind",
-        'AppVersion = "1.23.0"',
+        f'AppVersion = "{version}"',
         "backupRemindBox",
     ):
         if needle not in desktop:
@@ -74,7 +74,7 @@ def main() -> int:
         "MaybeShowBackupReminder",
         "CountBackupFiles",
         "Будет скопировано файлов",
-        "1.23.0",
+        version,
         "Напоминание о копии",
     ):
         if needle not in kpk:
@@ -87,8 +87,8 @@ def main() -> int:
         errors.append("KPK DataStore: MarkBackupDone not called after backup")
 
     readme = (ROOT / "README.md").read_text()
-    if "## Что нового в 1.23.0" not in readme:
-        errors.append("README: missing 1.23.0 section")
+    if f"## Что нового в {version}" not in readme and "## Что нового в 1.23.0" not in readme:
+        errors.append(f"README: missing Что нового section for {version} (or 1.23.0)")
     if "**1.23.0**" not in readme or "backup_remind_days" not in readme:
         errors.append("README: История версий / settings should mention 1.23.0 backup keys")
 
