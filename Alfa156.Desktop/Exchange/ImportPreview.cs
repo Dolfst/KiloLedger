@@ -23,6 +23,7 @@ namespace Alfa156.Desktop.Exchange
         internal int ExpenseCategoryCount;
         internal int TemplateCount;
         internal int ReminderCount;
+        internal int NoteCount;
         internal int ReceiptCount;
 
         internal static ImportPreview FromRepository(AlfaRepository repo, string kindLabel, string path)
@@ -39,6 +40,7 @@ namespace Alfa156.Desktop.Exchange
             preview.ExpenseCategoryCount = repo.ExpenseCategories != null ? repo.ExpenseCategories.Count : 0;
             preview.TemplateCount = repo.TemplatesRows != null ? repo.TemplatesRows.Count : 0;
             preview.ReminderCount = repo.RemindersRows != null ? repo.RemindersRows.Count : 0;
+            preview.NoteCount = repo.NotesRows != null ? repo.NotesRows.Count : 0;
             return preview;
         }
 
@@ -129,6 +131,8 @@ namespace Alfa156.Desktop.Exchange
                 sb.Append("\r\nШаблоны: ").Append(TemplateCount);
             if (ReminderCount > 0)
                 sb.Append("\r\nНапоминания: ").Append(ReminderCount);
+            if (NoteCount > 0)
+                sb.Append("\r\nЗаметки: ").Append(NoteCount);
             if (ReceiptCount > 0)
                 sb.Append("\r\nФото чеков: ").Append(ReceiptCount);
             return sb.ToString();

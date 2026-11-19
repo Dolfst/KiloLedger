@@ -20,12 +20,13 @@ namespace Alfa156.Desktop.Data
         internal const string CarsMetaFile = CarsMeta.FileName;
         internal const string TemplatesFile = RecordTemplates.FileName;
         internal const string RemindersFile = DateReminders.FileName;
+        internal const string NotesFile = CarNotes.FileName;
 
         internal static readonly string[] DataFiles = new string[]
         {
             "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
             ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-            RemindersFile, RecordIds.DeletedFile
+            RemindersFile, NotesFile, RecordIds.DeletedFile
         };
 
         internal static readonly string[] UtilityLabels = new string[]
@@ -232,6 +233,15 @@ namespace Alfa156.Desktop.Data
                     if (!DateReminders.IsValidRow(reminders[j]))
                         throw new InvalidDataException("Неверный формат записи в " + RemindersFile + ".");
             }
+
+            string notesPath = Path.Combine(directory, NotesFile);
+            if (File.Exists(notesPath))
+            {
+                List<string[]> notes = ReadRows(notesPath);
+                for (int j = 0; j < notes.Count; j++)
+                    if (!CarNotes.IsValidRow(notes[j]))
+                        throw new InvalidDataException("Неверный формат записи в " + NotesFile + ".");
+            }
         }
 
         internal static bool IsValidColumnCount(string fileName, int length)
@@ -254,6 +264,8 @@ namespace Alfa156.Desktop.Data
                 return length >= 3 && length <= 11;
             if (fileName == RemindersFile)
                 return length == 4 || length == 5;
+            if (fileName == NotesFile)
+                return length == 3 || length == 4;
             return false;
         }
 

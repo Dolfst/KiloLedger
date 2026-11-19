@@ -246,15 +246,27 @@ namespace Alfa156.Desktop.Data
     {
         internal static List<TimelineEntry> Build(string directory, string carName)
         {
+            List<string[]> notes = new List<string[]>();
+            string notesPath = Path.Combine(directory, AlfaCodec.NotesFile);
+            if (File.Exists(notesPath))
+                notes = AlfaCodec.ReadRows(notesPath);
             return Build(
                 AlfaCodec.ReadRows(Path.Combine(directory, "fuel.dat")),
                 AlfaCodec.ReadRows(Path.Combine(directory, "repairs.dat")),
                 AlfaCodec.ReadRows(Path.Combine(directory, AlfaCodec.ExpensesFile)),
+                notes,
                 carName);
         }
 
         internal static List<TimelineEntry> Build(
             List<string[]> fuel, List<string[]> repairs, List<string[]> expenses, string carName)
+        {
+            return Build(fuel, repairs, expenses, null, carName);
+        }
+
+        internal static List<TimelineEntry> Build(
+            List<string[]> fuel, List<string[]> repairs, List<string[]> expenses,
+            List<string[]> notes, string carName)
         {
             carName = (carName ?? "").Trim();
             List<TimelineEntry> list = new List<TimelineEntry>();
@@ -324,6 +336,26 @@ namespace Alfa156.Desktop.Data
                 }
             }
 
+            if (notes != null)
+            {
+                for (int i = 0; i < notes.Count; i++)
+                {
+                    if (!CarNotes.IsValidRow(notes[i]))
+                        continue;
+                    CarNote note = CarNotes.FromRow(notes[i]);
+                    if (!String.Equals(note.Car, carName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    TimelineEntry entry = new TimelineEntry();
+                    entry.Date = note.Date ?? "";
+                    entry.TypeKey = "note";
+                    entry.TypeLabel = "Заметка";
+                    entry.Text = CarNotes.Truncate(note.Text, 80);
+                    entry.Sum = 0;
+                    entry.SortKey = entry.Date + "|3|" + i.ToString("0000", CultureInfo.InvariantCulture);
+                    list.Add(entry);
+                }
+            }
+
             list.Sort(delegate(TimelineEntry a, TimelineEntry b)
             {
                 return String.CompareOrdinal(b.SortKey, a.SortKey);
@@ -335,6 +367,8 @@ namespace Alfa156.Desktop.Data
         {
             if (entry == null)
                 return "";
+            if (entry.TypeKey == "note")
+                return entry.Date + "  " + entry.TypeLabel + "  " + entry.Text;
             return entry.Date + "  " + entry.TypeLabel + "  " + entry.Text + "  " +
                 entry.Sum.ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
         }
@@ -347,7 +381,7 @@ namespace Alfa156.Desktop.Data
         internal static string FormatList(List<TimelineEntry> list, string carName, string headerSuffix)
         {
             if (list == null || list.Count == 0)
-                return "Нет записей топлива, ремонта и прочих расходов для «" + carName + "».";
+                return "Нет записей топлива, ремонта, прочих расходов и заметок для «" + carName + "».";
             StringBuilder sb = new StringBuilder();
             sb.Append("Лента · ").Append(carName).Append(headerSuffix ?? "");
             sb.Append("\r\n\r\n");

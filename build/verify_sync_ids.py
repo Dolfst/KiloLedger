@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 import uuid
 
-# Prefixes: cars/fuel/repairs/utilities/cars-meta/expenses/… + templates(t_)/reminders(n_)
-ID_RE = re.compile(r"^[cfrukepxmnt]_[0-9a-fA-F]{8,}$")
+# Prefixes: cars/fuel/repairs/utilities/cars-meta/expenses/… + templates(t_)/reminders(n_)/notes(j_)
+ID_RE = re.compile(r"^[cfrukepxmntj]_[0-9a-fA-F]{8,}$")
 
 
 def looks_like_id(value: str) -> bool:

@@ -141,6 +141,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Заметки", new EventHandler(ManageNotesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
             actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
             actionsHome.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
@@ -2219,6 +2220,7 @@ namespace CarExpenses
                 DateTime.Today, "\r\n");
             result += DateReminders.FormatUpcomingBlock(
                 ToSettings.GetReminderWarnDays(), DateTime.Today);
+            result += CarNotes.FormatRecentBlock(currentCar, 3);
             return result;
         }
 
@@ -2427,11 +2429,12 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.30.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.31.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Оценка пробега в сводке: средний км/день и срок до ТО масла/ремня.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Шаблоны записей (templates.dat); избранный авто.\r\n" +
                 "Напоминания по дате (reminders.dat): страховка / техосмотр / своё.\r\n" +
+                "Заметки по авто (notes.dat): свободный журнал date|car|text|id.\r\n" +
                 "Сравнение периодов: этот месяц vs прошлый.\r\n" +
                 "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
                 "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
@@ -3067,6 +3070,95 @@ namespace CarExpenses
                     MessageBox.Show("Напоминание сохранено.", "Напоминания");
                     if (screenType == "summary")
                         summaryBox.Text = BuildSummary();
+                }
+            }
+        }
+
+        private void ManageNotesFromMenu(object sender, EventArgs e)
+        {
+            CarNotes.EnsureFile();
+            string car = currentCar == null ? "" : currentCar;
+            MessageBox.Show(CarNotes.FormatAllBlock(car), "Заметки");
+            using (EntryEditorForm editor = new EntryEditorForm("Заметки",
+                new EntryField[] {
+                    new EntryField("Действие", "Добавить",
+                        new string[] { "Добавить", "Изменить", "Удалить" }, true),
+                    new EntryField("Номер (измен./удал.)", "", "text", false)
+                }))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string action = editor.Values[0];
+                List<CarNote> list = CarNotes.ListForCar(car);
+                if (action == "Удалить" || action == "Изменить")
+                {
+                    string numText = editor.Values[1] == null ? "" : editor.Values[1].Trim();
+                    int index = 0;
+                    bool parsed = false;
+                    try
+                    {
+                        index = int.Parse(numText, NumberStyles.Integer, CultureInfo.InvariantCulture);
+                        parsed = true;
+                    }
+                    catch (FormatException) { }
+                    catch (OverflowException) { }
+                    if (!parsed || index < 1 || index > list.Count)
+                    {
+                        MessageBox.Show("Укажите номер из списка.", "Заметки");
+                        return;
+                    }
+                    CarNote selected = list[index - 1];
+                    if (action == "Удалить")
+                    {
+                        if (!TrySave(delegate { CarNotes.DeleteById(selected.Id); }))
+                            return;
+                        MessageBox.Show("Удалено.", "Заметки");
+                        if (screenType == "summary" || screenType == "timeline")
+                            summaryBox.Text = screenType == "timeline"
+                                ? CarTimeline.FormatList(currentCar) : BuildSummary();
+                        return;
+                    }
+                    using (EntryEditorForm edit = new EntryEditorForm("Изменить заметку",
+                        new EntryField[] {
+                            new EntryField("Дата", selected.Date, "date", true),
+                            new EntryField("Автомобиль", selected.Car, "text", true),
+                            new EntryField("Текст", selected.Text, "text", true)
+                        }))
+                    {
+                        if (edit.ShowDialog() != DialogResult.OK)
+                            return;
+                        selected.Date = edit.Values[0];
+                        selected.Car = edit.Values[1];
+                        selected.Text = edit.Values[2];
+                        if (!TrySave(delegate { CarNotes.Upsert(selected); }))
+                            return;
+                        MessageBox.Show("Заметка сохранена.", "Заметки");
+                        if (screenType == "summary" || screenType == "timeline")
+                            summaryBox.Text = screenType == "timeline"
+                                ? CarTimeline.FormatList(currentCar) : BuildSummary();
+                        return;
+                    }
+                }
+                string defaultDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                using (EntryEditorForm add = new EntryEditorForm("Новая заметка",
+                    new EntryField[] {
+                        new EntryField("Дата", defaultDate, "date", true),
+                        new EntryField("Автомобиль", car, "text", true),
+                        new EntryField("Текст", "", "text", true)
+                    }))
+                {
+                    if (add.ShowDialog() != DialogResult.OK)
+                        return;
+                    CarNote item = new CarNote();
+                    item.Date = add.Values[0];
+                    item.Car = add.Values[1];
+                    item.Text = add.Values[2];
+                    if (!TrySave(delegate { CarNotes.Upsert(item); }))
+                        return;
+                    MessageBox.Show("Заметка сохранена.", "Заметки");
+                    if (screenType == "summary" || screenType == "timeline")
+                        summaryBox.Text = screenType == "timeline"
+                            ? CarTimeline.FormatList(currentCar) : BuildSummary();
                 }
             }
         }

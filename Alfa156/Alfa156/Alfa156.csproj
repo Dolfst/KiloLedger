@@ -67,6 +67,7 @@
     <Compile Include="CarsMeta.cs" />
     <Compile Include="RecordTemplates.cs" />
     <Compile Include="DateReminders.cs" />
+    <Compile Include="CarNotes.cs" />
     <Compile Include="DataStore.cs" />
     <Compile Include="EntryEditorForm.cs" />
     <Compile Include="RecordIds.cs" />

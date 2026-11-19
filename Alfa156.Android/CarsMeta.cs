@@ -303,6 +303,24 @@ internal static class CarTimeline
             list.Add(entry);
         }
 
+        List<string[]> notes = ExpenseDataStore.LoadOptional(directory, ExpenseDataCodec.NotesFile);
+        for (int i = 0; i < notes.Count; i++)
+        {
+            if (!CarNotes.IsValidRow(notes[i]))
+                continue;
+            CarNote note = CarNotes.FromRow(notes[i]);
+            if (!String.Equals(note.Car, carName, StringComparison.OrdinalIgnoreCase))
+                continue;
+            TimelineEntry entry = new TimelineEntry();
+            entry.Date = note.Date ?? "";
+            entry.TypeKey = "note";
+            entry.TypeLabel = "Заметка";
+            entry.Text = CarNotes.Truncate(note.Text, 80);
+            entry.Sum = 0;
+            entry.SortKey = entry.Date + "|3|" + i.ToString("0000", CultureInfo.InvariantCulture);
+            list.Add(entry);
+        }
+
         list.Sort(delegate(TimelineEntry a, TimelineEntry b)
         {
             return String.CompareOrdinal(b.SortKey, a.SortKey);
@@ -314,6 +332,8 @@ internal static class CarTimeline
     {
         if (entry == null)
             return "";
+        if (entry.TypeKey == "note")
+            return entry.Date + "  " + entry.TypeLabel + "  " + entry.Text;
         return entry.Date + "  " + entry.TypeLabel + "  " + entry.Text + "  " +
             entry.Sum.ToString("0.##", CultureInfo.InvariantCulture) + " BYN";
     }
@@ -322,7 +342,7 @@ internal static class CarTimeline
     {
         List<TimelineEntry> list = Build(directory, carName);
         if (list.Count == 0)
-            return "Нет записей топлива, ремонта и прочих расходов для «" + carName + "».";
+            return "Нет записей топлива, ремонта, прочих расходов и заметок для «" + carName + "».";
         StringBuilder sb = new StringBuilder();
         sb.Append("Лента · ").Append(carName).Append(CarsMeta.HeaderSuffix(directory, carName));
         sb.Append("\n\n");

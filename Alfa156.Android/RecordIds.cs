@@ -21,6 +21,7 @@ internal static class RecordIds
     internal const string TypeCarMeta = "car-meta";
     internal const string TypeTemplate = "template";
     internal const string TypeReminder = "reminder";
+    internal const string TypeNote = "note";
 
     internal static string PrefixForFile(string fileName)
     {
@@ -34,6 +35,7 @@ internal static class RecordIds
         if (fileName == ExpenseDataCodec.CarsMetaFile) return "m_";
         if (fileName == ExpenseDataCodec.TemplatesFile) return "t_";
         if (fileName == ExpenseDataCodec.RemindersFile) return "n_";
+        if (fileName == ExpenseDataCodec.NotesFile) return "j_";
         return "x_";
     }
 
@@ -49,6 +51,7 @@ internal static class RecordIds
         if (fileName == ExpenseDataCodec.CarsMetaFile) return TypeCarMeta;
         if (fileName == ExpenseDataCodec.TemplatesFile) return TypeTemplate;
         if (fileName == ExpenseDataCodec.RemindersFile) return TypeReminder;
+        if (fileName == ExpenseDataCodec.NotesFile) return TypeNote;
         return "unknown";
     }
 
@@ -59,7 +62,7 @@ internal static class RecordIds
         char prefix = value[0];
         if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
              prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
-             prefix != 'x') ||
+             prefix != 'j' && prefix != 'x') ||
             value[1] != '_')
             return false;
         for (int i = 2; i < value.Length; i++)
