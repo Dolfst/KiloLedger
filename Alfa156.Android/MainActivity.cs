@@ -4362,7 +4362,7 @@ public sealed class MainActivity : Activity
 
     private void MaybeRequestNotificationPermission()
     {
-        if (Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu)
+        if (!OperatingSystem.IsAndroidVersionAtLeast(33))
             return;
         if (CheckSelfPermission(global::Android.Manifest.Permission.PostNotifications) ==
             global::Android.Content.PM.Permission.Granted)
