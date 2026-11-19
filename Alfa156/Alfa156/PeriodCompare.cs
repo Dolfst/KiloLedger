@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace Alfa156
+namespace CarExpenses
 {
     /// <summary>
     /// Totals for one date range used by «Сравнить периоды» in the summary.
@@ -240,7 +240,7 @@ namespace Alfa156
         private static void AddKm(Totals t, string value)
         {
             decimal km;
-            if (!Decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out km) || km < 0)
+            if (!DataStore.TryNumber(value, out km) || km < 0)
                 return;
             // CF 3.5: Math.Min/Max have no decimal overloads.
             if (km < t.MinKm)
@@ -251,8 +251,7 @@ namespace Alfa156
 
         private static decimal NumberOrZero(string value)
         {
-            decimal n;
-            return Decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out n) ? n : 0;
+            return DataStore.NumberOrZero(value);
         }
 
         private static decimal UtilitySum(string[] row)
