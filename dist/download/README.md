@@ -9,7 +9,8 @@
 | `Alfa156-KPK.exe` | Windows Mobile / КПК |
 | `Alfa156-KPK.zip` | КПК + .NET CF 3.5 CAB |
 
-APK обновляется автоматически GitHub Actions после изменений в `Alfa156.Android`.
-EXE для КПК и ПК кладутся сюда при релизе с ноутбука.
+Сборки обновляются автоматически GitHub Actions и публикуются в rolling Releases:
 
-Альтернатива для APK: [Releases → Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest).
+- [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) — APK
+- [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) — Desktop EXE
+- [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) — КПК EXE / ZIP

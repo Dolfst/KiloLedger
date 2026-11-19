@@ -30,7 +30,9 @@ jobs:
         run: |
           ./build/build-kpk.ps1 -Configuration Release
 
-      - name: Publish to dist/download
+      - name: Publish to dist/download and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -54,6 +56,25 @@ jobs:
           if (Test-Path "dist/Alfa156-KPK.zip") { Remove-Item "dist/Alfa156-KPK.zip" -Force }
           Compress-Archive -Path "dist/Alfa156-KPK/*" -DestinationPath "dist/Alfa156-KPK.zip" -Force
           Copy-Item "dist/Alfa156-KPK.zip" "dist/download/Alfa156-KPK.zip" -Force
+
+          # Recreate rolling release so Releases shows today's date (upload --clobber does not).
+          $releaseExe = Join-Path $env:RUNNER_TEMP "Alfa156-KPK.exe"
+          $releaseZip = Join-Path $env:RUNNER_TEMP "Alfa156-KPK.zip"
+          Copy-Item "dist/download/Alfa156-KPK.exe" $releaseExe -Force
+          Copy-Item "dist/download/Alfa156-KPK.zip" $releaseZip -Force
+          $prevEap = $ErrorActionPreference
+          $ErrorActionPreference = "Continue"
+          gh release view kpk-latest *> $null
+          $releaseExists = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = $prevEap
+          if ($releaseExists) {
+            gh release delete kpk-latest --yes --cleanup-tag
+          }
+          gh release create kpk-latest $releaseExe $releaseZip `
+            --title "Latest KPK EXE" `
+            --notes "Automatically updated KPK build (run #${{ github.run_number }})." `
+            --target $env:GITHUB_SHA `
+            --latest=false
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

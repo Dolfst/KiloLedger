@@ -34,14 +34,34 @@ jobs:
           /t:Rebuild
           /v:minimal
 
-      - name: Publish to dist/download
+      - name: Publish to dist/download and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $exe = Get-ChildItem "Alfa156.Desktop/bin/Release/Alfa156.Desktop.exe" | Select-Object -First 1
           if (-not $exe) { throw "Desktop exe not found" }
           New-Item -ItemType Directory -Path dist/download -Force | Out-Null
           Copy-Item $exe.FullName "dist/download/Alfa156.Desktop.exe" -Force
           Copy-Item $exe.FullName "dist/Alfa156-Desktop/Alfa156.Desktop.exe" -Force -ErrorAction SilentlyContinue
+
+          # Recreate rolling release so Releases shows today's date (upload --clobber does not).
+          $releasePath = Join-Path $env:RUNNER_TEMP "Alfa156.Desktop.exe"
+          Copy-Item $exe.FullName $releasePath -Force
+          $prevEap = $ErrorActionPreference
+          $ErrorActionPreference = "Continue"
+          gh release view desktop-latest *> $null
+          $releaseExists = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = $prevEap
+          if ($releaseExists) {
+            gh release delete desktop-latest --yes --cleanup-tag
+          }
+          gh release create desktop-latest $releasePath `
+            --title "Latest Desktop EXE" `
+            --notes "Automatically updated Desktop build (run #${{ github.run_number }})." `
+            --target $env:GITHUB_SHA `
+            --latest=false
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

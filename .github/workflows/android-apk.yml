@@ -97,14 +97,16 @@ jobs:
           fi
           cp "$signed" "$apk_path"
 
+          # Recreate the release: upload --clobber does not refresh published_at,
+          # so the Releases page would keep showing the old "N days ago" date.
           if gh release view android-latest >/dev/null 2>&1; then
-            gh release upload android-latest "$apk_path" --clobber
-          else
-            gh release create android-latest "$apk_path" \
-              --title "Latest Android APK" \
-              --notes "Automatically updated Android ARM64 build." \
-              --target "$GITHUB_SHA"
+            gh release delete android-latest --yes --cleanup-tag
           fi
+          gh release create android-latest "$apk_path" \
+            --title "Latest Android APK" \
+            --notes "Automatically updated Android ARM64 build (run #${{ github.run_number }})." \
+            --target "$GITHUB_SHA" \
+            --latest=false
 
       - name: Commit APK to dist/download
         env:

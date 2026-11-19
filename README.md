@@ -144,13 +144,13 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 GitHub Actions собирает всё автоматически:
 
-| Workflow | Что кладёт в `dist/download` |
-|----------|------------------------------|
-| **Android APK** | `Alfa156.apk` |
-| **Desktop EXE** | `Alfa156.Desktop.exe` |
-| **KPK EXE** | `Alfa156-KPK.exe`, `Alfa156-KPK.zip` |
+| Workflow | `dist/download` | Rolling Release |
+|----------|-----------------|-----------------|
+| **Android APK** | `Alfa156.apk` | [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) |
+| **Desktop EXE** | `Alfa156.Desktop.exe` | [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) |
+| **KPK EXE** | `Alfa156-KPK.exe`, `Alfa156-KPK.zip` | [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) |
 
-Вручную: **Actions → нужный workflow → Run workflow**. APK также в [Latest Android APK](https://github.com/Dolfst/alfa/releases/tag/android-latest).
+Вручную: **Actions → нужный workflow → Run workflow**. Каждый workflow заново создаёт свой rolling release (дата на странице Releases обновляется).
 
 Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит Alfa 156 со **старой** (отладочной) подписью, Android откажет в обновлении: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый `Alfa156.apk` и при необходимости импортируйте ZIP.
 
