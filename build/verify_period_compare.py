@@ -93,6 +93,14 @@ def main() -> int:
     if "PeriodCompare.cs" not in kpk_csproj:
         errors.append("KPK csproj: PeriodCompare.cs not listed")
 
+    kpk_pc = (ROOT / "Alfa156/Alfa156/PeriodCompare.cs").read_text()
+    if "namespace CarExpenses" not in kpk_pc:
+        errors.append("KPK PeriodCompare: must use namespace CarExpenses (CF build)")
+    if "Decimal.TryParse" in kpk_pc:
+        errors.append("KPK PeriodCompare: Decimal.TryParse is not CF-safe; use DataStore.TryNumber")
+    if "DataStore.TryNumber" not in kpk_pc and "DataStore.NumberOrZero" not in kpk_pc:
+        errors.append("KPK PeriodCompare: missing DataStore number helpers")
+
     build_kpk = (ROOT / "build/build-kpk.ps1").read_text()
     if "PeriodCompare.cs" not in build_kpk:
         errors.append("build-kpk.ps1: PeriodCompare.cs not in sources")
