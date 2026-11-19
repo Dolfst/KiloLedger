@@ -58,8 +58,12 @@
     <Compile Include="Exchange\CsvExchange.cs" />
     <Compile Include="Exchange\DengiFormat.cs" />
     <Compile Include="Exchange\GoogleSyncClient.cs" />
+    <Compile Include="Exchange\ImportPreview.cs" />
     <Compile Include="Exchange\XlsxExchange.cs" />
     <Compile Include="GoogleSyncWizardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ImportWizardForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.cs" />

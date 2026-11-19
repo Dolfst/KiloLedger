@@ -3498,24 +3498,45 @@ public sealed class MainActivity : Activity
         List<string[]> fuel = ExpenseDataCodec.ReadRows(Path.Combine(source, "fuel.dat"));
         List<string[]> repairs = ExpenseDataCodec.ReadRows(Path.Combine(source, "repairs.dat"));
         List<string[]> utilities = ExpenseDataCodec.ReadRows(Path.Combine(source, "utilities.dat"));
-        StringBuilder summary = new StringBuilder("Автомобили: ");
-        for (int i = 0; i < cars.Count; i++)
+        List<string[]> expenses = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.ExpensesFile);
+        List<string[]> templates = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.TemplatesFile);
+        List<string[]> reminders = ExpenseDataStore.LoadOptional(source, ExpenseDataCodec.RemindersFile);
+        int receiptCount = 0;
+        string receiptsDir = Path.Combine(source, "Receipts");
+        if (Directory.Exists(receiptsDir))
+            receiptCount = Directory.GetFiles(receiptsDir).Length;
+
+        StringBuilder summary = new StringBuilder();
+        summary.Append("Предпросмотр импорта\n\nАвтомобили (").Append(cars.Count).Append("): ");
+        if (cars.Count == 0)
+            summary.Append("—");
+        else
         {
-            if (i > 0)
-                summary.Append(", ");
-            summary.Append(cars[i][0]);
+            for (int i = 0; i < cars.Count; i++)
+            {
+                if (i > 0)
+                    summary.Append(", ");
+                summary.Append(cars[i][0]);
+            }
         }
         summary.Append("\n\nЗаправки: ").Append(fuel.Count)
             .Append("\nРемонт и ТО: ").Append(repairs.Count)
-            .Append("\nКоммунальные записи: ").Append(utilities.Count)
-            .Append("\nКатегории ремонта: ")
+            .Append("\nПрочие расходы: ").Append(expenses.Count)
+            .Append("\nКоммунальные: ").Append(utilities.Count)
+            .Append("\nКат. ремонта: ")
             .Append(ExpenseDataStore.LoadRepairCategories(source).Count);
+        if (templates.Count > 0)
+            summary.Append("\nШаблоны: ").Append(templates.Count);
+        if (reminders.Count > 0)
+            summary.Append("\nНапоминания: ").Append(reminders.Count);
+        if (receiptCount > 0)
+            summary.Append("\nФото чеков: ").Append(receiptCount);
         summary.Append(IsCompleteData(DataDirectory)
-            ? "\n\nТекущие данные сначала сохранятся отдельной копией."
-            : "\n\nИмпорт заменит текущий набор данных.");
+            ? "\n\nПеред заменой текущие данные сохранятся в Backups/Safety_…"
+            : "\n\nИмпорт запишет этот набор данных на телефон.");
 
         new AlertDialog.Builder(this)
-            .SetTitle("Проверка копии")
+            .SetTitle("Импорт копии")
             .SetMessage(summary.ToString())
             .SetNegativeButton("Отмена", delegate { DeleteImportStaging(source); })
             .SetPositiveButton("Заменить данные", delegate
@@ -4078,7 +4099,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.26.0";
+        string version = "1.27.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);

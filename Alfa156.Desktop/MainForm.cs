@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.26.0";
+        private const string AppVersion = "1.27.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -158,10 +158,12 @@ namespace Alfa156.Desktop
                 Dock = DockStyle.Fill,
                 WrapContents = true
             };
+            exchange.Controls.Add(MakeButton("Импорт…", OpenImportWizard));
             exchange.Controls.Add(MakeButton("Экспорт Excel", ExportExcel));
             exchange.Controls.Add(MakeButton("Импорт Excel", ImportExcel));
             exchange.Controls.Add(MakeButton("Экспорт CSV (Google)", ExportCsv));
             exchange.Controls.Add(MakeButton("Импорт CSV-папки", ImportCsvFolder));
+            exchange.Controls.Add(MakeButton("Шаблоны CSV", ExportCsvTemplates));
             googleUrlBox.Width = 280;
             googleUrlBox.Text = "ссылка Google Sheets…";
             googleUrlBox.ForeColor = Color.Gray;
@@ -1490,6 +1492,48 @@ namespace Alfa156.Desktop
                     repository.SaveZip(dialog.FileName);
                     dirty = false;
                     SetStatus("Экспорт всего (ZIP) сохранён: " + dialog.FileName);
+                }
+                catch (Exception ex)
+                {
+                    ShowError(ex);
+                }
+            }
+        }
+
+        private void OpenImportWizard(object sender, EventArgs e)
+        {
+            try
+            {
+                using (ImportWizardForm wizard = new ImportWizardForm(repository, EnsurePathForImport))
+                {
+                    if (wizard.ShowDialog(this) != DialogResult.OK)
+                        return;
+                    pathBox.Text = repository.DirectoryPath ?? "";
+                    BindAll();
+                    dirty = false;
+                    string safety = wizard.SafetyPath;
+                    SetStatus("Импорт завершён." +
+                        (safety != null ? " Копия Safety: " + safety : ""));
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private void ExportCsvTemplates(object sender, EventArgs e)
+        {
+            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Куда сохранить шаблоны CSV (пустые заголовки fuel/repairs/expenses)";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+                try
+                {
+                    string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv-templates");
+                    CsvExchange.ExportTemplates(folder);
+                    SetStatus("Шаблоны CSV: " + folder);
                 }
                 catch (Exception ex)
                 {

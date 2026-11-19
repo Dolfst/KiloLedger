@@ -18,22 +18,57 @@ namespace Alfa156.Desktop.Exchange
             string money = "Сумма_" + ToSettings.GetCurrency(repo.Settings);
             WriteCsv(Path.Combine(folder, "cars.csv"), new string[] { "Автомобиль" }, repo.Cars);
             WriteCsv(Path.Combine(folder, "fuel.csv"),
-                new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак", "Цель" },
+                FuelHeaders(money),
                 repo.Fuel);
             WriteCsv(Path.Combine(folder, "repairs.csv"),
-                new string[]
-                {
-                    "Дата", "Автомобиль", "Пробег_км", "Категория", "Товар",
-                    "Описание", "Кол_во", money, "Комментарий"
-                }, repo.Repairs);
+                RepairHeaders(money), repo.Repairs);
             WriteCsv(Path.Combine(folder, "utilities.csv"), BuildUtilityHeaders(), repo.Utilities);
             WriteCsv(Path.Combine(folder, "repair-categories.csv"),
                 new string[] { "Категория" }, repo.Categories);
             WriteCsv(Path.Combine(folder, "expenses.csv"),
-                new string[] { "Дата", "Автомобиль", "Категория", "Название", money, "Комментарий" },
+                ExpenseHeaders(money),
                 repo.Expenses);
             WriteCsv(Path.Combine(folder, "expense-categories.csv"),
                 new string[] { "Категория" }, repo.ExpenseCategories);
+        }
+
+        /// <summary>
+        /// Empty CSV templates (headers only) for fuel / repair / expenses — fill offline, then import.
+        /// </summary>
+        internal static void ExportTemplates(string folder)
+        {
+            Directory.CreateDirectory(folder);
+            string money = "Сумма_BYN";
+            WriteCsv(Path.Combine(folder, "fuel.csv"), FuelHeaders(money), new List<string[]>());
+            WriteCsv(Path.Combine(folder, "repairs.csv"), RepairHeaders(money), new List<string[]>());
+            WriteCsv(Path.Combine(folder, "expenses.csv"), ExpenseHeaders(money), new List<string[]>());
+            WriteCsv(Path.Combine(folder, "cars.csv"), new string[] { "Автомобиль" }, new List<string[]>());
+        }
+
+        private static string[] FuelHeaders(string money)
+        {
+            return new string[]
+            {
+                "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр",
+                "Комментарий", "Полный_бак", "Цель"
+            };
+        }
+
+        private static string[] RepairHeaders(string money)
+        {
+            return new string[]
+            {
+                "Дата", "Автомобиль", "Пробег_км", "Категория", "Товар",
+                "Описание", "Кол_во", money, "Комментарий"
+            };
+        }
+
+        private static string[] ExpenseHeaders(string money)
+        {
+            return new string[]
+            {
+                "Дата", "Автомобиль", "Категория", "Название", money, "Комментарий"
+            };
         }
 
         internal static void ImportFolder(AlfaRepository repo, string folder)

@@ -69,32 +69,35 @@ def main() -> int:
         "RefreshDateReminderNotifications",
         "EditReminderWarnDays",
         "Напоминания",
-        'version = "1.26.0"',
         "reminders.dat",
     ):
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
+    if 'version = "1.26.0"' not in android and 'version = "1.27.0"' not in android:
+        errors.append("Android MainActivity: missing version 1.26+/1.27+")
 
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
         "AddDateReminder",
         "DeleteDateReminder",
         "SaveReminderWarnDays",
-        'AppVersion = "1.26.0"',
         "Добавить напоминание",
     ):
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
+    if 'AppVersion = "1.26.0"' not in desktop and 'AppVersion = "1.27.0"' not in desktop:
+        errors.append("Desktop MainForm: missing AppVersion 1.26+/1.27+")
 
     kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
     for needle in (
         "ManageRemindersFromMenu",
         "Напоминания",
         "EditReminderWarnDays",
-        "1.26.0",
     ):
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
+    if "1.26.0" not in kpk and "1.27.0" not in kpk:
+        errors.append("KPK Form1: missing version 1.26+/1.27+")
 
     for rel, needle in (
         ("Alfa156.Android/ExpenseDataCodec.cs", "RemindersFile"),

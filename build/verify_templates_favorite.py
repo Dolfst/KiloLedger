@@ -73,8 +73,12 @@ def main() -> int:
     ):
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
-    if 'version = "1.25.0"' not in android and 'version = "1.26.0"' not in android:
-        errors.append("Android MainActivity: missing version 1.25+/1.26+")
+    if (
+        'version = "1.25.0"' not in android
+        and 'version = "1.26.0"' not in android
+        and 'version = "1.27.0"' not in android
+    ):
+        errors.append("Android MainActivity: missing version 1.25+")
 
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
@@ -86,8 +90,12 @@ def main() -> int:
     ):
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
-    if 'AppVersion = "1.25.0"' not in desktop and 'AppVersion = "1.26.0"' not in desktop:
-        errors.append("Desktop MainForm: missing AppVersion 1.25+/1.26+")
+    if (
+        'AppVersion = "1.25.0"' not in desktop
+        and 'AppVersion = "1.26.0"' not in desktop
+        and 'AppVersion = "1.27.0"' not in desktop
+    ):
+        errors.append("Desktop MainForm: missing AppVersion 1.25+")
 
     kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
     for needle in (

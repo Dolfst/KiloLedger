@@ -2334,7 +2334,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.26.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.27.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
                 "Напоминания по дате (reminders.dat): страховка / техосмотр / своё.\r\n" +
                 "Сравнение периодов: этот месяц vs прошлый.\r\n" +
