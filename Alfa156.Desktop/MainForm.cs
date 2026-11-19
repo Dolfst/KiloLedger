@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.31.0";
+        private const string AppVersion = "1.32.0";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -55,10 +55,12 @@ namespace Alfa156.Desktop
         private readonly TextBox fuelFilterTo = new TextBox();
         private readonly TextBox fuelFilterText = new TextBox();
         private readonly ComboBox fuelFilterPurpose = new ComboBox();
+        private readonly ComboBox fuelFilterStation = new ComboBox();
         private string fuelFilterFromValue = "";
         private string fuelFilterToValue = "";
         private string fuelFilterTextValue = "";
         private string fuelFilterPurposeValue = "";
+        private string fuelFilterStationValue = "";
 
         private readonly TextBox repairFilterFrom = new TextBox();
         private readonly TextBox repairFilterTo = new TextBox();
@@ -380,7 +382,14 @@ namespace Alfa156.Desktop
             fuelFilterPurpose.SelectedIndex = 0;
             bar.Controls.Add(FilterLabel("Цель"));
             bar.Controls.Add(fuelFilterPurpose);
-            // Move apply/reset after purpose: rebuild order by bringing buttons to end.
+            fuelFilterStation.DropDownStyle = ComboBoxStyle.DropDownList;
+            fuelFilterStation.Width = 120;
+            fuelFilterStation.Items.Clear();
+            fuelFilterStation.Items.Add("Все АЗС");
+            fuelFilterStation.SelectedIndex = 0;
+            bar.Controls.Add(FilterLabel("АЗС"));
+            bar.Controls.Add(fuelFilterStation);
+            // Move apply/reset after purpose/station: rebuild order by bringing buttons to end.
             Control apply = null;
             Control reset = null;
             for (int i = bar.Controls.Count - 1; i >= 0; i--)
@@ -749,7 +758,7 @@ namespace Alfa156.Desktop
                     object[] values = new object[]
                     {
                         date, carName, km, liters, cost, price, "",
-                        fullTankBox.Checked, ""
+                        fullTankBox.Checked, "", ""
                     };
                     int index = fuelGrid.Rows.Add(values);
                     fuelGrid.ClearSelection();
@@ -909,7 +918,7 @@ namespace Alfa156.Desktop
             fuelGrid.Columns.Add("liters", "Литры");
             fuelGrid.Columns.Add("sum", "Сумма, " + Cur());
             fuelGrid.Columns.Add("price", "Цена/л");
-            fuelGrid.Columns.Add("comment", "АЗС/коммент");
+            fuelGrid.Columns.Add("comment", "Комментарий");
             DataGridViewCheckBoxColumn fullTank = new DataGridViewCheckBoxColumn
             {
                 Name = "fullTank",
@@ -933,6 +942,33 @@ namespace Alfa156.Desktop
             purpose.Items.Add("Личный");
             purpose.Items.Add("Работа");
             fuelGrid.Columns.Add(purpose);
+            fuelGrid.Columns.Add("station", "АЗС / бренд");
+            fuelGrid.EditingControlShowing -= FuelGridEditingControlShowing;
+            fuelGrid.EditingControlShowing += FuelGridEditingControlShowing;
+        }
+
+        private void FuelGridEditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            if (fuelGrid.CurrentCell == null || fuelGrid.CurrentCell.ColumnIndex != 9)
+                return;
+            TextBox box = e.Control as TextBox;
+            if (box == null)
+                return;
+            AutoCompleteStringCollection source = new AutoCompleteStringCollection();
+            string[] known = AlfaCodec.CollectStationSuggestions(repository.Fuel);
+            for (int i = 0; i < known.Length; i++)
+                source.Add(known[i]);
+            for (int r = 0; r < fuelGrid.Rows.Count; r++)
+            {
+                if (fuelGrid.Rows[r].IsNewRow)
+                    continue;
+                string value = CellText(fuelGrid.Rows[r], 9);
+                if (value.Length > 0 && !source.Contains(value))
+                    source.Add(value);
+            }
+            box.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            box.AutoCompleteSource = AutoCompleteSource.CustomSource;
+            box.AutoCompleteCustomSource = source;
         }
 
         private void SetupRepairsGrid()
@@ -2203,16 +2239,18 @@ namespace Alfa156.Desktop
         private void BindFuelGrid(List<string[]> rows)
         {
             fuelGrid.Rows.Clear();
+            RefreshStationFilterItems(rows);
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] content = RecordIds.StripId(rows[i]);
-                object[] values = new object[9];
+                object[] values = new object[10];
                 for (int c = 0; c < 7; c++)
                     values[c] = c < content.Length ? content[c] : "";
                 values[7] = AlfaCodec.IsFullTank(rows[i]);
                 string purpose = AlfaCodec.GetPurpose(rows[i]);
                 EnsurePurposeComboItem(purpose);
                 values[8] = purpose;
+                values[9] = AlfaCodec.GetStation(rows[i]);
                 int index = fuelGrid.Rows.Add(values);
                 fuelGrid.Rows[index].Tag = RecordIds.GetId(rows[i]);
             }
@@ -2229,6 +2267,32 @@ namespace Alfa156.Desktop
                 if (String.Equals(Convert.ToString(column.Items[i]), purpose, StringComparison.Ordinal))
                     return;
             column.Items.Add(purpose);
+        }
+
+        private void RefreshStationFilterItems(List<string[]> rows)
+        {
+            string previous = fuelFilterStation.SelectedItem == null
+                ? "" : fuelFilterStation.SelectedItem.ToString();
+            fuelFilterStation.Items.Clear();
+            fuelFilterStation.Items.Add("Все АЗС");
+            string[] known = AlfaCodec.CollectStationSuggestions(rows);
+            for (int i = 0; i < known.Length; i++)
+                fuelFilterStation.Items.Add(known[i]);
+            int selected = 0;
+            if (!String.IsNullOrEmpty(previous))
+            {
+                for (int i = 0; i < fuelFilterStation.Items.Count; i++)
+                {
+                    if (String.Equals(Convert.ToString(fuelFilterStation.Items[i]), previous,
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        selected = i;
+                        break;
+                    }
+                }
+            }
+            if (fuelFilterStation.Items.Count > 0)
+                fuelFilterStation.SelectedIndex = selected;
         }
 
         private void PullAll()
@@ -2353,7 +2417,7 @@ namespace Alfa156.Desktop
                 DataGridViewRow row = fuelGrid.Rows[i];
                 if (row.IsNewRow)
                     continue;
-                string[] values = new string[9];
+                string[] values = new string[10];
                 bool empty = true;
                 for (int c = 0; c < 7; c++)
                 {
@@ -2376,7 +2440,8 @@ namespace Alfa156.Desktop
                 }
                 values[7] = full ? "1" : "0";
                 values[8] = AlfaCodec.NormalizePurpose(CellText(row, 8));
-                int length = 9;
+                values[9] = AlfaCodec.NormalizeStation(CellText(row, 9));
+                int length = 10;
                 while (length > 5)
                 {
                     if ((values[length - 1] ?? "").Trim().Length > 0)
@@ -2782,6 +2847,8 @@ namespace Alfa156.Desktop
             decimal purposeWork = 0;
             decimal purposeOther = 0;
             bool anyPurpose = false;
+            Dictionary<string, decimal[]> stationStats = new Dictionary<string, decimal[]>(
+                StringComparer.OrdinalIgnoreCase);
             string yearPrefix = DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
             List<string[]> fuels = repository.Fuel;
             Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
@@ -2819,6 +2886,25 @@ namespace Alfa156.Desktop
                             purposeWork += amount;
                         else
                             purposeOther += amount;
+                    }
+                    string station = AlfaCodec.GetStation(row);
+                    if (station.Length > 0)
+                    {
+                        decimal price = NumberOrZero(row.Length > 5 ? row[5] : "");
+                        if (price <= 0)
+                        {
+                            decimal liters = NumberOrZero(row[3]);
+                            if (liters > 0)
+                                price = amount / liters;
+                        }
+                        decimal[] bucket;
+                        if (!stationStats.TryGetValue(station, out bucket))
+                        {
+                            bucket = new decimal[2];
+                            stationStats[station] = bucket;
+                        }
+                        bucket[0] += 1;
+                        bucket[1] += price;
                     }
                 }
             }
@@ -2899,6 +2985,22 @@ namespace Alfa156.Desktop
                     .Append(" " + Cur() + "\r\nРабота: ").Append(Money(purposeWork)).Append(" " + Cur());
                 if (purposeOther > 0)
                     result.Append("\r\nДругое: ").Append(Money(purposeOther)).Append(" " + Cur());
+                result.Append("\r\n");
+            }
+            if (stationStats.Count > 0)
+            {
+                result.Append("\r\nАЗС / бренд:");
+                List<string> stationNames = new List<string>(stationStats.Keys);
+                stationNames.Sort(StringComparer.OrdinalIgnoreCase);
+                for (int s = 0; s < stationNames.Count; s++)
+                {
+                    decimal[] bucket = stationStats[stationNames[s]];
+                    int count = (int)bucket[0];
+                    decimal avg = count > 0 ? bucket[1] / count : 0;
+                    result.Append("\r\n").Append(stationNames[s])
+                        .Append(": ").Append(count.ToString(CultureInfo.InvariantCulture))
+                        .Append(" · ср. ").Append(Money(avg)).Append(" " + Cur()).Append("/л");
+                }
                 result.Append("\r\n");
             }
 
@@ -3196,16 +3298,23 @@ namespace Alfa156.Desktop
                 ? "" : fuelFilterPurpose.SelectedItem.ToString();
             fuelFilterPurposeValue = String.Equals(purpose, "Все цели", StringComparison.OrdinalIgnoreCase)
                 ? "" : (purpose ?? "").Trim();
+            string station = fuelFilterStation.SelectedItem == null
+                ? "" : fuelFilterStation.SelectedItem.ToString();
+            fuelFilterStationValue = String.Equals(station, "Все АЗС", StringComparison.OrdinalIgnoreCase)
+                ? "" : (station ?? "").Trim();
             ApplyFuelFilterVisibility();
             SetStatus("Фильтр заправок применён (данные не удаляются).");
         }
 
         private void ResetFuelFilter()
         {
-            fuelFilterFromValue = fuelFilterToValue = fuelFilterTextValue = fuelFilterPurposeValue = "";
+            fuelFilterFromValue = fuelFilterToValue = fuelFilterTextValue =
+                fuelFilterPurposeValue = fuelFilterStationValue = "";
             fuelFilterFrom.Text = fuelFilterTo.Text = fuelFilterText.Text = "";
             if (fuelFilterPurpose.Items.Count > 0)
                 fuelFilterPurpose.SelectedIndex = 0;
+            if (fuelFilterStation.Items.Count > 0)
+                fuelFilterStation.SelectedIndex = 0;
             ApplyFuelFilterVisibility();
             SetStatus("Фильтр заправок сброшен.");
         }
@@ -3283,10 +3392,14 @@ namespace Alfa156.Desktop
                 if (fuelFilterPurposeValue.Length > 0 &&
                     !String.Equals(CellText(row, 8), fuelFilterPurposeValue, StringComparison.OrdinalIgnoreCase))
                     return false;
+                if (fuelFilterStationValue.Length > 0 &&
+                    !String.Equals(CellText(row, 9), fuelFilterStationValue, StringComparison.OrdinalIgnoreCase))
+                    return false;
                 if (fuelFilterTextValue.Length > 0)
                 {
                     string hay = (CellText(row, 2) + " " + CellText(row, 3) + " " + CellText(row, 4) +
-                        " " + CellText(row, 5) + " " + CellText(row, 6) + " " + CellText(row, 8))
+                        " " + CellText(row, 5) + " " + CellText(row, 6) + " " + CellText(row, 8) +
+                        " " + CellText(row, 9))
                         .ToLowerInvariant();
                     if (hay.IndexOf(fuelFilterTextValue.ToLowerInvariant(), StringComparison.Ordinal) < 0)
                         return false;

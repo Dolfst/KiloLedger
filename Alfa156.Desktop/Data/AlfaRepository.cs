@@ -523,8 +523,9 @@ namespace Alfa156.Desktop.Data
             int length = content.Length;
             if (length < 5)
                 length = 5;
-            if (length > 8)
-                length = 8;
+            // date|car|km|liters|cost|price|comment|fullTank|purpose|station
+            if (length > 10)
+                length = 10;
             string[] row = Resize(content, length);
             row[0] = AlfaCodec.NormalizeDate(row[0]);
             row[1] = (row[1] ?? "").Trim();
@@ -552,6 +553,10 @@ namespace Alfa156.Desktop.Data
                 row[6] = (row[6] ?? "").Trim();
             if (row.Length > 7)
                 row[7] = AlfaCodec.NormalizeFullTankFlag(row[7]);
+            if (row.Length > 8)
+                row[8] = AlfaCodec.NormalizePurpose(row[8]);
+            if (row.Length > 9)
+                row[9] = AlfaCodec.NormalizeStation(row[9]);
 
             while (row.Length > 5)
             {

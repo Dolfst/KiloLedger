@@ -28,6 +28,14 @@ namespace CarExpenses
             Kind = "option";
             Required = required;
         }
+
+        /// <summary>Editable combo with suggestions (АЗС / бренд).</summary>
+        internal static EntryField Suggest(string label, string value, string[] options, bool required)
+        {
+            EntryField field = new EntryField(label, value, "suggest", required);
+            field.Options = options != null ? options : new string[0];
+            return field;
+        }
     }
 
     internal sealed class EntryEditorForm : Form
@@ -75,7 +83,12 @@ namespace CarExpenses
                     }
                     ComboBox combo = inputs[i] as ComboBox;
                     if (combo != null)
-                        values[i] = combo.SelectedItem == null ? "" : combo.SelectedItem.ToString();
+                    {
+                        if (fields[i].Kind == "suggest")
+                            values[i] = combo.Text == null ? "" : combo.Text.Trim();
+                        else
+                            values[i] = combo.SelectedItem == null ? "" : combo.SelectedItem.ToString();
+                    }
                     else
                     {
                         DateTimePicker datePicker = inputs[i] as DateTimePicker;
@@ -117,6 +130,20 @@ namespace CarExpenses
                 check.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
                 input = check;
                 labels[index].Text = "";
+            }
+            else if (fields[index].Kind == "suggest")
+            {
+                ComboBox combo = new ComboBox();
+                combo.DropDownStyle = ComboBoxStyle.DropDown;
+                combo.BackColor = System.Drawing.Color.White;
+                combo.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                if (fields[index].Options != null)
+                {
+                    for (int j = 0; j < fields[index].Options.Length; j++)
+                        combo.Items.Add(fields[index].Options[j]);
+                }
+                combo.Text = fields[index].Value == null ? "" : fields[index].Value;
+                input = combo;
             }
             else if (fields[index].Options != null)
             {

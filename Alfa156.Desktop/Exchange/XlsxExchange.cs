@@ -27,7 +27,7 @@ namespace Alfa156.Desktop.Exchange
                 WriteEntry(zip, "xl/styles.xml", StylesXml());
                 WriteSheet(zip, "xl/worksheets/sheet1.xml", new string[] { "Автомобиль" }, repo.Cars);
                 WriteSheet(zip, "xl/worksheets/sheet2.xml",
-                    new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак", "Цель" },
+                    new string[] { "Дата", "Автомобиль", "Пробег_км", "Литры", money, "Цена_за_литр", "Комментарий", "Полный_бак", "Цель", "АЗС" },
                     repo.Fuel);
                 WriteSheet(zip, "xl/worksheets/sheet3.xml",
                     new string[]

@@ -118,10 +118,18 @@ def main() -> int:
     if "default_car" not in readme:
         errors.append("README: missing default_car")
 
-    # Payload length rules
-    fuel_payload_max, repair_payload_max, expense_payload_max = 8, 8, 5
-    if not (fuel_payload_max == 8 and repair_payload_max == 8 and expense_payload_max == 5):
+    # Payload length rules (fuel includes station as of 1.32.0)
+    fuel_payload_max, repair_payload_max, expense_payload_max = 9, 8, 5
+    if not (fuel_payload_max == 9 and repair_payload_max == 8 and expense_payload_max == 5):
         errors.append("payload max lengths unexpected")
+    for rel in (
+        "Alfa156.Android/RecordTemplates.cs",
+        "Alfa156.Desktop/Data/RecordTemplates.cs",
+        "Alfa156/Alfa156/RecordTemplates.cs",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        if "payloadLen > 9" not in text and "len > 9" not in text:
+            errors.append(f"{rel}: expected fuel payload max 9")
 
     if errors:
         print("FAIL:")
