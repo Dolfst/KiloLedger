@@ -2925,9 +2925,16 @@ namespace CarExpenses
                 {
                     List<DateReminder> list = DateReminders.ListAll();
                     string numText = editor.Values[1] == null ? "" : editor.Values[1].Trim();
-                    int index;
-                    if (!int.TryParse(numText, NumberStyles.Integer, CultureInfo.InvariantCulture, out index) ||
-                        index < 1 || index > list.Count)
+                    int index = 0;
+                    bool parsed = false;
+                    try
+                    {
+                        index = int.Parse(numText, NumberStyles.Integer, CultureInfo.InvariantCulture);
+                        parsed = true;
+                    }
+                    catch (FormatException) { }
+                    catch (OverflowException) { }
+                    if (!parsed || index < 1 || index > list.Count)
                     {
                         MessageBox.Show("Укажите номер из списка.", "Напоминания");
                         return;
