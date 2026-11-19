@@ -56,6 +56,20 @@ namespace Alfa156.Desktop.Exchange
             return Pull(settings);
         }
 
+        /// <summary>
+        /// Проверка связи: pull snapshot и краткая сводка по таблицам.
+        /// </summary>
+        internal static string TestConnection(GoogleSyncSettings settings)
+        {
+            AlfaRepository remote = Pull(settings);
+            return "Соединение успешно.\r\n" +
+                "Автомобили: " + remote.Cars.Count + "\r\n" +
+                "Заправки: " + remote.Fuel.Count + "\r\n" +
+                "Ремонт: " + remote.Repairs.Count + "\r\n" +
+                "Коммуналка: " + remote.Utilities.Count + "\r\n" +
+                "Категории: " + remote.Categories.Count;
+        }
+
         internal static string ApplyAndPush(
             AlfaRepository local,
             AlfaRepository remote,

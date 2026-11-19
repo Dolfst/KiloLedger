@@ -51,6 +51,9 @@
     <Compile Include="Exchange\DengiFormat.cs" />
     <Compile Include="Exchange\GoogleSyncClient.cs" />
     <Compile Include="Exchange\XlsxExchange.cs" />
+    <Compile Include="GoogleSyncWizardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="MainForm.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

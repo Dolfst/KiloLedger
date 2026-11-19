@@ -105,6 +105,7 @@ namespace Alfa156.Desktop
             };
             exchange.Controls.Add(googleUrlBox);
             exchange.Controls.Add(MakeButton("Импорт Google", ImportGoogle));
+            exchange.Controls.Add(MakeButton("Google: мастер", OpenGoogleSyncWizard));
             exchange.Controls.Add(MakeButton("Google: настройка", ConfigureGoogleSync));
             exchange.Controls.Add(MakeButton("Синхронизация Google", SyncGoogle));
 
@@ -221,12 +222,24 @@ namespace Alfa156.Desktop
             return button;
         }
 
+        private void OpenGoogleSyncWizard(object sender, EventArgs e)
+        {
+            GoogleSyncSettings settings = GoogleSyncSettings.Load();
+            using (GoogleSyncWizardForm wizard = new GoogleSyncWizardForm(settings))
+            {
+                if (wizard.ShowDialog(this) != DialogResult.OK)
+                    return;
+                ApplyGoogleSettingsToUi(GoogleSyncSettings.Load());
+                SetStatus("Google Sync настроен. Можно синхронизировать.");
+            }
+        }
+
         private void ConfigureGoogleSync(object sender, EventArgs e)
         {
             GoogleSyncSettings settings = GoogleSyncSettings.Load();
             using (Form dialog = new Form())
             {
-                dialog.Text = "Синхронизация Google";
+                dialog.Text = "Синхронизация Google (расширенная)";
                 dialog.Width = 640;
                 dialog.Height = 260;
                 dialog.StartPosition = FormStartPosition.CenterParent;
@@ -248,12 +261,19 @@ namespace Alfa156.Desktop
                 settings.Token = tokenBox.Text.Trim();
                 settings.SpreadsheetUrl = sheetBox.Text.Trim();
                 settings.Save();
-                if (!String.IsNullOrEmpty(settings.SpreadsheetUrl))
-                {
-                    googleUrlBox.Text = settings.SpreadsheetUrl;
-                    googleUrlBox.ForeColor = SystemColors.WindowText;
-                }
+                ApplyGoogleSettingsToUi(settings);
                 SetStatus("Настройки Google сохранены.");
+            }
+        }
+
+        private void ApplyGoogleSettingsToUi(GoogleSyncSettings settings)
+        {
+            if (settings == null)
+                return;
+            if (!String.IsNullOrEmpty(settings.SpreadsheetUrl))
+            {
+                googleUrlBox.Text = settings.SpreadsheetUrl;
+                googleUrlBox.ForeColor = SystemColors.WindowText;
             }
         }
 

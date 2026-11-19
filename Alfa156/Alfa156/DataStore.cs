@@ -181,22 +181,27 @@ namespace CarExpenses
             }
         }
 
-        internal static void WriteSyncSnapshot(NetworkStream stream)
+        internal static void WriteSyncSnapshot(NetworkStream stream, string pairingCode)
         {
             EnsureExpenseCategories();
             ToSettings.EnsureFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
-            for (int i = 0; i < DataFiles.Length; i++)
+            using (SyncCrypto crypto = new SyncCrypto(pairingCode))
             {
-                string path = GetPath(DataFiles[i]);
-                byte[] content = File.Exists(path) ? ReadFileBytes(path) : new byte[0];
-                if (content.Length > 16 * 1024 * 1024)
-                    throw new InvalidDataException("Файл " + DataFiles[i] +
-                        " превышает допустимый размер синхронизации.");
-                WriteSyncInt32(stream, content.Length);
-                if (content.Length > 0)
-                    stream.Write(content, 0, content.Length);
+                for (int i = 0; i < DataFiles.Length; i++)
+                {
+                    string path = GetPath(DataFiles[i]);
+                    byte[] content = File.Exists(path) ? ReadFileBytes(path) : new byte[0];
+                    if (content.Length > 16 * 1024 * 1024)
+                        throw new InvalidDataException("Файл " + DataFiles[i] +
+                            " превышает допустимый размер синхронизации.");
+                    if (content.Length > 0)
+                        crypto.TransformInPlace(content);
+                    WriteSyncInt32(stream, content.Length);
+                    if (content.Length > 0)
+                        stream.Write(content, 0, content.Length);
+                }
             }
             stream.Flush();
         }
@@ -221,6 +226,7 @@ namespace CarExpenses
 
         internal static void MergeSyncSnapshot(
             NetworkStream stream,
+            string pairingCode,
             SyncPlanResolver resolvePlan,
             SyncConflictResolver resolveConflict)
         {
@@ -240,14 +246,19 @@ namespace CarExpenses
             Directory.CreateDirectory(staging);
             try
             {
-                for (int i = 0; i < DataFiles.Length; i++)
+                using (SyncCrypto crypto = new SyncCrypto(pairingCode))
                 {
-                    int length = ReadSyncInt32(stream);
-                    if (length < 0 || length > 16 * 1024 * 1024)
-                        throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
-                    byte[] content = ReadSyncBytes(stream, length);
-                    using (FileStream output = File.Create(Path.Combine(staging, DataFiles[i])))
-                        output.Write(content, 0, content.Length);
+                    for (int i = 0; i < DataFiles.Length; i++)
+                    {
+                        int length = ReadSyncInt32(stream);
+                        if (length < 0 || length > 16 * 1024 * 1024)
+                            throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
+                        byte[] content = ReadSyncBytes(stream, length);
+                        if (content.Length > 0)
+                            crypto.TransformInPlace(content);
+                        using (FileStream output = File.Create(Path.Combine(staging, DataFiles[i])))
+                            output.Write(content, 0, content.Length);
+                    }
                 }
                 ValidateSyncDirectory(staging);
 

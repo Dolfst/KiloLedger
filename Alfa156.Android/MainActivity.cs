@@ -660,6 +660,12 @@ public sealed class MainActivity : Activity
         EditText tokenInput = new EditText(this) { Hint = "SYNC_TOKEN", Text = token };
         LinearLayout box = new LinearLayout(this) { Orientation = Orientation.Vertical };
         box.SetPadding(Dp(20), Dp(8), Dp(20), Dp(8));
+        TextView help = new TextView(this);
+        help.Text = "Кратко: вставьте Alfa156Sync.gs, задайте SYNC_TOKEN, опубликуйте Web App. " +
+            "Пошаговый мастер — в Desktop («Google: мастер»). README: google-sync/ в репозитории.";
+        help.TextSize = 13;
+        help.SetPadding(0, 0, 0, Dp(8));
+        box.AddView(help);
         box.AddView(urlInput);
         box.AddView(tokenInput);
         new AlertDialog.Builder(this)
@@ -670,7 +676,23 @@ public sealed class MainActivity : Activity
                 GoogleSyncService.SaveSettings(this, urlInput.Text, tokenInput.Text);
                 ShowMessage("Настройки Google сохранены.");
             })
+            .SetNeutralButton("Справка", delegate { ShowGoogleSyncHelp(); })
             .SetNegativeButton("Отмена", delegate { })
+            .Show();
+    }
+
+    private void ShowGoogleSyncHelp()
+    {
+        new AlertDialog.Builder(this)
+            .SetTitle("Google Sync — справка")
+            .SetMessage(
+                "1. В Google Sheets откройте таблицу «Деньги».\n" +
+                "2. Расширения → Apps Script — код из google-sync/Alfa156Sync.gs.\n" +
+                "3. Script properties: SYNC_TOKEN.\n" +
+                "4. Deploy → Web app → скопируйте URL сюда.\n\n" +
+                "Удобный мастер настройки есть в Alfa156 Desktop: кнопка «Google: мастер».\n" +
+                "Подробности: github.com/Dolfst/alfa → google-sync/README.md")
+            .SetPositiveButton("OK", delegate { })
             .Show();
     }
 

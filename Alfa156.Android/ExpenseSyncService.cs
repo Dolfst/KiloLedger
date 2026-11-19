@@ -50,7 +50,7 @@ internal static class ExpenseSyncService
 {
     internal const int Port = 45816;
     private const int MaximumFileSize = 16 * 1024 * 1024;
-    private const string ProtocolHeader = "ALFA156SYNC1|";
+    private const string ProtocolHeader = SyncCrypto.ProtocolHeader;
 
     private const int HandshakeTimeoutMs = 10000;
 
@@ -117,31 +117,39 @@ internal static class ExpenseSyncService
                 }
                 stream.ReadTimeout = 300000;
                 stream.WriteTimeout = 300000;
+                if (IsLegacyOrUnknownProtocol(handshake))
+                {
+                    WriteResponse(stream, 1, SyncCrypto.UpgradeMessage);
+                    return SyncCrypto.UpgradeMessage;
+                }
                 if (!String.Equals(handshake, ProtocolHeader + pairingCode, StringComparison.Ordinal))
                 {
                     WriteResponse(stream, 1, "Неверный код подключения.");
                     return "Неверный код подключения.";
                 }
 
-                WriteInt32(stream, 0);
-                Directory.CreateDirectory(incomingDirectory);
-                ReceiveSnapshot(stream, incomingDirectory);
-                ExpenseDataCodec.ValidateDirectory(incomingDirectory);
-
-                SyncPlan plan = resolvePlan(FormatSummary(
-                    AnalyzeDirectories(dataDirectory, incomingDirectory),
-                    "Android", "КПК"));
-                if (plan == null || plan.Cancelled)
+                using (SyncCrypto crypto = new SyncCrypto(pairingCode))
                 {
-                    WriteResponse(stream, 1, "Синхронизация отменена на Android.");
-                    return "Синхронизация отменена.";
-                }
+                    WriteInt32(stream, 0);
+                    Directory.CreateDirectory(incomingDirectory);
+                    ReceiveSnapshot(stream, incomingDirectory, crypto);
+                    ExpenseDataCodec.ValidateDirectory(incomingDirectory);
 
-                MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
-                finalResponseStarted = true;
-                WriteInt32(stream, 0);
-                SendSnapshot(stream, dataDirectory);
-                return null;
+                    SyncPlan plan = resolvePlan(FormatSummary(
+                        AnalyzeDirectories(dataDirectory, incomingDirectory),
+                        "Android", "КПК"));
+                    if (plan == null || plan.Cancelled)
+                    {
+                        WriteResponse(stream, 1, "Синхронизация отменена на Android.");
+                        return "Синхронизация отменена.";
+                    }
+
+                    MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan, resolveConflict);
+                    finalResponseStarted = true;
+                    WriteInt32(stream, 0);
+                    SendSnapshot(stream, dataDirectory, crypto);
+                    return null;
+                }
             }
             catch (Exception ex)
             {
@@ -725,7 +733,18 @@ internal static class ExpenseSyncService
         return true;
     }
 
-    private static void ReceiveSnapshot(NetworkStream stream, string directory)
+    private static bool IsLegacyOrUnknownProtocol(string handshake)
+    {
+        if (String.IsNullOrEmpty(handshake))
+            return true;
+        if (handshake.StartsWith(ProtocolHeader, StringComparison.Ordinal))
+            return false;
+        if (handshake.StartsWith("ALFA156SYNC", StringComparison.Ordinal))
+            return true;
+        return false;
+    }
+
+    private static void ReceiveSnapshot(NetworkStream stream, string directory, SyncCrypto crypto)
     {
         for (int i = 0; i < ExpenseDataCodec.DataFiles.Length; i++)
         {
@@ -733,12 +752,17 @@ internal static class ExpenseSyncService
             if (length < 0 || length > MaximumFileSize)
                 throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
             string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
-            using (FileStream output = File.Create(path))
-                CopyExactly(stream, output, length);
+            byte[] content = new byte[length];
+            if (length > 0)
+            {
+                ReadExactly(stream, content, 0, length);
+                crypto.TransformInPlace(content);
+            }
+            File.WriteAllBytes(path, content);
         }
     }
 
-    private static void SendSnapshot(NetworkStream stream, string directory)
+    private static void SendSnapshot(NetworkStream stream, string directory, SyncCrypto crypto)
     {
         RecordIds.EnsureDeletedFile(directory);
         ExpenseDataStore.EnsureCompanionFiles(directory);
@@ -747,6 +771,8 @@ internal static class ExpenseSyncService
         {
             string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
             byte[] content = File.Exists(path) ? File.ReadAllBytes(path) : Array.Empty<byte>();
+            if (content.Length > 0)
+                crypto.TransformInPlace(content);
             WriteInt32(stream, content.Length);
             if (content.Length > 0)
                 stream.Write(content, 0, content.Length);

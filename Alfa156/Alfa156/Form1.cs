@@ -947,7 +947,7 @@ namespace CarExpenses
 
                             DataStore.BindSyncSocket(client.Client, 30 * 1000 * 1000);
                             NetworkStream stream = client.GetStream();
-                            byte[] handshake = Encoding.UTF8.GetBytes("ALFA156SYNC1|" +
+                            byte[] handshake = Encoding.UTF8.GetBytes(SyncCrypto.ProtocolHeader +
                                 pairingCode + "\n");
                             stream.Write(handshake, 0, handshake.Length);
                             stream.Flush();
@@ -957,7 +957,7 @@ namespace CarExpenses
                                 throw new IOException(DataStore.ReadSyncMessage(stream));
 
                             DataStore.BindSyncSocket(client.Client, 5 * 60 * 1000 * 1000);
-                            DataStore.WriteSyncSnapshot(stream);
+                            DataStore.WriteSyncSnapshot(stream, pairingCode);
                             status = DataStore.ReadSyncInt32(stream);
                             if (status != 0)
                                 throw new IOException(DataStore.ReadSyncMessage(stream));
@@ -965,6 +965,7 @@ namespace CarExpenses
                             Cursor.Current = Cursors.Default;
                             DataStore.MergeSyncSnapshot(
                                 stream,
+                                pairingCode,
                                 new SyncPlanResolver(ResolveAndroidSyncPlan),
                                 new SyncConflictResolver(ResolveAndroidSyncConflict));
                             synced = true;
