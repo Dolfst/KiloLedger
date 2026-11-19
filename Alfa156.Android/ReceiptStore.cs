@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Android.Graphics;
+using AndroidBitmap = global::Android.Graphics.Bitmap;
+using AndroidBitmapFactory = global::Android.Graphics.BitmapFactory;
 
 namespace Alfa156.Android;
 
@@ -46,17 +47,17 @@ internal static class ReceiptStore
         File.Delete(PathForId(dataDirectory, recordId));
     }
 
-    internal static void SaveJpegFromBitmap(string dataDirectory, string recordId, Bitmap source)
+    internal static void SaveJpegFromBitmap(string dataDirectory, string recordId, AndroidBitmap source)
     {
         if (source == null)
             throw new ArgumentNullException("source");
         EnsureFolder(dataDirectory);
         string path = PathForId(dataDirectory, recordId);
         string temp = path + ".tmp";
-        using (Bitmap scaled = ScaleDown(source, MaxEdgePx))
+        using (AndroidBitmap scaled = ScaleDown(source, MaxEdgePx))
         using (FileStream output = File.Create(temp))
         {
-            if (!scaled.Compress(Bitmap.CompressFormat.Jpeg, JpegQuality, output))
+            if (!scaled.Compress(AndroidBitmap.CompressFormat.Jpeg, JpegQuality, output))
                 throw new IOException("Не удалось сжать фото чека.");
         }
         if (File.Exists(path))
@@ -68,7 +69,7 @@ internal static class ReceiptStore
     {
         if (input == null)
             throw new ArgumentNullException("input");
-        using (Bitmap decoded = BitmapFactory.DecodeStream(input))
+        using (AndroidBitmap decoded = AndroidBitmapFactory.DecodeStream(input))
         {
             if (decoded == null)
                 throw new InvalidDataException("Не удалось прочитать изображение.");
@@ -160,18 +161,18 @@ internal static class ReceiptStore
         return RecordIds.LooksLikeId(id);
     }
 
-    private static Bitmap ScaleDown(Bitmap source, int maxEdge)
+    private static AndroidBitmap ScaleDown(AndroidBitmap source, int maxEdge)
     {
         int w = source.Width;
         int h = source.Height;
         if (w <= maxEdge && h <= maxEdge)
         {
-            Bitmap copy = source.Copy(Bitmap.Config.Argb8888, false);
-            return copy ?? Bitmap.CreateBitmap(source);
+            AndroidBitmap copy = source.Copy(AndroidBitmap.Config.Argb8888, false);
+            return copy ?? AndroidBitmap.CreateBitmap(source);
         }
         float scale = Math.Min((float)maxEdge / w, (float)maxEdge / h);
         int nw = Math.Max(1, (int)(w * scale));
         int nh = Math.Max(1, (int)(h * scale));
-        return Bitmap.CreateScaledBitmap(source, nw, nh, true);
+        return AndroidBitmap.CreateScaledBitmap(source, nw, nh, true);
     }
 }

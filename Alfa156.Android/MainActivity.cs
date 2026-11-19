@@ -10,11 +10,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
-using Android.Graphics;
 using Android.OS;
 using Android.Provider;
 using Android.Views;
 using Android.Widget;
+using AndroidBitmap = global::Android.Graphics.Bitmap;
+using AndroidBitmapFactory = global::Android.Graphics.BitmapFactory;
 using AndroidColor = global::Android.Graphics.Color;
 using AndroidTypefaceStyle = global::Android.Graphics.TypefaceStyle;
 using AndroidLayout = global::Android.Resource.Layout;
@@ -1711,10 +1712,10 @@ public sealed class MainActivity : Activity
             if (Build.VERSION.SdkInt >= BuildVersionCodes.M)
             {
 #pragma warning disable CA1416
-                if (CheckSelfPermission(Android.Manifest.Permission.Camera) !=
-                    Android.Content.PM.Permission.Granted)
+                if (CheckSelfPermission(global::Android.Manifest.Permission.Camera) !=
+                    global::Android.Content.PM.Permission.Granted)
                 {
-                    RequestPermissions(new string[] { Android.Manifest.Permission.Camera }, 110);
+                    RequestPermissions(new string[] { global::Android.Manifest.Permission.Camera }, 110);
                     Toast.MakeText(this,
                         "Разрешите камеру и нажмите «Фото» снова.",
                         ToastLength.Long).Show();
@@ -1772,7 +1773,7 @@ public sealed class MainActivity : Activity
         if (data != null && data.Extras != null)
         {
             Java.Lang.Object raw = data.Extras.Get("data");
-            Bitmap bitmap = raw as Bitmap;
+            AndroidBitmap bitmap = raw as AndroidBitmap;
             if (bitmap != null)
             {
                 ReceiptStore.SaveJpegFromBitmap(DataDirectory, editorReceiptId, bitmap);
@@ -1793,7 +1794,7 @@ public sealed class MainActivity : Activity
             return;
         }
         string path = ReceiptStore.PathForId(DataDirectory, editorReceiptId);
-        Bitmap thumb = BitmapFactory.DecodeFile(path);
+        AndroidBitmap thumb = AndroidBitmapFactory.DecodeFile(path);
         if (thumb != null)
             editorReceiptThumb.SetImageBitmap(thumb);
         else
