@@ -13,7 +13,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.13.0";
+        private const string AppVersion = "1.14.0";
 
         private readonly AlfaRepository repository = new AlfaRepository();
         private readonly TextBox pathBox = new TextBox();
@@ -26,6 +26,7 @@ namespace Alfa156.Desktop
         private readonly DataGridView expensesGrid = CreateGrid();
         private readonly DataGridView expenseCategoriesGrid = CreateGrid();
         private readonly TextBox summaryBox = new TextBox();
+        private readonly MonthlyChartPanel summaryChart = new MonthlyChartPanel();
         private readonly TabPage summaryTab = new TabPage("Сводка");
         private readonly TextBox oilIntervalBox = new TextBox();
         private readonly TextBox oilWarnBox = new TextBox();
@@ -117,6 +118,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Новая папка", CreateFolder));
             toolbar.Controls.Add(MakeButton("Сохранить .dat", SaveData));
             toolbar.Controls.Add(MakeButton("Сохранить ZIP", SaveZip));
+            toolbar.Controls.Add(MakeButton("Фото чека", AttachReceiptPhoto));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -166,10 +168,11 @@ namespace Alfa156.Desktop
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 2,
+                RowCount = 3,
                 Padding = new Padding(8)
             };
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             FlowLayoutPanel intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
             intervalRow.Controls.Add(new Label { Text = "Масло интервал", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
@@ -185,8 +188,10 @@ namespace Alfa156.Desktop
             beltWarnBox.Width = 60;
             intervalRow.Controls.Add(beltWarnBox);
             intervalRow.Controls.Add(MakeButton("Сохранить интервалы ТО", SaveToIntervals));
+            summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
-            summaryLayout.Controls.Add(summaryBox, 0, 1);
+            summaryLayout.Controls.Add(summaryChart, 0, 1);
+            summaryLayout.Controls.Add(summaryBox, 0, 2);
             summaryTab.Controls.Add(summaryLayout);
             tabs.TabPages.Add(summaryTab);
             tabs.SelectedIndexChanged += SummaryTabSelected;
@@ -1029,13 +1034,95 @@ namespace Alfa156.Desktop
         private void RefreshSummaryText()
         {
             if (repository.Cars.Count == 0 && repository.Fuel.Count == 0 &&
-                repository.Repairs.Count == 0 && repository.Utilities.Count == 0)
+                repository.Repairs.Count == 0 && repository.Utilities.Count == 0 &&
+                repository.Expenses.Count == 0)
             {
                 summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
+                summaryChart.SetData(new List<string>(), new List<decimal[]>());
                 return;
             }
             string car = repository.Cars.Count > 0 ? (repository.Cars[0][0] ?? "") : "";
             summaryBox.Text = BuildSummary(car);
+            RefreshSummaryChart();
+        }
+
+        private void RefreshSummaryChart()
+        {
+            Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
+            for (int i = 0; i < repository.Fuel.Count; i++)
+            {
+                if (repository.Fuel[i].Length < 5)
+                    continue;
+                AddMonthlyAmount(monthlyTotals, repository.Fuel[i][0], 0, NumberOrZero(repository.Fuel[i][4]));
+            }
+            for (int i = 0; i < repository.Repairs.Count; i++)
+            {
+                if (repository.Repairs[i].Length < 8)
+                    continue;
+                AddMonthlyAmount(monthlyTotals, repository.Repairs[i][0], 1, NumberOrZero(repository.Repairs[i][7]));
+            }
+            for (int i = 0; i < repository.Expenses.Count; i++)
+            {
+                if (repository.Expenses[i].Length < 5)
+                    continue;
+                AddMonthlyAmount(monthlyTotals, repository.Expenses[i][0], 3, NumberOrZero(repository.Expenses[i][4]));
+            }
+            for (int i = 0; i < repository.Utilities.Count; i++)
+                AddMonthlyAmount(monthlyTotals, repository.Utilities[i][0], 2, UtilityTotal(repository.Utilities[i]));
+
+            List<string> months = new List<string>();
+            List<decimal[]> totals = new List<decimal[]>();
+            DateTime cursor = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            for (int i = 11; i >= 0; i--)
+            {
+                DateTime month = cursor.AddMonths(-i);
+                string key = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+                months.Add(key);
+                decimal[] values;
+                if (!monthlyTotals.TryGetValue(key, out values))
+                    values = new decimal[4];
+                totals.Add(values);
+            }
+            summaryChart.SetData(months, totals);
+        }
+
+        private void AttachReceiptPhoto(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string id = GetSelectedRecordId();
+                ReceiptStore.OpenOrAttach(repository.DirectoryPath, id, this);
+                SetStatus(ReceiptStore.Exists(repository.DirectoryPath, id)
+                    ? "Фото чека: " + ReceiptStore.PathForId(repository.DirectoryPath, id)
+                    : "Фото чека не сохранено.");
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
+        }
+
+        private string GetSelectedRecordId()
+        {
+            DataGridView grid = null;
+            if (tabs.SelectedTab != null)
+            {
+                if (tabs.SelectedTab.Text == "Заправки")
+                    grid = fuelGrid;
+                else if (tabs.SelectedTab.Text == "Ремонт")
+                    grid = repairsGrid;
+                else if (tabs.SelectedTab.Text == "Прочие")
+                    grid = expensesGrid;
+            }
+            if (grid == null || grid.CurrentRow == null || grid.CurrentRow.IsNewRow)
+                throw new InvalidOperationException(
+                    "Выберите строку на вкладке Заправки, Ремонт или Прочие.");
+            string id = grid.CurrentRow.Tag as string;
+            if (String.IsNullOrEmpty(id) || !RecordIds.LooksLikeId(id))
+                throw new InvalidOperationException(
+                    "У выбранной строки нет id. Сохраните .dat и откройте папку снова.");
+            return id;
         }
 
         private string BuildSummary(string currentCar)

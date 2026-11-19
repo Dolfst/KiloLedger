@@ -121,6 +121,7 @@ namespace Alfa156.Desktop.Data
                     if (File.Exists(path))
                         archive.CreateEntryFromFile(path, fileName, CompressionLevel.Optimal);
                 }
+                ReceiptStore.AddFolderToZip(archive, DirectoryPath);
             }
         }
 

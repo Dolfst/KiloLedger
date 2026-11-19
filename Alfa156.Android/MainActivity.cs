@@ -10,9 +10,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
+using Android.Graphics;
 using Android.OS;
+using Android.Provider;
 using Android.Views;
 using Android.Widget;
+using AndroidX.Core.Content;
 using AndroidColor = global::Android.Graphics.Color;
 using AndroidTypefaceStyle = global::Android.Graphics.TypefaceStyle;
 using AndroidLayout = global::Android.Resource.Layout;
@@ -20,6 +23,7 @@ using Uri = global::Android.Net.Uri;
 
 [assembly: Android.App.UsesPermission(Android.Manifest.Permission.Internet)]
 [assembly: Android.App.UsesPermission("android.permission.POST_NOTIFICATIONS")]
+[assembly: Android.App.UsesPermission(Android.Manifest.Permission.Camera)]
 
 namespace Alfa156.Android;
 
@@ -33,6 +37,8 @@ public sealed class MainActivity : Activity
 {
     private const int ImportRequest = 1001;
     private const int ExportRequest = 1002;
+    private const int PhotoCameraRequest = 1003;
+    private const int PhotoGalleryRequest = 1004;
     private const string Fuel = "fuel";
     private const string Repairs = "repairs";
     private const string Expenses = "expenses";
@@ -78,6 +84,9 @@ public sealed class MainActivity : Activity
     private List<string[]> allRows = new List<string[]>();
     private List<string[]> visibleRows = new List<string[]>();
     private List<int> visibleIndexes = new List<int>();
+    private string editorReceiptId;
+    private ImageView editorReceiptThumb;
+    private Java.IO.File cameraCaptureFile;
 
     private string DataDirectory
     {
@@ -123,19 +132,33 @@ public sealed class MainActivity : Activity
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
-        if (resultCode != Result.Ok || data == null)
+        if (resultCode != Result.Ok)
             return;
 
         try
         {
             if (requestCode == ImportRequest)
             {
+                if (data == null)
+                    return;
                 ImportSelection(data);
             }
             else if (requestCode == ExportRequest)
             {
+                if (data == null)
+                    return;
                 ExportTo(data.Data);
                 ShowMessage("Резервная копия ZIP сохранена.");
+            }
+            else if (requestCode == PhotoGalleryRequest)
+            {
+                if (data == null || data.Data == null)
+                    return;
+                SaveReceiptFromUri(data.Data);
+            }
+            else if (requestCode == PhotoCameraRequest)
+            {
+                SaveReceiptFromCamera(data);
             }
         }
         catch (Exception ex)
@@ -1272,6 +1295,14 @@ public sealed class MainActivity : Activity
     private void ShowRecordEditor(bool editing, string[] row, int sourceIndex)
     {
         string fileName = GetSelectedFile();
+        bool supportReceipt = selectedSection == Fuel || selectedSection == Repairs ||
+            selectedSection == Expenses;
+        string receiptId = null;
+        if (supportReceipt)
+        {
+            row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(fileName));
+            receiptId = RecordIds.GetId(row);
+        }
         List<EditorField> fields = new List<EditorField>();
         if (selectedSection == Fuel)
         {
@@ -1339,6 +1370,8 @@ public sealed class MainActivity : Activity
                     throw new InvalidOperationException("Введите хотя бы одну сумму.");
                 if (selectedSection == Fuel)
                     values = NormalizeFuelValues(values);
+                if (supportReceipt && !String.IsNullOrEmpty(receiptId))
+                    values = RecordIds.WithId(RecordIds.StripId(values), receiptId);
                 if (editing)
                     ExpenseDataStore.UpdateRecord(DataDirectory, fileName, sourceIndex, values);
                 else
@@ -1348,7 +1381,7 @@ public sealed class MainActivity : Activity
                     SetCurrentCar(values[1]);
                 RefreshRecords();
                 RefreshServiceNotifications();
-            }, selectedSection == Fuel);
+            }, selectedSection == Fuel, receiptId);
     }
 
     private static string FieldAt(string[] row, int index)
@@ -1565,7 +1598,7 @@ public sealed class MainActivity : Activity
     }
 
     private void RenderEditor(string title, List<EditorField> fields, Action<string[]> save,
-        bool wireFuelPrice = false)
+        bool wireFuelPrice = false, string receiptRecordId = null)
     {
         ScrollView scroll = new ScrollView(this);
         LinearLayout form = new LinearLayout(this);
@@ -1578,6 +1611,9 @@ public sealed class MainActivity : Activity
         if (wireFuelPrice && fields.Count >= 7)
             WireFuelPriceAutoCalc(fields[3], fields[4], fields[5]);
         // fields[7] = Полный бак when editing fuel
+
+        if (!String.IsNullOrEmpty(receiptRecordId))
+            AddReceiptControls(form, receiptRecordId);
 
         LinearLayout buttons = NewRow();
         Button saveButton = CreateButton("Сохранить", null);
@@ -1603,6 +1639,8 @@ public sealed class MainActivity : Activity
             try
             {
                 save(values);
+                editorReceiptId = null;
+                editorReceiptThumb = null;
                 dialog.Dismiss();
             }
             catch (Exception ex)
@@ -1610,8 +1648,162 @@ public sealed class MainActivity : Activity
                 ShowMessage("Не удалось сохранить: " + ex.Message);
             }
         };
-        cancelButton.Click += delegate { dialog.Dismiss(); };
+        cancelButton.Click += delegate
+        {
+            editorReceiptId = null;
+            editorReceiptThumb = null;
+            dialog.Dismiss();
+        };
         dialog.Show();
+    }
+
+    private void AddReceiptControls(LinearLayout form, string recordId)
+    {
+        editorReceiptId = recordId;
+        TextView label = new TextView(this);
+        label.Text = "Фото чека";
+        label.SetTextColor(AndroidColor.Rgb(35, 51, 70));
+        label.SetPadding(0, Dp(8), 0, Dp(4));
+        form.AddView(label, MatchWrap());
+
+        LinearLayout row = NewRow();
+        editorReceiptThumb = new ImageView(this);
+        editorReceiptThumb.SetScaleType(ImageView.ScaleType.CenterCrop);
+        LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(Dp(72), Dp(72));
+        thumbParams.RightMargin = Dp(8);
+        row.AddView(editorReceiptThumb, thumbParams);
+        Button photoButton = CreateButton("Фото", null);
+        photoButton.Click += delegate { ChooseReceiptSource(); };
+        row.AddView(photoButton, WeightedButton());
+        form.AddView(row, MatchWrap());
+        RefreshReceiptThumbnail();
+    }
+
+    private void ChooseReceiptSource()
+    {
+        if (String.IsNullOrEmpty(editorReceiptId))
+        {
+            ShowMessage("Сначала откройте запись для фото.");
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .SetTitle("Фото чека")
+            .SetItems(new string[] { "Камера", "Галерея", "Удалить фото" },
+                delegate(object sender, DialogClickEventArgs e)
+                {
+                    if (e.Which == 0)
+                        CaptureReceiptPhoto();
+                    else if (e.Which == 1)
+                        PickReceiptFromGallery();
+                    else if (e.Which == 2)
+                    {
+                        ReceiptStore.Delete(DataDirectory, editorReceiptId);
+                        RefreshReceiptThumbnail();
+                    }
+                })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
+    }
+
+    private void CaptureReceiptPhoto()
+    {
+        try
+        {
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.M)
+            {
+#pragma warning disable CA1416
+                if (CheckSelfPermission(Android.Manifest.Permission.Camera) !=
+                    Android.Content.PM.Permission.Granted)
+                {
+                    RequestPermissions(new string[] { Android.Manifest.Permission.Camera }, 110);
+                    Toast.MakeText(this,
+                        "Разрешите камеру и нажмите «Фото» снова.",
+                        ToastLength.Long).Show();
+                    return;
+                }
+#pragma warning restore CA1416
+            }
+            Java.IO.File captureDir = new Java.IO.File(CacheDir, "receipt_capture");
+            if (!captureDir.Exists())
+                captureDir.Mkdirs();
+            cameraCaptureFile = new Java.IO.File(captureDir, "capture.jpg");
+            Uri uri = FileProvider.GetUriForFile(this, "com.alfa156.mobile.fileprovider",
+                cameraCaptureFile);
+            Intent intent = new Intent(MediaStore.ActionImageCapture);
+            intent.PutExtra(MediaStore.ExtraOutput, uri);
+            intent.AddFlags(ActivityFlags.GrantWriteUriPermission | ActivityFlags.GrantReadUriPermission);
+            StartActivityForResult(intent, PhotoCameraRequest);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Камера недоступна: " + ex.Message);
+        }
+    }
+
+    private void PickReceiptFromGallery()
+    {
+        Intent intent = new Intent(Intent.ActionGetContent);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType("image/*");
+        StartActivityForResult(Intent.CreateChooser(intent, "Фото чека"), PhotoGalleryRequest);
+    }
+
+    private void SaveReceiptFromUri(Uri uri)
+    {
+        if (String.IsNullOrEmpty(editorReceiptId) || uri == null)
+            return;
+        Stream input = ContentResolver.OpenInputStream(uri);
+        if (input == null)
+            throw new IOException("Не удалось открыть изображение.");
+        using (input)
+            ReceiptStore.SaveJpegFromStream(DataDirectory, editorReceiptId, input);
+        RefreshReceiptThumbnail();
+        Toast.MakeText(this, "Фото чека сохранено.", ToastLength.Short).Show();
+    }
+
+    private void SaveReceiptFromCamera(Intent data)
+    {
+        if (String.IsNullOrEmpty(editorReceiptId))
+            return;
+        if (cameraCaptureFile != null && cameraCaptureFile.Exists())
+        {
+            using (FileStream input = File.OpenRead(cameraCaptureFile.AbsolutePath))
+                ReceiptStore.SaveJpegFromStream(DataDirectory, editorReceiptId, input);
+            try { cameraCaptureFile.Delete(); } catch { }
+            cameraCaptureFile = null;
+            RefreshReceiptThumbnail();
+            Toast.MakeText(this, "Фото чека сохранено.", ToastLength.Short).Show();
+            return;
+        }
+        if (data != null && data.Extras != null)
+        {
+            Java.Lang.Object raw = data.Extras.Get("data");
+            Bitmap bitmap = raw as Bitmap;
+            if (bitmap != null)
+            {
+                ReceiptStore.SaveJpegFromBitmap(DataDirectory, editorReceiptId, bitmap);
+                RefreshReceiptThumbnail();
+                Toast.MakeText(this, "Фото чека сохранено.", ToastLength.Short).Show();
+            }
+        }
+    }
+
+    private void RefreshReceiptThumbnail()
+    {
+        if (editorReceiptThumb == null || String.IsNullOrEmpty(editorReceiptId))
+            return;
+        if (!ReceiptStore.Exists(DataDirectory, editorReceiptId))
+        {
+            editorReceiptThumb.SetImageDrawable(null);
+            editorReceiptThumb.SetBackgroundColor(AndroidColor.Rgb(225, 231, 237));
+            return;
+        }
+        string path = ReceiptStore.PathForId(DataDirectory, editorReceiptId);
+        Bitmap thumb = BitmapFactory.DecodeFile(path);
+        if (thumb != null)
+            editorReceiptThumb.SetImageBitmap(thumb);
+        else
+            editorReceiptThumb.SetBackgroundColor(AndroidColor.Rgb(225, 231, 237));
     }
 
     private void WireFuelPriceAutoCalc(EditorField litersField, EditorField costField, EditorField priceField)
@@ -1811,7 +2003,9 @@ public sealed class MainActivity : Activity
             ? row[0] + ", " + row[2] + " км, " + row[4] + " BYN"
             : selectedSection == Repairs
                 ? row[0] + ", " + row[3] + ": " + ShortText(row[4], 30)
-                : "коммунальные платежи за " + row[0];
+                : selectedSection == Expenses
+                    ? row[0] + ", " + FieldAt(row, 2) + ": " + ShortText(FieldAt(row, 3), 30)
+                    : "коммунальные платежи за " + row[0];
         new AlertDialog.Builder(this)
             .SetTitle("Удалить запись?")
             .SetMessage(description)
@@ -2055,13 +2249,35 @@ public sealed class MainActivity : Activity
         try
         {
             ScrollView scroll = new ScrollView(this);
+            LinearLayout content = new LinearLayout(this);
+            content.Orientation = Orientation.Vertical;
+            content.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
+
+            TextView chartTitle = new TextView(this);
+            chartTitle.Text = "График расходов (12 мес.)";
+            chartTitle.SetTextColor(AndroidColor.Rgb(180, 40, 40));
+            chartTitle.SetTypeface(null, AndroidTypefaceStyle.Bold);
+            chartTitle.TextSize = 15;
+            content.AddView(chartTitle, MatchWrap());
+
+            MonthlyExpenseChartView chart = new MonthlyExpenseChartView(this);
+            List<string> months;
+            List<decimal[]> totals;
+            BuildMonthlyChartData(out months, out totals);
+            chart.SetData(months, totals);
+            LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent, Dp(260));
+            chartParams.TopMargin = Dp(4);
+            chartParams.BottomMargin = Dp(8);
+            content.AddView(chart, chartParams);
+
             TextView body = new TextView(this);
             body.Text = BuildSummary();
             body.TextSize = 14;
             body.SetTextIsSelectable(true);
-            body.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
             body.SetTextColor(AndroidColor.Rgb(35, 51, 70));
-            scroll.AddView(body);
+            content.AddView(body, MatchWrap());
+            scroll.AddView(content);
             new AlertDialog.Builder(this)
                 .SetTitle("Сводка и ТО · " + currentCar)
                 .SetView(scroll)
@@ -2071,6 +2287,43 @@ public sealed class MainActivity : Activity
         catch (Exception ex)
         {
             ShowMessage("Не удалось построить сводку: " + ex.Message);
+        }
+    }
+
+    private void BuildMonthlyChartData(out List<string> months, out List<decimal[]> totals)
+    {
+        Dictionary<string, decimal[]> monthlyTotals = new Dictionary<string, decimal[]>();
+        List<string[]> fuels = ExpenseDataStore.Load(DataDirectory, "fuel.dat");
+        List<string[]> repairs = ExpenseDataStore.Load(DataDirectory, "repairs.dat");
+        List<string[]> expenses = ExpenseDataStore.LoadOptional(DataDirectory, ExpenseDataCodec.ExpensesFile);
+        List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
+        for (int i = 0; i < fuels.Count; i++)
+            AddMonthlyAmount(monthlyTotals, fuels[i][0], 0, NumberOrZero(fuels[i][4]));
+        for (int i = 0; i < repairs.Count; i++)
+            AddMonthlyAmount(monthlyTotals, repairs[i][0], 1, NumberOrZero(repairs[i][7]));
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            if (expenses[i].Length < 5)
+                continue;
+            AddMonthlyAmount(monthlyTotals, expenses[i][0], 3, NumberOrZero(expenses[i][4]));
+        }
+        for (int i = 0; i < utilities.Count; i++)
+            AddMonthlyAmount(monthlyTotals, utilities[i][0], 2,
+                ExpenseDataCodec.Sum(utilities[i], 1));
+
+        // Always show last 12 calendar months ending with current month.
+        months = new List<string>();
+        totals = new List<decimal[]>();
+        DateTime cursor = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        for (int i = 11; i >= 0; i--)
+        {
+            DateTime month = cursor.AddMonths(-i);
+            string key = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            months.Add(key);
+            decimal[] values;
+            if (!monthlyTotals.TryGetValue(key, out values))
+                values = new decimal[4];
+            totals.Add(values);
         }
     }
 
@@ -2424,12 +2677,21 @@ public sealed class MainActivity : Activity
             for (int i = 0; i < archive.Entries.Count; i++)
             {
                 ZipArchiveEntry entry = archive.Entries[i];
-                string name = Path.GetFileName(entry.FullName);
-                if (!ExpenseDataCodec.IsDataFile(name))
+                if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
                     continue;
-                using (Stream entryStream = entry.Open())
-                using (FileStream output = File.Create(Path.Combine(destination, name)))
-                    entryStream.CopyTo(output);
+                string name = Path.GetFileName(entry.FullName);
+                string normalized = (entry.FullName ?? "").Replace('\\', '/');
+                if (ExpenseDataCodec.IsDataFile(name) &&
+                    normalized.IndexOf('/') < 0)
+                {
+                    using (Stream entryStream = entry.Open())
+                    using (FileStream output = File.Create(Path.Combine(destination, name)))
+                        entryStream.CopyTo(output);
+                }
+                else if (ReceiptStore.IsSafeReceiptFileName(name))
+                {
+                    ReceiptStore.ExtractFromZipEntry(entry, destination);
+                }
             }
         }
     }
@@ -2514,11 +2776,15 @@ public sealed class MainActivity : Activity
         {
             for (int i = 0; i < DataFiles.Length; i++)
             {
+                string path = Path.Combine(DataDirectory, DataFiles[i]);
+                if (!File.Exists(path))
+                    continue;
                 ZipArchiveEntry entry = archive.CreateEntry(DataFiles[i], CompressionLevel.Optimal);
                 using (Stream entryStream = entry.Open())
-                using (FileStream input = File.OpenRead(Path.Combine(DataDirectory, DataFiles[i])))
+                using (FileStream input = File.OpenRead(path))
                     input.CopyTo(entryStream);
             }
+            ReceiptStore.AddFolderToZip(archive, DataDirectory);
         }
     }
 
@@ -2734,7 +3000,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.13.0";
+        string version = "1.14.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -2746,6 +3012,8 @@ public sealed class MainActivity : Activity
             .SetTitle("О программе")
             .SetMessage("Alfa 156\nВерсия " + version +
                 "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
+                "\nСводка: столбчатый график расходов за 12 месяцев." +
+                "\nФото чеков: папка Receipts/{id}.jpg (в ZIP; Wi‑Fi sync — только .dat)." +
                 "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
             .SetPositiveButton("ОК", delegate { })
             .Show();
