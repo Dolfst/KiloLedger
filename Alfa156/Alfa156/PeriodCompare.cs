@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace Alfa156
+namespace CarExpenses
 {
     /// <summary>
     /// Totals for one date range used by «Сравнить периоды» in the summary.
@@ -70,7 +70,7 @@ namespace Alfa156
             string to)
         {
             Totals t = new Totals();
-            car = (car ?? "").Trim();
+            car = car == null ? "" : car.Trim();
             from = NormalizeDay(from);
             to = NormalizeDay(to);
 
@@ -83,7 +83,7 @@ namespace Alfa156
                         continue;
                     if (!SameCar(content[1], car) || !InDayRange(content[0], from, to))
                         continue;
-                    t.Fuel += NumberOrZero(content[4]);
+                    t.Fuel += DataStore.NumberOrZero(content[4]);
                     AddKm(t, content[2]);
                 }
             }
@@ -97,7 +97,7 @@ namespace Alfa156
                         continue;
                     if (!SameCar(content[1], car) || !InDayRange(content[0], from, to))
                         continue;
-                    t.Repair += NumberOrZero(content[7]);
+                    t.Repair += DataStore.NumberOrZero(content[7]);
                     AddKm(t, content[2]);
                 }
             }
@@ -111,7 +111,7 @@ namespace Alfa156
                         continue;
                     if (!SameCar(content[1], car) || !InDayRange(content[0], from, to))
                         continue;
-                    t.Expense += NumberOrZero(content[4]);
+                    t.Expense += DataStore.NumberOrZero(content[4]);
                 }
             }
 
@@ -196,7 +196,10 @@ namespace Alfa156
 
         private static bool SameCar(string rowCar, string car)
         {
-            return String.Compare((rowCar ?? "").Trim(), car, StringComparison.OrdinalIgnoreCase) == 0;
+            return String.Compare(
+                rowCar == null ? "" : rowCar.Trim(),
+                car,
+                StringComparison.OrdinalIgnoreCase) == 0;
         }
 
         private static string NormalizeDay(string value)
@@ -240,7 +243,7 @@ namespace Alfa156
         private static void AddKm(Totals t, string value)
         {
             decimal km;
-            if (!Decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out km) || km < 0)
+            if (!DataStore.TryNumber(value, out km) || km < 0)
                 return;
             // CF 3.5: Math.Min/Max have no decimal overloads.
             if (km < t.MinKm)
@@ -249,17 +252,11 @@ namespace Alfa156
                 t.MaxKm = km;
         }
 
-        private static decimal NumberOrZero(string value)
-        {
-            decimal n;
-            return Decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out n) ? n : 0;
-        }
-
         private static decimal UtilitySum(string[] row)
         {
             decimal total = 0;
             for (int i = 1; i < row.Length && i < 8; i++)
-                total += NumberOrZero(row[i]);
+                total += DataStore.NumberOrZero(row[i]);
             return total;
         }
     }
