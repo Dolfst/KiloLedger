@@ -37,6 +37,8 @@ def main() -> int:
         ):
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
+        if "не более 500 символов" not in text:
+            errors.append(f"{rel}: note text must not be silently truncated")
 
     for rel in (
         "Alfa156/Alfa156/RecordIds.cs",

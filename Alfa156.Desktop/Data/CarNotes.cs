@@ -142,7 +142,7 @@ namespace Alfa156.Desktop.Data
             if (item.Text.Length == 0)
                 throw new InvalidOperationException("Введите текст заметки.");
             if (item.Text.Length > MaxTextLength)
-                item.Text = item.Text.Substring(0, MaxTextLength).Trim();
+                throw new InvalidOperationException("Текст заметки: не более 500 символов.");
 
             bool found = false;
             if (!String.IsNullOrEmpty(item.Id) && RecordIds.LooksLikeId(item.Id))
