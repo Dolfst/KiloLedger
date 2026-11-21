@@ -280,6 +280,9 @@ internal sealed class SyncJournal
     public int Added;
     public int Removed;
     public int Conflicts;
+    public int ConflictKeptLocal;
+    public int ConflictKeptIncoming;
+    public int ConflictMerged;
     public int KeptLocalOnly;
     public readonly List<string> Examples = new List<string>();
     public string SafetyPath;
@@ -298,6 +301,9 @@ internal sealed class SyncJournal
         sb.Append("  добавлено: ").Append(Added).Append('\n');
         sb.Append("  удалено (tombstone): ").Append(Removed).Append('\n');
         sb.Append("  конфликтов: ").Append(Conflicts).Append('\n');
+        sb.Append("  конфликтов, оставлено локальное: ").Append(ConflictKeptLocal).Append('\n');
+        sb.Append("  конфликтов, принято удалённое: ").Append(ConflictKeptIncoming).Append('\n');
+        sb.Append("  конфликтов, объединено: ").Append(ConflictMerged).Append('\n');
         sb.Append("  только локально: ").Append(KeptLocalOnly);
         AppendExamples(sb);
         return sb.ToString();
@@ -310,6 +316,9 @@ internal sealed class SyncJournal
         sb.Append("  только локально: ").Append(KeptLocalOnly).Append('\n');
         sb.Append("  только удалённо: ").Append(Added).Append('\n');
         sb.Append("  обновления/конфликты: ").Append(Conflicts).Append('\n');
+        sb.Append("  оставить локальное: ").Append(ConflictKeptLocal).Append('\n');
+        sb.Append("  принять удалённое: ").Append(ConflictKeptIncoming).Append('\n');
+        sb.Append("  объединить поля: ").Append(ConflictMerged).Append('\n');
         sb.Append("  удаления (tombstone): ").Append(Removed);
         AppendExamples(sb);
         if (!String.IsNullOrEmpty(SafetyPath))

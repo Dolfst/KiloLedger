@@ -277,15 +277,32 @@ namespace Alfa156.Desktop.Data
                 journal.Conflicts++;
                 journal.AddExample(FormatExample("~", title, localRow));
                 if (!writeOutput)
+                {
+                    if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                        journal.ConflictKeptIncoming++;
+                    else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                        journal.ConflictKeptLocal++;
+                    else
+                        journal.ConflictMerged++;
                     continue;
+                }
 
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                {
+                    journal.ConflictKeptIncoming++;
                     merged.Add(RecordIds.PreferId((string[])remoteRow.Clone(), localRow));
+                }
                 else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                {
+                    journal.ConflictKeptLocal++;
                     merged.Add(RecordIds.PreferId((string[])localRow.Clone(), remoteRow));
+                }
                 else
+                {
+                    journal.ConflictMerged++;
                     merged.Add(RecordIds.EnsureId(MergeFields(RecordIds.StripId(localRow),
                         RecordIds.StripId(remoteRow)), RecordIds.PrefixForFile(fileName)));
+                }
             }
 
             for (int i = 0; i < local.Count; i++)

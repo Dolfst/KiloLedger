@@ -267,6 +267,9 @@ namespace Alfa156.Desktop.Data
         public int Added;
         public int Removed;
         public int Conflicts;
+        public int ConflictKeptLocal;
+        public int ConflictKeptIncoming;
+        public int ConflictMerged;
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
         public string SafetyPath;
@@ -285,6 +288,9 @@ namespace Alfa156.Desktop.Data
             sb.AppendLine("  добавлено: " + Added);
             sb.AppendLine("  удалено (tombstone): " + Removed);
             sb.AppendLine("  конфликтов: " + Conflicts);
+            sb.AppendLine("  конфликтов, оставлено локальное: " + ConflictKeptLocal);
+            sb.AppendLine("  конфликтов, принято удалённое: " + ConflictKeptIncoming);
+            sb.AppendLine("  конфликтов, объединено: " + ConflictMerged);
             sb.Append("  только локально: " + KeptLocalOnly);
             AppendExamples(sb);
             return sb.ToString();
@@ -297,6 +303,9 @@ namespace Alfa156.Desktop.Data
             sb.AppendLine("  только локально: " + KeptLocalOnly);
             sb.AppendLine("  только удалённо: " + Added);
             sb.AppendLine("  обновления/конфликты: " + Conflicts);
+            sb.AppendLine("  оставить локальное: " + ConflictKeptLocal);
+            sb.AppendLine("  принять удалённое: " + ConflictKeptIncoming);
+            sb.AppendLine("  объединить поля: " + ConflictMerged);
             sb.Append("  удаления (tombstone): " + Removed);
             AppendExamples(sb);
             if (!String.IsNullOrEmpty(SafetyPath))

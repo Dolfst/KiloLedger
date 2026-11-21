@@ -739,7 +739,13 @@ internal static class ExpenseSyncService
             journal.AddExample(FormatExample("~", title, local));
 
             if (!writeOutput)
+            {
+                if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                    journal.ConflictKeptIncoming++;
+                else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                    journal.ConflictKeptLocal++;
                 continue;
+            }
 
             SyncConflictChoice choice;
             if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
@@ -752,9 +758,15 @@ internal static class ExpenseSyncService
             if (choice == SyncConflictChoice.Cancel)
                 throw new System.OperationCanceledException("Синхронизация отменена пользователем.");
             if (choice == SyncConflictChoice.KeepIncoming)
+            {
+                journal.ConflictKeptIncoming++;
                 merged.Add(RecordIds.PreferId(row, local));
+            }
             else
+            {
+                journal.ConflictKeptLocal++;
                 merged.Add(RecordIds.PreferId(local, row));
+            }
         }
 
         for (int i = 0; i < localRows.Count; i++)

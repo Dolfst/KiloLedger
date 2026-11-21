@@ -317,6 +317,9 @@ namespace CarExpenses
         public int Added;
         public int Removed;
         public int Conflicts;
+        public int ConflictKeptLocal;
+        public int ConflictKeptIncoming;
+        public int ConflictMerged;
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
         public string SafetyPath;
@@ -338,6 +341,12 @@ namespace CarExpenses
             sb.Append(Removed.ToString());
             sb.Append("\r\n  конфликтов: ");
             sb.Append(Conflicts.ToString());
+            sb.Append("\r\n  конфликтов, оставлено локальное: ");
+            sb.Append(ConflictKeptLocal.ToString());
+            sb.Append("\r\n  конфликтов, принято удалённое: ");
+            sb.Append(ConflictKeptIncoming.ToString());
+            sb.Append("\r\n  конфликтов, объединено: ");
+            sb.Append(ConflictMerged.ToString());
             sb.Append("\r\n  только локально: ");
             sb.Append(KeptLocalOnly.ToString());
             AppendExamples(sb, "\r\n");
@@ -354,6 +363,12 @@ namespace CarExpenses
             sb.Append(Added.ToString());
             sb.Append("\r\n  обновления/конфликты: ");
             sb.Append(Conflicts.ToString());
+            sb.Append("\r\n  оставить локальное: ");
+            sb.Append(ConflictKeptLocal.ToString());
+            sb.Append("\r\n  принять удалённое: ");
+            sb.Append(ConflictKeptIncoming.ToString());
+            sb.Append("\r\n  объединить поля: ");
+            sb.Append(ConflictMerged.ToString());
             sb.Append("\r\n  удаления (tombstone): ");
             sb.Append(Removed.ToString());
             AppendExamples(sb, "\r\n");
