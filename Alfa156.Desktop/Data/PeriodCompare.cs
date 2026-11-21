@@ -27,6 +27,20 @@ namespace Alfa156.Desktop.Data
             public decimal PersonalTripKm;
             public decimal WorkTripKm;
 
+            public decimal Liters;
+            public decimal ConsumptionKm;
+            public decimal ConsumptionLiters;
+
+            public bool HasConsumption
+            {
+                get { return ConsumptionKm > 0 && ConsumptionLiters > 0; }
+            }
+
+            public decimal LitersPer100Km
+            {
+                get { return HasConsumption ? ConsumptionLiters * 100m / ConsumptionKm : 0; }
+            }
+
             public decimal CostBase
             {
                 get { return Fuel + Repair + Expense; }
@@ -112,6 +126,7 @@ namespace Alfa156.Desktop.Data
             Dictionary<string, decimal> stations =
                 new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
+            List<decimal[]> fills = new List<decimal[]>();
             if (fuels != null)
             {
                 for (int i = 0; i < fuels.Count; i++)
@@ -123,6 +138,11 @@ namespace Alfa156.Desktop.Data
                         continue;
                     t.Fuel += NumberOrZero(content[4]);
                     AddKm(t, content[2]);
+                    decimal liters = NumberOrZero(content[3]);
+                    t.Liters += liters;
+                    decimal fillKm;
+                    if (liters > 0 && AlfaCodec.TryNumber(content[2], out fillKm) && fillKm >= 0)
+                        fills.Add(new decimal[] { fillKm, liters, AlfaCodec.IsFullTank(fuels[i]) ? 1 : 0 });
                     string station = content.Length > 9 ? (content[9] ?? "").Trim() : "";
                     if (station.Length > 0)
                         AddCategoryAmount(stations, station, NumberOrZero(content[4]));
@@ -171,10 +191,43 @@ namespace Alfa156.Desktop.Data
                 }
             }
 
+            ApplyConsumption(t, fills);
             t.TopRepairLabel = TopCategory(repairsByCategory, out t.TopRepairAmount);
             t.TopExpenseLabel = TopCategory(expensesByCategory, out t.TopExpenseAmount);
             t.TopStationLabel = TopCategory(stations, out t.TopStationAmount);
             return t;
+        }
+
+        private static void ApplyConsumption(Totals t, List<decimal[]> fills)
+        {
+            bool found = false;
+            decimal minKm = 0;
+            decimal maxKm = 0;
+            int fullCount = 0;
+            for (int i = 0; i < fills.Count; i++)
+            {
+                if (fills[i][2] == 0)
+                    continue;
+                fullCount++;
+                if (!found || fills[i][0] < minKm)
+                    minKm = fills[i][0];
+                if (!found || fills[i][0] > maxKm)
+                    maxKm = fills[i][0];
+                found = true;
+            }
+            if (fullCount < 2 || maxKm <= minKm)
+                return;
+            decimal liters = 0;
+            for (int i = 0; i < fills.Count; i++)
+            {
+                if (fills[i][0] > minKm && fills[i][0] <= maxKm)
+                    liters += fills[i][1];
+            }
+            if (liters > 0)
+            {
+                t.ConsumptionKm = maxKm - minKm;
+                t.ConsumptionLiters = liters;
+            }
         }
 
         private static void AddCategoryAmount(Dictionary<string, decimal> totals, string label, decimal amount)

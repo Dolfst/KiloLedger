@@ -32,6 +32,9 @@ namespace CarExpenses
                 ? Money(totals.MinKm) + "…" + Money(totals.MaxKm) +
                   " км (Δ " + Money(totals.MaxKm - totals.MinKm) + " км)"
                 : "н/д";
+            string consumption = totals.HasConsumption
+                ? Money(totals.LitersPer100Km) + " л/100 км"
+                : "н/д";
 
             StringBuilder sb = new StringBuilder();
             sb.Append(title);
@@ -52,6 +55,8 @@ namespace CarExpenses
             sb.Append(nl).Append("Всего (с коммунальными): ").Append(Money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
             sb.Append(nl).Append("Пробег: ").Append(kmRange);
+            sb.Append(nl).Append("Заправлено: ").Append(Money(totals.Liters)).Append(" л");
+            sb.Append(nl).Append("Расход: ").Append(consumption);
             if (totals.TopStationLabel.Length > 0)
                 sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
                     .Append(Money(totals.TopStationAmount)).Append(' ').Append(currency);

@@ -35,6 +35,8 @@ def main() -> int:
             "AddTripKm",
             "AddCategoryAmount",
             "TopCategory",
+            "ApplyConsumption",
+            "LitersPer100Km",
         ):
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
@@ -55,6 +57,8 @@ def main() -> int:
             "Коммунальные",
             "Всего (с коммунальными)",
             "Стоимость/км",
+            "Заправлено",
+            "Расход",
             "Топ ремонта",
             "Топ прочих",
             "Топ АЗС/бренд",
