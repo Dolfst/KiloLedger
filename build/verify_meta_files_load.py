@@ -75,6 +75,18 @@ def read_dat(path: Path) -> list[list[str]]:
 def main() -> int:
     errors: list[str] = []
 
+    for rel in (
+        "Alfa156.Android/DataIntegrity.cs",
+        "Alfa156.Desktop/Data/DataIntegrity.cs",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        if "CheckCarsMeta" not in text:
+            errors.append(f"{rel}: missing cars-meta integrity check")
+        if "1880–2100" not in text:
+            errors.append(f"{rel}: missing cars-meta year range check")
+        if "объём бака" not in text:
+            errors.append(f"{rel}: missing cars-meta tank capacity check")
+
     # Platform DataFiles lists must include the late-stage files
     # (names may appear as string literals or *File / FileName constants).
     for rel, required in (

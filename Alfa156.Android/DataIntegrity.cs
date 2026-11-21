@@ -92,6 +92,7 @@ internal static class DataIntegrity
         CheckRepairs(report, repairs, cars, repairCats);
         CheckExpenses(report, expenses, cars, expenseCats);
         CheckUtilities(report, utilities);
+        CheckCarsMeta(report, carsMeta);
         CheckDuplicateIds(report, fuels, "заправок");
         CheckDuplicateIds(report, repairs, "ремонтных записей");
         CheckDuplicateIds(report, expenses, "прочих расходов");
@@ -259,6 +260,33 @@ internal static class DataIntegrity
                 if (!ContainsIgnoreCase(report.MissingExpenseCategories, cat))
                     report.MissingExpenseCategories.Add(cat);
             }
+        }
+    }
+
+    private static void CheckCarsMeta(Report report, List<string[]> rows)
+    {
+        for (int i = 0; i < rows.Count; i++)
+        {
+            string[] c = RecordIds.StripId(rows[i]);
+            string label = "паспорт #" + (i + 1);
+            if (c.Length < 1)
+            {
+                report.Findings.Add(new Finding("поля", "error",
+                    label + ": пустая строка."));
+                continue;
+            }
+            CheckRequired(report, label, "авто", c[0]);
+            if (c.Length > 1 && c[1].Trim().Length > 0)
+            {
+                int year;
+                if (!Int32.TryParse(c[1].Trim(), NumberStyles.None,
+                        CultureInfo.InvariantCulture, out year) ||
+                    c[1].Trim().Length != 4 || year < 1880 || year > 2100)
+                    report.Findings.Add(new Finding("поля", "error",
+                        label + ": год должен быть в диапазоне 1880–2100."));
+            }
+            if (c.Length > 4 && c[4].Trim().Length > 0)
+                CheckNonNegative(report, label, "объём бака", c[4]);
         }
     }
 
