@@ -1443,6 +1443,21 @@ namespace CarExpenses
                     q.Length > 5 ? q[5] : "1",
                     ""
                 };
+                decimal km;
+                decimal liters;
+                decimal cost;
+                decimal price;
+                if (!DataStore.TryNumber(values[2], out km) || km < 0 ||
+                    !DataStore.TryNumber(values[3], out liters) || liters <= 0 ||
+                    !DataStore.TryNumber(values[4], out cost) || cost <= 0 ||
+                    (values[5].Length > 0 &&
+                        (!DataStore.TryNumber(values[5], out price) || price <= 0)))
+                {
+                    MessageBox.Show(
+                        "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.",
+                        "Быстрая заправка");
+                    return;
+                }
                 values = NormalizeFuelValues(values);
                 if (!ConfirmMileageIfNeeded(values, "fuel.dat", -1))
                     return;

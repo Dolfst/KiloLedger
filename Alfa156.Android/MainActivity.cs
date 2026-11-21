@@ -1513,6 +1513,19 @@ public sealed class MainActivity : Activity
         RenderEditor("Быстрая заправка", fields,
             delegate(string[] values)
             {
+                if (values == null || values.Length < 6)
+                    throw new InvalidOperationException("Заполните все обязательные поля.");
+                decimal km;
+                decimal liters;
+                decimal cost;
+                decimal price;
+                if (!TryNumber(values[1], out km) || km < 0 ||
+                    !TryNumber(values[2], out liters) || liters <= 0 ||
+                    !TryNumber(values[3], out cost) || cost <= 0 ||
+                    ((!String.IsNullOrEmpty(values[4])) &&
+                        (!TryNumber(values[4], out price) || price <= 0)))
+                    throw new InvalidOperationException(
+                        "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.");
                 string[] fuel = BuildQuickFuelRow(values);
                 fuel = NormalizeFuelValues(fuel);
                 ExpenseDataStore.AddRecord(DataDirectory, "fuel.dat", fuel);

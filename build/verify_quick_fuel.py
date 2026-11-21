@@ -52,6 +52,7 @@ def main() -> int:
         "QuickFuelFromMenu",
         "QuickFuel()",
         "LastFuelFullTank",
+        "Проверьте данные: пробег не меньше 0",
     ):
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
@@ -71,6 +72,13 @@ def main() -> int:
     csproj = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
     if f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>" not in csproj:
         errors.append(f"Android csproj: missing ApplicationDisplayVersion {version}")
+
+    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    if "Проверьте данные: пробег не меньше 0" not in desktop:
+        errors.append("Desktop MainForm: missing quick-fuel positive-value validation")
+    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    if "Проверьте данные: пробег не меньше 0" not in android:
+        errors.append("Android MainActivity: missing quick-fuel positive-value validation")
 
     if errors:
         print("FAIL:")

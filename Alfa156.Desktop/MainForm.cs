@@ -739,8 +739,21 @@ namespace Alfa156.Desktop
                             "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
+                    decimal kmN;
                     decimal litersN;
                     decimal costN;
+                    decimal priceN;
+                    if (!AlfaCodec.TryNumber(km, out kmN) || kmN < 0 ||
+                        !AlfaCodec.TryNumber(liters, out litersN) || litersN <= 0 ||
+                        !AlfaCodec.TryNumber(cost, out costN) || costN <= 0 ||
+                        (price.Length > 0 &&
+                            (!AlfaCodec.TryNumber(price, out priceN) || priceN <= 0)))
+                    {
+                        MessageBox.Show(this,
+                            "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.",
+                            "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                     if (price.Length == 0 &&
                         AlfaCodec.TryNumber(liters, out litersN) && litersN > 0 &&
                         AlfaCodec.TryNumber(cost, out costN) && costN > 0)
