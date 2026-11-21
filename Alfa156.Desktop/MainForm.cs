@@ -46,6 +46,7 @@ namespace Alfa156.Desktop
         private readonly TextBox backupRemindBox = new TextBox();
         private readonly TextBox reminderWarnBox = new TextBox();
         private readonly ComboBox defaultCarBox = new ComboBox();
+        private readonly ComboBox languageBox = new ComboBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
         private readonly TextBox googleUrlBox = new TextBox();
@@ -259,6 +260,14 @@ namespace Alfa156.Desktop
             defaultCarBox.Width = 140;
             intervalRow.Controls.Add(defaultCarBox);
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_car"), SaveDefaultCar));
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("dialog.language"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            languageBox.Width = 100;
+            languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            foreach (var lang in L10n.GetAvailableLanguages())
+                languageBox.Items.Add(lang);
+            languageBox.Text = LocalizationManager.CurrentLanguage;
+            intervalRow.Controls.Add(languageBox);
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_language"), SaveLanguage));
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_reminder"), AddDateReminder));
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.delete_reminder"), DeleteDateReminder));
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_note"), AddCarNote));
@@ -1673,6 +1682,26 @@ namespace Alfa156.Desktop
             catch (Exception ex)
             {
                 MessageBox.Show(this, ex.Message, "Авто по умолчанию",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void SaveLanguage(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string lang = languageBox.Text ?? "ru";
+                repository.Settings = ToSettings.SetLanguage(repository.Settings, lang);
+                repository.Save();
+                dirty = false;
+                LocalizationManager.SetLanguage(lang);
+                SetStatus("Язык: " + lang);
+                MessageBox.Show(this, "Язык изменён на: " + lang + "\nПожалуйста, перезагрузите приложение.", "Язык", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Язык",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }

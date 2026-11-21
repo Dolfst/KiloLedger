@@ -114,6 +114,7 @@ public sealed class MainActivity : Activity
             if (savedSection == Fuel || savedSection == Repairs || savedSection == Expenses ||
                 savedSection == Utilities)
                 selectedSection = savedSection;
+            InitializeLanguage();
             CreateLayout();
             EnsureNotificationChannel();
             EnsureBudgetNotificationChannel();
@@ -5120,6 +5121,18 @@ public sealed class MainActivity : Activity
         {
             // soft reminder must not break resume
         }
+    
+    private void InitializeLanguage()
+    {
+        try
+        {
+            var settings = GetSharedPreferences("settings", FileCreationMode.Private);
+            string language = settings.GetString("language", "ru");
+            LocalizationManager.SetLanguage(language);
+        }
+        catch
+        {
+            LocalizationManager.SetLanguage("ru");
+        }
     }
-
 }

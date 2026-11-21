@@ -44,6 +44,7 @@ namespace CarExpenses
         {
             InitializeComponent();
             DataStore.Initialize();
+            InitializeLanguage();
             try
             {
                 DataStore.CreateStartMenuShortcut();
@@ -3913,5 +3914,17 @@ namespace CarExpenses
             }
         }
 
+   
+        private void InitializeLanguage()
+        {
+            try
+            {
+                string language = ToSettings.GetLanguage(DataStore.LoadSettings());
+                LocalizationManager.SetLanguage(language);
+            }
+            catch
+            {
+                LocalizationManager.SetLanguage("ru");
+            }
+        }
     }
-}
