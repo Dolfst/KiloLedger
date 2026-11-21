@@ -97,7 +97,9 @@ jobs:
           }
           git commit -m "Update $exeName in dist/download (build #${{ github.run_number }})."
           for ($i = 1; $i -le 5; $i++) {
-            git pull --rebase origin main
+            git fetch origin main
+            git merge --no-edit origin/main *> $null
+            if ($LASTEXITCODE -ne 0) { git merge --abort *> $null }
             git push origin HEAD:main
             if ($LASTEXITCODE -eq 0) { break }
             Write-Host "push retry $i"
