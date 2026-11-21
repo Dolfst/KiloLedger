@@ -95,10 +95,10 @@ def main() -> int:
     display = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
     if f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>" not in display:
         errors.append(f"Android csproj: ApplicationDisplayVersion not {version}")
-    # ApplicationVersion tracks minor for 1.x
-    minor = int(version.split(".")[1])
-    if f"<ApplicationVersion>{minor}</ApplicationVersion>" not in display:
-        errors.append(f"Android csproj: ApplicationVersion not {minor}")
+    major, minor, patch = (int(part) for part in version.split("."))
+    version_code = major * 10000 + minor * 100 + patch
+    if f"<ApplicationVersion>{version_code}</ApplicationVersion>" not in display:
+        errors.append(f"Android csproj: ApplicationVersion not {version_code}")
 
     asm = (ROOT / "Alfa156.Desktop/Properties/AssemblyInfo.cs").read_text()
     if f'AssemblyVersion("{version}.0")' not in asm:

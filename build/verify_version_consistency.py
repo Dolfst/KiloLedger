@@ -18,9 +18,9 @@ def main() -> int:
         return 1
 
     try:
-        minor = int(parts[1])
+        version_code = int(parts[0]) * 10000 + int(parts[1]) * 100 + int(parts[2])
     except ValueError:
-        print("FAIL: invalid minor version", version)
+        print("FAIL: invalid version component", version)
         return 1
 
     checks = (
@@ -28,7 +28,7 @@ def main() -> int:
             "Alfa156.Android/Alfa156.Android.csproj",
             (
                 f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>",
-                f"<ApplicationVersion>{minor}</ApplicationVersion>",
+                f"<ApplicationVersion>{version_code}</ApplicationVersion>",
             ),
         ),
         ("Alfa156.Android/MainActivity.cs", (f'version = "{version}"',)),

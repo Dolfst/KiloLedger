@@ -4477,7 +4477,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.34.0";
+        string version = "1.34.1";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
