@@ -22,7 +22,7 @@
 ## Этап 2 — надёжность сборки
 
 - ✅ Добавлена сборка КПК через Mono в общий smoke workflow.
-- ✅ GitHub Actions checkout/Python обновлены для Node.js 24; устранено предупреждение о Node.js 20.
+- ✅ GitHub Actions checkout/Python/MSBuild обновлены для Node.js 24; устранены предупреждения о Node.js 20.
 - Убедиться, что все version fields берутся из `VERSION`, а не заданы вручную.
 - Проверить наличие артефактов и соответствие имён релиза.
 
