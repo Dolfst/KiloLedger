@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from pathlib import Path
 
 # Prefixes: cars/fuel/repairs/utilities/cars-meta/expenses/… + templates(t_)/reminders(n_)/notes(j_)
 ID_RE = re.compile(r"^[cfrukepxmntj]_[0-9a-fA-F]{8,}$")
@@ -228,4 +229,15 @@ if __name__ == "__main__":
     test_tombstone_round_trip_multi_type()
     test_both_sides_delete_idempotent()
     test_duplicate_ids_are_detectable()
+
+    for rel in (
+        "Alfa156.Android/DataIntegrity.cs",
+        "Alfa156.Desktop/Data/DataIntegrity.cs",
+    ):
+        text = (Path(__file__).resolve().parents[1] / rel).read_text()
+        if "CheckDuplicateIds" not in text:
+            raise AssertionError(f"{rel}: duplicate ID checks are missing")
+        if "повторяющийся id" not in text:
+            raise AssertionError(f"{rel}: duplicate ID report is missing")
+
     print("verify_sync_ids: OK")

@@ -78,6 +78,13 @@ internal static class DataIntegrity
         List<string[]> repairs = SafeLoad(directory, "repairs.dat");
         List<string[]> expenses = SafeLoadOptional(directory, ExpenseDataCodec.ExpensesFile);
         List<string[]> utilities = SafeLoad(directory, "utilities.dat");
+        List<string[]> carsRows = SafeLoad(directory, "cars.dat");
+        List<string[]> repairCategories = SafeLoad(directory, ExpenseDataCodec.RepairCategoriesFile);
+        List<string[]> expenseCategories = SafeLoadOptional(directory, ExpenseDataCodec.ExpenseCategoriesFile);
+        List<string[]> carsMeta = SafeLoadOptional(directory, ExpenseDataCodec.CarsMetaFile);
+        List<string[]> templates = SafeLoadOptional(directory, ExpenseDataCodec.TemplatesFile);
+        List<string[]> reminders = SafeLoadOptional(directory, ExpenseDataCodec.RemindersFile);
+        List<string[]> notes = SafeLoadOptional(directory, ExpenseDataCodec.NotesFile);
         List<string> repairCats = ReadCategoryNamesRaw(directory, ExpenseDataCodec.RepairCategoriesFile);
         List<string> expenseCats = ReadCategoryNamesRaw(directory, ExpenseDataCodec.ExpenseCategoriesFile);
 
@@ -89,6 +96,13 @@ internal static class DataIntegrity
         CheckDuplicateIds(report, repairs, "ремонтных записей");
         CheckDuplicateIds(report, expenses, "прочих расходов");
         CheckDuplicateIds(report, utilities, "коммунальных записей");
+        CheckDuplicateIds(report, carsRows, "автомобилей");
+        CheckDuplicateIds(report, repairCategories, "категорий ремонта");
+        CheckDuplicateIds(report, expenseCategories, "категорий прочих расходов");
+        CheckDuplicateIds(report, carsMeta, "паспортов автомобилей");
+        CheckDuplicateIds(report, templates, "шаблонов");
+        CheckDuplicateIds(report, reminders, "напоминаний");
+        CheckDuplicateIds(report, notes, "заметок");
         CheckCategoryLists(report, repairCats, expenseCats, repairs, expenses);
         CheckReceipts(report, directory, fuels, repairs, expenses);
         CheckTombstones(report, directory, fuels, repairs, expenses, utilities, cars,

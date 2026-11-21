@@ -89,6 +89,13 @@ namespace Alfa156.Desktop.Data
             CheckDuplicateIds(report, repository.Repairs, "ремонтных записей");
             CheckDuplicateIds(report, repository.Expenses, "прочих расходов");
             CheckDuplicateIds(report, repository.Utilities, "коммунальных записей");
+            CheckDuplicateIds(report, repository.Cars, "автомобилей");
+            CheckDuplicateIds(report, repository.Categories, "категорий ремонта");
+            CheckDuplicateIds(report, repository.ExpenseCategories, "категорий прочих расходов");
+            CheckDuplicateIds(report, repository.CarsMetaRows, "паспортов автомобилей");
+            CheckDuplicateIds(report, repository.TemplatesRows, "шаблонов");
+            CheckDuplicateIds(report, repository.RemindersRows, "напоминаний");
+            CheckDuplicateIds(report, repository.NotesRows, "заметок");
             CheckCategoryLists(report, repairCats, expenseCats, repository.Repairs, repository.Expenses);
             CheckReceipts(report, repository.DirectoryPath, repository.Fuel, repository.Repairs, repository.Expenses);
             CheckTombstones(report, repository);
