@@ -26,6 +26,8 @@ def main() -> int:
         "Alfa156.Desktop/Data/ToSettings.cs",
     ):
         text = (ROOT / rel).read_text()
+        if "Decimal.Truncate(value)" not in text:
+            errors.append(f"{rel}: backup reminder interval must be an integer")
         for needle in (
             'BackupRemindDaysKey = "backup_remind_days"',
             'LastBackupUtcKey = "last_backup_utc"',

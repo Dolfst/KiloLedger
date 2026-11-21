@@ -296,7 +296,8 @@ namespace CarExpenses
             if (!map.TryGetValue(BackupRemindDaysKey, out raw))
                 return DefaultBackupRemindDays;
             decimal value;
-            if (!TryDecimal(raw, out value) || value < 0 || value > 3650)
+            if (!TryDecimal(raw, out value) || value < 0 || value > 3650 ||
+                value != Decimal.Truncate(value))
                 return DefaultBackupRemindDays;
             return (int)value;
         }
