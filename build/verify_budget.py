@@ -73,6 +73,14 @@ def main() -> int:
     if "**1.22.0**" not in readme or "**1.9.0**" not in readme:
         errors.append("README: История версий should cover 1.9.0 → 1.22.0+")
 
+    for rel in (
+        "Alfa156.Android/DataIntegrity.cs",
+        "Alfa156.Desktop/Data/DataIntegrity.cs",
+    ):
+        text = (ROOT / rel).read_text()
+        if "не указана ни одна сумма" not in text:
+            errors.append(f"{rel}: utility rows require at least one amount")
+
     # Soft-limit math: warn at pct, over at >= budget
     budget, warn_pct = 1000.0, 80.0
     spent_warn = 800.0

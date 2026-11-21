@@ -268,11 +268,18 @@ namespace Alfa156.Desktop.Data
                     continue;
                 }
                 CheckMonth(report, label, c[0]);
+                bool hasAmount = false;
                 for (int j = 1; j < c.Length && j <= 7; j++)
                 {
                     if (c[j] != null && c[j].Length > 0)
+                    {
+                        hasAmount = true;
                         CheckNonNegative(report, label, "сумма[" + j + "]", c[j]);
+                    }
                 }
+                if (!hasAmount)
+                    report.Findings.Add(new Finding("поля", "error",
+                        label + ": не указана ни одна сумма."));
             }
         }
 
