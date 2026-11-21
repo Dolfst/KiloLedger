@@ -27,6 +27,7 @@ namespace CarExpenses
         private string screenType;
         private Label homeCarLabel;
         private Panel homeLogoPanel;
+        private Panel homeButtonsPanel;
         private Label screenHeading;
         private TextBox summaryBox;
         private List<Button> homeButtons;
@@ -111,6 +112,7 @@ namespace CarExpenses
             Controls.Clear();
             homeCarLabel = null;
             homeLogoPanel = null;
+            homeButtonsPanel = null;
             screenHeading = null;
             summaryBox = null;
             recordList = null;
@@ -167,6 +169,11 @@ namespace CarExpenses
             homeCarLabel.Font = new Font("Arial", 10, FontStyle.Bold);
             Controls.Add(homeCarLabel);
 
+            homeButtonsPanel = new Panel();
+            homeButtonsPanel.BackColor = Color.White;
+            homeButtonsPanel.AutoScroll = true;
+            Controls.Add(homeButtonsPanel);
+
             AddHomeButton(FuelSection);
             AddHomeButton(RepairSection);
             AddHomeButton(ExpensesSection);
@@ -193,7 +200,10 @@ namespace CarExpenses
             button.ForeColor = Color.White;
             button.Font = new Font("Arial", 11, FontStyle.Bold);
             button.Click += new EventHandler(OpenSection);
-            Controls.Add(button);
+            if (homeButtonsPanel != null)
+                homeButtonsPanel.Controls.Add(button);
+            else
+                Controls.Add(button);
             homeButtons.Add(button);
         }
 
@@ -225,6 +235,7 @@ namespace CarExpenses
             screenType = "records";
             homeCarLabel = null;
             homeLogoPanel = null;
+            homeButtonsPanel = null;
             screenHeading = null;
             summaryBox = null;
             homeButtons = null;
@@ -1855,6 +1866,7 @@ namespace CarExpenses
             screenType = "cars";
             homeCarLabel = null;
             homeLogoPanel = null;
+            homeButtonsPanel = null;
             screenHeading = null;
             summaryBox = null;
             homeButtons = null;
@@ -1954,6 +1966,7 @@ namespace CarExpenses
                 screenType = "timeline";
                 homeCarLabel = null;
                 homeLogoPanel = null;
+            homeButtonsPanel = null;
                 screenHeading = null;
                 recordList = null;
                 homeButtons = null;
@@ -2056,6 +2069,7 @@ namespace CarExpenses
             screenType = "summary";
             homeCarLabel = null;
             homeLogoPanel = null;
+            homeButtonsPanel = null;
             screenHeading = null;
             recordList = null;
             homeButtons = null;
@@ -2218,19 +2232,35 @@ namespace CarExpenses
                     homeCarLabel.Location = new Point(8, 60);
                     homeCarLabel.Size = new Size(width - 16, 26);
                 }
+                if (homeButtonsPanel != null)
+                {
+                    homeButtonsPanel.Location = new Point(4, 92);
+                    homeButtonsPanel.Size = new Size(width - 8, height - 96);
+                }
                 if (homeButtons != null && homeButtons.Count > 0)
                 {
-                    int gap = 8;
-                    int buttonHeight = (height - 108 - gap * (homeButtons.Count - 1)) / homeButtons.Count;
-                    if (buttonHeight > 108)
-                        buttonHeight = 108;
-                    if (buttonHeight < 40)
-                        buttonHeight = 40;
-                    int firstButtonTop = 92;
+                    int gap = 6;
+                    int availableHeight = height - 96;
+                    int totalNeededHeight = homeButtons.Count * 48 + gap * (homeButtons.Count - 1);
+                    int buttonHeight = 48;
+
+                    if (totalNeededHeight <= availableHeight)
+                    {
+                        buttonHeight = (availableHeight - gap * (homeButtons.Count - 1)) / homeButtons.Count;
+                        if (buttonHeight > 60)
+                            buttonHeight = 60;
+                    }
+                    else
+                    {
+                        buttonHeight = 48;
+                    }
+
+                    int buttonY = 4;
                     for (int i = 0; i < homeButtons.Count; i++)
                     {
-                        homeButtons[i].Location = new Point(4, firstButtonTop + i * (buttonHeight + gap));
-                        homeButtons[i].Size = new Size(width - 8, buttonHeight);
+                        homeButtons[i].Location = new Point(4, buttonY);
+                        homeButtons[i].Size = new Size(width - 20, buttonHeight);
+                        buttonY += buttonHeight + gap;
                     }
                 }
             }
