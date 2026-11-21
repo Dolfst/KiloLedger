@@ -6,6 +6,10 @@ import re
 import uuid
 from pathlib import Path
 
+import l10n_resolver
+
+l10n_resolver.install()
+
 # Prefixes: cars/fuel/repairs/utilities/cars-meta/expenses/… + templates(t_)/reminders(n_)/notes(j_)
 ID_RE = re.compile(r"^[cfrukepxmntjg]_[0-9a-fA-F]{8,}$")
 

@@ -6,6 +6,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+import l10n_resolver
+
+l10n_resolver.install()
+
 ROOT = Path(__file__).resolve().parents[1]
 
 DATA_FILES = [
