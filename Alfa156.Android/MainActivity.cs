@@ -3475,6 +3475,9 @@ public sealed class MainActivity : Activity
             List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
             PeriodCompare.Totals totals = PeriodCompare.Build(
                 currentCar, fuels, repairs, expenses, utilities, from, to);
+            List<string[]> trips = ExpenseDataStore.LoadOptional(
+                DataDirectory, ExpenseDataCodec.TripsFile);
+            PeriodCompare.AddTripKm(totals, currentCar, trips, from, to);
             string text = PeriodReport.FormatText(
                 currentCar, from, to, totals, Cur(), Money, "\n");
             string html = PeriodReport.FormatHtml(

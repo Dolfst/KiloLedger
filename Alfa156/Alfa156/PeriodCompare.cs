@@ -23,6 +23,10 @@ namespace CarExpenses
             public decimal TopRepairAmount;
             public string TopExpenseLabel = "";
             public decimal TopExpenseAmount;
+            public string TopStationLabel = "";
+            public decimal TopStationAmount;
+            public decimal PersonalTripKm;
+            public decimal WorkTripKm;
 
             public decimal CostBase
             {
@@ -64,6 +68,33 @@ namespace CarExpenses
             return (from ?? "") + "…" + (to ?? "");
         }
 
+        internal static void AddTripKm(Totals totals, string car, List<string[]> trips,
+            string from, string to)
+        {
+            if (totals == null || trips == null)
+                return;
+            from = NormalizeDay(from);
+            to = NormalizeDay(to);
+            for (int i = 0; i < trips.Count; i++)
+            {
+                string[] content = RecordIds.StripId(trips[i]);
+                if (content.Length < 7)
+                    continue;
+                if (!SameCar(content[1], car) || !InDayRange(content[0], from, to))
+                    continue;
+                decimal startKm;
+                decimal endKm;
+                if (!DataStore.TryNumber(content[2], out startKm) ||
+                    !DataStore.TryNumber(content[3], out endKm) || endKm < startKm)
+                    continue;
+                if (String.Compare(content[4] ?? "", "Работа", true,
+                    CultureInfo.InvariantCulture) == 0)
+                    totals.WorkTripKm += endKm - startKm;
+                else
+                    totals.PersonalTripKm += endKm - startKm;
+            }
+        }
+
         internal static Totals Build(
             string car,
             List<string[]> fuels,
@@ -81,6 +112,8 @@ namespace CarExpenses
                 new Dictionary<string, decimal>();
             Dictionary<string, decimal> expensesByCategory =
                 new Dictionary<string, decimal>();
+            Dictionary<string, decimal> stations =
+                new Dictionary<string, decimal>();
 
             if (fuels != null)
             {
@@ -93,6 +126,9 @@ namespace CarExpenses
                         continue;
                     t.Fuel += NumberOrZero(content[4]);
                     AddKm(t, content[2]);
+                    string station = content.Length > 9 ? (content[9] ?? "").Trim() : "";
+                    if (station.Length > 0)
+                        AddCategoryAmount(stations, station, NumberOrZero(content[4]));
                 }
             }
 
@@ -142,6 +178,7 @@ namespace CarExpenses
 
             t.TopRepairLabel = TopCategory(repairsByCategory, out t.TopRepairAmount);
             t.TopExpenseLabel = TopCategory(expensesByCategory, out t.TopExpenseAmount);
+            t.TopStationLabel = TopCategory(stations, out t.TopStationAmount);
             return t;
         }
 

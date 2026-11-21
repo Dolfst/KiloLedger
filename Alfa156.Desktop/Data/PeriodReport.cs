@@ -80,6 +80,11 @@ namespace Alfa156.Desktop.Data
                 sb.Append(nl).Append("Всего (с коммунальными): ").Append(money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
                 sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
                 sb.Append(nl).Append("Пробег: ").Append(kmRange);
+                if (totals.TopStationLabel.Length > 0)
+                    sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
+                        .Append(money(totals.TopStationAmount)).Append(' ').Append(currency);
+                sb.Append(nl).Append("Поездки личные: ").Append(DefaultMoney(totals.PersonalTripKm)).Append(" км");
+                sb.Append(nl).Append("Поездки рабочие: ").Append(DefaultMoney(totals.WorkTripKm)).Append(" км");
                 return sb.ToString();
             }
 
@@ -108,6 +113,11 @@ namespace Alfa156.Desktop.Data
             AppendRow(h, "Всего (с коммунальными)", money(totals.CostBase + totals.Utility) + " " + currency);
             AppendRow(h, "Стоимость/км", costKm);
             AppendRow(h, "Пробег", kmRange);
+            if (totals.TopStationLabel.Length > 0)
+                AppendRow(h, "Топ АЗС/бренд", totals.TopStationLabel + " — " +
+                    money(totals.TopStationAmount) + " " + currency);
+            AppendRow(h, "Поездки личные", DefaultMoney(totals.PersonalTripKm) + " км");
+            AppendRow(h, "Поездки рабочие", DefaultMoney(totals.WorkTripKm) + " км");
             h.Append("</table></body></html>");
             return h.ToString();
         }

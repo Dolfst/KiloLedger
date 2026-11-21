@@ -2143,6 +2143,7 @@ namespace CarExpenses
                 List<string[]> utilities = DataStore.LoadUtilities();
                 PeriodCompare.Totals totals = PeriodCompare.Build(
                     currentCar, fuels, repairs, expenses, utilities, from, to);
+                PeriodCompare.AddTripKm(totals, currentCar, DataStore.LoadTrips(), from, to);
                 string text = PeriodReport.FormatText(currentCar, from, to, totals, Cur());
 
                 string fileName = "Report_" + from + "_" + to + ".txt";

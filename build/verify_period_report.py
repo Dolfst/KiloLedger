@@ -29,6 +29,10 @@ def main() -> int:
         for needle in (
             "TopRepairLabel",
             "TopExpenseLabel",
+            "TopStationLabel",
+            "PersonalTripKm",
+            "WorkTripKm",
+            "AddTripKm",
             "AddCategoryAmount",
             "TopCategory",
         ):
@@ -53,6 +57,9 @@ def main() -> int:
             "Стоимость/км",
             "Топ ремонта",
             "Топ прочих",
+            "Топ АЗС/бренд",
+            "Поездки личные",
+            "Поездки рабочие",
         ):
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")

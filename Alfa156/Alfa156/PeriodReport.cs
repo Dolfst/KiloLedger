@@ -52,6 +52,11 @@ namespace CarExpenses
             sb.Append(nl).Append("Всего (с коммунальными): ").Append(Money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
             sb.Append(nl).Append("Пробег: ").Append(kmRange);
+            if (totals.TopStationLabel.Length > 0)
+                sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
+                    .Append(Money(totals.TopStationAmount)).Append(' ').Append(currency);
+            sb.Append(nl).Append("Поездки личные: ").Append(Money(totals.PersonalTripKm)).Append(" км");
+            sb.Append(nl).Append("Поездки рабочие: ").Append(Money(totals.WorkTripKm)).Append(" км");
             return sb.ToString();
         }
 
