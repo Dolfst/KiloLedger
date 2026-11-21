@@ -31,6 +31,8 @@ def main() -> int:
             errors.append(f"{rel}: missing trip entry UI")
         if "Конец пробега" not in text:
             errors.append(f"{rel}: missing end odometer validation")
+        if "Отчёт поездок" not in text:
+            errors.append(f"{rel}: missing trip mileage report")
 
     for rel in (
         "Alfa156.Android/ExpenseDataCodec.cs",

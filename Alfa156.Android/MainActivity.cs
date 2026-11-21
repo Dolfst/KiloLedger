@@ -388,6 +388,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { ShowQuickFuelEntry(); });
                 labels.Add("Поездка");
                 actions.Add(delegate { ShowTripEntry(); });
+                labels.Add("Отчёт поездок");
+                actions.Add(delegate { ShowTripReport(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Напоминания");
@@ -1472,6 +1474,39 @@ public sealed class MainActivity : Activity
             })
             .SetNegativeButton("Отмена", delegate { })
             .Show();
+    }
+
+    private void ShowTripReport()
+    {
+        List<string[]> trips = ExpenseDataStore.LoadOptional(
+            DataDirectory, ExpenseDataCodec.TripsFile);
+        decimal personal = 0;
+        decimal work = 0;
+        int count = 0;
+        for (int i = 0; i < trips.Count; i++)
+        {
+            string[] content = RecordIds.StripId(trips[i]);
+            if (content.Length < 7 ||
+                !String.Equals(content[1] ?? "", currentCar, StringComparison.OrdinalIgnoreCase))
+                continue;
+            decimal startKm;
+            decimal endKm;
+            if (!TryNumber(content[2], out startKm) || !TryNumber(content[3], out endKm) ||
+                endKm < startKm)
+                continue;
+            decimal distance = endKm - startKm;
+            if (String.Equals((content[4] ?? "").Trim(), "Работа",
+                StringComparison.OrdinalIgnoreCase))
+                work += distance;
+            else
+                personal += distance;
+            count++;
+        }
+        ShowMessage("Отчёт поездок · " + currentCar +
+            "\nКоличество: " + count +
+            "\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+            "\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+            "\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км");
     }
 
     private void ShowTripEntry()

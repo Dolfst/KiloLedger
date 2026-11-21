@@ -142,6 +142,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
             actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Новая поездка", new EventHandler(AddTripFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Отчёт поездок", new EventHandler(ShowTripReportFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Заметки", new EventHandler(ManageNotesFromMenu)));
@@ -1470,6 +1471,41 @@ namespace CarExpenses
                 AddExpense();
             else
                 AddUtility();
+        }
+
+        private void ShowTripReportFromMenu(object sender, EventArgs e)
+        {
+            List<string[]> trips = DataStore.LoadTrips();
+            decimal personal = 0;
+            decimal work = 0;
+            int count = 0;
+            for (int i = 0; i < trips.Count; i++)
+            {
+                string[] content = RecordIds.StripId(trips[i]);
+                if (content.Length < 7 ||
+                    String.Compare(content[1] ?? "", currentCar, true,
+                        CultureInfo.InvariantCulture) != 0)
+                    continue;
+                decimal startKm;
+                decimal endKm;
+                if (!DataStore.TryNumber(content[2], out startKm) ||
+                    !DataStore.TryNumber(content[3], out endKm) || endKm < startKm)
+                    continue;
+                decimal distance = endKm - startKm;
+                if (String.Compare(content[4] ?? "", "Работа", true,
+                    CultureInfo.InvariantCulture) == 0)
+                    work += distance;
+                else
+                    personal += distance;
+                count++;
+            }
+            MessageBox.Show(
+                "Отчёт поездок · " + currentCar +
+                "\r\nКоличество: " + count +
+                "\r\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+                "\r\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+                "\r\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км",
+                "Поездки");
         }
 
         private void AddTripFromMenu(object sender, EventArgs e)

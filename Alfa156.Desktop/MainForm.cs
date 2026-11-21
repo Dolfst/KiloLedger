@@ -158,6 +158,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
             toolbar.Controls.Add(MakeButton("Быстрая заправка", OpenQuickFuelEntry));
             toolbar.Controls.Add(MakeButton("Поездка", OpenTripEntry));
+            toolbar.Controls.Add(MakeButton("Отчёт поездок", ShowTripReport));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -610,6 +611,40 @@ namespace Alfa156.Desktop
                 }
             }
             return full;
+        }
+
+        private void ShowTripReport(object sender, EventArgs e)
+        {
+            string car = ResolveSummaryCar();
+            decimal personal = 0;
+            decimal work = 0;
+            int count = 0;
+            for (int i = 0; i < repository.TripsRows.Count; i++)
+            {
+                string[] content = RecordIds.StripId(repository.TripsRows[i]);
+                if (content.Length < 7 ||
+                    !String.Equals(content[1] ?? "", car, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                decimal startKm;
+                decimal endKm;
+                if (!AlfaCodec.TryNumber(content[2], out startKm) ||
+                    !AlfaCodec.TryNumber(content[3], out endKm) || endKm < startKm)
+                    continue;
+                decimal distance = endKm - startKm;
+                if (String.Equals((content[4] ?? "").Trim(), "Работа",
+                    StringComparison.OrdinalIgnoreCase))
+                    work += distance;
+                else
+                    personal += distance;
+                count++;
+            }
+            MessageBox.Show(this,
+                "Отчёт поездок · " + car +
+                "\nКоличество: " + count +
+                "\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+                "\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+                "\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км",
+                "Поездки", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void OpenTripEntry(object sender, EventArgs e)
