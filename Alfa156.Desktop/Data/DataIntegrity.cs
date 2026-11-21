@@ -85,6 +85,10 @@ namespace Alfa156.Desktop.Data
             CheckRepairs(report, repository.Repairs, cars, repairCats);
             CheckExpenses(report, repository.Expenses, cars, expenseCats);
             CheckUtilities(report, repository.Utilities);
+            CheckDuplicateIds(report, repository.Fuel, "заправок");
+            CheckDuplicateIds(report, repository.Repairs, "ремонтных записей");
+            CheckDuplicateIds(report, repository.Expenses, "прочих расходов");
+            CheckDuplicateIds(report, repository.Utilities, "коммунальных записей");
             CheckCategoryLists(report, repairCats, expenseCats, repository.Repairs, repository.Expenses);
             CheckReceipts(report, repository.DirectoryPath, repository.Fuel, repository.Repairs, repository.Expenses);
             CheckTombstones(report, repository);
@@ -344,6 +348,24 @@ namespace Alfa156.Desktop.Data
                 if (!RecordIds.LooksLikeId(name) || !ids.ContainsKey(name))
                     report.Findings.Add(new Finding("чеки", "info",
                         "файл чека без записи: " + Path.GetFileName(files[i])));
+            }
+        }
+
+        private static void CheckDuplicateIds(Report report, List<string[]> rows, string category)
+        {
+            Dictionary<string, bool> ids = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                string id = RecordIds.GetId(rows[i]);
+                if (String.IsNullOrEmpty(id))
+                    continue;
+                if (ids.ContainsKey(id))
+                {
+                    report.Findings.Add(new Finding("дубликаты", "error",
+                        "повторяющийся id «" + id + "» в " + category + "."));
+                    continue;
+                }
+                ids.Add(id, true);
             }
         }
 

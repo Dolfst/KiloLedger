@@ -205,6 +205,21 @@ def test_both_sides_delete_idempotent():
     assert merged2 == [] and removed2 == 1
 
 
+def test_duplicate_ids_are_detectable():
+    rows = [
+        with_id(["2024-01-01", "Alfa", "1", "1", "1"], "f_deadbeef"),
+        with_id(["2024-01-02", "Alfa", "2", "1", "1"], "f_deadbeef"),
+    ]
+    seen = set()
+    duplicates = 0
+    for row in rows:
+        rid = get_id(row)
+        if rid in seen:
+            duplicates += 1
+        seen.add(rid)
+    assert duplicates == 1
+
+
 if __name__ == "__main__":
     test_old_fuel_gets_id()
     test_delete_propagates()
@@ -212,4 +227,5 @@ if __name__ == "__main__":
     test_fuel_optional_fields_not_confused_with_id()
     test_tombstone_round_trip_multi_type()
     test_both_sides_delete_idempotent()
+    test_duplicate_ids_are_detectable()
     print("verify_sync_ids: OK")

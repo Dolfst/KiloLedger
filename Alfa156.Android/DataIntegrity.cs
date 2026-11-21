@@ -85,6 +85,10 @@ internal static class DataIntegrity
         CheckRepairs(report, repairs, cars, repairCats);
         CheckExpenses(report, expenses, cars, expenseCats);
         CheckUtilities(report, utilities);
+        CheckDuplicateIds(report, fuels, "заправок");
+        CheckDuplicateIds(report, repairs, "ремонтных записей");
+        CheckDuplicateIds(report, expenses, "прочих расходов");
+        CheckDuplicateIds(report, utilities, "коммунальных записей");
         CheckCategoryLists(report, repairCats, expenseCats, repairs, expenses);
         CheckReceipts(report, directory, fuels, repairs, expenses);
         CheckTombstones(report, directory, fuels, repairs, expenses, utilities, cars,
@@ -339,6 +343,24 @@ internal static class DataIntegrity
             if (!RecordIds.LooksLikeId(name) || !ids.ContainsKey(name))
                 report.Findings.Add(new Finding("чеки", "info",
                     "файл чека без записи: " + Path.GetFileName(files[i])));
+        }
+    }
+
+    private static void CheckDuplicateIds(Report report, List<string[]> rows, string category)
+    {
+        Dictionary<string, bool> ids = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            string id = RecordIds.GetId(rows[i]);
+            if (String.IsNullOrEmpty(id))
+                continue;
+            if (ids.ContainsKey(id))
+            {
+                report.Findings.Add(new Finding("дубликаты", "error",
+                    "повторяющийся id «" + id + "» в " + category + "."));
+                continue;
+            }
+            ids.Add(id, true);
         }
     }
 
