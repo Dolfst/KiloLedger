@@ -85,4 +85,4 @@
 - ✅ Документирована версионированная схема snapshot и форматов `.dat` ([docs/snapshot-schema.md](docs/snapshot-schema.md)); `verify_snapshot_schema.py` сверяет её с кодом.
 - ✅ Кроссплатформенные сценарные проверки перед повышением версии: `verify_scenarios.py` пересчитывает отчёт периода по fixture snapshot и гарантирует одинаковые числа на всех платформах.
 - Миграции для новых сущностей (пока новых сущностей с этапа E нет; загружение назначает стабильные id старым записям через `EnsureIds`).
-- Проверка rolling assets при релизе.
+- ✅ Rolling assets проверены: `android-latest`, `desktop-latest`, `kpk-latest` указывают на 1.36.0, файлы в `dist/download` совпадают с `VERSION`.
