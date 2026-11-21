@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+import tempfile
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +22,43 @@ def section(text: str, start: str, end: str, path: str) -> str:
 
 def main() -> int:
     errors = []
+    fixtures = ROOT / "build" / "sample_data"
+
+    with tempfile.TemporaryDirectory(prefix="alfa-restore-fixture-") as tmp:
+        root = Path(tmp)
+        restore = root / "restore"
+        restore.mkdir()
+        current_receipts = restore / "Receipts"
+        current_receipts.mkdir()
+        (current_receipts / "f_old00123.jpg").write_bytes(b"current receipt")
+
+        legacy_zip = root / "legacy.zip"
+        with zipfile.ZipFile(legacy_zip, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in ("cars.dat", "fuel.dat", "repairs.dat", "expenses.dat", "utilities.dat"):
+                archive.write(fixtures / name, arcname=name)
+
+        with zipfile.ZipFile(legacy_zip, "r") as archive:
+            archive.extractall(restore)
+        if not (restore / "fuel.dat").exists():
+            errors.append("fixture restore: legacy ZIP did not extract dat files")
+        # Legacy backups contain no Receipts/: current receipts must be preserved.
+        if not (current_receipts / "f_old00123.jpg").exists():
+            errors.append("fixture restore: legacy restore removed current receipts")
+
+        modern_zip = root / "modern.zip"
+        modern_receipts = root / "Receipts"
+        modern_receipts.mkdir()
+        (modern_receipts / "f_fixture123.jpg").write_bytes(b"fixture receipt")
+        with zipfile.ZipFile(modern_zip, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in ("cars.dat", "fuel.dat", "repairs.dat", "expenses.dat", "utilities.dat"):
+                archive.write(fixtures / name, arcname=name)
+            archive.write(modern_receipts / "f_fixture123.jpg",
+                          arcname="Receipts/f_fixture123.jpg")
+
+        with zipfile.ZipFile(modern_zip, "r") as archive:
+            archive.extractall(restore)
+        if not (restore / "Receipts" / "f_fixture123.jpg").exists():
+            errors.append("fixture restore: modern ZIP receipt was not restored")
 
     kpk_path = "Alfa156/Alfa156/DataStore.cs"
     kpk = (ROOT / kpk_path).read_text(encoding="utf-8-sig")
