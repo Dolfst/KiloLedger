@@ -579,6 +579,7 @@ internal static class ExpenseSyncService
         }
         catch (Exception installError)
         {
+            journal.RollbackReason = installError.Message;
             if (safetyBackup == null)
             {
                 try
@@ -592,6 +593,8 @@ internal static class ExpenseSyncService
                 }
                 catch (Exception rollbackError)
                 {
+                    journal.RollbackReason = installError.Message + ". Не удалось вернуть прежние данные: " +
+                        rollbackError.Message;
                     throw new IOException("Синхронизация не завершена: " + installError.Message +
                         ". Не удалось очистить неполный набор данных: " + rollbackError.Message);
                 }

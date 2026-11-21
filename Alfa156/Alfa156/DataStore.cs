@@ -410,6 +410,10 @@ namespace CarExpenses
                     }
                     catch (Exception rollbackError)
                     {
+                        if (SyncMerge.LastJournal != null)
+                            SyncMerge.LastJournal.RollbackReason =
+                                installError.Message + ". Не удалось вернуть прежние данные: " +
+                                rollbackError.Message;
                         throw new IOException("Синхронизация не завершена: " +
                             installError.Message + ". Не удалось вернуть прежние данные: " +
                             rollbackError.Message + ". Копия сохранена в " + safety);

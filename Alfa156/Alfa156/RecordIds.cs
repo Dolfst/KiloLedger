@@ -326,6 +326,7 @@ namespace CarExpenses
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
         public string SafetyPath;
+        public string RollbackReason;
 
         public void AddExample(string text)
         {
@@ -353,6 +354,11 @@ namespace CarExpenses
             sb.Append("\r\n  только локально: ");
             sb.Append(KeptLocalOnly.ToString());
             AppendExamples(sb, "\r\n");
+            if (RollbackReason != null && RollbackReason.Length > 0)
+            {
+                sb.Append("\r\nПричина отката: ");
+                sb.Append(RollbackReason);
+            }
             return sb.ToString();
         }
 

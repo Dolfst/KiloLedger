@@ -276,6 +276,7 @@ namespace Alfa156.Desktop.Data
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
         public string SafetyPath;
+        public string RollbackReason;
 
         public void AddExample(string text)
         {
@@ -296,6 +297,11 @@ namespace Alfa156.Desktop.Data
             sb.AppendLine("  конфликтов, объединено: " + ConflictMerged);
             sb.Append("  только локально: " + KeptLocalOnly);
             AppendExamples(sb);
+            if (!String.IsNullOrEmpty(RollbackReason))
+            {
+                sb.AppendLine();
+                sb.Append("Причина отката: ").Append(RollbackReason);
+            }
             return sb.ToString();
         }
 

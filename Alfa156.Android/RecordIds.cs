@@ -289,6 +289,7 @@ internal sealed class SyncJournal
     public int KeptLocalOnly;
     public readonly List<string> Examples = new List<string>();
     public string SafetyPath;
+    public string RollbackReason;
 
     public void AddExample(string text)
     {
@@ -309,6 +310,8 @@ internal sealed class SyncJournal
         sb.Append("  конфликтов, объединено: ").Append(ConflictMerged).Append('\n');
         sb.Append("  только локально: ").Append(KeptLocalOnly);
         AppendExamples(sb);
+        if (!String.IsNullOrEmpty(RollbackReason))
+            sb.Append("\nПричина отката: ").Append(RollbackReason);
         return sb.ToString();
     }
 
