@@ -258,6 +258,7 @@ namespace Alfa156.Desktop.Data
 
         private static void CheckUtilities(Report report, List<string[]> rows)
         {
+            Dictionary<string, bool> months = new Dictionary<string, bool>(StringComparer.Ordinal);
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] c = RecordIds.StripId(rows[i]);
@@ -268,6 +269,15 @@ namespace Alfa156.Desktop.Data
                     continue;
                 }
                 CheckMonth(report, label, c[0]);
+                string month = (c[0] ?? "").Trim();
+                if (month.Length > 0)
+                {
+                    if (months.ContainsKey(month))
+                        report.Findings.Add(new Finding("дубликаты", "error",
+                            label + ": месяц «" + month + "» встречается повторно."));
+                    else
+                        months.Add(month, true);
+                }
                 bool hasAmount = false;
                 for (int j = 1; j < c.Length && j <= 7; j++)
                 {

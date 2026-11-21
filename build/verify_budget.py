@@ -80,6 +80,8 @@ def main() -> int:
         text = (ROOT / rel).read_text()
         if "не указана ни одна сумма" not in text:
             errors.append(f"{rel}: utility rows require at least one amount")
+        if "месяц «" not in text or "months" not in text:
+            errors.append(f"{rel}: utility duplicate months are not checked")
 
     # Soft-limit math: warn at pct, over at >= budget
     budget, warn_pct = 1000.0, 80.0
