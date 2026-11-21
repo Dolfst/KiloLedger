@@ -392,8 +392,7 @@ namespace CarExpenses
                 int year = int.Parse(value.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
                 int month = int.Parse(value.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
                 int day = int.Parse(value.Substring(8, 2), NumberStyles.None, CultureInfo.InvariantCulture);
-                DateTime unused = new DateTime(year, month, day);
-                return true;
+                return day >= 1 && day <= DateTime.DaysInMonth(year, month);
             }
             catch (FormatException) { return false; }
             catch (OverflowException) { return false; }
@@ -408,8 +407,7 @@ namespace CarExpenses
             {
                 int year = int.Parse(value.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture);
                 int month = int.Parse(value.Substring(5, 2), NumberStyles.None, CultureInfo.InvariantCulture);
-                DateTime unused = new DateTime(year, month, 1);
-                return true;
+                return year >= 1 && year <= 9999 && month >= 1 && month <= 12;
             }
             catch (FormatException) { return false; }
             catch (OverflowException) { return false; }

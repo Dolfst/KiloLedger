@@ -5,7 +5,7 @@ using System.Text;
 namespace Alfa156.Android;
 
 /// <summary>
-/// Shareable period report for one car (1.33.0).
+/// Shareable period report for one car (1.34.0).
 /// Totals come from <see cref="PeriodCompare.Build"/>.
 /// </summary>
 internal static class PeriodReport

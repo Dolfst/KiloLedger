@@ -5,7 +5,7 @@ using System.Text;
 namespace CarExpenses
 {
     /// <summary>
-    /// Text period report for one car (1.33.0). CF 3.5-safe formatting only.
+    /// Text period report for one car (1.34.0). CF 3.5-safe formatting only.
     /// Totals come from <see cref="PeriodCompare.Build"/>.
     /// </summary>
     internal static class PeriodReport
