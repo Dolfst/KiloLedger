@@ -120,6 +120,7 @@ def main() -> int:
     for needle in (
         "Отчёт за период",
         "ExportPeriodReportFromMenu",
+        "ExportYearReportFromMenu",
         "PeriodReport.FormatText",
         version,
     ):

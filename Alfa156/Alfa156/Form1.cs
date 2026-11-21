@@ -130,6 +130,7 @@ namespace CarExpenses
             data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Экспорт сводки", new EventHandler(ExportSummaryFromMenu)));
             data.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
+            data.MenuItems.Add(CreateMenuItem("Отчёт за год", new EventHandler(ExportYearReportFromMenu)));
             data.MenuItems.Add(CreateMenuItem("О программе", new EventHandler(ShowAbout)));
             menu.MenuItems.Add(data);
             MenuItem actionsHome = CreateMenuItem("Действия");
@@ -2087,6 +2088,7 @@ namespace CarExpenses
             MenuItem actions = CreateMenuItem("Действия");
             actions.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
             actions.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem("Отчёт за год", new EventHandler(ExportYearReportFromMenu)));
             menu.MenuItems.Add(actions);
             menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
@@ -2136,7 +2138,30 @@ namespace CarExpenses
                     return;
                 string from = choice == DialogResult.Yes ? thisFrom : prevFrom;
                 string to = choice == DialogResult.Yes ? thisTo : prevTo;
+                SavePeriodReport(from, to);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось сохранить отчёт: " + ex.Message, "Ошибка");
+            }
+        }
 
+        private void ExportYearReportFromMenu(object sender, EventArgs e)
+        {
+            try
+            {
+                string year = DateTime.Today.Year.ToString(CultureInfo.InvariantCulture);
+                SavePeriodReport(year + "-01-01", year + "-12-31");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось сохранить отчёт: " + ex.Message, "Ошибка");
+            }
+        }
+
+        private void SavePeriodReport(string from, string to)
+        {
+            {
                 List<string[]> fuels = DataStore.LoadFuel();
                 List<string[]> repairs = DataStore.LoadRepairs();
                 List<string[]> expenses = DataStore.LoadExpenses();
@@ -2156,10 +2181,6 @@ namespace CarExpenses
                     writer.Write(text);
 
                 MessageBox.Show(text + "\r\n\r\nСохранено:\r\n" + path, "Отчёт за период");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Не удалось сохранить отчёт: " + ex.Message, "Ошибка");
             }
         }
 
