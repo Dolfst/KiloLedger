@@ -1,3 +1,4 @@
+using Alfa156.Localization;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -275,7 +276,7 @@ public sealed class MainActivity : Activity
 
         LinearLayout sectionRow1 = NewRow();
         sectionRow1.SetPadding(0, Dp(2), 0, Dp(2));
-        fuelButton = CreateSectionButton("Заправки", ButtonIcons.Fuel, delegate { SelectSection(Fuel); });
+        fuelButton = CreateSectionButton(L10n.Get("tab.fuel"), ButtonIcons.Fuel, delegate { SelectSection(Fuel); });
         repairsButton = CreateSectionButton("Ремонт и ТО", ButtonIcons.Repairs, delegate { SelectSection(Repairs); });
         sectionRow1.AddView(fuelButton, WeightedButton(Dp(3)));
         sectionRow1.AddView(repairsButton, WeightedButton(Dp(3)));
@@ -283,7 +284,7 @@ public sealed class MainActivity : Activity
 
         LinearLayout sectionRow2 = NewRow();
         sectionRow2.SetPadding(0, 0, 0, Dp(2));
-        expensesButton = CreateSectionButton("Прочие", ButtonIcons.Categories, delegate { SelectSection(Expenses); });
+        expensesButton = CreateSectionButton(L10n.Get("tab.expenses"), ButtonIcons.Categories, delegate { SelectSection(Expenses); });
         utilitiesButton = CreateSectionButton("Коммунальные", ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
         sectionRow2.AddView(expensesButton, WeightedButton(Dp(3)));
         sectionRow2.AddView(utilitiesButton, WeightedButton(Dp(3)));
@@ -311,7 +312,7 @@ public sealed class MainActivity : Activity
         filterRow = NewRow();
         filterButton = CreateButton("Фильтр", ButtonIcons.Filter, delegate { EditSectionFilter(); });
         resetFilterButton = CreateButton("Сбросить", ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
-        categoriesButton = CreateButton("Категории", ButtonIcons.Categories, delegate
+        categoriesButton = CreateButton(L10n.Get("tab.categories"), ButtonIcons.Categories, delegate
         {
             if (selectedSection == Expenses)
                 ManageExpenseCategories();
@@ -609,7 +610,7 @@ public sealed class MainActivity : Activity
             displayRows.Add(FormatRow(row));
         }
 
-        string sectionTitle = selectedSection == Fuel ? "Заправки"
+        string sectionTitle = selectedSection == Fuel ? L10n.Get("tab.fuel")
             : selectedSection == Repairs ? "Ремонт и ТО"
             : selectedSection == Expenses ? "Прочие расходы" : "Коммунальные";
         string scope = selectedSection == Utilities ? "все месяцы" : currentCar;
@@ -2109,18 +2110,18 @@ public sealed class MainActivity : Activity
             return FieldAt(row, 6) + " " + ExpenseDataCodec.GetPurpose(row) + " " +
                 ExpenseDataCodec.GetStation(row) + " " + FieldAt(row, 1);
         });
-        CollectSearchHits(hits, Repairs, "repairs.dat", "Ремонт", q, delegate(string[] row)
+        CollectSearchHits(hits, Repairs, "repairs.dat", L10n.Get("tab.repairs"), q, delegate(string[] row)
         {
             return FieldAt(row, 3) + " " + FieldAt(row, 4) + " " + FieldAt(row, 5) + " " +
                 FieldAt(row, 8) + " " + FieldAt(row, 1);
         });
-        CollectSearchHits(hits, Expenses, ExpenseDataCodec.ExpensesFile, "Прочие", q,
+        CollectSearchHits(hits, Expenses, ExpenseDataCodec.ExpensesFile, L10n.Get("tab.expenses"), q,
             delegate(string[] row)
             {
                 return FieldAt(row, 2) + " " + FieldAt(row, 3) + " " + FieldAt(row, 5) + " " +
                     FieldAt(row, 1);
             });
-        CollectSearchHits(hits, Utilities, "utilities.dat", "Коммуналка", q, delegate(string[] row)
+        CollectSearchHits(hits, Utilities, "utilities.dat", L10n.Get("tab.utilities"), q, delegate(string[] row)
         {
             StringBuilder sb = new StringBuilder(FieldAt(row, 0));
             for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length && i + 1 < row.Length; i++)
@@ -2317,7 +2318,7 @@ public sealed class MainActivity : Activity
         }
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
-            .SetTitle("Автомобили")
+            .SetTitle(L10n.Get("tab.vehicles"))
             .SetPositiveButton("Закрыть", delegate { })
             .SetNeutralButton("Добавить", delegate { AddCar(); });
         if (cars.Count > 0)
