@@ -60,8 +60,14 @@ def verify_fault_scenarios() -> None:
             raise AssertionError("incoming staging fixture was not created")
 
         # Abort before commit: live data remains unchanged.
-        before_commit = dict(live)
-        if before_commit != live:
+        staged = dict(live)
+        staged.update(snapshot)
+        if staged != {
+            "f_old": "2026-10-01|Alfa|10000",
+            "f_new": "2026-11-20|Alfa|10800",
+        }:
+            raise AssertionError("fault fixture did not stage the expected snapshot")
+        if live != {"f_old": "2026-10-01|Alfa|10000"}:
             raise AssertionError("pre-commit abort modified live data")
 
         first = apply_snapshot_with_fault(live, set(), snapshot, abort_after_commit=True)
@@ -70,17 +76,30 @@ def verify_fault_scenarios() -> None:
             "f_new": "2026-11-20|Alfa|10800",
         }:
             raise AssertionError("first apply did not stage the expected snapshot")
+        if first.safety_copy != live:
+            raise AssertionError("post-commit fault lost the safety copy")
 
         # Repeating the same snapshot must not duplicate the record.
         retried = apply_snapshot_with_fault(first.live_records, first.tombstones, snapshot)
         if len(retried.live_records) != 2:
             raise AssertionError("retry duplicated snapshot records")
+        if retried.live_records != first.live_records:
+            raise AssertionError("retry changed already applied snapshot records")
 
         tombstones = {"f_deleted"}
         deleted = apply_snapshot_with_fault(retried.live_records, tombstones,
                                             {"f_deleted": "deleted"})
         if "f_deleted" in deleted.live_records:
             raise AssertionError("tombstone allowed a deleted record to reappear")
+
+        retried_deleted = apply_snapshot_with_fault(
+            deleted.live_records,
+            tombstones,
+            {"f_deleted": "deleted"},
+            abort_after_commit=True,
+        )
+        if "f_deleted" in retried_deleted.live_records:
+            raise AssertionError("retry revived a tombstoned record")
 
 
 def method(text: str, start: str, end: str, path: str) -> str:
