@@ -386,6 +386,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditDefaultCar(); });
                 labels.Add("Быстрая заправка");
                 actions.Add(delegate { ShowQuickFuelEntry(); });
+                labels.Add("Поездка");
+                actions.Add(delegate { ShowTripEntry(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Напоминания");
@@ -1470,6 +1472,53 @@ public sealed class MainActivity : Activity
             })
             .SetNegativeButton("Отмена", delegate { })
             .Show();
+    }
+
+    private void ShowTripEntry()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте или создайте данные.");
+            return;
+        }
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        if (cars.Count == 0)
+        {
+            ShowMessage("Нет автомобилей.");
+            return;
+        }
+        string car = ToSettings.ResolvePreferredCar(DataDirectory, cars, currentCar);
+        List<EditorField> fields = new List<EditorField>();
+        fields.Add(EditorField.Date("Дата", DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), true));
+        fields.Add(EditorField.Option("Автомобиль", car, cars.ToArray(), true));
+        fields.Add(EditorField.Number("Начало пробега, км", "", true));
+        fields.Add(EditorField.Number("Конец пробега, км", "", true));
+        fields.Add(EditorField.Option("Назначение", "Личный", new string[] { "Личный", "Работа" }, false));
+        fields.Add(EditorField.Text("Водитель", "", false));
+        fields.Add(EditorField.Text("Комментарий", "", false));
+
+        RenderEditor("Новая поездка", fields,
+            delegate(string[] values)
+            {
+                if (values == null || values.Length < 7)
+                    throw new InvalidOperationException("Заполните обязательные поля поездки.");
+                decimal startKm;
+                decimal endKm;
+                if (!TryNumber(values[2], out startKm) || startKm < 0 ||
+                    !TryNumber(values[3], out endKm) || endKm < startKm)
+                    throw new InvalidOperationException(
+                        "Конец пробега должен быть не меньше начала, пробег не меньше 0.");
+                string[] trip = new string[]
+                {
+                    values[0], values[1], values[2], values[3],
+                    values[4], values[5], values[6]
+                };
+                ExpenseDataStore.AddRecord(DataDirectory, ExpenseDataCodec.TripsFile, trip);
+                SetCurrentCar(trip[1]);
+                RefreshRecords();
+                ShowMessage("Поездка сохранена: " + (endKm - startKm).ToString("0.##",
+                    CultureInfo.InvariantCulture) + " км");
+            }, false);
     }
 
     private void ShowQuickFuelEntry()

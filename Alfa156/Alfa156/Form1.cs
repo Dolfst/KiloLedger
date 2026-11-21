@@ -141,6 +141,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
             actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Новая поездка", new EventHandler(AddTripFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Заметки", new EventHandler(ManageNotesFromMenu)));
@@ -1469,6 +1470,50 @@ namespace CarExpenses
                 AddExpense();
             else
                 AddUtility();
+        }
+
+        private void AddTripFromMenu(object sender, EventArgs e)
+        {
+            List<string> cars = DataStore.LoadCarNames();
+            if (cars.Count == 0)
+            {
+                MessageBox.Show("Нет автомобилей.", "Поездка");
+                return;
+            }
+            string car = ToSettings.ResolvePreferredCar(cars, currentCar);
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField("Автомобиль", car, cars.ToArray(), true),
+                new EntryField("Начало пробега, км", "", "number", true),
+                new EntryField("Конец пробега, км", "", "number", true),
+                new EntryField("Назначение", "Личный",
+                    new string[] { "Личный", "Работа" }, false),
+                new EntryField("Водитель", "", "text", false),
+                new EntryField("Комментарий", "", "text", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Новая поездка", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                decimal startKm;
+                decimal endKm;
+                if (values == null || values.Length < 7 ||
+                    !DataStore.TryNumber(values[2], out startKm) || startKm < 0 ||
+                    !DataStore.TryNumber(values[3], out endKm) || endKm < startKm)
+                {
+                    MessageBox.Show(
+                        "Конец пробега должен быть не меньше начала, пробег не меньше 0.",
+                        "Поездка");
+                    return;
+                }
+                DataStore.AddTrip(values);
+                currentCar = values[1];
+                MessageBox.Show("Поездка сохранена: " +
+                    (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + " км",
+                    "Поездка");
+            }
         }
 
         private void QuickFuelFromMenu(object sender, EventArgs e)

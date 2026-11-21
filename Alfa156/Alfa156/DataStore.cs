@@ -1640,6 +1640,18 @@ namespace CarExpenses
             Append(RepairsFile, values);
         }
 
+        internal static List<string[]> LoadTrips()
+        {
+            EnsureTripsFile();
+            return ReadRows(TripsFile);
+        }
+
+        internal static void AddTrip(string[] values)
+        {
+            EnsureTripsFile();
+            Append(TripsFile, values);
+        }
+
         internal static void AddExpense(string[] values)
         {
             EnsureExpenseFile();

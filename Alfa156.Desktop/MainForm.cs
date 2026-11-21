@@ -157,6 +157,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Дубликаты", OpenDuplicates));
             toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
             toolbar.Controls.Add(MakeButton("Быстрая заправка", OpenQuickFuelEntry));
+            toolbar.Controls.Add(MakeButton("Поездка", OpenTripEntry));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -609,6 +610,109 @@ namespace Alfa156.Desktop
                 }
             }
             return full;
+        }
+
+        private void OpenTripEntry(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                if (repository.Cars.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет автомобилей.", "Поездка",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                List<string> cars = new List<string>();
+                for (int i = 0; i < repository.Cars.Count; i++)
+                {
+                    string[] content = RecordIds.StripId(repository.Cars[i]);
+                    if (content.Length > 0 && !String.IsNullOrEmpty(content[0]))
+                        cars.Add(content[0]);
+                }
+                using (Form dialog = new Form())
+                {
+                    dialog.Text = "Новая поездка";
+                    dialog.Width = 420;
+                    dialog.Height = 390;
+                    dialog.StartPosition = FormStartPosition.CenterParent;
+                    dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    dialog.MaximizeBox = false;
+                    dialog.MinimizeBox = false;
+
+                    ComboBox carBox = new ComboBox { Left = 16, Top = 82, Width = 370, DropDownStyle = ComboBoxStyle.DropDownList };
+                    for (int i = 0; i < cars.Count; i++) carBox.Items.Add(cars[i]);
+                    carBox.SelectedIndex = 0;
+                    TextBox dateBox = new TextBox { Left = 16, Top = 36, Width = 370 };
+                    dateBox.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    TextBox startBox = new TextBox { Left = 16, Top = 126, Width = 180 };
+                    TextBox endBox = new TextBox { Left = 206, Top = 126, Width = 180 };
+                    ComboBox purposeBox = new ComboBox { Left = 16, Top = 180, Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
+                    purposeBox.Items.Add("Личный");
+                    purposeBox.Items.Add("Работа");
+                    purposeBox.SelectedIndex = 0;
+                    TextBox driverBox = new TextBox { Left = 206, Top = 180, Width = 180 };
+                    TextBox commentBox = new TextBox { Left = 16, Top = 234, Width = 370 };
+
+                    Button ok = new Button { Text = "Сохранить", Left = 206, Top = 310, Width = 90, DialogResult = DialogResult.OK };
+                    Button cancel = new Button { Text = "Отмена", Left = 306, Top = 310, Width = 80, DialogResult = DialogResult.Cancel };
+                    dialog.Controls.AddRange(new Control[]
+                    {
+                        new Label { Text = "Дата", Left = 16, Top = 16, Width = 370 },
+                        dateBox,
+                        new Label { Text = "Автомобиль", Left = 16, Top = 62, Width = 370 },
+                        carBox,
+                        new Label { Text = "Начало пробега, км", Left = 16, Top = 106, Width = 180 },
+                        startBox,
+                        new Label { Text = "Конец пробега, км", Left = 206, Top = 106, Width = 180 },
+                        endBox,
+                        new Label { Text = "Назначение", Left = 16, Top = 160, Width = 180 },
+                        purposeBox,
+                        new Label { Text = "Водитель", Left = 206, Top = 160, Width = 180 },
+                        driverBox,
+                        new Label { Text = "Комментарий", Left = 16, Top = 214, Width = 370 },
+                        commentBox,
+                        ok, cancel
+                    });
+                    dialog.AcceptButton = ok;
+                    dialog.CancelButton = cancel;
+                    if (dialog.ShowDialog(this) != DialogResult.OK)
+                        return;
+
+                    decimal startKm;
+                    decimal endKm;
+                    if (!DateTime.TryParseExact(dateBox.Text.Trim(), "yyyy-MM-dd",
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out _) ||
+                        carBox.SelectedItem == null ||
+                        !AlfaCodec.TryNumber(startBox.Text, out startKm) || startKm < 0 ||
+                        !AlfaCodec.TryNumber(endBox.Text, out endKm) || endKm < startKm)
+                    {
+                        MessageBox.Show(this,
+                            "Проверьте дату и пробег: конец не меньше начала.",
+                            "Поездка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    string[] trip = new string[]
+                    {
+                        dateBox.Text.Trim(),
+                        carBox.SelectedItem.ToString(),
+                        startBox.Text.Trim(),
+                        endBox.Text.Trim(),
+                        purposeBox.SelectedItem != null ? purposeBox.SelectedItem.ToString() : "",
+                        driverBox.Text.Trim(),
+                        commentBox.Text.Trim()
+                    };
+                    repository.TripsRows.Add(trip);
+                    repository.Save();
+                    BindAll();
+                    SetStatus("Поездка сохранена: " +
+                        (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + " км");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex);
+            }
         }
 
         private void OpenQuickFuelEntry(object sender, EventArgs e)
