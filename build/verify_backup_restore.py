@@ -145,6 +145,12 @@ def main() -> int:
         errors.append("Android: receipt delete action missing")
     if "IsSafeReceiptFileName" not in android_receipts:
         errors.append("Android: safe receipt filename contract missing")
+    kpk_receipts = (ROOT / "Alfa156/Alfa156/DataStore.cs").read_text(encoding="utf-8-sig")
+    kpk_main = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text(encoding="utf-8-sig")
+    if "internal static void DeleteReceipt(string recordId)" not in kpk_receipts:
+        errors.append("KPK: receipt Delete method missing")
+    if "OpenReceiptPhoto" not in kpk_main or "DeleteReceiptPhoto" not in kpk_main:
+        errors.append("KPK: receipt open/delete actions missing")
 
     if errors:
         print("FAIL verify_backup_restore:")

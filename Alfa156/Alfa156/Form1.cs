@@ -312,6 +312,11 @@ namespace CarExpenses
             actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
             actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
+            if (section == FuelSection || section == RepairSection || section == ExpensesSection)
+            {
+                actions.MenuItems.Add(CreateMenuItem("Фото чека", new EventHandler(OpenReceiptPhoto)));
+                actions.MenuItems.Add(CreateMenuItem("Удалить фото", new EventHandler(DeleteReceiptPhoto)));
+            }
             actions.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
             if (section == FuelSection)
             {
@@ -594,6 +599,76 @@ namespace CarExpenses
             return recordList != null && displayedRecords != null &&
                 recordList.SelectedIndex >= 0 &&
                 recordList.SelectedIndex < displayedRecords.Count;
+        }
+
+        private void OpenReceiptPhoto(object sender, EventArgs e)
+        {
+            if (!HasSelectedRecord())
+            {
+                MessageBox.Show("Сначала выберите запись.", "Фото чека");
+                return;
+            }
+            string[] row = displayedRecords[recordList.SelectedIndex];
+            string recordId = RecordIds.GetId(row);
+            if (String.IsNullOrEmpty(recordId))
+            {
+                MessageBox.Show("У записи нет стабильного id.", "Фото чека");
+                return;
+            }
+            if (!DataStore.ReceiptExists(recordId))
+            {
+                MessageBox.Show("У выбранной записи нет фото чека.", "Фото чека");
+                return;
+            }
+            try
+            {
+                System.Diagnostics.ProcessStartInfo startInfo =
+                    new System.Diagnostics.ProcessStartInfo();
+                startInfo.FileName = DataStore.ReceiptPathForId(recordId);
+                System.Diagnostics.Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось открыть фото: " + ex.Message, "Фото чека");
+            }
+        }
+
+        private void DeleteReceiptPhoto(object sender, EventArgs e)
+        {
+            if (!HasSelectedRecord())
+            {
+                MessageBox.Show("Сначала выберите запись.", "Фото чека");
+                return;
+            }
+            string[] row = displayedRecords[recordList.SelectedIndex];
+            string recordId = RecordIds.GetId(row);
+            if (String.IsNullOrEmpty(recordId))
+            {
+                MessageBox.Show("У записи нет стабильного id.", "Фото чека");
+                return;
+            }
+            if (!DataStore.ReceiptExists(recordId))
+            {
+                MessageBox.Show("У выбранной записи нет фото чека.", "Фото чека");
+                return;
+            }
+            DialogResult answer = MessageBox.Show(
+                "Удалить фото чека выбранной записи?",
+                "Фото чека",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+            if (answer != DialogResult.Yes)
+                return;
+            try
+            {
+                DataStore.DeleteReceipt(recordId);
+                MessageBox.Show("Фото чека удалено.", "Фото чека");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось удалить фото: " + ex.Message, "Фото чека");
+            }
         }
 
         private void ShowRecordDetails(object sender, EventArgs e)

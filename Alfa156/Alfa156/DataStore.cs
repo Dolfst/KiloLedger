@@ -138,6 +138,28 @@ namespace CarExpenses
         internal const int MaxReceiptSyncFileBytes = 2 * 1024 * 1024;
         internal const int MaxReceiptSyncFiles = 50;
 
+        internal static string ReceiptPathForId(string recordId)
+        {
+            if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
+                throw new ArgumentException("Неверный id записи для фото чека.", "recordId");
+            return Path.Combine(Path.Combine(DataDirectory, ReceiptsFolderName),
+                recordId + ".jpg");
+        }
+
+        internal static bool ReceiptExists(string recordId)
+        {
+            if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
+                return false;
+            return File.Exists(ReceiptPathForId(recordId));
+        }
+
+        internal static void DeleteReceipt(string recordId)
+        {
+            if (!ReceiptExists(recordId))
+                return;
+            File.Delete(ReceiptPathForId(recordId));
+        }
+
         private static void CopyReceiptsFolder(string sourceDataDir, string destDataDir)
         {
             string source = Path.Combine(sourceDataDir, ReceiptsFolderName);
