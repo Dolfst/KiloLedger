@@ -199,7 +199,8 @@ namespace Alfa156.Desktop.Data
             if (!map.TryGetValue(ReminderWarnDaysKey, out raw))
                 return DefaultReminderWarnDays;
             decimal value;
-            if (!AlfaCodec.TryNumber(raw, out value) || value < 0 || value > 3650)
+            if (!AlfaCodec.TryNumber(raw, out value) || value < 0 || value > 3650 ||
+                value != Decimal.Truncate(value))
                 return DefaultReminderWarnDays;
             return (int)value;
         }

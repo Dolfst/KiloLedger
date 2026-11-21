@@ -50,6 +50,8 @@ def main() -> int:
             errors.append(f"{rel}: missing GetReminderWarnDays/SetReminderWarnDays")
         if "DefaultReminderWarnDays = 14" not in text:
             errors.append(f"{rel}: missing DefaultReminderWarnDays = 14")
+        if "Decimal.Truncate(value)" not in text:
+            errors.append(f"{rel}: reminder warning days must be an integer")
 
     for rel in (
         "Alfa156/Alfa156/RecordIds.cs",
