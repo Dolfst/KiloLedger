@@ -223,7 +223,7 @@ namespace CarExpenses
             if (item.Title.Length == 0)
                 throw new InvalidOperationException("Введите название напоминания.");
             if (item.Title.Length > 80)
-                item.Title = item.Title.Substring(0, 80).Trim();
+                throw new InvalidOperationException("Название напоминания: не более 80 символов.");
 
             List<string[]> rows = LoadRows();
             bool found = false;

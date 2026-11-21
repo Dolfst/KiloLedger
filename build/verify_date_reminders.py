@@ -88,6 +88,8 @@ def main() -> int:
             errors.append(f"{rel}: missing cross-platform OSAGO aliases")
         if 'lower == "inspection"' not in text:
             errors.append(f"{rel}: missing English inspection alias")
+        if "не более 80 символов" not in text:
+            errors.append(f"{rel}: reminder titles must not be silently truncated")
 
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
