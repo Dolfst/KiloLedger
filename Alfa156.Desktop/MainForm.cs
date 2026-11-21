@@ -455,8 +455,11 @@ namespace Alfa156.Desktop
         private static FlowLayoutPanel BuildPeriodTextFilterBar(
             TextBox fromBox, TextBox toBox, TextBox textBox,
             EventHandler apply, EventHandler reset,
-            string fromLabel = L10n.Get("label.from"), string toLabel = L10n.Get("label.to"), string textLabel = L10n.Get("title.search"))
+            string fromLabel = null, string toLabel = null, string textLabel = null)
         {
+            if (fromLabel == null) fromLabel = L10n.Get("label.from");
+            if (toLabel == null) toLabel = L10n.Get("label.to");
+            if (textLabel == null) textLabel = L10n.Get("title.search");
             FlowLayoutPanel bar = new FlowLayoutPanel
             {
                 WrapContents = true,

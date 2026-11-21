@@ -68,6 +68,7 @@ SOURCES=(
   "$PROJECT/SyncMerge.cs"
   "$PROJECT/SyncOptionsForm.cs"
   "$PROJECT/Program.cs"
+  "$PROJECT/Localization.cs"
   "$PROJECT/Properties/AssemblyInfo.cs"
   "$PROJECT/Properties/Resources.Designer.cs"
 )
@@ -84,6 +85,11 @@ ARGS=(
   "-resource:$PROJECT/SeedData/Repairs.seed,Alfa156.SeedData.Repairs.seed"
   "-resource:$PROJECT/SeedData/Utilities.seed,Alfa156.SeedData.Utilities.seed"
   "-resource:$PROJECT/SeedData/Vehicles.seed,Alfa156.SeedData.Vehicles.seed"
+  "-resource:$PROJECT/resources/strings.ru.json,strings.ru.json"
+  "-resource:$PROJECT/resources/strings.en.json,strings.en.json"
+  "-resource:$PROJECT/resources/strings.es.json,strings.es.json"
+  "-resource:$PROJECT/resources/strings.fr.json,strings.fr.json"
+  "-resource:$PROJECT/resources/strings.de.json,strings.de.json"
 )
 
 if [[ "$CONFIG" == "Debug" ]]; then
