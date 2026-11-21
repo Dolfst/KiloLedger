@@ -1,3 +1,4 @@
+using Alfa156.Localization;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -133,13 +134,13 @@ namespace Alfa156.Desktop
             pathBox.Width = 420;
             pathBox.ReadOnly = true;
             toolbar.Controls.Add(pathBox);
-            toolbar.Controls.Add(MakeButton("Открыть папку", OpenFolder));
-            toolbar.Controls.Add(MakeButton("Открыть ZIP", OpenZip));
-            toolbar.Controls.Add(MakeButton("Новая папка", CreateFolder));
-            toolbar.Controls.Add(MakeButton("Сохранить .dat", SaveData));
-            toolbar.Controls.Add(MakeButton("Экспорт всего (ZIP)", SaveZip));
-            toolbar.Controls.Add(MakeButton("Фото чека", AttachReceiptPhoto));
-            toolbar.Controls.Add(MakeButton("Удалить фото", DeleteReceiptPhoto));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.open_folder"), OpenFolder));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.open_zip"), OpenZip));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.new_folder"), CreateFolder));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.save_data"), SaveData));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.export_zip"), SaveZip));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.attach_receipt"), AttachReceiptPhoto));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.delete_receipt"), DeleteReceiptPhoto));
             globalSearchBox.Width = 140;
             globalSearchBox.Text = "Поиск…";
             globalSearchBox.ForeColor = Color.Gray;
@@ -153,8 +154,8 @@ namespace Alfa156.Desktop
             };
             globalSearchBox.KeyDown += GlobalSearchKeyDown;
             toolbar.Controls.Add(globalSearchBox);
-            toolbar.Controls.Add(MakeButton("Найти", OpenGlobalSearch));
-            toolbar.Controls.Add(MakeButton("Дубликаты", OpenDuplicates));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.search"), OpenGlobalSearch));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.duplicates"), OpenDuplicates));
             toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
             toolbar.Controls.Add(MakeButton("Быстрая заправка", OpenQuickFuelEntry));
             toolbar.Controls.Add(MakeButton("Поездка", OpenTripEntry));
