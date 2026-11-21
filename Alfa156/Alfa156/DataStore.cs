@@ -141,6 +141,9 @@ namespace CarExpenses
         private static void CopyReceiptsFolder(string sourceDataDir, string destDataDir)
         {
             string source = Path.Combine(sourceDataDir, ReceiptsFolderName);
+            if (!Directory.Exists(source))
+                return;
+
             string dest = Path.Combine(destDataDir, ReceiptsFolderName);
             if (Directory.Exists(dest))
             {
@@ -148,8 +151,6 @@ namespace CarExpenses
                 for (int i = 0; i < oldFiles.Length; i++)
                     File.Delete(oldFiles[i]);
             }
-            if (!Directory.Exists(source))
-                return;
             Directory.CreateDirectory(dest);
             string[] files = Directory.GetFiles(source, "*.jpg");
             for (int i = 0; i < files.Length; i++)
