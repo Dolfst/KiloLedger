@@ -2179,8 +2179,11 @@ namespace CarExpenses
                 string path = Path.Combine(folder, fileName);
                 using (StreamWriter writer = new StreamWriter(path, false))
                     writer.Write(text);
+                string htmlPath = Path.ChangeExtension(path, ".html");
+                using (StreamWriter writer = new StreamWriter(htmlPath, false, Encoding.UTF8))
+                    writer.Write(PeriodReport.FormatHtml(currentCar, from, to, totals, Cur()));
 
-                MessageBox.Show(text + "\r\n\r\nСохранено:\r\n" + path, "Отчёт за период");
+                MessageBox.Show(text + "\r\n\r\nСохранено:\r\n" + path + "\r\n" + htmlPath, "Отчёт за период");
             }
         }
 

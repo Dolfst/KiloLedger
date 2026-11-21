@@ -76,6 +76,48 @@ namespace CarExpenses
             return sb.ToString();
         }
 
+        /// <summary>
+        /// HTML built from <see cref="FormatText"/> so both exports always carry the same data.
+        /// </summary>
+        internal static string FormatHtml(
+            string car,
+            string from,
+            string to,
+            PeriodCompare.Totals totals,
+            string currency)
+        {
+            string[] lines = FormatText(car, from, to, totals, currency)
+                .Replace("\r", "").Split('\n');
+            string title = lines.Length > 0 ? lines[0] : "";
+            StringBuilder h = new StringBuilder();
+            h.Append("<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>");
+            h.Append("<title>").Append(Esc(title)).Append("</title>");
+            h.Append("<style>body{font-family:Arial,sans-serif;margin:16px;color:#233346}");
+            h.Append("h1{font-size:18px}td{padding:4px 16px 4px 0}td.v{text-align:right}");
+            h.Append("</style></head><body><h1>").Append(Esc(title)).Append("</h1><table>");
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (line.Length == 0)
+                    continue;
+                int split = line.IndexOf(": ");
+                if (split < 0)
+                    h.Append("<tr><td colspan=\"2\">").Append(Esc(line)).Append("</td></tr>");
+                else
+                    h.Append("<tr><td>").Append(Esc(line.Substring(0, split)))
+                        .Append("</td><td class=\"v\">").Append(Esc(line.Substring(split + 2)))
+                        .Append("</td></tr>");
+            }
+            h.Append("</table></body></html>");
+            return h.ToString();
+        }
+
+        private static string Esc(string value)
+        {
+            return value.Replace("&", "&amp;").Replace("<", "&lt;")
+                .Replace(">", "&gt;").Replace("\"", "&quot;");
+        }
+
         private static string Money(decimal value)
         {
             return value.ToString("0.##", CultureInfo.InvariantCulture);

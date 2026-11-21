@@ -84,8 +84,8 @@ def main() -> int:
         errors.append("KPK PeriodReport: must use namespace CarExpenses (CF build)")
     if "Decimal.TryParse" in kpk_report:
         errors.append("KPK PeriodReport: Decimal.TryParse is not CF-safe")
-    if "FormatHtml" in kpk_report:
-        errors.append("KPK PeriodReport: HTML export not required under CF 3.5")
+    if "FormatHtml" not in kpk_report:
+        errors.append("KPK PeriodReport: missing FormatHtml")
 
     android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
     for needle in (
