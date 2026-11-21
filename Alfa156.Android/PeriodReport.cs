@@ -74,6 +74,7 @@ internal static class PeriodReport
             sb.Append(nl).Append("Прочие: ").Append(money(totals.Expense)).Append(' ').Append(currency);
             sb.Append(nl).Append("Коммунальные: ").Append(money(totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Всего (без коммун.): ").Append(money(totals.CostBase)).Append(' ').Append(currency);
+            sb.Append(nl).Append("Всего (с коммунальными): ").Append(money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
             sb.Append(nl).Append("Пробег: ").Append(kmRange);
             return sb.ToString();
@@ -95,6 +96,7 @@ internal static class PeriodReport
         AppendRow(h, "Прочие", money(totals.Expense) + " " + currency);
         AppendRow(h, "Коммунальные", money(totals.Utility) + " " + currency);
         AppendRow(h, "Всего (без коммун.)", money(totals.CostBase) + " " + currency);
+        AppendRow(h, "Всего (с коммунальными)", money(totals.CostBase + totals.Utility) + " " + currency);
         AppendRow(h, "Стоимость/км", costKm);
         AppendRow(h, "Пробег", kmRange);
         h.Append("</table></body></html>");

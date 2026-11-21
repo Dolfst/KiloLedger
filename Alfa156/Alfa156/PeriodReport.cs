@@ -43,6 +43,7 @@ namespace CarExpenses
             sb.Append(nl).Append("Прочие: ").Append(Money(totals.Expense)).Append(' ').Append(currency);
             sb.Append(nl).Append("Коммунальные: ").Append(Money(totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Всего (без коммун.): ").Append(Money(totals.CostBase)).Append(' ').Append(currency);
+            sb.Append(nl).Append("Всего (с коммунальными): ").Append(Money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
             sb.Append(nl).Append("Пробег: ").Append(kmRange);
             return sb.ToString();
