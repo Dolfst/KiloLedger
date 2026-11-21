@@ -1,5 +1,48 @@
+# Build output
 /Alfa156.Android/bin/
 /Alfa156.Android/obj/
-/Alfa156.Android/*.SdkResolver.*.proj.Backup.tmp
 /Alfa156.Desktop/bin/
 /Alfa156.Desktop/obj/
+/Alfa156/Alfa156/bin/
+/Alfa156/Alfa156/obj/
+*.SdkResolver.*.proj.Backup.tmp
+
+# User data and local configuration
+My Documents/
+*.dat
+*.bak
+*Settings.json
+
+# IDE and Editor
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+
+# Build artifacts
+*.exe
+*.pdb
+*.dll
+*.apk
+
+# Google Sync and credentials
+*token*
+*key*
+*secret*
+*credential*
+*auth*
+
+# Local development
+local/
+temp/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*~
+*.swp
