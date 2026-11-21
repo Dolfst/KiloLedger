@@ -760,11 +760,13 @@ internal static class ExpenseSyncService
             if (choice == SyncConflictChoice.KeepIncoming)
             {
                 journal.ConflictKeptIncoming++;
+                journal.AddExample(FormatExample("R", title, row));
                 merged.Add(RecordIds.PreferId(row, local));
             }
             else
             {
                 journal.ConflictKeptLocal++;
+                journal.AddExample(FormatExample("L", title, local));
                 merged.Add(RecordIds.PreferId(local, row));
             }
         }

@@ -290,16 +290,19 @@ namespace Alfa156.Desktop.Data
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
                 {
                     journal.ConflictKeptIncoming++;
+                    journal.AddExample(FormatExample("R", title, remoteRow));
                     merged.Add(RecordIds.PreferId((string[])remoteRow.Clone(), localRow));
                 }
                 else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
                 {
                     journal.ConflictKeptLocal++;
+                    journal.AddExample(FormatExample("L", title, localRow));
                     merged.Add(RecordIds.PreferId((string[])localRow.Clone(), remoteRow));
                 }
                 else
                 {
                     journal.ConflictMerged++;
+                    journal.AddExample(FormatExample("M", title, localRow));
                     merged.Add(RecordIds.EnsureId(MergeFields(RecordIds.StripId(localRow),
                         RecordIds.StripId(remoteRow)), RecordIds.PrefixForFile(fileName)));
                 }

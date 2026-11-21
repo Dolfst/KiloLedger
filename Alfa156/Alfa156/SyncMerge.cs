@@ -364,11 +364,13 @@ namespace CarExpenses
                 if (choice == SyncConflictChoice.KeepIncoming)
                 {
                     journal.ConflictKeptIncoming++;
+                    journal.AddExample(FormatExample("R", title, remote));
                     merged.Add(RecordIds.PreferId(remote, local));
                 }
                 else
                 {
                     journal.ConflictKeptLocal++;
+                    journal.AddExample(FormatExample("L", title, local));
                     merged.Add(RecordIds.PreferId(local, remote));
                 }
             }
