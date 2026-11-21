@@ -34,6 +34,7 @@ namespace CarExpenses
         internal const string DefaultCarKey = "default_car";
         internal const string ReminderWarnDaysKey = "reminder_warn_days";
         internal const int DefaultReminderWarnDays = 14;
+        internal const string SnapshotDeviceTokenKey = "snapshot_device_token";
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
         private const string DataDirectory = @"\My Documents\Alfa156";
@@ -460,6 +461,21 @@ namespace CarExpenses
             map[BeltWarnKey] = Format(values.BeltWarn);
             ApplyDefaults(map);
             WriteMap(directory, map);
+        }
+
+        internal static string GetOrCreateSnapshotDeviceToken(string directory)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            string token;
+            if (map.TryGetValue(SnapshotDeviceTokenKey, out token) &&
+                token != null && token.Trim().Length >= 16)
+                return token.Trim();
+            token = Guid.NewGuid().ToString("N");
+            ApplyDefaults(map);
+            map[SnapshotDeviceTokenKey] = token;
+            WriteMap(directory, map);
+            return token;
         }
 
         internal static void EnsureFile()

@@ -85,6 +85,13 @@ namespace Alfa156.Desktop.Exchange
             for (int i = 0; i < archive.Entries.Count; i++)
             {
                 string entryName = archive.Entries[i].FullName;
+                if (String.Equals(entryName, "snapshot.json", StringComparison.OrdinalIgnoreCase) ||
+                    entryName.EndsWith("/snapshot.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (StreamReader reader = new StreamReader(archive.Entries[i].Open(), Encoding.UTF8))
+                        ValidateSnapshotJson(reader.ReadToEnd());
+                    continue;
+                }
                 bool isDirectory = entryName.EndsWith("/", StringComparison.Ordinal);
                 if (isDirectory)
                     entryName = entryName.Substring(0, entryName.Length - 1);
@@ -143,6 +150,21 @@ namespace Alfa156.Desktop.Exchange
                 if (!files.Add(normalizedName))
                     throw new InvalidDataException("Повторяющийся файл в ZIP: " + normalizedName);
             }
+        }
+
+        internal static void ValidateSnapshotJson(string json)
+        {
+            if (String.IsNullOrEmpty(json))
+                throw new InvalidDataException("Пустой snapshot.json.");
+            if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+            if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+            if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
+                json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
         }
 
         private static bool IsDataFile(string name)

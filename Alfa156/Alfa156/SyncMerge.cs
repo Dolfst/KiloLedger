@@ -113,6 +113,11 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "notes.dat"),
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeNote)));
+            diffs.Add(AnalyzeTable("Поездки",
+                DataStore.ReadSyncTable(localDirectory, "trips.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "trips.dat"),
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeTrip)));
             return diffs;
         }
 
@@ -218,6 +223,9 @@ namespace CarExpenses
                 resolveConflict, tombs, journal, writeOutput);
             MergeFile("notes.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
+                resolveConflict, tombs, journal, writeOutput);
+            MergeFile("trips.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false }, plan,
                 resolveConflict, tombs, journal, writeOutput);
             if (writeOutput && destinationDirectory != null)
             {
@@ -343,7 +351,13 @@ namespace CarExpenses
                 journal.AddExample(FormatExample("~", title, local));
 
                 if (!writeOutput)
+                {
+                    if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                        journal.ConflictKeptIncoming++;
+                    else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                        journal.ConflictKeptLocal++;
                     continue;
+                }
 
                 SyncConflictChoice choice;
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
@@ -356,9 +370,17 @@ namespace CarExpenses
                 if (choice == SyncConflictChoice.Cancel)
                     throw new InvalidOperationException("Синхронизация отменена пользователем.");
                 if (choice == SyncConflictChoice.KeepIncoming)
+                {
+                    journal.ConflictKeptIncoming++;
+                    journal.AddExample(FormatExample("R", title, remote));
                     merged.Add(RecordIds.PreferId(remote, local));
+                }
                 else
+                {
+                    journal.ConflictKeptLocal++;
+                    journal.AddExample(FormatExample("L", title, local));
                     merged.Add(RecordIds.PreferId(local, remote));
+                }
             }
 
             for (int i = 0; i < localRows.Count; i++)

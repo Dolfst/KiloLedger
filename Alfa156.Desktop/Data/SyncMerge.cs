@@ -114,6 +114,9 @@ namespace Alfa156.Desktop.Data
             ApplyList(local.ExpenseCategories, remote.ExpenseCategories, new int[] { 0 }, new bool[] { true },
                 plan, RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory),
                 AlfaCodec.ExpenseCategoriesFile, journal, false);
+            ApplyList(local.TripsRows, remote.TripsRows, new int[] { 0, 1, 2, 3 },
+                new bool[] { false, true, false, false }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeTrip), AlfaCodec.TripsFile, journal, false);
             return journal;
         }
 
@@ -145,6 +148,9 @@ namespace Alfa156.Desktop.Data
                 ToSettings.MergeRows(local.Settings, remote.Settings,
                     plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming));
             local.Deleted = tombs;
+            local.TripsRows = ApplyList(local.TripsRows, remote.TripsRows,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false }, plan,
+                RecordIds.IdsForType(tombs, RecordIds.TypeTrip), AlfaCodec.TripsFile, journal, true);
             return journal;
         }
 
@@ -277,15 +283,35 @@ namespace Alfa156.Desktop.Data
                 journal.Conflicts++;
                 journal.AddExample(FormatExample("~", title, localRow));
                 if (!writeOutput)
+                {
+                    if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                        journal.ConflictKeptIncoming++;
+                    else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                        journal.ConflictKeptLocal++;
+                    else
+                        journal.ConflictMerged++;
                     continue;
+                }
 
                 if (plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming)
+                {
+                    journal.ConflictKeptIncoming++;
+                    journal.AddExample(FormatExample("R", title, remoteRow));
                     merged.Add(RecordIds.PreferId((string[])remoteRow.Clone(), localRow));
+                }
                 else if (plan.ConflictPolicy == SyncConflictPolicy.PreferLocal)
+                {
+                    journal.ConflictKeptLocal++;
+                    journal.AddExample(FormatExample("L", title, localRow));
                     merged.Add(RecordIds.PreferId((string[])localRow.Clone(), remoteRow));
+                }
                 else
+                {
+                    journal.ConflictMerged++;
+                    journal.AddExample(FormatExample("M", title, localRow));
                     merged.Add(RecordIds.EnsureId(MergeFields(RecordIds.StripId(localRow),
                         RecordIds.StripId(remoteRow)), RecordIds.PrefixForFile(fileName)));
+                }
             }
 
             for (int i = 0; i < local.Count; i++)

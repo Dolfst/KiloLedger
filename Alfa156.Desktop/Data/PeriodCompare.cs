@@ -18,6 +18,14 @@ namespace Alfa156.Desktop.Data
             public decimal Utility;
             public decimal MinKm = Decimal.MaxValue;
             public decimal MaxKm;
+            public string TopRepairLabel = "";
+            public decimal TopRepairAmount;
+            public string TopExpenseLabel = "";
+            public decimal TopExpenseAmount;
+            public string TopStationLabel = "";
+            public decimal TopStationAmount;
+            public decimal PersonalTripKm;
+            public decimal WorkTripKm;
 
             public decimal CostBase
             {
@@ -59,6 +67,31 @@ namespace Alfa156.Desktop.Data
             return (from ?? "") + "…" + (to ?? "");
         }
 
+        internal static void AddTripKm(Totals totals, string car, List<string[]> trips,
+            string from, string to)
+        {
+            if (totals == null || trips == null)
+                return;
+            for (int i = 0; i < trips.Count; i++)
+            {
+                string[] content = RecordIds.StripId(trips[i]);
+                if (content.Length < 7)
+                    continue;
+                if (!SameCar(content[1], car) || !InDayRange(content[0], from, to))
+                    continue;
+                decimal startKm;
+                decimal endKm;
+                if (!AlfaCodec.TryNumber(content[2], out startKm) ||
+                    !AlfaCodec.TryNumber(content[3], out endKm) || endKm < startKm)
+                    continue;
+                if (String.Equals((content[4] ?? "").Trim(), "Работа",
+                    StringComparison.OrdinalIgnoreCase))
+                    totals.WorkTripKm += endKm - startKm;
+                else
+                    totals.PersonalTripKm += endKm - startKm;
+            }
+        }
+
         internal static Totals Build(
             string car,
             List<string[]> fuels,
@@ -72,6 +105,12 @@ namespace Alfa156.Desktop.Data
             car = (car ?? "").Trim();
             from = NormalizeDay(from);
             to = NormalizeDay(to);
+            Dictionary<string, decimal> repairsByCategory =
+                new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, decimal> expensesByCategory =
+                new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, decimal> stations =
+                new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
             if (fuels != null)
             {
@@ -84,6 +123,9 @@ namespace Alfa156.Desktop.Data
                         continue;
                     t.Fuel += NumberOrZero(content[4]);
                     AddKm(t, content[2]);
+                    string station = content.Length > 9 ? (content[9] ?? "").Trim() : "";
+                    if (station.Length > 0)
+                        AddCategoryAmount(stations, station, NumberOrZero(content[4]));
                 }
             }
 
@@ -98,6 +140,7 @@ namespace Alfa156.Desktop.Data
                         continue;
                     t.Repair += NumberOrZero(content[7]);
                     AddKm(t, content[2]);
+                    AddCategoryAmount(repairsByCategory, content.Length > 3 ? content[3] : "", NumberOrZero(content[7]));
                 }
             }
 
@@ -111,6 +154,7 @@ namespace Alfa156.Desktop.Data
                     if (!SameCar(content[1], car) || !InDayRange(content[0], from, to))
                         continue;
                     t.Expense += NumberOrZero(content[4]);
+                    AddCategoryAmount(expensesByCategory, content.Length > 2 ? content[2] : "", NumberOrZero(content[4]));
                 }
             }
 
@@ -127,7 +171,35 @@ namespace Alfa156.Desktop.Data
                 }
             }
 
+            t.TopRepairLabel = TopCategory(repairsByCategory, out t.TopRepairAmount);
+            t.TopExpenseLabel = TopCategory(expensesByCategory, out t.TopExpenseAmount);
+            t.TopStationLabel = TopCategory(stations, out t.TopStationAmount);
             return t;
+        }
+
+        private static void AddCategoryAmount(Dictionary<string, decimal> totals, string label, decimal amount)
+        {
+            label = (label ?? "").Trim();
+            if (label.Length == 0)
+                label = "Без категории";
+            if (!totals.ContainsKey(label))
+                totals[label] = 0;
+            totals[label] += amount;
+        }
+
+        private static string TopCategory(Dictionary<string, decimal> totals, out decimal amount)
+        {
+            string label = "";
+            amount = 0;
+            foreach (KeyValuePair<string, decimal> item in totals)
+            {
+                if (item.Value > amount)
+                {
+                    label = item.Key;
+                    amount = item.Value;
+                }
+            }
+            return label;
         }
 
         internal static string FormatComparison(

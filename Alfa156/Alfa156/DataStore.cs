@@ -25,6 +25,7 @@ namespace CarExpenses
         private const string TemplatesFile = RecordTemplates.FileName;
         private const string RemindersFile = DateReminders.FileName;
         private const string NotesFile = CarNotes.FileName;
+        private const string TripsFile = "trips.dat";
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
@@ -36,7 +37,7 @@ namespace CarExpenses
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile,
             ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-            RemindersFile, NotesFile, DeletedFile
+            RemindersFile, NotesFile, TripsFile, DeletedFile
         };
 
         private static readonly string[] DefaultRepairCategories = new string[]
@@ -71,6 +72,7 @@ namespace CarExpenses
             RecordTemplates.EnsureFile();
             DateReminders.EnsureFile();
             CarNotes.EnsureFile();
+            EnsureTripsFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
         }
@@ -94,6 +96,7 @@ namespace CarExpenses
             RecordTemplates.EnsureFile();
             DateReminders.EnsureFile();
             CarNotes.EnsureFile();
+            EnsureTripsFile();
             EnsureDeletedFile();
             Directory.CreateDirectory(backupRoot);
 
@@ -110,6 +113,7 @@ namespace CarExpenses
             for (int i = 0; i < DataFiles.Length; i++)
                 File.Copy(GetPath(DataFiles[i]), Path.Combine(backupPath, DataFiles[i]), false);
             CopyReceiptsFolder(DataDirectory, backupPath);
+            WriteSnapshotMetadata(backupPath);
             try { ToSettings.MarkBackupDone(); }
             catch { /* reminder stamp must not fail backup */ }
             return backupPath;
@@ -137,6 +141,28 @@ namespace CarExpenses
         /// <summary>Wi‑Fi receipt limits (1.15+): skip &gt; 2 MB; max 50 files per sync.</summary>
         internal const int MaxReceiptSyncFileBytes = 2 * 1024 * 1024;
         internal const int MaxReceiptSyncFiles = 50;
+
+        internal static string ReceiptPathForId(string recordId)
+        {
+            if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
+                throw new ArgumentException("Неверный id записи для фото чека.", "recordId");
+            return Path.Combine(Path.Combine(DataDirectory, ReceiptsFolderName),
+                recordId + ".jpg");
+        }
+
+        internal static bool ReceiptExists(string recordId)
+        {
+            if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
+                return false;
+            return File.Exists(ReceiptPathForId(recordId));
+        }
+
+        internal static void DeleteReceipt(string recordId)
+        {
+            if (!ReceiptExists(recordId))
+                return;
+            File.Delete(ReceiptPathForId(recordId));
+        }
 
         private static void CopyReceiptsFolder(string sourceDataDir, string destDataDir)
         {
@@ -222,6 +248,7 @@ namespace CarExpenses
             string backupPath = Path.Combine(backupRoot, folderName);
             if (!HasCompleteBackup(backupPath))
                 throw new InvalidDataException("Резервная копия неполная или отсутствует.");
+            ValidateSnapshotJson(backupPath);
 
             string safetyBackup = AllocateSafetyBackupPath(backupRoot);
             Directory.CreateDirectory(safetyBackup);
@@ -262,6 +289,7 @@ namespace CarExpenses
             RecordTemplates.EnsureFile();
             DateReminders.EnsureFile();
             CarNotes.EnsureFile();
+            EnsureTripsFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
             using (SyncCrypto crypto = new SyncCrypto(pairingCode))
@@ -383,6 +411,10 @@ namespace CarExpenses
                     }
                     catch (Exception rollbackError)
                     {
+                        if (SyncMerge.LastJournal != null)
+                            SyncMerge.LastJournal.RollbackReason =
+                                installError.Message + ". Не удалось вернуть прежние данные: " +
+                                rollbackError.Message;
                         throw new IOException("Синхронизация не завершена: " +
                             installError.Message + ". Не удалось вернуть прежние данные: " +
                             rollbackError.Message + ". Копия сохранена в " + safety);
@@ -395,6 +427,39 @@ namespace CarExpenses
                 TryDeleteDirectory(staging);
                 TryDeleteDirectory(merged);
             }
+        }
+
+        private static void WriteSnapshotMetadata(string backupPath)
+        {
+            string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
+            string created = DateTime.UtcNow.ToString(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+            string json = "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":\"1.36.0\"," +
+                "\"createdUtc\":\"" + created + "\",\"deviceToken\":\"" + token + "\"}";
+            using (StreamWriter writer = new StreamWriter(
+                Path.Combine(backupPath, "snapshot.json"), false, Encoding.UTF8))
+                writer.Write(json);
+        }
+
+        private static void ValidateSnapshotJson(string backupPath)
+        {
+            string path = Path.Combine(backupPath, "snapshot.json");
+            if (!File.Exists(path))
+                return;
+            string json;
+            using (StreamReader reader = new StreamReader(path, Encoding.UTF8))
+                json = reader.ReadToEnd();
+            if (json == null || json.Length == 0)
+                throw new InvalidDataException("Пустой snapshot.json.");
+            if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+            if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+            if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
+                json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
         }
 
         private static void TryDeleteDirectory(string path)
@@ -611,7 +676,31 @@ namespace CarExpenses
                 return length == 4 || length == 5;
             if (fileName == NotesFile)
                 return length == 3 || length == 4;
+            if (fileName == TripsFile)
+                return length == 7 || length == 8;
             return false;
+        }
+
+        private static bool IsValidTripRow(string[] row)
+        {
+            if (row == null)
+                return false;
+            string[] content = RecordIds.StripId(row);
+            if (content.Length != 7)
+                return false;
+            if ((content[0] ?? "").Trim().Length != 10 ||
+                (content[1] ?? "").Trim().Length == 0)
+                return false;
+            decimal startKm;
+            decimal endKm;
+            if (!TryNumber(content[2], out startKm) ||
+                !TryNumber(content[3], out endKm))
+                return false;
+            if (startKm < 0 || endKm < startKm)
+                return false;
+            if (RecordIds.HasId(row) && !RecordIds.LooksLikeId(RecordIds.GetId(row)))
+                return false;
+            return true;
         }
 
         private static void ValidateSyncDirectory(string directory)
@@ -702,6 +791,15 @@ namespace CarExpenses
                     if (!CarNotes.IsValidRow(notes[i]))
                         throw new InvalidDataException("Неверный формат notes.dat.");
             }
+
+            string tripsPath = Path.Combine(directory, TripsFile);
+            if (File.Exists(tripsPath))
+            {
+                List<string[]> trips = ReadRowsFromPath(tripsPath);
+                for (int i = 0; i < trips.Count; i++)
+                    if (!IsValidTripRow(trips[i]))
+                        throw new InvalidDataException("Неверный формат trips.dat.");
+            }
         }
 
         private static void EnsureDeletedFile()
@@ -728,6 +826,7 @@ namespace CarExpenses
             EnsureIdsInFile(TemplatesFile);
             EnsureIdsInFile(RemindersFile);
             EnsureIdsInFile(NotesFile);
+            EnsureIdsInFile(TripsFile);
         }
 
         private static void EnsureIdsInFile(string fileName)
@@ -1008,6 +1107,11 @@ namespace CarExpenses
                 File.Copy(notesSource, GetPath(NotesFile), true);
             else
                 CarNotes.EnsureFile();
+            string tripsSource = Path.Combine(backupPath, TripsFile);
+            if (File.Exists(tripsSource))
+                File.Copy(tripsSource, GetPath(TripsFile), true);
+            else
+                SaveRows(TripsFile, new List<string[]>());
             string deletedSource = Path.Combine(backupPath, DeletedFile);
             if (File.Exists(deletedSource))
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
@@ -1254,6 +1358,13 @@ namespace CarExpenses
                 RecordIds.AddTombstone(DataDirectory, RepairCategoriesFile, deletedId);
         }
 
+
+        private static void EnsureTripsFile()
+        {
+            string path = GetPath(TripsFile);
+            if (!File.Exists(path))
+                SaveRows(TripsFile, new List<string[]>());
+        }
 
         private static void EnsureExpenseFile()
         {
@@ -1566,6 +1677,18 @@ namespace CarExpenses
         internal static void AddRepair(string[] values)
         {
             Append(RepairsFile, values);
+        }
+
+        internal static List<string[]> LoadTrips()
+        {
+            EnsureTripsFile();
+            return ReadRows(TripsFile);
+        }
+
+        internal static void AddTrip(string[] values)
+        {
+            EnsureTripsFile();
+            Append(TripsFile, values);
         }
 
         internal static void AddExpense(string[] values)

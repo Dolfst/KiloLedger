@@ -35,16 +35,16 @@ namespace Alfa156.Desktop.Data
             return File.Exists(PathForId(dataDirectory, recordId));
         }
 
-        internal static void EnsureFolder(string dataDirectory)
-        {
-            Directory.CreateDirectory(GetFolder(dataDirectory));
-        }
-
         internal static void Delete(string dataDirectory, string recordId)
         {
             if (!Exists(dataDirectory, recordId))
                 return;
             File.Delete(PathForId(dataDirectory, recordId));
+        }
+
+        internal static void EnsureFolder(string dataDirectory)
+        {
+            Directory.CreateDirectory(GetFolder(dataDirectory));
         }
 
         internal static void SaveFromFile(string dataDirectory, string recordId, string sourcePath)

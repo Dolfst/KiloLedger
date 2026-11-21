@@ -74,7 +74,12 @@ internal static class GoogleSyncService
             string pushJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             if (!response.IsSuccessStatusCode ||
                 pushJson.IndexOf("\"ok\":true", StringComparison.OrdinalIgnoreCase) < 0)
-                throw new InvalidDataException("Запись в Google не удалась: " + ExtractError(pushJson));
+            {
+                string reason = "Запись в Google не удалась: " + ExtractError(pushJson);
+                if (ExpenseSyncService.LastJournal != null)
+                    ExpenseSyncService.LastJournal.RollbackReason = reason;
+                throw new InvalidDataException(reason);
+            }
 
             SyncJournal journal = ExpenseSyncService.LastJournal;
             string message = "Синхронизация с Google завершена.";

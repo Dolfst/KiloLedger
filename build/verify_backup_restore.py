@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+import tempfile
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +22,43 @@ def section(text: str, start: str, end: str, path: str) -> str:
 
 def main() -> int:
     errors = []
+    fixtures = ROOT / "build" / "sample_data"
+
+    with tempfile.TemporaryDirectory(prefix="alfa-restore-fixture-") as tmp:
+        root = Path(tmp)
+        restore = root / "restore"
+        restore.mkdir()
+        current_receipts = restore / "Receipts"
+        current_receipts.mkdir()
+        (current_receipts / "f_old00123.jpg").write_bytes(b"current receipt")
+
+        legacy_zip = root / "legacy.zip"
+        with zipfile.ZipFile(legacy_zip, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in ("cars.dat", "fuel.dat", "repairs.dat", "expenses.dat", "utilities.dat"):
+                archive.write(fixtures / name, arcname=name)
+
+        with zipfile.ZipFile(legacy_zip, "r") as archive:
+            archive.extractall(restore)
+        if not (restore / "fuel.dat").exists():
+            errors.append("fixture restore: legacy ZIP did not extract dat files")
+        # Legacy backups contain no Receipts/: current receipts must be preserved.
+        if not (current_receipts / "f_old00123.jpg").exists():
+            errors.append("fixture restore: legacy restore removed current receipts")
+
+        modern_zip = root / "modern.zip"
+        modern_receipts = root / "Receipts"
+        modern_receipts.mkdir()
+        (modern_receipts / "f_fixture123.jpg").write_bytes(b"fixture receipt")
+        with zipfile.ZipFile(modern_zip, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in ("cars.dat", "fuel.dat", "repairs.dat", "expenses.dat", "utilities.dat"):
+                archive.write(fixtures / name, arcname=name)
+            archive.write(modern_receipts / "f_fixture123.jpg",
+                          arcname="Receipts/f_fixture123.jpg")
+
+        with zipfile.ZipFile(modern_zip, "r") as archive:
+            archive.extractall(restore)
+        if not (restore / "Receipts" / "f_fixture123.jpg").exists():
+            errors.append("fixture restore: modern ZIP receipt was not restored")
 
     kpk_path = "Alfa156/Alfa156/DataStore.cs"
     kpk = (ROOT / kpk_path).read_text(encoding="utf-8-sig")
@@ -77,6 +116,41 @@ def main() -> int:
     for needle in ("CreateSafetyBackup", "CopyData(source, dataDirectory)", "CopyData(safetyPath, dataDirectory)"):
         if needle not in android_restore:
             errors.append(f"Android restore: missing safety/rollback step {needle}")
+
+    integrity_paths = (
+        "Alfa156.Android/DataIntegrity.cs",
+        "Alfa156.Desktop/Data/DataIntegrity.cs",
+        "Alfa156/Alfa156/DataIntegrity.cs",
+    )
+    for rel in integrity_paths:
+        source = (ROOT / rel).read_text(encoding="utf-8-sig")
+        for needle in (
+            "чек с некорректным именем",
+            "файл чека без записи",
+            "пустой файл чека",
+            '"warn"',
+        ):
+            if needle not in source:
+                errors.append(f"{rel}: missing receipt integrity check {needle}")
+
+    desktop_receipts = (ROOT / "Alfa156.Desktop/Data/ReceiptStore.cs").read_text(encoding="utf-8")
+    desktop_main = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text(encoding="utf-8")
+    if "internal static void Delete(string dataDirectory, string recordId)" not in desktop_receipts:
+        errors.append("Desktop: receipt Delete method missing")
+    if "Удалить фото" not in desktop_main or "DeleteReceiptPhoto" not in desktop_main:
+        errors.append("Desktop: receipt delete action missing")
+    android_receipts = (ROOT / "Alfa156.Android/ReceiptStore.cs").read_text(encoding="utf-8")
+    android_main = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
+    if "ReceiptStore.Delete(DataDirectory, editorReceiptId)" not in android_main:
+        errors.append("Android: receipt delete action missing")
+    if "IsSafeReceiptFileName" not in android_receipts:
+        errors.append("Android: safe receipt filename contract missing")
+    kpk_receipts = (ROOT / "Alfa156/Alfa156/DataStore.cs").read_text(encoding="utf-8-sig")
+    kpk_main = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text(encoding="utf-8-sig")
+    if "internal static void DeleteReceipt(string recordId)" not in kpk_receipts:
+        errors.append("KPK: receipt Delete method missing")
+    if "OpenReceiptPhoto" not in kpk_main or "DeleteReceiptPhoto" not in kpk_main:
+        errors.append("KPK: receipt open/delete actions missing")
 
     if errors:
         print("FAIL verify_backup_restore:")

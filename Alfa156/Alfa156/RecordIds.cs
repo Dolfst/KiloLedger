@@ -22,6 +22,7 @@ namespace CarExpenses
         internal const string TypeTemplate = "template";
         internal const string TypeReminder = "reminder";
         internal const string TypeNote = "note";
+        internal const string TypeTrip = "trip";
 
         internal static string PrefixForFile(string fileName)
         {
@@ -36,6 +37,7 @@ namespace CarExpenses
             if (fileName == "templates.dat") return "t_";
             if (fileName == "reminders.dat") return "n_";
             if (fileName == "notes.dat") return "j_";
+            if (fileName == "trips.dat") return "g_";
             return "x_";
         }
 
@@ -52,6 +54,7 @@ namespace CarExpenses
             if (fileName == "templates.dat") return TypeTemplate;
             if (fileName == "reminders.dat") return TypeReminder;
             if (fileName == "notes.dat") return TypeNote;
+            if (fileName == "trips.dat") return TypeTrip;
             return "unknown";
         }
 
@@ -62,7 +65,7 @@ namespace CarExpenses
             char prefix = value[0];
             if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
                  prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
-                 prefix != 'j' && prefix != 'x') ||
+                 prefix != 'j' && prefix != 'g' && prefix != 'x') ||
                 value[1] != '_')
                 return false;
             for (int i = 2; i < value.Length; i++)
@@ -317,9 +320,13 @@ namespace CarExpenses
         public int Added;
         public int Removed;
         public int Conflicts;
+        public int ConflictKeptLocal;
+        public int ConflictKeptIncoming;
+        public int ConflictMerged;
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
         public string SafetyPath;
+        public string RollbackReason;
 
         public void AddExample(string text)
         {
@@ -338,9 +345,20 @@ namespace CarExpenses
             sb.Append(Removed.ToString());
             sb.Append("\r\n  конфликтов: ");
             sb.Append(Conflicts.ToString());
+            sb.Append("\r\n  конфликтов, оставлено локальное: ");
+            sb.Append(ConflictKeptLocal.ToString());
+            sb.Append("\r\n  конфликтов, принято удалённое: ");
+            sb.Append(ConflictKeptIncoming.ToString());
+            sb.Append("\r\n  конфликтов, объединено: ");
+            sb.Append(ConflictMerged.ToString());
             sb.Append("\r\n  только локально: ");
             sb.Append(KeptLocalOnly.ToString());
             AppendExamples(sb, "\r\n");
+            if (RollbackReason != null && RollbackReason.Length > 0)
+            {
+                sb.Append("\r\nПричина отката: ");
+                sb.Append(RollbackReason);
+            }
             return sb.ToString();
         }
 
@@ -354,6 +372,12 @@ namespace CarExpenses
             sb.Append(Added.ToString());
             sb.Append("\r\n  обновления/конфликты: ");
             sb.Append(Conflicts.ToString());
+            sb.Append("\r\n  оставить локальное: ");
+            sb.Append(ConflictKeptLocal.ToString());
+            sb.Append("\r\n  принять удалённое: ");
+            sb.Append(ConflictKeptIncoming.ToString());
+            sb.Append("\r\n  объединить поля: ");
+            sb.Append(ConflictMerged.ToString());
             sb.Append("\r\n  удаления (tombstone): ");
             sb.Append(Removed.ToString());
             AppendExamples(sb, "\r\n");

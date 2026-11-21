@@ -22,6 +22,7 @@ namespace Alfa156.Desktop.Data
         internal const string TypeTemplate = "template";
         internal const string TypeReminder = "reminder";
         internal const string TypeNote = "note";
+        internal const string TypeTrip = "trip";
 
         internal static string PrefixForFile(string fileName)
         {
@@ -36,6 +37,7 @@ namespace Alfa156.Desktop.Data
             if (fileName == AlfaCodec.TemplatesFile) return "t_";
             if (fileName == AlfaCodec.RemindersFile) return "n_";
             if (fileName == AlfaCodec.NotesFile) return "j_";
+            if (fileName == AlfaCodec.TripsFile) return "g_";
             return "x_";
         }
 
@@ -52,6 +54,7 @@ namespace Alfa156.Desktop.Data
             if (fileName == AlfaCodec.TemplatesFile) return TypeTemplate;
             if (fileName == AlfaCodec.RemindersFile) return TypeReminder;
             if (fileName == AlfaCodec.NotesFile) return TypeNote;
+            if (fileName == AlfaCodec.TripsFile) return TypeTrip;
             return "unknown";
         }
 
@@ -62,7 +65,7 @@ namespace Alfa156.Desktop.Data
             char prefix = value[0];
             if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
                  prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
-                 prefix != 'j' && prefix != 'x') ||
+                 prefix != 'j' && prefix != 'g' && prefix != 'x') ||
                 value[1] != '_')
                 return false;
             for (int i = 2; i < value.Length; i++)
@@ -267,9 +270,13 @@ namespace Alfa156.Desktop.Data
         public int Added;
         public int Removed;
         public int Conflicts;
+        public int ConflictKeptLocal;
+        public int ConflictKeptIncoming;
+        public int ConflictMerged;
         public int KeptLocalOnly;
         public readonly List<string> Examples = new List<string>();
         public string SafetyPath;
+        public string RollbackReason;
 
         public void AddExample(string text)
         {
@@ -285,8 +292,16 @@ namespace Alfa156.Desktop.Data
             sb.AppendLine("  добавлено: " + Added);
             sb.AppendLine("  удалено (tombstone): " + Removed);
             sb.AppendLine("  конфликтов: " + Conflicts);
+            sb.AppendLine("  конфликтов, оставлено локальное: " + ConflictKeptLocal);
+            sb.AppendLine("  конфликтов, принято удалённое: " + ConflictKeptIncoming);
+            sb.AppendLine("  конфликтов, объединено: " + ConflictMerged);
             sb.Append("  только локально: " + KeptLocalOnly);
             AppendExamples(sb);
+            if (!String.IsNullOrEmpty(RollbackReason))
+            {
+                sb.AppendLine();
+                sb.Append("Причина отката: ").Append(RollbackReason);
+            }
             return sb.ToString();
         }
 
@@ -297,6 +312,9 @@ namespace Alfa156.Desktop.Data
             sb.AppendLine("  только локально: " + KeptLocalOnly);
             sb.AppendLine("  только удалённо: " + Added);
             sb.AppendLine("  обновления/конфликты: " + Conflicts);
+            sb.AppendLine("  оставить локальное: " + ConflictKeptLocal);
+            sb.AppendLine("  принять удалённое: " + ConflictKeptIncoming);
+            sb.AppendLine("  объединить поля: " + ConflictMerged);
             sb.Append("  удаления (tombstone): " + Removed);
             AppendExamples(sb);
             if (!String.IsNullOrEmpty(SafetyPath))

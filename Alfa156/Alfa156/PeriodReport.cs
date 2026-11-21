@@ -40,11 +40,23 @@ namespace CarExpenses
             sb.Append(nl);
             sb.Append(nl).Append("Топливо: ").Append(Money(totals.Fuel)).Append(' ').Append(currency);
             sb.Append(nl).Append("Ремонт: ").Append(Money(totals.Repair)).Append(' ').Append(currency);
+            if (totals.TopRepairLabel.Length > 0)
+                sb.Append(nl).Append("  Топ ремонта: ").Append(totals.TopRepairLabel).Append(" — ")
+                    .Append(Money(totals.TopRepairAmount)).Append(' ').Append(currency);
             sb.Append(nl).Append("Прочие: ").Append(Money(totals.Expense)).Append(' ').Append(currency);
+            if (totals.TopExpenseLabel.Length > 0)
+                sb.Append(nl).Append("  Топ прочих: ").Append(totals.TopExpenseLabel).Append(" — ")
+                    .Append(Money(totals.TopExpenseAmount)).Append(' ').Append(currency);
             sb.Append(nl).Append("Коммунальные: ").Append(Money(totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Всего (без коммун.): ").Append(Money(totals.CostBase)).Append(' ').Append(currency);
+            sb.Append(nl).Append("Всего (с коммунальными): ").Append(Money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
             sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
             sb.Append(nl).Append("Пробег: ").Append(kmRange);
+            if (totals.TopStationLabel.Length > 0)
+                sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
+                    .Append(Money(totals.TopStationAmount)).Append(' ').Append(currency);
+            sb.Append(nl).Append("Поездки личные: ").Append(Money(totals.PersonalTripKm)).Append(" км");
+            sb.Append(nl).Append("Поездки рабочие: ").Append(Money(totals.WorkTripKm)).Append(" км");
             return sb.ToString();
         }
 

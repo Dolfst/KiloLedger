@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
 
 namespace Alfa156.Desktop.Data
 {
     internal sealed class AlfaRepository
     {
+        private const string AppVersion = "1.36.0";
         public string DirectoryPath { get; private set; }
         public List<string[]> Cars { get; private set; }
         public List<string[]> Fuel { get; private set; }
@@ -21,6 +23,7 @@ namespace Alfa156.Desktop.Data
         public List<string[]> TemplatesRows { get; set; }
         public List<string[]> RemindersRows { get; set; }
         public List<string[]> NotesRows { get; set; }
+        public List<string[]> TripsRows { get; set; }
         public List<Tombstone> Deleted { get; set; }
 
         public AlfaRepository()
@@ -37,6 +40,7 @@ namespace Alfa156.Desktop.Data
             TemplatesRows = new List<string[]>();
             RemindersRows = new List<string[]>();
             NotesRows = new List<string[]>();
+            TripsRows = new List<string[]>();
             Deleted = new List<Tombstone>();
         }
 
@@ -59,6 +63,7 @@ namespace Alfa156.Desktop.Data
             TemplatesRows = new List<string[]>();
             RemindersRows = new List<string[]>();
             NotesRows = new List<string[]>();
+            TripsRows = new List<string[]>();
             Deleted = new List<Tombstone>();
             DirectoryPath = directory;
             Save();
@@ -103,6 +108,10 @@ namespace Alfa156.Desktop.Data
             NotesRows = File.Exists(notesPath)
                 ? AlfaCodec.ReadRows(notesPath)
                 : new List<string[]>();
+            string tripsPath = Path.Combine(directory, AlfaCodec.TripsFile);
+            TripsRows = File.Exists(tripsPath)
+                ? AlfaCodec.ReadRows(tripsPath)
+                : new List<string[]>();
             Deleted = RecordIds.ReadTombstones(directory);
             EnsureCategoriesFromRepairs();
             EnsureExpenseCategoriesFromExpenses();
@@ -140,8 +149,28 @@ namespace Alfa156.Desktop.Data
                 RemindersRows ?? new List<string[]>());
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.NotesFile),
                 NotesRows ?? new List<string[]>());
+            AlfaCodec.SaveRows(Path.Combine(DirectoryPath, AlfaCodec.TripsFile),
+                TripsRows ?? new List<string[]>());
             RecordIds.WriteTombstones(DirectoryPath, Deleted ?? new List<Tombstone>());
             AlfaCodec.ValidateDirectory(DirectoryPath);
+        }
+
+        private string BuildSnapshotJson()
+        {
+            string token = ToSettings.GetOrCreateSnapshotDeviceToken(DirectoryPath);
+            string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
+                CultureInfo.InvariantCulture);
+            return "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
+                QuoteSnapshotJson(AppVersion) + ",\"createdUtc\":" + QuoteSnapshotJson(created) +
+                ",\"deviceToken\":" + QuoteSnapshotJson(token) + "}";
+        }
+
+        private static string QuoteSnapshotJson(string value)
+        {
+            if (value == null)
+                value = "";
+            return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+                .Replace("\r", "\\r").Replace("\n", "\\n") + "\"";
         }
 
         /// <summary>
@@ -216,6 +245,10 @@ namespace Alfa156.Desktop.Data
                         archive.CreateEntryFromFile(path, fileName, CompressionLevel.Optimal);
                 }
                 ReceiptStore.AddFolderToZip(archive, DirectoryPath);
+                string snapshot = BuildSnapshotJson();
+                ZipArchiveEntry entry = archive.CreateEntry("snapshot.json", CompressionLevel.Optimal);
+                using (StreamWriter writer = new StreamWriter(entry.Open(), new UTF8Encoding(false)))
+                    writer.Write(snapshot);
             }
             NoteSuccessfulBackup();
         }
@@ -510,6 +543,10 @@ namespace Alfa156.Desktop.Data
             }
             NotesRows = validNotes;
             RecordIds.EnsureIds(NotesRows, AlfaCodec.NotesFile);
+
+            if (TripsRows == null)
+                TripsRows = new List<string[]>();
+            RecordIds.EnsureIds(TripsRows, AlfaCodec.TripsFile);
 
             if (Deleted == null)
                 Deleted = new List<Tombstone>();

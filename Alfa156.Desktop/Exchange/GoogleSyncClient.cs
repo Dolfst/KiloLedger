@@ -80,7 +80,17 @@ namespace Alfa156.Desktop.Exchange
         {
             SyncJournal journal = SyncMerge.ApplyPlan(local, remote, plan);
             CleanCurrencyInPlace(local);
-            Push(settings, local);
+            try
+            {
+                Push(settings, local);
+            }
+            catch (Exception pushError)
+            {
+                if (SyncMerge.LastJournal != null)
+                    SyncMerge.LastJournal.RollbackReason =
+                        "Запись в Google не удалась: " + pushError.Message;
+                throw;
+            }
             string counts = "Синхронизация с Google: авто=" + local.Cars.Count +
                 ", заправки=" + local.Fuel.Count +
                 ", ремонт=" + local.Repairs.Count +

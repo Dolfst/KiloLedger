@@ -386,6 +386,10 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditDefaultCar(); });
                 labels.Add("Быстрая заправка");
                 actions.Add(delegate { ShowQuickFuelEntry(); });
+                labels.Add("Поездка");
+                actions.Add(delegate { ShowTripEntry(); });
+                labels.Add("Отчёт поездок");
+                actions.Add(delegate { ShowTripReport(); });
                 labels.Add("Напоминание о копии");
                 actions.Add(delegate { EditBackupReminder(); });
                 labels.Add("Напоминания");
@@ -1472,6 +1476,86 @@ public sealed class MainActivity : Activity
             .Show();
     }
 
+    private void ShowTripReport()
+    {
+        List<string[]> trips = ExpenseDataStore.LoadOptional(
+            DataDirectory, ExpenseDataCodec.TripsFile);
+        decimal personal = 0;
+        decimal work = 0;
+        int count = 0;
+        for (int i = 0; i < trips.Count; i++)
+        {
+            string[] content = RecordIds.StripId(trips[i]);
+            if (content.Length < 7 ||
+                !String.Equals(content[1] ?? "", currentCar, StringComparison.OrdinalIgnoreCase))
+                continue;
+            decimal startKm;
+            decimal endKm;
+            if (!TryNumber(content[2], out startKm) || !TryNumber(content[3], out endKm) ||
+                endKm < startKm)
+                continue;
+            decimal distance = endKm - startKm;
+            if (String.Equals((content[4] ?? "").Trim(), "Работа",
+                StringComparison.OrdinalIgnoreCase))
+                work += distance;
+            else
+                personal += distance;
+            count++;
+        }
+        ShowMessage("Отчёт поездок · " + currentCar +
+            "\nКоличество: " + count +
+            "\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+            "\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+            "\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км");
+    }
+
+    private void ShowTripEntry()
+    {
+        if (!IsCompleteData(DataDirectory))
+        {
+            ShowMessage("Сначала импортируйте или создайте данные.");
+            return;
+        }
+        List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
+        if (cars.Count == 0)
+        {
+            ShowMessage("Нет автомобилей.");
+            return;
+        }
+        string car = ToSettings.ResolvePreferredCar(DataDirectory, cars, currentCar);
+        List<EditorField> fields = new List<EditorField>();
+        fields.Add(EditorField.Date("Дата", DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), true));
+        fields.Add(EditorField.Option("Автомобиль", car, cars.ToArray(), true));
+        fields.Add(EditorField.Number("Начало пробега, км", "", true));
+        fields.Add(EditorField.Number("Конец пробега, км", "", true));
+        fields.Add(EditorField.Option("Назначение", "Личный", new string[] { "Личный", "Работа" }, false));
+        fields.Add(EditorField.Text("Водитель", "", false));
+        fields.Add(EditorField.Text("Комментарий", "", false));
+
+        RenderEditor("Новая поездка", fields,
+            delegate(string[] values)
+            {
+                if (values == null || values.Length < 7)
+                    throw new InvalidOperationException("Заполните обязательные поля поездки.");
+                decimal startKm;
+                decimal endKm;
+                if (!TryNumber(values[2], out startKm) || startKm < 0 ||
+                    !TryNumber(values[3], out endKm) || endKm < startKm)
+                    throw new InvalidOperationException(
+                        "Конец пробега должен быть не меньше начала, пробег не меньше 0.");
+                string[] trip = new string[]
+                {
+                    values[0], values[1], values[2], values[3],
+                    values[4], values[5], values[6]
+                };
+                ExpenseDataStore.AddRecord(DataDirectory, ExpenseDataCodec.TripsFile, trip);
+                SetCurrentCar(trip[1]);
+                RefreshRecords();
+                ShowMessage("Поездка сохранена: " + (endKm - startKm).ToString("0.##",
+                    CultureInfo.InvariantCulture) + " км");
+            }, false);
+    }
+
     private void ShowQuickFuelEntry()
     {
         if (!IsCompleteData(DataDirectory))
@@ -1513,6 +1597,19 @@ public sealed class MainActivity : Activity
         RenderEditor("Быстрая заправка", fields,
             delegate(string[] values)
             {
+                if (values == null || values.Length < 6)
+                    throw new InvalidOperationException("Заполните все обязательные поля.");
+                decimal km;
+                decimal liters;
+                decimal cost;
+                decimal price;
+                if (!TryNumber(values[1], out km) || km < 0 ||
+                    !TryNumber(values[2], out liters) || liters <= 0 ||
+                    !TryNumber(values[3], out cost) || cost <= 0 ||
+                    ((!String.IsNullOrEmpty(values[4])) &&
+                        (!TryNumber(values[4], out price) || price <= 0)))
+                    throw new InvalidOperationException(
+                        "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.");
                 string[] fuel = BuildQuickFuelRow(values);
                 fuel = NormalizeFuelValues(fuel);
                 ExpenseDataStore.AddRecord(DataDirectory, "fuel.dat", fuel);
@@ -3378,6 +3475,9 @@ public sealed class MainActivity : Activity
             List<string[]> utilities = ExpenseDataStore.Load(DataDirectory, "utilities.dat");
             PeriodCompare.Totals totals = PeriodCompare.Build(
                 currentCar, fuels, repairs, expenses, utilities, from, to);
+            List<string[]> trips = ExpenseDataStore.LoadOptional(
+                DataDirectory, ExpenseDataCodec.TripsFile);
+            PeriodCompare.AddTripKm(totals, currentCar, trips, from, to);
             string text = PeriodReport.FormatText(
                 currentCar, from, to, totals, Cur(), Money, "\n");
             string html = PeriodReport.FormatHtml(
@@ -3949,6 +4049,16 @@ public sealed class MainActivity : Activity
         {
             for (int i = 0; i < archive.Entries.Count; i++)
             {
+                ZipArchiveEntry snapshotEntry = archive.Entries[i];
+                if (!String.Equals(Path.GetFileName(snapshotEntry.FullName), "snapshot.json",
+                    StringComparison.OrdinalIgnoreCase))
+                    continue;
+                using (Stream snapshotStream = snapshotEntry.Open())
+                using (StreamReader snapshotReader = new StreamReader(snapshotStream, Encoding.UTF8))
+                    ValidateSnapshotJson(snapshotReader.ReadToEnd());
+            }
+            for (int i = 0; i < archive.Entries.Count; i++)
+            {
                 ZipArchiveEntry entry = archive.Entries[i];
                 if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
                     continue;
@@ -3967,6 +4077,21 @@ public sealed class MainActivity : Activity
                 }
             }
         }
+    }
+
+    private static void ValidateSnapshotJson(string json)
+    {
+        if (String.IsNullOrEmpty(json))
+            throw new InvalidDataException("Пустой snapshot.json.");
+        if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
+            json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+            throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+        if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
+            json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
+            throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+        if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
+            json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
+            throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
     }
 
     private void CopyUriToFile(Uri uri, string destination)
@@ -4062,6 +4187,10 @@ public sealed class MainActivity : Activity
                     input.CopyTo(entryStream);
             }
             ReceiptStore.AddFolderToZip(archive, DataDirectory);
+            string snapshot = BuildSnapshotJson();
+            ZipArchiveEntry snapshotEntry = archive.CreateEntry("snapshot.json", CompressionLevel.Optimal);
+            using (StreamWriter writer = new StreamWriter(snapshotEntry.Open(), new UTF8Encoding(false)))
+                writer.Write(snapshot);
         }
         try { ToSettings.MarkBackupDone(DataDirectory); }
         catch { /* reminder stamp must not fail ZIP export */ }
@@ -4477,7 +4606,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.34.1";
+        string version = "1.36.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -4939,6 +5068,31 @@ public sealed class MainActivity : Activity
             else
                 ShowMessage("Напоминание: если копии нет " + ((int)value) + " дн. и дольше.");
         }, false);
+    }
+
+    private string BuildSnapshotJson()
+    {
+        string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
+        string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
+            CultureInfo.InvariantCulture);
+        string version = "1.36.0";
+        try
+        {
+            var info = PackageManager.GetPackageInfo(PackageName, 0);
+            if (info != null && !String.IsNullOrEmpty(info.VersionName))
+                version = info.VersionName;
+        }
+        catch { }
+        return "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
+            QuoteSnapshotJson(version) + ",\"createdUtc\":" + QuoteSnapshotJson(created) +
+            ",\"deviceToken\":" + QuoteSnapshotJson(token) + "}";
+    }
+
+    private static string QuoteSnapshotJson(string value)
+    {
+        if (value == null) value = "";
+        return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+            .Replace("\r", "\\r").Replace("\n", "\\n") + "\"";
     }
 
     private void MaybeShowBackupReminder()

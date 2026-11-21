@@ -141,6 +141,8 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
             actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Новая поездка", new EventHandler(AddTripFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Отчёт поездок", new EventHandler(ShowTripReportFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Заметки", new EventHandler(ManageNotesFromMenu)));
@@ -312,6 +314,11 @@ namespace CarExpenses
             actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
             actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
             actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
+            if (section == FuelSection || section == RepairSection || section == ExpensesSection)
+            {
+                actions.MenuItems.Add(CreateMenuItem("Фото чека", new EventHandler(OpenReceiptPhoto)));
+                actions.MenuItems.Add(CreateMenuItem("Удалить фото", new EventHandler(DeleteReceiptPhoto)));
+            }
             actions.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
             if (section == FuelSection)
             {
@@ -594,6 +601,76 @@ namespace CarExpenses
             return recordList != null && displayedRecords != null &&
                 recordList.SelectedIndex >= 0 &&
                 recordList.SelectedIndex < displayedRecords.Count;
+        }
+
+        private void OpenReceiptPhoto(object sender, EventArgs e)
+        {
+            if (!HasSelectedRecord())
+            {
+                MessageBox.Show("Сначала выберите запись.", "Фото чека");
+                return;
+            }
+            string[] row = displayedRecords[recordList.SelectedIndex];
+            string recordId = RecordIds.GetId(row);
+            if (String.IsNullOrEmpty(recordId))
+            {
+                MessageBox.Show("У записи нет стабильного id.", "Фото чека");
+                return;
+            }
+            if (!DataStore.ReceiptExists(recordId))
+            {
+                MessageBox.Show("У выбранной записи нет фото чека.", "Фото чека");
+                return;
+            }
+            try
+            {
+                System.Diagnostics.ProcessStartInfo startInfo =
+                    new System.Diagnostics.ProcessStartInfo();
+                startInfo.FileName = DataStore.ReceiptPathForId(recordId);
+                System.Diagnostics.Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось открыть фото: " + ex.Message, "Фото чека");
+            }
+        }
+
+        private void DeleteReceiptPhoto(object sender, EventArgs e)
+        {
+            if (!HasSelectedRecord())
+            {
+                MessageBox.Show("Сначала выберите запись.", "Фото чека");
+                return;
+            }
+            string[] row = displayedRecords[recordList.SelectedIndex];
+            string recordId = RecordIds.GetId(row);
+            if (String.IsNullOrEmpty(recordId))
+            {
+                MessageBox.Show("У записи нет стабильного id.", "Фото чека");
+                return;
+            }
+            if (!DataStore.ReceiptExists(recordId))
+            {
+                MessageBox.Show("У выбранной записи нет фото чека.", "Фото чека");
+                return;
+            }
+            DialogResult answer = MessageBox.Show(
+                "Удалить фото чека выбранной записи?",
+                "Фото чека",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+            if (answer != DialogResult.Yes)
+                return;
+            try
+            {
+                DataStore.DeleteReceipt(recordId);
+                MessageBox.Show("Фото чека удалено.", "Фото чека");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось удалить фото: " + ex.Message, "Фото чека");
+            }
         }
 
         private void ShowRecordDetails(object sender, EventArgs e)
@@ -1396,6 +1473,85 @@ namespace CarExpenses
                 AddUtility();
         }
 
+        private void ShowTripReportFromMenu(object sender, EventArgs e)
+        {
+            List<string[]> trips = DataStore.LoadTrips();
+            decimal personal = 0;
+            decimal work = 0;
+            int count = 0;
+            for (int i = 0; i < trips.Count; i++)
+            {
+                string[] content = RecordIds.StripId(trips[i]);
+                if (content.Length < 7 ||
+                    String.Compare(content[1] ?? "", currentCar, true,
+                        CultureInfo.InvariantCulture) != 0)
+                    continue;
+                decimal startKm;
+                decimal endKm;
+                if (!DataStore.TryNumber(content[2], out startKm) ||
+                    !DataStore.TryNumber(content[3], out endKm) || endKm < startKm)
+                    continue;
+                decimal distance = endKm - startKm;
+                if (String.Compare(content[4] ?? "", "Работа", true,
+                    CultureInfo.InvariantCulture) == 0)
+                    work += distance;
+                else
+                    personal += distance;
+                count++;
+            }
+            MessageBox.Show(
+                "Отчёт поездок · " + currentCar +
+                "\r\nКоличество: " + count +
+                "\r\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+                "\r\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
+                "\r\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км",
+                "Поездки");
+        }
+
+        private void AddTripFromMenu(object sender, EventArgs e)
+        {
+            List<string> cars = DataStore.LoadCarNames();
+            if (cars.Count == 0)
+            {
+                MessageBox.Show("Нет автомобилей.", "Поездка");
+                return;
+            }
+            string car = ToSettings.ResolvePreferredCar(cars, currentCar);
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField("Автомобиль", car, cars.ToArray(), true),
+                new EntryField("Начало пробега, км", "", "number", true),
+                new EntryField("Конец пробега, км", "", "number", true),
+                new EntryField("Назначение", "Личный",
+                    new string[] { "Личный", "Работа" }, false),
+                new EntryField("Водитель", "", "text", false),
+                new EntryField("Комментарий", "", "text", false)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm("Новая поездка", fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
+                    return;
+                string[] values = editor.Values;
+                decimal startKm;
+                decimal endKm;
+                if (values == null || values.Length < 7 ||
+                    !DataStore.TryNumber(values[2], out startKm) || startKm < 0 ||
+                    !DataStore.TryNumber(values[3], out endKm) || endKm < startKm)
+                {
+                    MessageBox.Show(
+                        "Конец пробега должен быть не меньше начала, пробег не меньше 0.",
+                        "Поездка");
+                    return;
+                }
+                DataStore.AddTrip(values);
+                currentCar = values[1];
+                MessageBox.Show("Поездка сохранена: " +
+                    (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + " км",
+                    "Поездка");
+            }
+        }
+
         private void QuickFuelFromMenu(object sender, EventArgs e)
         {
             QuickFuel();
@@ -1443,6 +1599,21 @@ namespace CarExpenses
                     q.Length > 5 ? q[5] : "1",
                     ""
                 };
+                decimal km;
+                decimal liters;
+                decimal cost;
+                decimal price;
+                if (!DataStore.TryNumber(values[2], out km) || km < 0 ||
+                    !DataStore.TryNumber(values[3], out liters) || liters <= 0 ||
+                    !DataStore.TryNumber(values[4], out cost) || cost <= 0 ||
+                    (values[5].Length > 0 &&
+                        (!DataStore.TryNumber(values[5], out price) || price <= 0)))
+                {
+                    MessageBox.Show(
+                        "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.",
+                        "Быстрая заправка");
+                    return;
+                }
                 values = NormalizeFuelValues(values);
                 if (!ConfirmMileageIfNeeded(values, "fuel.dat", -1))
                     return;
@@ -1972,6 +2143,7 @@ namespace CarExpenses
                 List<string[]> utilities = DataStore.LoadUtilities();
                 PeriodCompare.Totals totals = PeriodCompare.Build(
                     currentCar, fuels, repairs, expenses, utilities, from, to);
+                PeriodCompare.AddTripKm(totals, currentCar, DataStore.LoadTrips(), from, to);
                 string text = PeriodReport.FormatText(currentCar, from, to, totals, Cur());
 
                 string fileName = "Report_" + from + "_" + to + ".txt";
@@ -2604,7 +2776,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.34.1\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.36.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 "АЗС / бренд у заправок; автодополнение; средняя цена/л в сводке.\r\n" +
                 "Оценка пробега в сводке: средний км/день и срок до ТО масла/ремня.\r\n" +
                 "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +

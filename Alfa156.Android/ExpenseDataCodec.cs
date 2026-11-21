@@ -21,6 +21,7 @@ internal static class ExpenseDataCodec
     internal const string TemplatesFile = RecordTemplates.FileName;
     internal const string RemindersFile = DateReminders.FileName;
     internal const string NotesFile = CarNotes.FileName;
+    internal const string TripsFile = "trips.dat";
 
     internal static readonly string[] DefaultExpenseCategories =
     {
@@ -31,7 +32,7 @@ internal static class ExpenseDataCodec
     {
         "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
         ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-        RemindersFile, NotesFile, RecordIds.DeletedFile
+        RemindersFile, NotesFile, TripsFile, RecordIds.DeletedFile
     };
 
     internal static bool IsDataFile(string name)
@@ -229,6 +230,15 @@ internal static class ExpenseDataCodec
                 if (!CarNotes.IsValidRow(notes[i]))
                     throw new InvalidDataException("Неверный формат записи в " + NotesFile + ".");
         }
+
+        string tripsPath = Path.Combine(directory, TripsFile);
+        if (File.Exists(tripsPath))
+        {
+            List<string[]> trips = ReadRows(tripsPath);
+            for (int i = 0; i < trips.Count; i++)
+                if (!IsValidTripRow(trips[i]))
+                    throw new InvalidDataException("Неверный формат записи в " + TripsFile + ".");
+        }
     }
 
     internal static bool IsValidCategoryRow(string[] row)
@@ -267,7 +277,37 @@ internal static class ExpenseDataCodec
         // notes: date|car|text|[id]
         if (fileName == NotesFile)
             return length == 3 || length == 4;
+        // trips: date|car|startKm|endKm|purpose|driver|comment|[id]
+        if (fileName == TripsFile)
+            return length == 7 || length == 8;
         return false;
+    }
+
+    internal static bool IsValidTripRow(string[] row)
+    {
+        if (row == null)
+            return false;
+        string[] content = RecordIds.StripId(row);
+        if (content.Length != 7)
+            return false;
+        DateTime ignored;
+        if (!DateTime.TryParseExact(content[0], "yyyy-MM-dd", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out ignored))
+            return false;
+        if (String.IsNullOrEmpty((content[1] ?? "").Trim()))
+            return false;
+        decimal startKm;
+        decimal endKm;
+        if (!Decimal.TryParse((content[2] ?? "").Trim(), NumberStyles.Number,
+            CultureInfo.InvariantCulture, out startKm) ||
+            !Decimal.TryParse((content[3] ?? "").Trim(), NumberStyles.Number,
+            CultureInfo.InvariantCulture, out endKm))
+            return false;
+        if (startKm < 0 || endKm < startKm)
+            return false;
+        if (RecordIds.HasId(row) && !RecordIds.LooksLikeId(RecordIds.GetId(row)))
+            return false;
+        return true;
     }
 
     internal static decimal Sum(string[] row, int startIndex)

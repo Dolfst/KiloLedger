@@ -22,6 +22,7 @@ internal static class RecordIds
     internal const string TypeTemplate = "template";
     internal const string TypeReminder = "reminder";
     internal const string TypeNote = "note";
+    internal const string TypeTrip = "trip";
 
     internal static string PrefixForFile(string fileName)
     {
@@ -36,6 +37,7 @@ internal static class RecordIds
         if (fileName == ExpenseDataCodec.TemplatesFile) return "t_";
         if (fileName == ExpenseDataCodec.RemindersFile) return "n_";
         if (fileName == ExpenseDataCodec.NotesFile) return "j_";
+        if (fileName == ExpenseDataCodec.TripsFile) return "g_";
         return "x_";
     }
 
@@ -52,6 +54,7 @@ internal static class RecordIds
         if (fileName == ExpenseDataCodec.TemplatesFile) return TypeTemplate;
         if (fileName == ExpenseDataCodec.RemindersFile) return TypeReminder;
         if (fileName == ExpenseDataCodec.NotesFile) return TypeNote;
+        if (fileName == ExpenseDataCodec.TripsFile) return TypeTrip;
         return "unknown";
     }
 
@@ -62,7 +65,7 @@ internal static class RecordIds
         char prefix = value[0];
         if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
              prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
-             prefix != 'j' && prefix != 'x') ||
+             prefix != 'j' && prefix != 'g' && prefix != 'x') ||
             value[1] != '_')
             return false;
         for (int i = 2; i < value.Length; i++)
@@ -280,9 +283,13 @@ internal sealed class SyncJournal
     public int Added;
     public int Removed;
     public int Conflicts;
+    public int ConflictKeptLocal;
+    public int ConflictKeptIncoming;
+    public int ConflictMerged;
     public int KeptLocalOnly;
     public readonly List<string> Examples = new List<string>();
     public string SafetyPath;
+    public string RollbackReason;
 
     public void AddExample(string text)
     {
@@ -298,8 +305,13 @@ internal sealed class SyncJournal
         sb.Append("  добавлено: ").Append(Added).Append('\n');
         sb.Append("  удалено (tombstone): ").Append(Removed).Append('\n');
         sb.Append("  конфликтов: ").Append(Conflicts).Append('\n');
+        sb.Append("  конфликтов, оставлено локальное: ").Append(ConflictKeptLocal).Append('\n');
+        sb.Append("  конфликтов, принято удалённое: ").Append(ConflictKeptIncoming).Append('\n');
+        sb.Append("  конфликтов, объединено: ").Append(ConflictMerged).Append('\n');
         sb.Append("  только локально: ").Append(KeptLocalOnly);
         AppendExamples(sb);
+        if (!String.IsNullOrEmpty(RollbackReason))
+            sb.Append("\nПричина отката: ").Append(RollbackReason);
         return sb.ToString();
     }
 
@@ -310,6 +322,9 @@ internal sealed class SyncJournal
         sb.Append("  только локально: ").Append(KeptLocalOnly).Append('\n');
         sb.Append("  только удалённо: ").Append(Added).Append('\n');
         sb.Append("  обновления/конфликты: ").Append(Conflicts).Append('\n');
+        sb.Append("  оставить локальное: ").Append(ConflictKeptLocal).Append('\n');
+        sb.Append("  принять удалённое: ").Append(ConflictKeptIncoming).Append('\n');
+        sb.Append("  объединить поля: ").Append(ConflictMerged).Append('\n');
         sb.Append("  удаления (tombstone): ").Append(Removed);
         AppendExamples(sb);
         if (!String.IsNullOrEmpty(SafetyPath))
