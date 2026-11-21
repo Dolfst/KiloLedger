@@ -139,6 +139,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("Сохранить .dat", SaveData));
             toolbar.Controls.Add(MakeButton("Экспорт всего (ZIP)", SaveZip));
             toolbar.Controls.Add(MakeButton("Фото чека", AttachReceiptPhoto));
+            toolbar.Controls.Add(MakeButton("Удалить фото", DeleteReceiptPhoto));
             globalSearchBox.Width = 140;
             globalSearchBox.Text = "Поиск…";
             globalSearchBox.ForeColor = Color.Gray;
@@ -2577,6 +2578,34 @@ namespace Alfa156.Desktop
             SetStatus(chartShowsCostPerKm
                 ? "График: сравнение стоимости/км по автомобилям."
                 : "График: расходы по месяцам.");
+        }
+
+        private void DeleteReceiptPhoto(object sender, EventArgs e)
+        {
+            try
+            {
+                EnsurePath();
+                string id = GetSelectedRecordId();
+                if (!ReceiptStore.Exists(repository.DirectoryPath, id))
+                {
+                    MessageBox.Show(this, "У выбранной записи нет фото чека.",
+                        "Фото чека", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                DialogResult answer = MessageBox.Show(this,
+                    "Удалить фото чека выбранной записи?",
+                    "Фото чека", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (answer == DialogResult.Yes)
+                {
+                    ReceiptStore.Delete(repository.DirectoryPath, id);
+                    SetStatus("Фото чека удалено.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Фото чека",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void AttachReceiptPhoto(object sender, EventArgs e)

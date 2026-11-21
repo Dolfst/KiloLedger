@@ -133,6 +133,19 @@ def main() -> int:
             if needle not in source:
                 errors.append(f"{rel}: missing receipt integrity check {needle}")
 
+    desktop_receipts = (ROOT / "Alfa156.Desktop/Data/ReceiptStore.cs").read_text(encoding="utf-8")
+    desktop_main = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text(encoding="utf-8")
+    if "internal static void Delete(string dataDirectory, string recordId)" not in desktop_receipts:
+        errors.append("Desktop: receipt Delete method missing")
+    if "Удалить фото" not in desktop_main or "DeleteReceiptPhoto" not in desktop_main:
+        errors.append("Desktop: receipt delete action missing")
+    android_receipts = (ROOT / "Alfa156.Android/ReceiptStore.cs").read_text(encoding="utf-8")
+    android_main = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
+    if "ReceiptStore.Delete(DataDirectory, editorReceiptId)" not in android_main:
+        errors.append("Android: receipt delete action missing")
+    if "IsSafeReceiptFileName" not in android_receipts:
+        errors.append("Android: safe receipt filename contract missing")
+
     if errors:
         print("FAIL verify_backup_restore:")
         for error in errors:
