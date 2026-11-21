@@ -8,7 +8,7 @@
 
 ## Возможности
 
-- Папка `.dat` / ZIP Android↔КПК (включая `cars-meta.dat`, `templates.dat`, `reminders.dat`, `notes.dat`, `Receipts/`)
+- Папка `.dat` / ZIP Android↔КПК (включая `cars-meta.dat`, `templates.dat`, `reminders.dat`, `notes.dat`, `Receipts/`); ZIP может содержать эти файлы в корне или в одной общей папке
 - **Мастер «Импорт…»**: ZIP / папка `.dat` / CSV / Excel → предпросмотр счётчиков → `Safety_` и применение
 - Excel `.xlsx` импорт/экспорт (у заправок колонки «Полный_бак», «Цель», «АЗС»)
 - CSV для Google Sheets; **Шаблоны CSV** (пустые заголовки fuel/repairs/expenses)
