@@ -248,6 +248,7 @@ namespace CarExpenses
             string backupPath = Path.Combine(backupRoot, folderName);
             if (!HasCompleteBackup(backupPath))
                 throw new InvalidDataException("Резервная копия неполная или отсутствует.");
+            ValidateSnapshotJson(backupPath);
 
             string safetyBackup = AllocateSafetyBackupPath(backupRoot);
             Directory.CreateDirectory(safetyBackup);
@@ -438,6 +439,27 @@ namespace CarExpenses
             using (StreamWriter writer = new StreamWriter(
                 Path.Combine(backupPath, "snapshot.json"), false, Encoding.UTF8))
                 writer.Write(json);
+        }
+
+        private static void ValidateSnapshotJson(string backupPath)
+        {
+            string path = Path.Combine(backupPath, "snapshot.json");
+            if (!File.Exists(path))
+                return;
+            string json;
+            using (StreamReader reader = new StreamReader(path, Encoding.UTF8))
+                json = reader.ReadToEnd();
+            if (json == null || json.Length == 0)
+                throw new InvalidDataException("Пустой snapshot.json.");
+            if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+            if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+            if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
+                json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
+                throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
         }
 
         private static void TryDeleteDirectory(string path)

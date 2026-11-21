@@ -4046,6 +4046,16 @@ public sealed class MainActivity : Activity
         {
             for (int i = 0; i < archive.Entries.Count; i++)
             {
+                ZipArchiveEntry snapshotEntry = archive.Entries[i];
+                if (!String.Equals(Path.GetFileName(snapshotEntry.FullName), "snapshot.json",
+                    StringComparison.OrdinalIgnoreCase))
+                    continue;
+                using (Stream snapshotStream = snapshotEntry.Open())
+                using (StreamReader snapshotReader = new StreamReader(snapshotStream, Encoding.UTF8))
+                    ValidateSnapshotJson(snapshotReader.ReadToEnd());
+            }
+            for (int i = 0; i < archive.Entries.Count; i++)
+            {
                 ZipArchiveEntry entry = archive.Entries[i];
                 if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
                     continue;
@@ -4064,6 +4074,21 @@ public sealed class MainActivity : Activity
                 }
             }
         }
+    }
+
+    private static void ValidateSnapshotJson(string json)
+    {
+        if (String.IsNullOrEmpty(json))
+            throw new InvalidDataException("Пустой snapshot.json.");
+        if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
+            json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+            throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+        if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
+            json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
+            throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+        if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
+            json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
+            throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
     }
 
     private void CopyUriToFile(Uri uri, string destination)

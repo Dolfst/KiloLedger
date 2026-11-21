@@ -105,6 +105,14 @@ def main() -> int:
         text = (ROOT / rel).read_text()
         if "SnapshotDeviceTokenKey" not in text:
             errors.append(f"{rel}: missing snapshot device token key")
+    for rel in (
+        "Alfa156.Android/MainActivity.cs",
+        "Alfa156.Desktop/Exchange/ImportPreview.cs",
+        "Alfa156/Alfa156/DataStore.cs",
+    ):
+        text = (ROOT / rel).read_text()
+        if "ValidateSnapshotJson" not in text:
+            errors.append(f"{rel}: missing snapshot import validation")
 
     readme = (ROOT / "README.md").read_text()
     if f"## Что нового в {version}" not in readme and "## Что нового в 1.23.0" not in readme:
