@@ -1,3 +1,4 @@
+using Alfa156.Localization;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace CarExpenses
 {
     public partial class Form1 : Form
     {
-        private const string FuelSection = "Заправки";
+        private const string FuelSection = L10n.Get("tab.fuel");
         private const string RepairSection = "Ремонт и ТО";
         private const string ExpensesSection = "Прочие расходы";
         private const string UtilitiesSection = "Коммунальные";
@@ -43,6 +44,7 @@ namespace CarExpenses
         {
             InitializeComponent();
             DataStore.Initialize();
+            InitializeLanguage();
             try
             {
                 DataStore.CreateStartMenuShortcut();
@@ -141,6 +143,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Проверка данных", new EventHandler(ShowDataIntegrityFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Язык", new EventHandler(EditLanguage)));
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
             actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
@@ -491,7 +494,7 @@ namespace CarExpenses
             string[] categories = DataStore.LoadRepairCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для переименования.", "Категории");
+                MessageBox.Show("Нет категорий для переименования.", L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
@@ -520,7 +523,7 @@ namespace CarExpenses
             string[] categories = DataStore.LoadRepairCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для удаления.", "Категории");
+                MessageBox.Show("Нет категорий для удаления.", L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
@@ -1797,7 +1800,7 @@ namespace CarExpenses
             string[] categories = DataStore.LoadRepairCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Сначала добавьте категорию ремонта.", "Категории");
+                MessageBox.Show("Сначала добавьте категорию ремонта.", L10n.Get("tab.categories"));
                 return;
             }
             string lastMileage = LastCarMileage(currentCar);
@@ -1871,7 +1874,7 @@ namespace CarExpenses
             summaryBox = null;
             homeButtons = null;
             Controls.Clear();
-            Text = "Автомобили";
+            Text = L10n.Get("tab.vehicles");
             screenHeading = new Label();
             screenHeading.Text = "Текущий автомобиль: " + currentCar;
             StyleHeading(screenHeading);
@@ -3150,7 +3153,7 @@ namespace CarExpenses
             string[] categories = DataStore.LoadExpenseCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Сначала добавьте категорию прочих расходов.", "Категории");
+                MessageBox.Show("Сначала добавьте категорию прочих расходов.", L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
@@ -3192,7 +3195,7 @@ namespace CarExpenses
             string[] categories = DataStore.LoadExpenseCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для переименования.", "Категории");
+                MessageBox.Show("Нет категорий для переименования.", L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
@@ -3216,7 +3219,7 @@ namespace CarExpenses
             string[] categories = DataStore.LoadExpenseCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для удаления.", "Категории");
+                MessageBox.Show("Нет категорий для удаления.", L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
@@ -3229,7 +3232,7 @@ namespace CarExpenses
                     return;
                 if (MessageBox.Show(
                     "Записи не удаляются. Если категория используется, сначала перенесите записи в другую. Удалить категорию?",
-                    "Категории", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                    L10n.Get("tab.categories"), MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                     return;
                 if (!TrySave(delegate { DataStore.DeleteExpenseCategory(editor.Values[0]); }))
@@ -3297,6 +3300,33 @@ namespace CarExpenses
                     ". Суммы не пересчитываются — меняется только подпись.", "Валюта");
                 if (summaryBox != null)
                     summaryBox.Text = BuildSummary();
+            }
+        }
+
+        private void EditLanguage(object sender, EventArgs e)
+        {
+            string current = ToSettings.GetLanguage();
+            List<string> languages = new List<string>(L10n.GetAvailableLanguages());
+            int currentIndex = languages.IndexOf(current);
+            if (currentIndex < 0) currentIndex = 0;
+
+            using (ChoiceForm choice = new ChoiceForm("Выбор языка", "Язык:", languages))
+            {
+                choice.SelectedIndex = currentIndex;
+                if (choice.ShowDialog() != DialogResult.OK)
+                    return;
+                string selected = languages[choice.SelectedIndex];
+                try
+                {
+                    if (!TrySave(delegate { ToSettings.SetLanguage(selected); }))
+                        return;
+                    LocalizationManager.SetLanguage(selected);
+                    MessageBox.Show("Язык: " + selected + "\nПожалуйста, перезагрузите приложение.", "Язык");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Язык");
+                }
             }
         }
 
@@ -3596,7 +3626,7 @@ namespace CarExpenses
 
         private void ManageTemplatesFromMenu(object sender, EventArgs e)
         {
-            string[] typeOptions = new string[] { "Заправка", "Ремонт", "Прочий расход" };
+            string[] typeOptions = new string[] { "Заправка", L10n.Get("tab.repairs"), "Прочий расход" };
             string[] typeKeys = new string[] {
                 RecordTemplates.TypeFuel, RecordTemplates.TypeRepair, RecordTemplates.TypeExpense
             };
@@ -3912,5 +3942,17 @@ namespace CarExpenses
             }
         }
 
+   
+        private void InitializeLanguage()
+        {
+            try
+            {
+                string language = ToSettings.GetLanguage(DataStore.LoadSettings());
+                LocalizationManager.SetLanguage(language);
+            }
+            catch
+            {
+                LocalizationManager.SetLanguage("ru");
+            }
+        }
     }
-}

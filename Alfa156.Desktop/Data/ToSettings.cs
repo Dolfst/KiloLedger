@@ -33,6 +33,8 @@ namespace Alfa156.Desktop.Data
         internal const string ReminderWarnDaysKey = "reminder_warn_days";
         internal const int DefaultReminderWarnDays = 14;
         internal const string SnapshotDeviceTokenKey = "snapshot_device_token";
+        internal const string LanguageKey = "language";
+        internal const string DefaultLanguage = "ru";
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
 
@@ -130,6 +132,31 @@ namespace Alfa156.Desktop.Data
             ApplyRows(map, existing);
             ApplyDefaults(map);
             map[CurrencyKey] = normalized;
+            return MapToRows(map);
+        }
+
+        internal static string GetLanguage(List<string[]> rows)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string lang;
+            if (map.TryGetValue(LanguageKey, out lang) && lang != null)
+            {
+                string trimmed = lang.Trim().ToLowerInvariant();
+                if (trimmed.Length > 0)
+                    return trimmed;
+            }
+            return DefaultLanguage;
+        }
+
+        internal static List<string[]> SetLanguage(List<string[]> existing, string language)
+        {
+            if (String.IsNullOrEmpty(language))
+                language = DefaultLanguage;
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, existing);
+            ApplyDefaults(map);
+            map[LanguageKey] = language.Trim().ToLowerInvariant();
             return MapToRows(map);
         }
 
