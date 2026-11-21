@@ -10,6 +10,14 @@
 ## Working rules
 
 - Inspect `git status` first. Preserve unrelated user changes and do not rewrite shared history.
+- Optimize for low context and credit usage:
+  - Start by reading only `git status`, the latest commits and the smallest relevant section of `ROADMAP.md` or the implementation.
+  - Do not reread `README.md`, `AGENTS.md`, full diffs or the conversation history unless the task explicitly requires it.
+  - Batch independent searches and file reads; do not repeat the same search or status check after it has already produced a result.
+  - Use subagents only for genuinely independent work that needs separate context. One narrow implementation or review task stays with the main agent.
+  - Run only focused smoke/build checks first; run the full suite only before finalizing or publication.
+  - End with a short handoff: completed work, commit(s), checks and remaining item. Do not repeat long tool output or the prior conversation.
+  - Save only durable decisions in commits or repository instructions; do not create session logs or checkpoints that repeat the whole dialogue.
 - Commit messages must be bilingual: include Russian and English text, for example `Исправить проверку импорта / Fix import validation`.
 - Make small, focused changes. Read and follow existing platform-specific patterns.
 - For behavior or data-format changes, update every affected client and add a focused regression check.

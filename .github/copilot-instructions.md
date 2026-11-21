@@ -6,6 +6,14 @@ Before editing, inspect the worktree and the relevant implementation on every af
 
 Commit messages must be bilingual: include Russian and English text, for example `Исправить проверку импорта / Fix import validation`.
 
+## Context and credit efficiency
+
+- Read only the smallest relevant files and sections. Do not restate or resend the full dialogue, `README.md`, or unrelated history.
+- Batch independent tool calls and avoid repeated searches, status checks and subagent launches.
+- Launch subagents only for independent work that benefits from separate context; use the main agent for narrow implementation and review.
+- Run focused checks during development and the full smoke/build suite only for final validation or release.
+- At handoff, report only completed work, commit(s), verification and the next concrete item.
+
 ## Autonomous improvement and release cycle
 
 For a repository improvement requested by the user, proceed without routine confirmation:
