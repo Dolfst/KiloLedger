@@ -78,21 +78,21 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Alfa156.ico" />
-    <Content Include="resources\strings.ru.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="resources\strings.en.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="resources\strings.es.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="resources\strings.fr.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="resources\strings.de.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="resources\strings.ru.json">
+      <LogicalName>strings.ru.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.en.json">
+      <LogicalName>strings.en.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.es.json">
+      <LogicalName>strings.es.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.fr.json">
+      <LogicalName>strings.fr.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.de.json">
+      <LogicalName>strings.de.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

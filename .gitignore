@@ -46,3 +46,7 @@ Thumbs.db
 *.tmp
 *~
 *.swp
+# Allow CI release binaries in dist/download
+!dist/download/*.apk
+!dist/download/*.exe
+!dist/download/*.zip

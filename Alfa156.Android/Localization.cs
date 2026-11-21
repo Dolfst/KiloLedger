@@ -151,6 +151,7 @@ namespace Alfa156.Localization
         {
             if (string.IsNullOrEmpty(json))
                 return;
+            json = json.TrimStart('\uFEFF');
             int pos = 0;
             while (pos < json.Length)
             {

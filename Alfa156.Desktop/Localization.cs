@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace Alfa156.Localization
@@ -71,17 +72,31 @@ namespace Alfa156.Localization
         public string[] GetAvailableLanguages()
         {
             List<string> languages = new List<string>();
-            if (!Directory.Exists(_resourcePath))
-                return new string[] { "ru", "en", "es", "fr", "de" };
-
             string[] order = new string[] { "ru", "en", "es", "fr", "de" };
             HashSet<string> found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (string file in Directory.GetFiles(_resourcePath, "strings.*.json"))
+
+            if (Directory.Exists(_resourcePath))
             {
-                string filename = Path.GetFileNameWithoutExtension(file);
-                if (filename.Length > 8)
-                    found.Add(filename.Substring(8).ToLowerInvariant());
+                foreach (string file in Directory.GetFiles(_resourcePath, "strings.*.json"))
+                {
+                    string filename = Path.GetFileNameWithoutExtension(file);
+                    if (filename.Length > 8)
+                        found.Add(filename.Substring(8).ToLowerInvariant());
+                }
             }
+
+            string[] embeddedNames = Assembly.GetExecutingAssembly().GetManifestResourceNames();
+            foreach (string resName in embeddedNames)
+            {
+                if (resName.StartsWith("strings.", StringComparison.OrdinalIgnoreCase) &&
+                    resName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
+                    resName.Length > 13)
+                {
+                    string code = resName.Substring(8, resName.Length - 13).ToLowerInvariant();
+                    found.Add(code);
+                }
+            }
+
             foreach (string code in order)
             {
                 if (found.Contains(code))
@@ -98,10 +113,46 @@ namespace Alfa156.Localization
         private void LoadLanguage(string language)
         {
             _strings = new Dictionary<string, string>();
-            LoadFileIntoMap(Path.Combine(_resourcePath, "strings.ru.json"));
+            LoadResource("strings.ru.json");
             if (!string.IsNullOrEmpty(language) && !string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase))
             {
-                LoadFileIntoMap(Path.Combine(_resourcePath, "strings." + language + ".json"));
+                LoadResource("strings." + language + ".json");
+            }
+        }
+
+        private void LoadResource(string fileName)
+        {
+            string diskPath = Path.Combine(_resourcePath, fileName);
+            if (File.Exists(diskPath))
+            {
+                LoadFileIntoMap(diskPath);
+                return;
+            }
+            string embedded = ReadEmbeddedResource(fileName);
+            if (!string.IsNullOrEmpty(embedded))
+            {
+                ParseJsonStrings(embedded);
+            }
+        }
+
+        private static string ReadEmbeddedResource(string resourceName)
+        {
+            try
+            {
+                Assembly asm = Assembly.GetExecutingAssembly();
+                using (Stream stream = asm.GetManifestResourceStream(resourceName))
+                {
+                    if (stream == null) return null;
+                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error loading embedded language resource: " + ex.Message);
+                return null;
             }
         }
 
