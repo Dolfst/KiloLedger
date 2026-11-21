@@ -3,22 +3,30 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 internal static class ExpenseDataStore
 {
     private static readonly string[] DefaultRepairCategories =
     {
-        "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
+        L10n.Get("service.oil_short"), L10n.Get("service.belt_short"), L10n.Get("category.parts"), L10n.Get("category.fluids"), L10n.Get("category.brakes"), L10n.Get("category.body"), L10n.Get("category.consumables")
     };
 
     private static readonly string[] DefaultExpenseCategories = ExpenseDataCodec.DefaultExpenseCategories;
 
     internal static readonly string[] UtilityLabels =
     {
-        "Коммунальные платежи", "Электроэнергия", "Газ", "Стационарный телефон",
-        "Домашний интернет", "Налог на аренду", "Аренда жилья"
+        L10n.Get("utility.label_0"), L10n.Get("utility.label_1"), L10n.Get("utility.label_2"), L10n.Get("utility.label_3"),
+        L10n.Get("utility.label_4"), L10n.Get("utility.label_5"), L10n.Get("utility.label_6")
     };
+        internal static string GetUtilityLabel(int index)
+        {
+            if (index >= 0 && index < UtilityLabels.Length)
+                return Alfa156.Localization.L10n.Get("utility.label_" + index);
+            return "";
+        }
+
 
     internal static List<string> LoadCarNames(string directory)
     {
@@ -29,14 +37,14 @@ internal static class ExpenseDataStore
                 (rows[i].Length == 1 || (rows[i].Length == 2 && RecordIds.LooksLikeId(rows[i][1]))))
                 names.Add(rows[i][0]);
         if (names.Count == 0)
-            throw new InvalidDataException("Список автомобилей пуст. Добавьте автомобиль.");
+            throw new InvalidDataException(L10n.Get("error.car_list_empty_add"));
         return names;
     }
 
     internal static List<string[]> Load(string directory, string fileName)
     {
         if (!ExpenseDataCodec.IsDataFile(fileName) || fileName == "cars.dat")
-            throw new ArgumentException("Неверный файл журнала.", "fileName");
+            throw new ArgumentException(L10n.Get("error.invalid_log_file"), "fileName");
         return ExpenseDataCodec.ReadRows(Path.Combine(directory, fileName));
     }
 
@@ -51,7 +59,7 @@ internal static class ExpenseDataStore
             for (int i = 0; i < rows.Count; i++)
             {
                 if (!ExpenseDataCodec.IsValidCategoryRow(rows[i]))
-                    throw new InvalidDataException("Неверная запись в " +
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_in") + " ") +
                         ExpenseDataCodec.RepairCategoriesFile + ".");
                 if (!RecordIds.HasId(rows[i]))
                     changed = true;
@@ -95,7 +103,7 @@ internal static class ExpenseDataStore
         name = ValidateRepairCategoryName(name);
         List<string> categories = LoadRepairCategories(directory);
         if (ContainsCategory(categories, name))
-            throw new InvalidOperationException("Такая категория уже есть.");
+            throw new InvalidOperationException(L10n.Get("error.category_duplicate"));
         categories.Add(name);
         SaveRepairCategories(directory, categories);
     }
@@ -106,11 +114,11 @@ internal static class ExpenseDataStore
         List<string> categories = LoadRepairCategories(directory);
         int categoryIndex = FindCategory(categories, oldName);
         if (categoryIndex < 0)
-            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
         if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Новое название совпадает с текущим.");
+            throw new InvalidOperationException(L10n.Get("error.same_name"));
         if (ContainsCategory(categories, newName))
-            throw new InvalidOperationException("Категория с таким названием уже есть.");
+            throw new InvalidOperationException(L10n.Get("error.category_exists"));
 
         string previousName = categories[categoryIndex];
         List<string> previousCategories = new List<string>(categories);
@@ -133,8 +141,8 @@ internal static class ExpenseDataStore
             }
             catch (Exception rollbackError)
             {
-                throw new IOException("Не удалось переименовать категорию: " +
-                    renameError.Message + ". Не удалось вернуть список категорий: " +
+                throw new IOException((L10n.Get("error.rename_category_failed") + " ") +
+                    renameError.Message + (L10n.Get("error.rollback_categories_failed") + " ") +
                     rollbackError.Message);
             }
             throw;
@@ -146,12 +154,12 @@ internal static class ExpenseDataStore
         List<string> categories = LoadRepairCategories(directory);
         int categoryIndex = FindCategory(categories, name);
         if (categoryIndex < 0)
-            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
         List<string[]> repairs = Load(directory, "repairs.dat");
         for (int i = 0; i < repairs.Count; i++)
             if (String.Equals(repairs[i][3], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
-                    "Сначала перенесите записи из этой категории в другую.");
+                    L10n.Get("error.move_records_from_category"));
         List<string[]> categoryRows = ExpenseDataCodec.ReadRows(
             Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile));
         string deletedId = null;
@@ -178,7 +186,7 @@ internal static class ExpenseDataStore
             for (int i = 0; i < rows.Count; i++)
             {
                 if (!ExpenseDataCodec.IsValidCategoryRow(rows[i]))
-                    throw new InvalidDataException("Неверная запись в " +
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_in") + " ") +
                         ExpenseDataCodec.ExpenseCategoriesFile + ".");
                 if (!RecordIds.HasId(rows[i]))
                     changed = true;
@@ -223,7 +231,7 @@ internal static class ExpenseDataStore
         name = ValidateRepairCategoryName(name);
         List<string> categories = LoadExpenseCategories(directory);
         if (ContainsCategory(categories, name))
-            throw new InvalidOperationException("Такая категория уже есть.");
+            throw new InvalidOperationException(L10n.Get("error.category_duplicate"));
         categories.Add(name);
         SaveExpenseCategories(directory, categories);
     }
@@ -234,11 +242,11 @@ internal static class ExpenseDataStore
         List<string> categories = LoadExpenseCategories(directory);
         int categoryIndex = FindCategory(categories, oldName);
         if (categoryIndex < 0)
-            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
         if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Новое название совпадает с текущим.");
+            throw new InvalidOperationException(L10n.Get("error.same_name"));
         if (ContainsCategory(categories, newName))
-            throw new InvalidOperationException("Категория с таким названием уже есть.");
+            throw new InvalidOperationException(L10n.Get("error.category_exists"));
 
         string previousName = categories[categoryIndex];
         List<string> previousCategories = new List<string>(categories);
@@ -261,8 +269,8 @@ internal static class ExpenseDataStore
             }
             catch (Exception rollbackError)
             {
-                throw new IOException("Не удалось переименовать категорию: " +
-                    renameError.Message + ". Не удалось вернуть список категорий: " +
+                throw new IOException((L10n.Get("error.rename_category_failed") + " ") +
+                    renameError.Message + (L10n.Get("error.rollback_categories_failed") + " ") +
                     rollbackError.Message);
             }
             throw;
@@ -274,12 +282,12 @@ internal static class ExpenseDataStore
         List<string> categories = LoadExpenseCategories(directory);
         int categoryIndex = FindCategory(categories, name);
         if (categoryIndex < 0)
-            throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
         List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
         for (int i = 0; i < expenses.Count; i++)
             if (String.Equals(expenses[i][2], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
-                    "Сначала перенесите записи из этой категории в другую.");
+                    L10n.Get("error.move_records_from_category"));
         List<string[]> categoryRows = ExpenseDataCodec.ReadRows(
             Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile));
         string deletedId = null;
@@ -324,7 +332,7 @@ internal static class ExpenseDataStore
         name = ValidateCarName(name);
         List<string> existing = LoadCarNames(directory);
         if (FindCar(existing, name) >= 0)
-            throw new InvalidOperationException("Такой автомобиль уже есть.");
+            throw new InvalidOperationException(L10n.Get("error.car_duplicate"));
 
         List<string[]> rows = ExpenseDataCodec.ReadRows(Path.Combine(directory, "cars.dat"));
         rows.Add(RecordIds.EnsureId(new string[] { name }, RecordIds.PrefixForFile("cars.dat")));
@@ -337,11 +345,11 @@ internal static class ExpenseDataStore
         List<string> cars = LoadCarNames(directory);
         int carIndex = FindCar(cars, oldName);
         if (carIndex < 0)
-            throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+            throw new InvalidOperationException(L10n.Get("error.car_missing"));
         if (String.Equals(cars[carIndex], newName, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Новое название совпадает с текущим.");
+            throw new InvalidOperationException(L10n.Get("error.same_name"));
         if (FindCar(cars, newName) >= 0)
-            throw new InvalidOperationException("Автомобиль с таким названием уже есть.");
+            throw new InvalidOperationException(L10n.Get("error.car_exists"));
 
         string previousName = cars[carIndex];
         List<string[]> fuel = Load(directory, "fuel.dat");
@@ -370,9 +378,9 @@ internal static class ExpenseDataStore
         List<string> cars = LoadCarNames(directory);
         int carIndex = FindCar(cars, name);
         if (carIndex < 0)
-            throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+            throw new InvalidOperationException(L10n.Get("error.car_missing"));
         if (cars.Count <= 1)
-            throw new InvalidOperationException("Нельзя удалить единственный автомобиль.");
+            throw new InvalidOperationException(L10n.Get("error.cannot_delete_only_car"));
 
         string carName = cars[carIndex];
         List<string[]> carRows = ExpenseDataCodec.ReadRows(Path.Combine(directory, "cars.dat"));
@@ -439,9 +447,9 @@ internal static class ExpenseDataStore
     {
         name = (name ?? "").Trim();
         if (name.Length == 0)
-            throw new InvalidOperationException("Введите название автомобиля.");
+            throw new InvalidOperationException(L10n.Get("error.enter_car_name"));
         if (name.IndexOf('\n') >= 0 || name.IndexOf('\r') >= 0)
-            throw new InvalidOperationException("Название автомобиля не должно содержать перевод строки.");
+            throw new InvalidOperationException(L10n.Get("error.car_name_newline"));
         return name;
     }
 
@@ -488,13 +496,13 @@ internal static class ExpenseDataStore
     {
         firstCarName = (firstCarName ?? "").Trim();
         if (firstCarName.Length == 0)
-            throw new InvalidOperationException("Введите название автомобиля.");
+            throw new InvalidOperationException(L10n.Get("error.enter_car_name"));
         if (firstCarName.IndexOf('\n') >= 0 || firstCarName.IndexOf('\r') >= 0)
-            throw new InvalidOperationException("Название автомобиля не должно содержать перевод строки.");
+            throw new InvalidOperationException(L10n.Get("error.car_name_newline"));
 
         if (HasCompleteCoreFiles(directory))
             throw new InvalidOperationException(
-                "На телефоне уже есть данные. Сначала экспортируйте копию или удалите приложение.");
+                L10n.Get("error.phone_already_has_data"));
 
         Directory.CreateDirectory(directory);
         ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"),
@@ -678,11 +686,11 @@ internal static class ExpenseDataStore
     internal static void RestoreBackup(string dataDirectory, string backupName)
     {
         if (String.IsNullOrEmpty(backupName) || Path.GetFileName(backupName) != backupName)
-            throw new InvalidDataException("Выбрана неверная резервная копия.");
+            throw new InvalidDataException(L10n.Get("error.invalid_backup_selected"));
 
         List<string> availableBackups = ListBackupNames(dataDirectory);
         if (!availableBackups.Contains(backupName))
-            throw new InvalidDataException("Выбрана неверная или неполная резервная копия.");
+            throw new InvalidDataException(L10n.Get("error.invalid_incomplete_backup"));
 
         string backupRoot = GetBackupRoot(dataDirectory);
         string source = Path.Combine(backupRoot, backupName);
@@ -701,9 +709,9 @@ internal static class ExpenseDataStore
             }
             catch (Exception rollbackError)
             {
-                throw new IOException("Не удалось восстановить копию: " + restoreError.Message +
-                    ". Возврат прежних данных не удался: " + rollbackError.Message +
-                    ". Исходная копия сохранена в " + safetyPath);
+                throw new IOException((L10n.Get("error.restore_backup_failed") + " ") + restoreError.Message +
+                    (L10n.Get("error.rollback_prev_data_failed") + " ") + rollbackError.Message +
+                    (L10n.Get("msg.original_backup_saved_in") + " ") + safetyPath);
             }
             throw;
         }
@@ -785,7 +793,7 @@ internal static class ExpenseDataStore
     {
         string parent = Path.GetDirectoryName(dataDirectory);
         if (String.IsNullOrEmpty(parent))
-            throw new ArgumentException("Неверная папка данных.", "dataDirectory");
+            throw new ArgumentException(L10n.Get("error.invalid_data_folder"), "dataDirectory");
         return Path.Combine(parent, "Backups");
     }
 
@@ -793,31 +801,31 @@ internal static class ExpenseDataStore
     {
         for (int i = 0; i < rows.Count; i++)
             if (i != ignoredIndex && rows[i][0] == month)
-                throw new InvalidOperationException("Запись за этот месяц уже существует.");
+                throw new InvalidOperationException(L10n.Get("error.utility_month_exists"));
     }
 
     private static void ValidateRecord(string fileName, string[] row)
     {
         if (ExpenseDataCodec.IsValidColumnCount(fileName, row.Length))
             return;
-        throw new InvalidDataException("Неверное количество полей в записи.");
+        throw new InvalidDataException(L10n.Get("error.invalid_field_count"));
     }
 
     private static void ValidateIndex(List<string[]> rows, int index)
     {
         if (index < 0 || index >= rows.Count)
-            throw new ArgumentOutOfRangeException("index", "Выбранная запись уже отсутствует.");
+            throw new ArgumentOutOfRangeException("index", L10n.Get("error.record_missing"));
     }
 
     private static string ValidateRepairCategoryName(string name)
     {
         name = (name ?? "").Trim();
         if (name.Length == 0)
-            throw new InvalidOperationException("Введите название категории.");
+            throw new InvalidOperationException(L10n.Get("error.enter_category_name"));
         if (String.Equals(name, "Все категории", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Это название зарезервировано для фильтра.");
+            throw new InvalidOperationException(L10n.Get("error.reserved_for_filter"));
         if (name.IndexOf('\r') >= 0 || name.IndexOf('\n') >= 0)
-            throw new InvalidOperationException("Название категории не должно содержать перевод строки.");
+            throw new InvalidOperationException(L10n.Get("error.category_name_newline"));
         return name;
     }
 

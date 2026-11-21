@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Android.Content;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 internal static class GoogleSyncService
@@ -38,7 +39,7 @@ internal static class GoogleSyncService
         string token;
         LoadSettings(context, out scriptUrl, out token);
         if (String.IsNullOrWhiteSpace(scriptUrl) || String.IsNullOrWhiteSpace(token))
-            throw new InvalidOperationException("Сначала укажите URL Apps Script и SYNC_TOKEN.");
+            throw new InvalidOperationException(L10n.Get("error.specify_url_and_token_first"));
 
         using HttpClient client = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
         string pullUrl = AppendQuery(scriptUrl.Trim(), "action=pull&token=" + Uri.EscapeDataString(token));
@@ -62,7 +63,7 @@ internal static class GoogleSyncService
             SyncPlan plan = resolvePlan(ExpenseSyncService.BuildPreviewText(
                 dataDirectory, incoming, "Android", "Google", preview));
             if (plan == null || plan.Cancelled)
-                throw new System.OperationCanceledException("Синхронизация отменена.");
+                throw new System.OperationCanceledException(L10n.Get("sync.cancelled"));
 
             ExpenseSyncService.MergeFromIncoming(dataDirectory, incoming, staging, plan,
                 resolveConflict, safetyPath);
@@ -75,17 +76,17 @@ internal static class GoogleSyncService
             if (!response.IsSuccessStatusCode ||
                 pushJson.IndexOf("\"ok\":true", StringComparison.OrdinalIgnoreCase) < 0)
             {
-                string reason = "Запись в Google не удалась: " + ExtractError(pushJson);
+                string reason = (L10n.Get("error.google_write_failed") + " ") + ExtractError(pushJson);
                 if (ExpenseSyncService.LastJournal != null)
                     ExpenseSyncService.LastJournal.RollbackReason = reason;
                 throw new InvalidDataException(reason);
             }
 
             SyncJournal journal = ExpenseSyncService.LastJournal;
-            string message = "Синхронизация с Google завершена.";
+            string message = L10n.Get("msg.google_sync_complete");
             if (journal != null)
                 message += "\n\n" + journal.FormatSummary();
-            message += "\n\nGoogle Sheets: сопоставление по естественным ключам; id остаются в локальных .dat.";
+            message += ("\n\n" + L10n.Get("google.natural_keys_note"));
             return message;
         }
         finally

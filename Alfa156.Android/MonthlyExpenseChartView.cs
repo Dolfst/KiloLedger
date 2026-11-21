@@ -7,6 +7,7 @@ using Android.Util;
 using Android.Views;
 using AndroidColor = global::Android.Graphics.Color;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 /// <summary>
@@ -33,7 +34,7 @@ internal sealed class MonthlyExpenseChartView : View
 
     private static readonly string[] CategoryNames =
     {
-        "Топливо", "Ремонт", "Прочие", "Коммун."
+        L10n.Get("label.fuel"), L10n.Get("tab.repairs"), L10n.Get("tab.expenses"), L10n.Get("chart.utilities_short")
     };
 
     public MonthlyExpenseChartView(Context context) : base(context)
@@ -112,7 +113,7 @@ internal sealed class MonthlyExpenseChartView : View
         if (series.Count == 0)
         {
             labelPaint.TextAlign = Paint.Align.Center;
-            canvas.DrawText("Нет данных за 12 месяцев", w / 2f, (chartTop + chartBottom) / 2f, labelPaint);
+            canvas.DrawText(L10n.Get("chart.no_data_12m"), w / 2f, (chartTop + chartBottom) / 2f, labelPaint);
             return;
         }
 

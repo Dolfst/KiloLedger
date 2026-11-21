@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -126,7 +127,7 @@ namespace CarExpenses
                 throw new ArgumentNullException("meta");
             meta.CarName = (meta.CarName ?? "").Trim();
             if (meta.CarName.Length == 0)
-                throw new InvalidOperationException("Введите название автомобиля.");
+                throw new InvalidOperationException(L10n.Get("error.enter_car_name"));
 
             List<string[]> rows = LoadRows();
             bool found = false;
@@ -209,8 +210,8 @@ namespace CarExpenses
             decimal delta = liters > tank ? liters - tank : tank - liters;
             if (delta > tank * 0.05m && delta > 1m)
                 return null;
-            return "Литры близки к объёму бака (" +
-                tank.ToString("0.##", CultureInfo.InvariantCulture) + " л).";
+            return L10n.Get("warn.liters_near_tank_open") +
+                tank.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.liters_close_dot"));
         }
 
         private static string Field(string[] content, int index)
@@ -257,8 +258,8 @@ namespace CarExpenses
                 TimelineEntry entry = new TimelineEntry();
                 entry.Date = content[0] ?? "";
                 entry.TypeKey = "fuel";
-                entry.TypeLabel = "Топл.";
-                entry.Text = (content[3] ?? "") + " л" +
+                entry.TypeLabel = L10n.Get("chart.fuel_short");
+                entry.Text = (content[3] ?? "") + (" " + L10n.Get("unit.liters_short")) +
                     (content.Length > 6 && (content[6] ?? "").Trim().Length > 0
                         ? " · " + content[6].Trim() : "");
                 entry.Sum = NumberOrZero(content[4]);
@@ -277,7 +278,7 @@ namespace CarExpenses
                 TimelineEntry entry = new TimelineEntry();
                 entry.Date = content[0] ?? "";
                 entry.TypeKey = "repair";
-                entry.TypeLabel = "Ремонт";
+                entry.TypeLabel = L10n.Get("tab.repairs");
                 string product = content.Length > 4 ? (content[4] ?? "").Trim() : "";
                 string category = content.Length > 3 ? (content[3] ?? "").Trim() : "";
                 entry.Text = product.Length > 0 ? product : category;
@@ -297,7 +298,7 @@ namespace CarExpenses
                 TimelineEntry entry = new TimelineEntry();
                 entry.Date = content[0] ?? "";
                 entry.TypeKey = "expense";
-                entry.TypeLabel = "Прочее";
+                entry.TypeLabel = L10n.Get("label.other");
                 string name = content.Length > 3 ? (content[3] ?? "").Trim() : "";
                 string category = content.Length > 2 ? (content[2] ?? "").Trim() : "";
                 entry.Text = name.Length > 0 ? name : category;
@@ -312,7 +313,7 @@ namespace CarExpenses
                 TimelineEntry entry = new TimelineEntry();
                 entry.Date = notes[i].Date ?? "";
                 entry.TypeKey = "note";
-                entry.TypeLabel = "Заметка";
+                entry.TypeLabel = L10n.Get("label.note");
                 entry.Text = CarNotes.Truncate(notes[i].Text, 80);
                 entry.Sum = 0;
                 entry.SortKey = entry.Date + "|3|" + i.ToString("0000", CultureInfo.InvariantCulture);
@@ -340,9 +341,9 @@ namespace CarExpenses
         {
             List<TimelineEntry> list = Build(carName);
             if (list.Count == 0)
-                return "Нет записей топлива, ремонта, прочих расходов и заметок для «" + carName + "».";
+                return L10n.Get("timeline.empty_open") + carName + "».";
             StringBuilder sb = new StringBuilder();
-            sb.Append("Лента · ").Append(carName).Append(CarsMeta.HeaderSuffix(carName));
+            sb.Append((L10n.Get("title.timeline_dot") + " ")).Append(carName).Append(CarsMeta.HeaderSuffix(carName));
             sb.Append("\r\n\r\n");
             for (int i = 0; i < list.Count; i++)
             {

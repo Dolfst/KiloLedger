@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -23,15 +24,15 @@ namespace CarExpenses
         internal static List<Group> FindAll()
         {
             List<Group> result = new List<Group>();
-            Collect(result, "fuel.dat", "Заправки",
+            Collect(result, "fuel.dat", L10n.Get("tab.fuel"),
                 DataStore.LoadFuel(), new int[] { 0, 1, 2 }, new bool[] { false, true, false });
-            Collect(result, "repairs.dat", "Ремонт",
+            Collect(result, "repairs.dat", L10n.Get("tab.repairs"),
                 DataStore.LoadRepairs(), new int[] { 0, 1, 2, 3, 4 },
                 new bool[] { false, true, false, true, false });
-            Collect(result, "expenses.dat", "Прочие",
+            Collect(result, "expenses.dat", L10n.Get("tab.expenses"),
                 DataStore.LoadExpenses(), new int[] { 0, 1, 2, 3 },
                 new bool[] { false, true, true, false });
-            Collect(result, "utilities.dat", "Коммуналка",
+            Collect(result, "utilities.dat", L10n.Get("tab.utilities"),
                 DataStore.LoadUtilities(), new int[] { 0 }, new bool[] { false });
             return result;
         }
@@ -63,7 +64,7 @@ namespace CarExpenses
                 list.Add(i);
             }
             foreach (KeyValuePair<string, List<int>> pair in byKey)
-                MaybeAdd(result, fileName, title, "одинаковый ключ", rows, pair.Value);
+                MaybeAdd(result, fileName, title, L10n.Get("dup.same_key"), rows, pair.Value);
 
             Dictionary<string, List<int>> byContent = new Dictionary<string, List<int>>();
             for (int i = 0; i < rows.Count; i++)
@@ -78,7 +79,7 @@ namespace CarExpenses
                 list.Add(i);
             }
             foreach (KeyValuePair<string, List<int>> pair in byContent)
-                MaybeAdd(result, fileName, title, "одинаковое содержание", rows, pair.Value);
+                MaybeAdd(result, fileName, title, L10n.Get("dup.same_content"), rows, pair.Value);
         }
 
         private static void MaybeAdd(

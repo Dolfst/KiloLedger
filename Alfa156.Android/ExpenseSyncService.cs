@@ -6,6 +6,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 internal enum SyncConflictChoice
@@ -124,8 +125,8 @@ internal static class ExpenseSyncService
                 }
                 if (!String.Equals(handshake, ProtocolHeader + pairingCode, StringComparison.Ordinal))
                 {
-                    WriteResponse(stream, 1, "Неверный код подключения.");
-                    return "Неверный код подключения.";
+                    WriteResponse(stream, 1, L10n.Get("error.invalid_pairing_code"));
+                    return L10n.Get("error.invalid_pairing_code");
                 }
 
                 using (SyncCrypto crypto = new SyncCrypto(pairingCode))
@@ -141,11 +142,11 @@ internal static class ExpenseSyncService
                     string safetyPath = ExpenseDataStore.AllocateSafetyBackupPath(dataDirectory);
                     preview.SafetyPath = safetyPath;
                     SyncPlan plan = resolvePlan(BuildPreviewText(
-                        dataDirectory, incomingDirectory, "Android", "КПК", preview));
+                        dataDirectory, incomingDirectory, "Android", L10n.Get("platform.pda"), preview));
                     if (plan == null || plan.Cancelled)
                     {
-                        WriteResponse(stream, 1, "Синхронизация отменена на Android.");
-                        return "Синхронизация отменена.";
+                        WriteResponse(stream, 1, L10n.Get("msg.sync_cancelled_android"));
+                        return L10n.Get("sync.cancelled");
                     }
 
                     MergeAndInstall(dataDirectory, incomingDirectory, mergedDirectory, plan,
@@ -169,8 +170,8 @@ internal static class ExpenseSyncService
                 catch (Exception responseError)
                 {
                     throw new IOException(
-                        "Синхронизация не завершена: " + ex.Message +
-                        ". Не удалось передать сообщение об ошибке: " + responseError.Message);
+                        (L10n.Get("error.sync_incomplete") + " ") + ex.Message +
+                        (L10n.Get("error.send_error_failed") + " ") + responseError.Message);
                 }
                 return ex.Message;
             }
@@ -243,12 +244,12 @@ internal static class ExpenseSyncService
              ip.StartsWith("192.168.165.") || ip.StartsWith("192.168.75.") ||
              ip.StartsWith("192.168.182.") || ip.StartsWith("192.168.150."));
         if (hotspotName || hotspotIp)
-            return "точка доступа ← вводите этот IP на КПК";
+            return L10n.Get("sync.hotspot_arrow_hint");
         if (nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
             name.IndexOf("wlan") >= 0 || name.IndexOf("wifi") >= 0)
             return "Wi-Fi";
         if (nic.Name == null || nic.Name.Length == 0)
-            return "сеть";
+            return L10n.Get("sync.network_tag");
         return nic.Name;
     }
 
@@ -359,69 +360,69 @@ internal static class ExpenseSyncService
             RecordIds.ReadTombstones(remoteDirectory));
 
         List<SyncTableDiff> diffs = new List<SyncTableDiff>();
-        diffs.Add(AnalyzeTable("Автомобили",
+        diffs.Add(AnalyzeTable(L10n.Get("tab.vehicles"),
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "cars.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "cars.dat")),
             new int[] { 0 }, new bool[] { true },
             RecordIds.IdsForType(tombs, RecordIds.TypeCar)));
-        diffs.Add(AnalyzeTable("Заправки",
+        diffs.Add(AnalyzeTable(L10n.Get("tab.fuel"),
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "fuel.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "fuel.dat")),
             new int[] { 0, 1, 2 }, new bool[] { false, true, false },
             RecordIds.IdsForType(tombs, RecordIds.TypeFuel)));
-        diffs.Add(AnalyzeTable("Ремонт",
+        diffs.Add(AnalyzeTable(L10n.Get("tab.repairs"),
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "repairs.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "repairs.dat")),
             new int[] { 0, 1, 2, 3, 4 }, new bool[] { false, true, false, true, false },
             RecordIds.IdsForType(tombs, RecordIds.TypeRepair)));
-        diffs.Add(AnalyzeTable("Коммуналка",
+        diffs.Add(AnalyzeTable(L10n.Get("tab.utilities"),
             ExpenseDataCodec.ReadRows(Path.Combine(localDirectory, "utilities.dat")),
             ExpenseDataCodec.ReadRows(Path.Combine(remoteDirectory, "utilities.dat")),
             new int[] { 0 }, new bool[] { false },
             RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
         string localCat = Path.Combine(localDirectory, ExpenseDataCodec.RepairCategoriesFile);
         string remoteCat = Path.Combine(remoteDirectory, ExpenseDataCodec.RepairCategoriesFile);
-        diffs.Add(AnalyzeTable("Категории",
+        diffs.Add(AnalyzeTable(L10n.Get("tab.categories"),
             File.Exists(localCat) ? ExpenseDataCodec.ReadRows(localCat) : new List<string[]>(),
             File.Exists(remoteCat) ? ExpenseDataCodec.ReadRows(remoteCat) : new List<string[]>(),
             new int[] { 0 }, new bool[] { true },
             RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
-        diffs.Add(AnalyzeTable("Прочие расходы",
+        diffs.Add(AnalyzeTable(L10n.Get("label.other_expenses"),
             ExpenseDataStore.LoadOptional(localDirectory, ExpenseDataCodec.ExpensesFile),
             ExpenseDataStore.LoadOptional(remoteDirectory, ExpenseDataCodec.ExpensesFile),
             new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false },
             RecordIds.IdsForType(tombs, RecordIds.TypeExpense)));
         string localExpCat = Path.Combine(localDirectory, ExpenseDataCodec.ExpenseCategoriesFile);
         string remoteExpCat = Path.Combine(remoteDirectory, ExpenseDataCodec.ExpenseCategoriesFile);
-        diffs.Add(AnalyzeTable("Кат. прочих",
+        diffs.Add(AnalyzeTable(L10n.Get("tab.expense_categories"),
             File.Exists(localExpCat) ? ExpenseDataCodec.ReadRows(localExpCat) : new List<string[]>(),
             File.Exists(remoteExpCat) ? ExpenseDataCodec.ReadRows(remoteExpCat) : new List<string[]>(),
             new int[] { 0 }, new bool[] { true },
             RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
         string localTpl = Path.Combine(localDirectory, ExpenseDataCodec.TemplatesFile);
         string remoteTpl = Path.Combine(remoteDirectory, ExpenseDataCodec.TemplatesFile);
-        diffs.Add(AnalyzeTable("Шаблоны",
+        diffs.Add(AnalyzeTable(L10n.Get("label.templates"),
             File.Exists(localTpl) ? ExpenseDataCodec.ReadRows(localTpl) : new List<string[]>(),
             File.Exists(remoteTpl) ? ExpenseDataCodec.ReadRows(remoteTpl) : new List<string[]>(),
             new int[] { 0, 1 }, new bool[] { true, true },
             RecordIds.IdsForType(tombs, RecordIds.TypeTemplate)));
         string localRem = Path.Combine(localDirectory, ExpenseDataCodec.RemindersFile);
         string remoteRem = Path.Combine(remoteDirectory, ExpenseDataCodec.RemindersFile);
-        diffs.Add(AnalyzeTable("Напоминания",
+        diffs.Add(AnalyzeTable(L10n.Get("label.reminders"),
             File.Exists(localRem) ? ExpenseDataCodec.ReadRows(localRem) : new List<string[]>(),
             File.Exists(remoteRem) ? ExpenseDataCodec.ReadRows(remoteRem) : new List<string[]>(),
             new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true },
             RecordIds.IdsForType(tombs, RecordIds.TypeReminder)));
         string localNotes = Path.Combine(localDirectory, ExpenseDataCodec.NotesFile);
         string remoteNotes = Path.Combine(remoteDirectory, ExpenseDataCodec.NotesFile);
-        diffs.Add(AnalyzeTable("Заметки",
+        diffs.Add(AnalyzeTable(L10n.Get("label.notes"),
             File.Exists(localNotes) ? ExpenseDataCodec.ReadRows(localNotes) : new List<string[]>(),
             File.Exists(remoteNotes) ? ExpenseDataCodec.ReadRows(remoteNotes) : new List<string[]>(),
             new int[] { 0, 1, 2 }, new bool[] { false, true, false },
             RecordIds.IdsForType(tombs, RecordIds.TypeNote)));
         string localTrips = Path.Combine(localDirectory, ExpenseDataCodec.TripsFile);
         string remoteTrips = Path.Combine(remoteDirectory, ExpenseDataCodec.TripsFile);
-        diffs.Add(AnalyzeTable("Поездки",
+        diffs.Add(AnalyzeTable(L10n.Get("label.trips"),
             File.Exists(localTrips) ? ExpenseDataCodec.ReadRows(localTrips) : new List<string[]>(),
             File.Exists(remoteTrips) ? ExpenseDataCodec.ReadRows(remoteTrips) : new List<string[]>(),
             new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false },
@@ -432,18 +433,18 @@ internal static class ExpenseSyncService
     internal static string FormatSummary(List<SyncTableDiff> diffs, string localName, string remoteName)
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append("Сравнение: ").Append(localName).Append(" ↔ ").Append(remoteName).Append('\n');
+        sb.Append((L10n.Get("compare.colon") + " ")).Append(localName).Append(" ↔ ").Append(remoteName).Append('\n');
         for (int i = 0; i < diffs.Count; i++)
         {
             SyncTableDiff d = diffs[i];
             sb.Append('\n').Append(d.Title)
                 .Append(": ").Append(localName).Append(' ').Append(d.LocalCount)
                 .Append(", ").Append(remoteName).Append(' ').Append(d.RemoteCount)
-                .Append("\n  только ").Append(localName).Append(": ").Append(d.OnlyLocal)
-                .Append(", только ").Append(remoteName).Append(": ").Append(d.OnlyRemote)
-                .Append(", отличаются: ").Append(d.Conflicts);
+                .Append(("\n  " + L10n.Get("sync.only_word") + " ")).Append(localName).Append(": ").Append(d.OnlyLocal)
+                .Append((L10n.Get("sync.comma_only") + " ")).Append(remoteName).Append(": ").Append(d.OnlyRemote)
+                .Append((L10n.Get("sync.comma_differ_colon") + " ")).Append(d.Conflicts);
             if (d.TombstoneHits > 0)
-                sb.Append(", удалений: ").Append(d.TombstoneHits);
+                sb.Append((L10n.Get("sync.comma_deletions_colon") + " ")).Append(d.TombstoneHits);
         }
         return sb.ToString();
     }
@@ -503,7 +504,7 @@ internal static class ExpenseSyncService
         bool hasLocalData = HasAnyDataFile(dataDirectory);
         bool hasCompleteLocalData = HasCompleteData(dataDirectory);
         if (hasLocalData && !hasCompleteLocalData)
-            throw new InvalidDataException("На телефоне неполный набор данных. Сначала восстановите копию.");
+            throw new InvalidDataException(L10n.Get("error.phone_incomplete_data"));
 
         Directory.CreateDirectory(mergedDirectory);
         SyncJournal journal = new SyncJournal();
@@ -593,10 +594,10 @@ internal static class ExpenseSyncService
                 }
                 catch (Exception rollbackError)
                 {
-                    journal.RollbackReason = installError.Message + ". Не удалось вернуть прежние данные: " +
+                    journal.RollbackReason = installError.Message + (L10n.Get("error.rollback_data_failed") + " ") +
                         rollbackError.Message;
-                    throw new IOException("Синхронизация не завершена: " + installError.Message +
-                        ". Не удалось очистить неполный набор данных: " + rollbackError.Message);
+                    throw new IOException((L10n.Get("error.sync_incomplete") + " ") + installError.Message +
+                        (L10n.Get("error.cleanup_incomplete_failed") + " ") + rollbackError.Message);
                 }
                 throw;
             }
@@ -607,9 +608,9 @@ internal static class ExpenseSyncService
             }
             catch (Exception rollbackError)
             {
-                throw new IOException("Синхронизация не завершена: " + installError.Message +
-                    ". Не удалось вернуть прежние данные: " + rollbackError.Message +
-                    ". Копия сохранена в " + safetyBackup);
+                throw new IOException((L10n.Get("error.sync_incomplete") + " ") + installError.Message +
+                    (L10n.Get("error.rollback_data_failed") + " ") + rollbackError.Message +
+                    (L10n.Get("msg.backup_saved_in") + " ") + safetyBackup);
             }
             throw;
         }
@@ -652,7 +653,7 @@ internal static class ExpenseSyncService
             if (id != null && deleted.Contains(id))
             {
                 journal.Removed++;
-                journal.AddExample("удалено " + entityType + " " + id);
+                journal.AddExample((L10n.Get("sync.deleted_word") + " ") + entityType + " " + id);
                 continue;
             }
             kept.Add(RecordIds.EnsureId(rows[i], RecordIds.PrefixForFile(fileName)));
@@ -775,7 +776,7 @@ internal static class ExpenseSyncService
                 choice = resolveConflict(title, FormatRow(local), FormatRow(row));
 
             if (choice == SyncConflictChoice.Cancel)
-                throw new System.OperationCanceledException("Синхронизация отменена пользователем.");
+                throw new System.OperationCanceledException(L10n.Get("sync.cancelled_by_user"));
             if (choice == SyncConflictChoice.KeepIncoming)
             {
                 journal.ConflictKeptIncoming++;
@@ -884,26 +885,26 @@ internal static class ExpenseSyncService
     private static string ConflictTitle(string fileName)
     {
         if (fileName == "cars.dat")
-            return "Автомобиль";
+            return L10n.Get("label.vehicle");
         if (fileName == ExpenseDataCodec.RepairCategoriesFile)
-            return "Категория ремонта";
+            return L10n.Get("label.repair_category");
         if (fileName == "fuel.dat")
-            return "Заправка";
+            return L10n.Get("label.fuel_entry");
         if (fileName == "repairs.dat")
-            return "Ремонт";
+            return L10n.Get("tab.repairs");
         if (fileName == ExpenseDataCodec.ExpensesFile)
-            return "Прочий расход";
+            return L10n.Get("label.expense_entry");
         if (fileName == ExpenseDataCodec.ExpenseCategoriesFile)
-            return "Категория прочих";
+            return L10n.Get("label.expense_category");
         if (fileName == ExpenseDataCodec.CarsMetaFile)
-            return "Паспорт авто";
+            return L10n.Get("title.car_passport");
         if (fileName == ExpenseDataCodec.TemplatesFile)
-            return "Шаблон";
+            return L10n.Get("label.template");
         if (fileName == ExpenseDataCodec.RemindersFile)
-            return "Напоминание";
+            return L10n.Get("label.reminder");
         if (fileName == ExpenseDataCodec.NotesFile)
-            return "Заметка";
-        return "Коммунальные";
+            return L10n.Get("label.note");
+        return L10n.Get("label.utilities_full");
     }
 
     private static string FormatRow(string[] row)
@@ -948,7 +949,7 @@ internal static class ExpenseSyncService
         {
             int length = ReadInt32(stream);
             if (length < 0 || length > MaximumFileSize)
-                throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
+                throw new InvalidDataException(L10n.Get("error.sync_file_too_large"));
             string path = Path.Combine(directory, ExpenseDataCodec.DataFiles[i]);
             byte[] content = new byte[length];
             if (length > 0)
@@ -982,21 +983,21 @@ internal static class ExpenseSyncService
     {
         int count = ReadInt32(stream);
         if (count < 0 || count > ReceiptStore.MaxSyncFiles)
-            throw new InvalidDataException("Неверное число фото чеков в синхронизации.");
+            throw new InvalidDataException(L10n.Get("error.invalid_receipt_sync_count"));
         ReceiptStore.EnsureFolder(directory);
         for (int i = 0; i < count; i++)
         {
             int nameLength = ReadInt32(stream);
             if (nameLength <= 0 || nameLength > 128)
-                throw new InvalidDataException("Неверное имя файла чека.");
+                throw new InvalidDataException(L10n.Get("error.invalid_receipt_filename"));
             byte[] nameBytes = new byte[nameLength];
             ReadExactly(stream, nameBytes, 0, nameLength);
             string name = Encoding.UTF8.GetString(nameBytes);
             if (!ReceiptStore.IsSafeReceiptFileName(name))
-                throw new InvalidDataException("Недопустимое имя файла чека: " + name);
+                throw new InvalidDataException((L10n.Get("error.invalid_receipt_name_colon") + " ") + name);
             int length = ReadInt32(stream);
             if (length < 0 || length > ReceiptStore.MaxSyncFileBytes)
-                throw new InvalidDataException("Файл чека превышает лимит 2 МБ.");
+                throw new InvalidDataException(L10n.Get("error.receipt_over_2mb"));
             byte[] content = new byte[length];
             if (length > 0)
             {
@@ -1048,12 +1049,12 @@ internal static class ExpenseSyncService
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.RemindersFile ||
                     ExpenseDataCodec.DataFiles[i] == ExpenseDataCodec.NotesFile)
                     continue;
-                throw new InvalidDataException("Нет файла " + ExpenseDataCodec.DataFiles[i]);
+                throw new InvalidDataException((L10n.Get("error.no_file") + " ") + ExpenseDataCodec.DataFiles[i]);
             }
             long length = new FileInfo(path).Length;
             if (length > MaximumFileSize)
-                throw new InvalidDataException("Файл " + ExpenseDataCodec.DataFiles[i] +
-                    " превышает допустимый размер синхронизации.");
+                throw new InvalidDataException((L10n.Get("menu.file") + " ") + ExpenseDataCodec.DataFiles[i] +
+                    (" " + L10n.Get("error.exceeds_sync_size")));
         }
     }
 
@@ -1064,12 +1065,12 @@ internal static class ExpenseSyncService
         {
             int value = stream.ReadByte();
             if (value < 0)
-                throw new EndOfStreamException("Соединение прервано до проверки кода.");
+                throw new EndOfStreamException(L10n.Get("error.connection_closed_before_code"));
             if (value == '\n')
                 return line.ToString().TrimEnd('\r');
             line.Append((char)value);
         }
-        throw new InvalidDataException("Неверный запрос синхронизации.");
+        throw new InvalidDataException(L10n.Get("error.invalid_sync_request"));
     }
 
     private static void WriteResponse(NetworkStream stream, int status, string message)
@@ -1091,7 +1092,7 @@ internal static class ExpenseSyncService
         {
             int count = input.Read(buffer, 0, Math.Min(buffer.Length, remaining));
             if (count == 0)
-                throw new EndOfStreamException("Передача файла синхронизации оборвалась.");
+                throw new EndOfStreamException(L10n.Get("error.sync_transfer_aborted"));
             output.Write(buffer, 0, count);
             remaining -= count;
         }
@@ -1120,7 +1121,7 @@ internal static class ExpenseSyncService
         {
             int read = stream.Read(buffer, offset, count);
             if (read == 0)
-                throw new EndOfStreamException("Соединение синхронизации прервано.");
+                throw new EndOfStreamException(L10n.Get("error.sync_connection_interrupted"));
             offset += read;
             count -= read;
         }

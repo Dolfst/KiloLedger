@@ -15,10 +15,20 @@ namespace CarExpenses
 {
     public partial class Form1 : Form
     {
-        private const string FuelSection = L10n.Get("tab.fuel");
+        private const string FuelSection = "Заправки";
         private const string RepairSection = "Ремонт и ТО";
         private const string ExpensesSection = "Прочие расходы";
         private const string UtilitiesSection = "Коммунальные";
+
+        private static string SectionDisplayName(string section)
+        {
+            if (section == FuelSection) return L10n.Get("tab.fuel");
+            if (section == RepairSection) return L10n.Get("tab.repairs");
+            if (section == ExpensesSection) return L10n.Get("tab.expenses");
+            if (section == UtilitiesSection) return L10n.Get("tab.utilities");
+            if (section == "Сводка и ТО") return L10n.Get("button.summary_and_to");
+            return section;
+        }
 
         private string currentSection;
         private string currentCar;
@@ -51,7 +61,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось создать ярлык в меню «Пуск»: " + ex.Message, "Предупреждение");
+                MessageBox.Show((L10n.Get("error.create_shortcut_failed") + " ") + ex.Message, L10n.Get("title.warning"));
             }
             List<string> startCars = DataStore.LoadCarNames();
             currentCar = ToSettings.ResolvePreferredCar(startCars, startCars[0]);
@@ -77,10 +87,10 @@ namespace CarExpenses
                 if (!empty)
                     return;
                 MessageBox.Show(
-                    "Кратко:\r\n" +
-                    "• Wi‑Fi sync — обмен с телефоном\r\n" +
-                    "• Копии на SD / в памяти (settings + cars-meta + expenses)\r\n" +
-                    "• Сводка и ТО — итоги и напоминания",
+                    (L10n.Get("label.brief_colon") + "\r\n") +
+                    (L10n.Get("about.bullet_wifi_phone") + "\r\n") +
+                    (L10n.Get("about.bullet_sd_memory_backups") + "\r\n") +
+                    L10n.Get("about.bullet_summary_reminders"),
                     "Alfa 156");
             }
             catch
@@ -96,12 +106,12 @@ namespace CarExpenses
                     return;
                 ToSettings.MarkBackupNagShown();
                 int days = ToSettings.DaysSinceLastBackup();
-                string age = days < 0 ? "копии ещё не было" : ("прошло " + days + " дн.");
+                string age = days < 0 ? L10n.Get("summary.no_backup_yet") : ((L10n.Get("forecast.elapsed") + " ") + days + (" " + L10n.Get("unit.days_short")));
                 MessageBox.Show(
-                    "Давно не было резервной копии (" + age + ").\r\n" +
-                    "Рекомендуем «Данные → Создать копию на SD» " +
-                    "(все .dat, settings, cars-meta, expenses и Receipts).",
-                    "Резервная копия");
+                    L10n.Get("reminder.backup_overdue_open") + age + ").\r\n" +
+                    (L10n.Get("hint.recommend_sd_backup") + " ") +
+                    L10n.Get("backup.all_dat_desc"),
+                    L10n.Get("title.backup"));
             }
             catch
             {
@@ -119,45 +129,45 @@ namespace CarExpenses
             summaryBox = null;
             recordList = null;
             homeButtons = new List<Button>();
-            Text = "Учет расходов";
+            Text = L10n.Get("app.subtitle");
             MainMenu menu = new MainMenu();
-            MenuItem cars = CreateMenuItem("Авто");
-            cars.MenuItems.Add(CreateMenuItem("Выбрать / добавить", new EventHandler(ShowCars)));
-            cars.MenuItems.Add(CreateMenuItem("Свойства", new EventHandler(EditCarPassport)));
-            cars.MenuItems.Add(CreateMenuItem("Избранный", new EventHandler(SetFavoriteCarFromMenu)));
+            MenuItem cars = CreateMenuItem(L10n.Get("label.car_short"));
+            cars.MenuItems.Add(CreateMenuItem(L10n.Get("button.select_or_add"), new EventHandler(ShowCars)));
+            cars.MenuItems.Add(CreateMenuItem(L10n.Get("title.properties"), new EventHandler(EditCarPassport)));
+            cars.MenuItems.Add(CreateMenuItem(L10n.Get("label.favorite"), new EventHandler(SetFavoriteCarFromMenu)));
             menu.MenuItems.Add(cars);
-            MenuItem data = CreateMenuItem("Данные");
-            data.MenuItems.Add(CreateMenuItem("Создать копию в памяти КПК", new EventHandler(CreateLocalBackupFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Восстановить копию из памяти КПК", new EventHandler(RestoreLocalBackupFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Создать копию на SD", new EventHandler(CreateBackupFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Восстановить копию", new EventHandler(RestoreBackupFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Синхронизация по Wi-Fi", new EventHandler(SyncWithAndroidFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Экспорт сводки", new EventHandler(ExportSummaryFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("Отчёт за год", new EventHandler(ExportYearReportFromMenu)));
-            data.MenuItems.Add(CreateMenuItem("О программе", new EventHandler(ShowAbout)));
+            MenuItem data = CreateMenuItem(L10n.Get("menu.data"));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("backup.create_in_pda_memory"), new EventHandler(CreateLocalBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("backup.restore_from_pda_memory"), new EventHandler(RestoreLocalBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("backup.create_on_sd"), new EventHandler(CreateBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("title.restore_backup"), new EventHandler(RestoreBackupFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("sync.wifi_title"), new EventHandler(SyncWithAndroidFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("title.export_summary"), new EventHandler(ExportSummaryFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("title.period_report"), new EventHandler(ExportPeriodReportFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("button.year_report"), new EventHandler(ExportYearReportFromMenu)));
+            data.MenuItems.Add(CreateMenuItem(L10n.Get("title.about"), new EventHandler(ShowAbout)));
             menu.MenuItems.Add(data);
-            MenuItem actionsHome = CreateMenuItem("Действия");
-            actionsHome.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Дубликаты", new EventHandler(ShowDuplicatesFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Проверка данных", new EventHandler(ShowDataIntegrityFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Язык", new EventHandler(EditLanguage)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Новая поездка", new EventHandler(AddTripFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Отчёт поездок", new EventHandler(ShowTripReportFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Напоминания", new EventHandler(ManageRemindersFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Заметки", new EventHandler(ManageNotesFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Напоминание о копии", new EventHandler(EditBackupReminder)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Лента авто", new EventHandler(ShowCarTimeline)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
-            actionsHome.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
+            MenuItem actionsHome = CreateMenuItem(L10n.Get("menu.actions"));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("title.search"), new EventHandler(ShowGlobalSearch)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("button.duplicates"), new EventHandler(ShowDuplicatesFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("button.data_integrity"), new EventHandler(ShowDataIntegrityFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.service_intervals"), new EventHandler(EditToIntervals)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.currency"), new EventHandler(EditCurrency)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.language"), new EventHandler(EditLanguage)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.monthly_budget"), new EventHandler(EditBudget)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.default_car_full"), new EventHandler(EditDefaultCar)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("button.quick_fuel"), new EventHandler(QuickFuelFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("title.new_trip"), new EventHandler(AddTripFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("button.trip_report"), new EventHandler(ShowTripReportFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.templates"), new EventHandler(ManageTemplatesFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.reminders"), new EventHandler(ManageRemindersFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("label.notes"), new EventHandler(ManageNotesFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("title.backup_reminder"), new EventHandler(EditBackupReminder)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("button.timeline"), new EventHandler(ShowCarTimeline)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("button.compare_periods"), new EventHandler(ShowPeriodCompareFromMenu)));
+            actionsHome.MenuItems.Add(CreateMenuItem(L10n.Get("title.period_report"), new EventHandler(ExportPeriodReportFromMenu)));
             menu.MenuItems.Add(actionsHome);
-            menu.MenuItems.Add(CreateMenuItem("Выход", new EventHandler(ExitApplication)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.exit"), new EventHandler(ExitApplication)));
             Menu = menu;
 
             homeLogoPanel = new Panel();
@@ -166,7 +176,7 @@ namespace CarExpenses
             Controls.Add(homeLogoPanel);
 
             homeCarLabel = new Label();
-            homeCarLabel.Text = "Автомобиль: " + currentCar + CarsMeta.HeaderSuffix(currentCar);
+            homeCarLabel.Text = (L10n.Get("label.vehicle_colon") + " ") + currentCar + CarsMeta.HeaderSuffix(currentCar);
             homeCarLabel.BackColor = Color.FromArgb(232, 238, 244);
             homeCarLabel.ForeColor = Color.FromArgb(35, 51, 70);
             homeCarLabel.Font = new Font("Arial", 10, FontStyle.Bold);
@@ -181,14 +191,14 @@ namespace CarExpenses
             AddHomeButton(RepairSection);
             AddHomeButton(ExpensesSection);
             AddHomeButton(UtilitiesSection);
-            AddHomeButton("Сводка и ТО");
+            AddHomeButton(L10n.Get("button.summary_and_to"));
             LayoutScreen();
         }
 
         private void AddHomeButton(string section)
         {
             Button button = new Button();
-            button.Text = "  " + section;
+            button.Text = "  " + SectionDisplayName(section);
             button.Tag = section;
             if (section == FuelSection)
                 button.BackColor = Color.FromArgb(23, 122, 86);
@@ -254,7 +264,7 @@ namespace CarExpenses
                     (filterCategory != "Все категории" || filterDateFrom != "" ||
                      filterDateTo != "" || filterText != ""));
             if (filterOn)
-                heading += " [фильтр]";
+                heading += (" " + L10n.Get("label.filter_bracket"));
             screenHeading.Text = heading;
             StyleHeading(screenHeading);
             Controls.Add(screenHeading);
@@ -280,7 +290,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось прочитать записи: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.read_records_failed") + " ") + ex.Message, L10n.Get("title.error"));
                 ShowHome();
                 return;
             }
@@ -316,46 +326,46 @@ namespace CarExpenses
                         (filterCategory != "Все категории" || filterDateFrom != "" ||
                          filterDateTo != "" || filterText != ""));
                 recordList.Items.Add(hasFilter
-                    ? "Нет записей по фильтру"
-                    : "Нет записей. Меню Действия - Добавить");
+                    ? L10n.Get("msg.no_records_for_filter")
+                    : L10n.Get("msg.no_records_actions_add"));
             }
 
             MainMenu menu = new MainMenu();
-            MenuItem actions = CreateMenuItem("Действия");
-            actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCurrentRecord)));
+            MenuItem actions = CreateMenuItem(L10n.Get("menu.actions"));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.add"), new EventHandler(AddCurrentRecord)));
             if (section == FuelSection)
-                actions.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
-            actions.MenuItems.Add(CreateMenuItem("Шаблоны", new EventHandler(ManageTemplatesFromMenu)));
-            actions.MenuItems.Add(CreateMenuItem("Подробно", new EventHandler(ShowRecordDetails)));
-            actions.MenuItems.Add(CreateMenuItem("Изменить", new EventHandler(EditCurrentRecord)));
-            actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCurrentRecord)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.quick_fuel"), new EventHandler(QuickFuelFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("label.templates"), new EventHandler(ManageTemplatesFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.details"), new EventHandler(ShowRecordDetails)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.edit"), new EventHandler(EditCurrentRecord)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.delete"), new EventHandler(DeleteCurrentRecord)));
             if (section == FuelSection || section == RepairSection || section == ExpensesSection)
             {
-                actions.MenuItems.Add(CreateMenuItem("Фото чека", new EventHandler(OpenReceiptPhoto)));
-                actions.MenuItems.Add(CreateMenuItem("Удалить фото", new EventHandler(DeleteReceiptPhoto)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.attach_receipt"), new EventHandler(OpenReceiptPhoto)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.delete_receipt"), new EventHandler(DeleteReceiptPhoto)));
             }
-            actions.MenuItems.Add(CreateMenuItem("Поиск", new EventHandler(ShowGlobalSearch)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.search"), new EventHandler(ShowGlobalSearch)));
             if (section == FuelSection)
             {
-                actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditFuelFilter)));
-                actions.MenuItems.Add(CreateMenuItem("Сбросить фильтр", new EventHandler(ResetFuelFilter)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("label.filter"), new EventHandler(EditFuelFilter)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.reset_filter"), new EventHandler(ResetFuelFilter)));
             }
             else if (section == RepairSection)
             {
-                actions.MenuItems.Add(CreateMenuItem("Фильтр", new EventHandler(EditRepairFilter)));
-                actions.MenuItems.Add(CreateMenuItem("Сбросить фильтр", new EventHandler(ResetRepairFilter)));
-                actions.MenuItems.Add(CreateMenuItem("Добавить категорию", new EventHandler(AddRepairCategory)));
-                actions.MenuItems.Add(CreateMenuItem("Переименовать категорию", new EventHandler(RenameRepairCategory)));
-                actions.MenuItems.Add(CreateMenuItem("Удалить категорию", new EventHandler(DeleteRepairCategory)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("label.filter"), new EventHandler(EditRepairFilter)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.reset_filter"), new EventHandler(ResetRepairFilter)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.add_category"), new EventHandler(AddRepairCategory)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.rename_category"), new EventHandler(RenameRepairCategory)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.delete_category"), new EventHandler(DeleteRepairCategory)));
             }
             else if (section == ExpensesSection)
             {
-                actions.MenuItems.Add(CreateMenuItem("Добавить категорию", new EventHandler(AddExpenseCategory)));
-                actions.MenuItems.Add(CreateMenuItem("Переименовать категорию", new EventHandler(RenameExpenseCategory)));
-                actions.MenuItems.Add(CreateMenuItem("Удалить категорию", new EventHandler(DeleteExpenseCategory)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.add_category"), new EventHandler(AddExpenseCategory)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.rename_category"), new EventHandler(RenameExpenseCategory)));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.delete_category"), new EventHandler(DeleteExpenseCategory)));
             }
             menu.MenuItems.Add(actions);
-            menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.back"), new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
             LayoutScreen();
         }
@@ -402,11 +412,11 @@ namespace CarExpenses
         {
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Дата с (гггг-мм-дд)", fuelFilterDateFrom, "date", false),
-                new EntryField("Дата по (гггг-мм-дд)", fuelFilterDateTo, "date", false),
-                new EntryField("Пробег / литры / стоимость", fuelFilterText, "text", false)
+                new EntryField(L10n.Get("label.date_from_fmt"), fuelFilterDateFrom, "date", false),
+                new EntryField(L10n.Get("label.date_to_fmt"), fuelFilterDateTo, "date", false),
+                new EntryField(L10n.Get("error.odometer_liters_cost"), fuelFilterText, "text", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Фильтр заправок", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.fuel_filter"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -414,7 +424,7 @@ namespace CarExpenses
                 if (values[0] != "" && values[1] != "" &&
                     String.CompareOrdinal(values[0], values[1]) > 0)
                 {
-                    MessageBox.Show("Начало периода не может быть позже его окончания.", "Фильтр");
+                    MessageBox.Show(L10n.Get("error.period_start_after_end"), L10n.Get("label.filter"));
                     return;
                 }
                 fuelFilterDateFrom = values[0];
@@ -439,12 +449,12 @@ namespace CarExpenses
             categories.AddRange(DataStore.LoadRepairCategories());
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Категория", filterCategory, categories.ToArray(), true),
-                new EntryField("Дата с (гггг-мм-дд)", filterDateFrom, "date", false),
-                new EntryField("Дата по (гггг-мм-дд)", filterDateTo, "date", false),
-                new EntryField("Название / товар", filterText, "text", false)
+                new EntryField(L10n.Get("label.category"), filterCategory, categories.ToArray(), true),
+                new EntryField(L10n.Get("label.date_from_fmt"), filterDateFrom, "date", false),
+                new EntryField(L10n.Get("label.date_to_fmt"), filterDateTo, "date", false),
+                new EntryField(L10n.Get("label.name_or_item"), filterText, "text", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Фильтр ремонта", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.repair_filter"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -452,7 +462,7 @@ namespace CarExpenses
                 if (values[1] != "" && values[2] != "" &&
                     String.CompareOrdinal(values[1], values[2]) > 0)
                 {
-                    MessageBox.Show("Начало периода не может быть позже его окончания.", "Фильтр");
+                    MessageBox.Show(L10n.Get("error.period_start_after_end"), L10n.Get("label.filter"));
                     return;
                 }
                 filterCategory = values[0];
@@ -476,9 +486,9 @@ namespace CarExpenses
         {
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Название", "", "text", true)
+                new EntryField(L10n.Get("label.name"), "", "text", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Новая категория", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.new_category"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -494,15 +504,15 @@ namespace CarExpenses
             string[] categories = DataStore.LoadRepairCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для переименования.", L10n.Get("tab.categories"));
+                MessageBox.Show(L10n.Get("error.no_categories_to_rename"), L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Категория", categories[0], categories, true),
-                new EntryField("Новое название", "", "text", true)
+                new EntryField(L10n.Get("label.category"), categories[0], categories, true),
+                new EntryField(L10n.Get("label.new_name"), "", "text", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Переименовать категорию", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.rename_category"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -523,21 +533,21 @@ namespace CarExpenses
             string[] categories = DataStore.LoadRepairCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для удаления.", L10n.Get("tab.categories"));
+                MessageBox.Show(L10n.Get("error.no_categories_to_delete"), L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Категория", categories[0], categories, true)
+                new EntryField(L10n.Get("label.category"), categories[0], categories, true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Удалить категорию", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.delete_category"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string name = editor.Values[0];
-                if (!ConfirmAction("Подтверждение",
-                    "Записи не удаляются. Если категория используется, сначала перенесите записи в другую. Удалить категорию?",
-                    "Удалить"))
+                if (!ConfirmAction(L10n.Get("title.confirmation"),
+                    L10n.Get("confirm.delete_category_detail"),
+                    L10n.Get("button.delete")))
                     return;
                 if (!TrySave(delegate { DataStore.DeleteRepairCategory(name); }))
                     return;
@@ -549,7 +559,7 @@ namespace CarExpenses
 
         private string FormatFuel(string[] row, List<string[]> allRows)
         {
-            string result = row[0] + "  " + row[2] + " км  " + row[3] + " л  " + row[4] + " " + Cur();
+            string result = row[0] + "  " + row[2] + (" " + L10n.Get("unit.km") + "  ") + row[3] + (" " + L10n.Get("unit.liters_short") + "  ") + row[4] + " " + Cur();
             string station = GetStation(row);
             if (station.Length > 0)
                 result += "  " + station;
@@ -558,7 +568,7 @@ namespace CarExpenses
                 result += "  " + purpose;
             decimal consumption = FuelConsumption(row, allRows);
             if (consumption > 0)
-                result += "  " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
+                result += "  " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.l_per_100_short"));
             return result;
         }
 
@@ -622,19 +632,19 @@ namespace CarExpenses
         {
             if (!HasSelectedRecord())
             {
-                MessageBox.Show("Сначала выберите запись.", "Фото чека");
+                MessageBox.Show(L10n.Get("error.select_record_first"), L10n.Get("button.attach_receipt"));
                 return;
             }
             string[] row = displayedRecords[recordList.SelectedIndex];
             string recordId = RecordIds.GetId(row);
             if (String.IsNullOrEmpty(recordId))
             {
-                MessageBox.Show("У записи нет стабильного id.", "Фото чека");
+                MessageBox.Show(L10n.Get("error.record_no_stable_id"), L10n.Get("button.attach_receipt"));
                 return;
             }
             if (!DataStore.ReceiptExists(recordId))
             {
-                MessageBox.Show("У выбранной записи нет фото чека.", "Фото чека");
+                MessageBox.Show(L10n.Get("error.no_receipt_for_record"), L10n.Get("button.attach_receipt"));
                 return;
             }
             try
@@ -646,7 +656,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось открыть фото: " + ex.Message, "Фото чека");
+                MessageBox.Show((L10n.Get("error.open_photo_failed") + " ") + ex.Message, L10n.Get("button.attach_receipt"));
             }
         }
 
@@ -654,24 +664,24 @@ namespace CarExpenses
         {
             if (!HasSelectedRecord())
             {
-                MessageBox.Show("Сначала выберите запись.", "Фото чека");
+                MessageBox.Show(L10n.Get("error.select_record_first"), L10n.Get("button.attach_receipt"));
                 return;
             }
             string[] row = displayedRecords[recordList.SelectedIndex];
             string recordId = RecordIds.GetId(row);
             if (String.IsNullOrEmpty(recordId))
             {
-                MessageBox.Show("У записи нет стабильного id.", "Фото чека");
+                MessageBox.Show(L10n.Get("error.record_no_stable_id"), L10n.Get("button.attach_receipt"));
                 return;
             }
             if (!DataStore.ReceiptExists(recordId))
             {
-                MessageBox.Show("У выбранной записи нет фото чека.", "Фото чека");
+                MessageBox.Show(L10n.Get("error.no_receipt_for_record"), L10n.Get("button.attach_receipt"));
                 return;
             }
             DialogResult answer = MessageBox.Show(
-                "Удалить фото чека выбранной записи?",
-                "Фото чека",
+                L10n.Get("confirm.delete_receipt_photo"),
+                L10n.Get("button.attach_receipt"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button2);
@@ -680,11 +690,11 @@ namespace CarExpenses
             try
             {
                 DataStore.DeleteReceipt(recordId);
-                MessageBox.Show("Фото чека удалено.", "Фото чека");
+                MessageBox.Show(L10n.Get("msg.receipt_deleted"), L10n.Get("button.attach_receipt"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось удалить фото: " + ex.Message, "Фото чека");
+                MessageBox.Show((L10n.Get("error.delete_photo_failed") + " ") + ex.Message, L10n.Get("button.attach_receipt"));
             }
         }
 
@@ -692,7 +702,7 @@ namespace CarExpenses
         {
             if (!HasSelectedRecord())
             {
-                MessageBox.Show("Сначала выберите запись.", "Учет");
+                MessageBox.Show(L10n.Get("error.select_record_first"), L10n.Get("title.accounting"));
                 return;
             }
 
@@ -700,57 +710,58 @@ namespace CarExpenses
             string details;
             if (currentSection == FuelSection)
             {
-                details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
-                    "\r\nПробег: " + row[2] + " км\r\nЛитры: " + row[3] +
-                    "\r\nСтоимость: " + row[4] + " " + Cur();
+                details = (L10n.Get("label.car_colon") + " ") + row[1] + ("\r\n" + L10n.Get("label.date_colon") + " ") + row[0] +
+                    ("\r\n" + L10n.Get("label.odometer_colon") + " ") + row[2] + (" " + L10n.Get("msg.km_newline_liters") + " ") + row[3] +
+                    ("\r\n" + L10n.Get("label.cost_colon") + " ") + row[4] + " " + Cur();
                 string storedPrice = FieldAt(row, 5).Trim();
                 decimal liters;
                 decimal cost;
                 if (storedPrice.Length > 0)
-                    details += "\r\nЦена за литр: " + storedPrice + " " + Cur();
+                    details += ("\r\n" + L10n.Get("label.price_per_liter_colon") + " ") + storedPrice + " " + Cur();
                 else if (DataStore.TryNumber(row[3], out liters) && liters > 0 &&
                     DataStore.TryNumber(row[4], out cost))
-                    details += "\r\nЦена за литр: " +
+                    details += ("\r\n" + L10n.Get("label.price_per_liter_colon") + " ") +
                         (cost / liters).ToString("0.00", CultureInfo.InvariantCulture) + " " + Cur();
                 string station = GetStation(row);
                 if (station.Length > 0)
-                    details += "\r\nАЗС / бренд: " + station;
+                    details += ("\r\n" + L10n.Get("label.station_colon") + " ") + station;
                 string comment = FieldAt(row, 6).Trim();
                 if (comment.Length > 0)
-                    details += "\r\nКомментарий: " + comment;
-                details += "\r\nПолный бак: " + (IsFullTank(row) ? "да" : "нет");
+                    details += ("\r\n" + L10n.Get("label.comment_colon") + " ") + comment;
+                details += ("\r\n" + L10n.Get("label.full_tank_colon") + " ") + (IsFullTank(row) ? L10n.Get("common.yes_lower") : L10n.Get("common.no_lower"));
                 string purpose = GetPurpose(row);
                 if (purpose.Length > 0)
-                    details += "\r\nЦель: " + purpose;
+                    details += ("\r\n" + L10n.Get("label.purpose_colon") + " ") + purpose;
                 decimal consumption = FuelConsumption(row, DataStore.LoadFuel());
                 if (consumption > 0)
-                    details += "\r\nРасход: " +
-                        consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100 км";
+                    details += ("\r\n" + L10n.Get("report.consumption_colon") + " ") +
+                        consumption.ToString("0.0", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.l_per_100km"));
             }
             else if (currentSection == RepairSection)
             {
-                details = "Авто: " + row[1] + "\r\nДата: " + row[0] +
-                    "\r\nПробег: " + row[2] + " км\r\nКатегория: " + row[3] +
-                    "\r\nТовар: " + row[4] + "\r\nНаименование: " + row[5] +
-                    "\r\nКоличество: " + row[6] + "\r\nСумма: " + row[7] +
-                    " " + Cur() + "\r\nКомментарий: " + row[8];
+                details = (L10n.Get("label.car_colon") + " ") + row[1] + ("\r\n" + L10n.Get("label.date_colon") + " ") + row[0] +
+                    ("\r\n" + L10n.Get("label.odometer_colon") + " ") + row[2] + (" " + L10n.Get("msg.km_newline_category") + " ") + row[3] +
+                    ("\r\n" + L10n.Get("label.product_colon") + " ") + row[4] + ("\r\n" + L10n.Get("label.item_name_colon") + " ") + row[5] +
+                    ("\r\n" + L10n.Get("label.quantity_colon") + " ") + row[6] + ("\r\n" + L10n.Get("label.amount_colon") + " ") + row[7] +
+                    " " + Cur() + ("\r\n" + L10n.Get("label.comment_colon") + " ") + row[8];
             }
             else
             {
-                string[] labels = DataStore.UtilityLabels;
+                string[] labels = new string[DataStore.UtilityLabels.Length];
+                for (int ui = 0; ui < labels.Length; ui++) labels[ui] = DataStore.GetUtilityLabel(ui);
                 details = row[0] + "\r\n";
                 for (int i = 0; i < labels.Length; i++)
                     details += labels[i] + ": " + row[i + 1] + " " + Cur() + "\r\n";
-                details += "Итого: " + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " " + Cur();
+                details += (L10n.Get("report.subtotal_colon") + " ") + UtilityTotal(row).ToString("0.##", CultureInfo.InvariantCulture) + " " + Cur();
             }
-            MessageBox.Show(details, "Запись");
+            MessageBox.Show(details, L10n.Get("label.record"));
         }
 
         private void EditCurrentRecord(object sender, EventArgs e)
         {
             if (!HasSelectedRecord())
             {
-                MessageBox.Show("Сначала выберите запись.", "Учет");
+                MessageBox.Show(L10n.Get("error.select_record_first"), L10n.Get("title.accounting"));
                 return;
             }
 
@@ -762,18 +773,18 @@ namespace CarExpenses
             {
                 EntryField[] fields = new EntryField[]
                 {
-                    new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
-                    new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
-                    new EntryField("Пробег, км", row[2], "number", true),
-                    new EntryField("Литры", row[3], "number", true),
-                    new EntryField("Стоимость, " + Cur(), row[4], "number", true),
-                    new EntryField("Цена за литр, " + Cur(), FieldAt(row, 5), "number", false),
-                    new EntryField("Комментарий", FieldAt(row, 6), "text", false),
-                    new EntryField("Полный бак", FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false),
-                    new EntryField("Цель (Личный/Работа)", GetPurpose(row), PurposeOptions(GetPurpose(row)), false),
-                    EntryField.Suggest("АЗС / бренд", GetStation(row), StationOptions(GetStation(row)), false)
+                    new EntryField(L10n.Get("label.date_fmt_lower"), row[0], "date", true),
+                    new EntryField(L10n.Get("label.vehicle"), row[1], DataStore.LoadCarNames().ToArray(), true),
+                    new EntryField(L10n.Get("label.odometer_km"), row[2], "number", true),
+                    new EntryField(L10n.Get("label.liters"), row[3], "number", true),
+                    new EntryField((L10n.Get("label.cost_comma") + " ") + Cur(), row[4], "number", true),
+                    new EntryField((L10n.Get("label.price_per_liter_comma") + " ") + Cur(), FieldAt(row, 5), "number", false),
+                    new EntryField(L10n.Get("label.comment"), FieldAt(row, 6), "text", false),
+                    new EntryField(L10n.Get("label.full_tank"), FieldAt(row, 7).Length == 0 || FieldAt(row, 7) != "0" ? "1" : "0", "check", false),
+                    new EntryField(L10n.Get("label.purpose_hint"), GetPurpose(row), PurposeOptions(GetPurpose(row)), false),
+                    EntryField.Suggest(L10n.Get("label.station_brand"), GetStation(row), StationOptions(GetStation(row)), false)
                 };
-                using (EntryEditorForm editor = new EntryEditorForm("Изменить заправку", fields))
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.edit_fuel"), fields))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
@@ -792,17 +803,17 @@ namespace CarExpenses
             {
                 EntryField[] fields = new EntryField[]
                 {
-                    new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
-                    new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
-                    new EntryField("Пробег, км", row[2], "number", false),
-                    new EntryField("Категория", row[3], DataStore.LoadRepairCategories(), true),
-                    new EntryField("Товар / деталь", row[4], "text", true),
-                    new EntryField("Наименование", row[5], "text", false),
-                    new EntryField("Количество", row[6], "number", true),
-                    new EntryField("Сумма, " + Cur(), row[7], "number", true),
-                    new EntryField("Комментарий", row[8], "text", false)
+                    new EntryField(L10n.Get("label.date_fmt_lower"), row[0], "date", true),
+                    new EntryField(L10n.Get("label.vehicle"), row[1], DataStore.LoadCarNames().ToArray(), true),
+                    new EntryField(L10n.Get("label.odometer_km"), row[2], "number", false),
+                    new EntryField(L10n.Get("label.category"), row[3], DataStore.LoadRepairCategories(), true),
+                    new EntryField(L10n.Get("label.product_part"), row[4], "text", true),
+                    new EntryField(L10n.Get("label.item_name"), row[5], "text", false),
+                    new EntryField(L10n.Get("label.quantity"), row[6], "number", true),
+                    new EntryField((L10n.Get("label.amount_comma") + " ") + Cur(), row[7], "number", true),
+                    new EntryField(L10n.Get("label.comment"), row[8], "text", false)
                 };
-                using (EntryEditorForm editor = new EntryEditorForm("Изменить ремонт", fields))
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.edit_repair"), fields))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
@@ -818,14 +829,14 @@ namespace CarExpenses
             {
                 EntryField[] fields = new EntryField[]
                 {
-                    new EntryField("Дата (гггг-мм-дд)", row[0], "date", true),
-                    new EntryField("Автомобиль", row[1], DataStore.LoadCarNames().ToArray(), true),
-                    new EntryField("Категория", row[2], DataStore.LoadExpenseCategories(), true),
-                    new EntryField("Название", row[3], "text", true),
-                    new EntryField("Сумма, " + Cur(), row[4], "number", true),
-                    new EntryField("Комментарий", FieldAt(row, 5), "text", false)
+                    new EntryField(L10n.Get("label.date_fmt_lower"), row[0], "date", true),
+                    new EntryField(L10n.Get("label.vehicle"), row[1], DataStore.LoadCarNames().ToArray(), true),
+                    new EntryField(L10n.Get("label.category"), row[2], DataStore.LoadExpenseCategories(), true),
+                    new EntryField(L10n.Get("label.name"), row[3], "text", true),
+                    new EntryField((L10n.Get("label.amount_comma") + " ") + Cur(), row[4], "number", true),
+                    new EntryField(L10n.Get("label.comment"), FieldAt(row, 5), "text", false)
                 };
-                using (EntryEditorForm editor = new EntryEditorForm("Изменить прочий расход", fields))
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.edit_expense"), fields))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
@@ -838,7 +849,7 @@ namespace CarExpenses
             else
             {
                 EntryField[] fields = CreateUtilityFields(row);
-                using (EntryEditorForm editor = new EntryEditorForm("Изменить коммунальные", fields))
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.edit_utilities"), fields))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
                         return;
@@ -854,9 +865,9 @@ namespace CarExpenses
         private EntryField[] CreateUtilityFields(string[] row)
         {
             EntryField[] fields = new EntryField[8];
-            fields[0] = new EntryField("Месяц (гггг-мм)", row[0], "month", true);
+            fields[0] = new EntryField(L10n.Get("label.month_fmt"), row[0], "month", true);
             for (int i = 0; i < DataStore.UtilityLabels.Length; i++)
-                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", " + Cur(),
+                fields[i + 1] = new EntryField(DataStore.GetUtilityLabel(i) + ", " + Cur(),
                     row[i + 1], "number", false);
             return fields;
         }
@@ -865,7 +876,7 @@ namespace CarExpenses
         {
             if (!HasSelectedRecord())
             {
-                MessageBox.Show("Сначала выберите запись.", "Учет");
+                MessageBox.Show(L10n.Get("error.select_record_first"), L10n.Get("title.accounting"));
                 return;
             }
 
@@ -873,13 +884,13 @@ namespace CarExpenses
             string[] row = displayedRecords[selectedIndex];
             string description;
             if (currentSection == FuelSection)
-                description = row[0] + ", " + row[2] + " км, " + row[4] + " " + Cur();
+                description = row[0] + ", " + row[2] + (" " + L10n.Get("unit.km_comma") + " ") + row[4] + " " + Cur();
             else if (currentSection == RepairSection)
                 description = row[0] + ", " + row[3] + ": " + ShortText(row[4], 24);
             else if (currentSection == ExpensesSection)
                 description = row[0] + ", " + row[2] + ": " + ShortText(row[3], 24);
             else
-                description = "коммунальные платежи за " + row[0];
+                description = (L10n.Get("confirm.utility_month_delete_prefix") + " ") + row[0];
 
             if (!ConfirmDelete(description))
                 return;
@@ -901,8 +912,8 @@ namespace CarExpenses
 
         private bool ConfirmDelete(string description)
         {
-            return ConfirmAction("Подтверждение удаления",
-                "Удалить запись?\r\n" + description, "Удалить");
+            return ConfirmAction(L10n.Get("title.confirm_delete"),
+                (L10n.Get("confirm.delete_record") + "\r\n") + description, L10n.Get("button.delete"));
         }
 
         private bool ConfirmAction(string title, string messageText, string acceptText)
@@ -931,7 +942,7 @@ namespace CarExpenses
                 confirmation.Controls.Add(delete);
 
                 Button cancel = new Button();
-                cancel.Text = "Отмена";
+                cancel.Text = L10n.Get("button.cancel");
                 cancel.Location = new Point(buttonLeft + 110, buttonTop);
                 cancel.Size = new Size(100, 40);
                 cancel.Click += delegate { confirmation.DialogResult = DialogResult.No; };
@@ -947,25 +958,25 @@ namespace CarExpenses
             {
                 int fileCount = DataStore.CountBackupFiles();
                 DialogResult confirm = MessageBox.Show(
-                    "Создать полную копию на SD?\r\n" +
-                    "Будет скопировано файлов: " + fileCount.ToString(CultureInfo.InvariantCulture) +
-                    "\r\n(.dat включая settings, cars-meta, expenses + Receipts).",
-                    "Копия на SD",
+                    (L10n.Get("confirm.create_sd_backup") + "\r\n") +
+                    (L10n.Get("backup.files_to_copy_colon") + " ") + fileCount.ToString(CultureInfo.InvariantCulture) +
+                    ("\r\n" + L10n.Get("backup.dat_desc_dot")),
+                    L10n.Get("backup.on_sd"),
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button1);
                 if (confirm != DialogResult.Yes)
                     return;
                 string path = DataStore.CreateBackup();
-                MessageBox.Show("Резервная копия создана:\r\n" + path +
-                    "\r\nФайлов: " + fileCount.ToString(CultureInfo.InvariantCulture) +
-                    "\r\nСкопируйте эту папку на компьютер через ActiveSync.",
-                    "Резервная копия");
+                MessageBox.Show((L10n.Get("msg.backup_created_colon") + "\r\n") + path +
+                    ("\r\n" + L10n.Get("backup.files_colon") + " ") + fileCount.ToString(CultureInfo.InvariantCulture) +
+                    ("\r\n" + L10n.Get("backup.copy_activesync")),
+                    L10n.Get("title.backup"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось создать копию на SD-карте: " + ex.Message,
-                    "Ошибка резервного копирования");
+                MessageBox.Show((L10n.Get("error.create_sd_backup_failed") + " ") + ex.Message,
+                    L10n.Get("title.backup_error"));
             }
         }
 
@@ -975,24 +986,24 @@ namespace CarExpenses
             {
                 int fileCount = DataStore.CountBackupFiles();
                 DialogResult confirm = MessageBox.Show(
-                    "Создать полную копию в памяти КПК?\r\n" +
-                    "Будет скопировано файлов: " + fileCount.ToString(CultureInfo.InvariantCulture) +
-                    "\r\n(.dat включая settings, cars-meta, expenses + Receipts).",
-                    "Копия в памяти",
+                    (L10n.Get("confirm.create_pda_backup") + "\r\n") +
+                    (L10n.Get("backup.files_to_copy_colon") + " ") + fileCount.ToString(CultureInfo.InvariantCulture) +
+                    ("\r\n" + L10n.Get("backup.dat_desc_dot")),
+                    L10n.Get("backup.in_memory"),
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button1);
                 if (confirm != DialogResult.Yes)
                     return;
                 string path = DataStore.CreateLocalBackup();
-                MessageBox.Show("Локальная резервная копия создана:\r\n" + path +
-                    "\r\nФайлов: " + fileCount.ToString(CultureInfo.InvariantCulture),
-                    "Резервная копия");
+                MessageBox.Show((L10n.Get("msg.local_backup_created") + "\r\n") + path +
+                    ("\r\n" + L10n.Get("backup.files_colon") + " ") + fileCount.ToString(CultureInfo.InvariantCulture),
+                    L10n.Get("title.backup"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось создать локальную копию: " + ex.Message,
-                    "Ошибка резервного копирования");
+                MessageBox.Show((L10n.Get("error.create_local_backup_failed") + " ") + ex.Message,
+                    L10n.Get("title.backup_error"));
             }
         }
 
@@ -1005,33 +1016,33 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось прочитать локальные копии: " + ex.Message,
-                    "Ошибка восстановления");
+                MessageBox.Show((L10n.Get("error.read_local_backups_failed") + " ") + ex.Message,
+                    L10n.Get("title.restore_error"));
                 return;
             }
 
             if (backups.Length == 0)
             {
-                MessageBox.Show("В памяти КПК нет полных резервных копий Alfa 156.",
-                    "Восстановление");
+                MessageBox.Show(L10n.Get("error.no_pda_backups"),
+                    L10n.Get("title.restore"));
                 return;
             }
 
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Выберите дату копии", backups[0], backups, true)
+                new EntryField(L10n.Get("prompt.choose_backup_date"), backups[0], backups, true)
             };
             string backupName;
-            using (EntryEditorForm editor = new EntryEditorForm("Локальная копия", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("backup.local_copy"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 backupName = editor.Values[0];
             }
 
-            if (!ConfirmAction("Подтверждение восстановления",
-                "Текущие данные сначала сохранятся в отдельную локальную копию.\r\nЗаменить их копией " +
-                backupName + "?", "Восстановить"))
+            if (!ConfirmAction(L10n.Get("title.confirm_restore"),
+                (L10n.Get("confirm.replace_with_local_backup") + " ") +
+                backupName + "?", L10n.Get("button.restore")))
                 return;
 
             try
@@ -1039,13 +1050,13 @@ namespace CarExpenses
                 DataStore.RestoreLocalBackup(backupName);
                 currentCar = DataStore.LoadCarNames()[0];
                 ShowHome();
-                MessageBox.Show("Данные восстановлены из локальной копии " + backupName + ".",
-                    "Восстановление завершено");
+                MessageBox.Show((L10n.Get("msg.data_restored_from_local") + " ") + backupName + ".",
+                    L10n.Get("title.restore_complete"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось восстановить локальную копию: " + ex.Message,
-                    "Ошибка восстановления");
+                MessageBox.Show((L10n.Get("error.restore_local_failed") + " ") + ex.Message,
+                    L10n.Get("title.restore_error"));
             }
         }
 
@@ -1058,33 +1069,33 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось прочитать копии с SD-карты: " + ex.Message,
-                    "Ошибка восстановления");
+                MessageBox.Show((L10n.Get("error.read_sd_backups_failed") + " ") + ex.Message,
+                    L10n.Get("title.restore_error"));
                 return;
             }
 
             if (backups.Length == 0)
             {
-                MessageBox.Show("На SD-карте нет полных резервных копий Alfa 156.",
-                    "Восстановление");
+                MessageBox.Show(L10n.Get("error.no_sd_backups"),
+                    L10n.Get("title.restore"));
                 return;
             }
 
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Выберите дату копии", backups[0], backups, true)
+                new EntryField(L10n.Get("prompt.choose_backup_date"), backups[0], backups, true)
             };
             string backupName;
-            using (EntryEditorForm editor = new EntryEditorForm("Выбор копии", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.choose_backup"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 backupName = editor.Values[0];
             }
 
-            if (!ConfirmAction("Подтверждение восстановления",
-                "Текущие данные сначала сохранятся отдельной копией на SD-карту.\r\nЗаменить их копией " +
-                backupName + "?", "Восстановить"))
+            if (!ConfirmAction(L10n.Get("title.confirm_restore"),
+                (L10n.Get("confirm.replace_with_sd_backup") + " ") +
+                backupName + "?", L10n.Get("button.restore")))
                 return;
 
             try
@@ -1092,13 +1103,13 @@ namespace CarExpenses
                 DataStore.RestoreBackup(backupName);
                 currentCar = DataStore.LoadCarNames()[0];
                 ShowHome();
-                MessageBox.Show("Данные восстановлены из копии " + backupName + ".",
-                    "Восстановление завершено");
+                MessageBox.Show((L10n.Get("msg.data_restored_from_backup") + " ") + backupName + ".",
+                    L10n.Get("title.restore_complete"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось восстановить данные: " + ex.Message,
-                    "Ошибка восстановления");
+                MessageBox.Show((L10n.Get("error.restore_data_failed") + " ") + ex.Message,
+                    L10n.Get("title.restore_error"));
             }
         }
 
@@ -1109,12 +1120,12 @@ namespace CarExpenses
                 suggestedIp = "192.168.43.1";
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("IP Android (точка доступа обычно 192.168.43.1)", suggestedIp, "text", true),
-                new EntryField("Код подключения", "", "text", true)
+                new EntryField(L10n.Get("sync.android_ip_hint"), suggestedIp, "text", true),
+                new EntryField(L10n.Get("sync.pairing_code_label"), "", "text", true)
             };
             string address;
             string pairingCode;
-            using (EntryEditorForm editor = new EntryEditorForm("Синхронизация по Wi-Fi", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("sync.wifi_title"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -1125,8 +1136,8 @@ namespace CarExpenses
 
             if (pairingCode.Length != 6 || !IsDigits(pairingCode))
             {
-                MessageBox.Show("Введите шестизначный код с экрана Android.",
-                    "Синхронизация");
+                MessageBox.Show(L10n.Get("sync.enter_6digit_code"),
+                    L10n.Get("title.sync"));
                 return;
             }
 
@@ -1212,13 +1223,13 @@ namespace CarExpenses
             if (!synced)
             {
                 string detail = ExplainSyncFailure(lastError, address);
-                if (detail != null && detail.IndexOf("отменена") >= 0)
+                if (detail != null && (detail.IndexOf("отменена") >= 0 || detail.IndexOf(L10n.Get("sync.cancelled_word")) >= 0))
                 {
-                    MessageBox.Show("Синхронизация отменена.", "Синхронизация");
+                    MessageBox.Show(L10n.Get("sync.cancelled"), L10n.Get("title.sync"));
                     return;
                 }
-                MessageBox.Show("Синхронизация не выполнена: " + detail,
-                    "Ошибка синхронизации");
+                MessageBox.Show((L10n.Get("error.sync_failed_colon") + " ") + detail,
+                    L10n.Get("title.sync_error"));
                 return;
             }
 
@@ -1226,9 +1237,9 @@ namespace CarExpenses
             ShowHome();
             SyncJournal journal = SyncMerge.LastJournal;
             if (journal != null)
-                MessageBox.Show(journal.FormatSummary(), "Синхронизация");
+                MessageBox.Show(journal.FormatSummary(), L10n.Get("title.sync"));
             else
-                MessageBox.Show("Синхронизация завершена.", "Синхронизация");
+                MessageBox.Show(L10n.Get("msg.sync_complete"), L10n.Get("title.sync"));
         }
 
         private SyncPlan ResolveAndroidSyncPlan(string summary)
@@ -1249,9 +1260,9 @@ namespace CarExpenses
             string title, string localRow, string incomingRow)
         {
             DialogResult result = MessageBox.Show(
-                "На КПК:\n" + localRow + "\n\nНа Android:\n" + incomingRow +
-                "\n\nДа = Android, Нет = КПК, Отмена = прервать.",
-                "Конфликт: " + title,
+                (L10n.Get("sync.on_pda_colon") + "\n") + localRow + ("\n\n" + L10n.Get("sync.on_android_colon") + "\n") + incomingRow +
+                ("\n\n" + L10n.Get("sync.yes_android_no_pda")),
+                (L10n.Get("sync.conflict_colon") + " ") + title,
                 MessageBoxButtons.YesNoCancel,
                 MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button2);
@@ -1325,10 +1336,10 @@ namespace CarExpenses
                         {
                         }
                     }
-                    throw new IOException("Нет ответа от " + host + ":" +
+                    throw new IOException((L10n.Get("sync.no_response_from") + " ") + host + ":" +
                         port.ToString(CultureInfo.InvariantCulture) +
-                        ". На Android откройте Данные → Синхронизация по Wi-Fi и введите IP с этого экрана. " +
-                        "КПК и телефон должны быть в одной Wi-Fi сети.");
+                        (L10n.Get("sync.android_open_wifi_hint") + " ") +
+                        L10n.Get("sync.pda_phone_same_wifi"));
                 }
                 if (attempt.Error != null)
                     throw attempt.Error;
@@ -1406,28 +1417,28 @@ namespace CarExpenses
             }
 
             IOException io = ex as IOException;
-            return io != null && io.Message != null && io.Message.StartsWith("Нет ответа от ");
+            return io != null && io.Message != null && io.Message.StartsWith(L10n.Get("sync.no_response_from"));
         }
 
         private static string ExplainSyncFailure(Exception ex, string address)
         {
             if (ex == null)
-                return "неизвестная ошибка";
+                return L10n.Get("error.unknown");
 
             SocketException socket = FindSocketException(ex);
             if (socket != null)
             {
                 int code = SocketCode(socket);
                 if (code == 10060 || code == 10065 || code == 10051 || code == 10050 || code == 10049)
-                    return "КПК не достучался до " + address +
-                        ". Подключите КПК к той же Wi-Fi сети, что и телефон, или к точке доступа телефона, " +
-                        "и введите IP с экрана синхронизации Android.";
+                    return (L10n.Get("sync.pda_could_not_reach") + " ") + address +
+                        (L10n.Get("sync.connect_pda_wifi_hint") + " ") +
+                        L10n.Get("sync.and_enter_android_ip");
                 if (code == 10061)
-                    return "Телефон отклонил подключение. На Android ещё раз откройте Данные → Синхронизация по Wi-Fi " +
-                        "и не закрывайте это окно.";
+                    return (L10n.Get("error.phone_refused_reopen_wifi") + " ") +
+                        L10n.Get("sync.keep_window_open");
                 if (code == 11001 || code == 11004)
-                    return "Адрес «" + address + "» не найден. Введите IP с экрана Android, например 192.168.1.20.";
-                return "Подключение к " + address + " не удалось, код " +
+                    return L10n.Get("error.address_open") + address + L10n.Get("error.ip_not_found_enter_android");
+                return (L10n.Get("sync.connecting_to") + " ") + address + (" " + L10n.Get("error.failed_code") + " ") +
                     code.ToString(CultureInfo.InvariantCulture) + ".";
             }
             return VisibleExceptionText(ex);
@@ -1462,7 +1473,7 @@ namespace CarExpenses
             string text = ex.GetType().Name;
             SocketException socket = ex as SocketException;
             if (socket != null)
-                text += ", код " + SocketCode(socket).ToString(CultureInfo.InvariantCulture);
+                text += (L10n.Get("error.comma_code") + " ") + SocketCode(socket).ToString(CultureInfo.InvariantCulture);
             if (ex.InnerException != null)
                 text += " / " + VisibleExceptionText(ex.InnerException);
             return text;
@@ -1515,12 +1526,12 @@ namespace CarExpenses
                 count++;
             }
             MessageBox.Show(
-                "Отчёт поездок · " + currentCar +
-                "\r\nКоличество: " + count +
-                "\r\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
-                "\r\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
-                "\r\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км",
-                "Поездки");
+                (L10n.Get("trips.report_title_dot") + " ") + currentCar +
+                ("\r\n" + L10n.Get("label.quantity_colon") + " ") + count +
+                ("\r\n" + L10n.Get("report.personal_colon") + " ") + personal.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")) +
+                ("\r\n" + L10n.Get("report.work_colon") + " ") + work.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")) +
+                ("\r\n" + L10n.Get("report.total_colon") + " ") + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")),
+                L10n.Get("label.trips"));
         }
 
         private void AddTripFromMenu(object sender, EventArgs e)
@@ -1528,22 +1539,22 @@ namespace CarExpenses
             List<string> cars = DataStore.LoadCarNames();
             if (cars.Count == 0)
             {
-                MessageBox.Show("Нет автомобилей.", "Поездка");
+                MessageBox.Show(L10n.Get("error.no_cars"), L10n.Get("button.trip"));
                 return;
             }
             string car = ToSettings.ResolvePreferredCar(cars, currentCar);
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
-                new EntryField("Автомобиль", car, cars.ToArray(), true),
-                new EntryField("Начало пробега, км", "", "number", true),
-                new EntryField("Конец пробега, км", "", "number", true),
-                new EntryField("Назначение", "Личный",
+                new EntryField(L10n.Get("label.date_fmt_lower"), DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField(L10n.Get("label.vehicle"), car, cars.ToArray(), true),
+                new EntryField(L10n.Get("label.odometer_start_km"), "", "number", true),
+                new EntryField(L10n.Get("label.odometer_end_km"), "", "number", true),
+                new EntryField(L10n.Get("label.purpose_alt"), "Личный",
                     new string[] { "Личный", "Работа" }, false),
-                new EntryField("Водитель", "", "text", false),
-                new EntryField("Комментарий", "", "text", false)
+                new EntryField(L10n.Get("label.driver"), "", "text", false),
+                new EntryField(L10n.Get("label.comment"), "", "text", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Новая поездка", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.new_trip"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -1555,15 +1566,15 @@ namespace CarExpenses
                     !DataStore.TryNumber(values[3], out endKm) || endKm < startKm)
                 {
                     MessageBox.Show(
-                        "Конец пробега должен быть не меньше начала, пробег не меньше 0.",
-                        "Поездка");
+                        L10n.Get("error.trip_odometer_range"),
+                        L10n.Get("button.trip"));
                     return;
                 }
                 DataStore.AddTrip(values);
                 currentCar = values[1];
-                MessageBox.Show("Поездка сохранена: " +
-                    (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + " км",
-                    "Поездка");
+                MessageBox.Show((L10n.Get("msg.trip_saved") + " ") +
+                    (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")),
+                    L10n.Get("button.trip"));
             }
         }
 
@@ -1577,7 +1588,7 @@ namespace CarExpenses
             List<string> carList = DataStore.LoadCarNames();
             if (carList.Count == 0)
             {
-                MessageBox.Show("Нет автомобилей.", "Быстрая заправка");
+                MessageBox.Show(L10n.Get("error.no_cars"), L10n.Get("button.quick_fuel"));
                 return;
             }
             string[] cars = carList.ToArray();
@@ -1588,16 +1599,16 @@ namespace CarExpenses
             // Compact: car, km, liters, cost, price (auto), full tank — date = today on save.
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Автомобиль", car, cars, true),
+                new EntryField(L10n.Get("label.vehicle"), car, cars, true),
                 new EntryField(lastMileage.Length > 0
-                    ? "Пробег, км (посл.)"
-                    : "Пробег, км", lastMileage, "number", true),
-                new EntryField("Литры", "", "number", true),
-                new EntryField("Стоимость, " + Cur(), "", "number", true),
-                new EntryField("Цена/л, " + Cur(), lastPrice, "number", false),
-                new EntryField("Полный бак", fullPrefill, "check", false)
+                    ? L10n.Get("label.odometer_last_short")
+                    : L10n.Get("label.odometer_km"), lastMileage, "number", true),
+                new EntryField(L10n.Get("label.liters"), "", "number", true),
+                new EntryField((L10n.Get("label.cost_comma") + " ") + Cur(), "", "number", true),
+                new EntryField((L10n.Get("label.price_per_l_comma") + " ") + Cur(), lastPrice, "number", false),
+                new EntryField(L10n.Get("label.full_tank"), fullPrefill, "check", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Быстрая заправка", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("button.quick_fuel"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -1625,8 +1636,8 @@ namespace CarExpenses
                         (!DataStore.TryNumber(values[5], out price) || price <= 0)))
                 {
                     MessageBox.Show(
-                        "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.",
-                        "Быстрая заправка");
+                        L10n.Get("error.check_fuel_values"),
+                        L10n.Get("button.quick_fuel"));
                     return;
                 }
                 values = NormalizeFuelValues(values);
@@ -1673,20 +1684,20 @@ namespace CarExpenses
             string lastMileage = LastCarMileage(currentCar);
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
-                new EntryField("Автомобиль", currentCar, cars, true),
+                new EntryField(L10n.Get("label.date_fmt_lower"), DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
                 new EntryField(lastMileage.Length > 0
-                    ? "Пробег, км (последняя запись)"
-                    : "Пробег, км", lastMileage, "number", true),
-                new EntryField("Литры", "", "number", true),
-                new EntryField("Стоимость, " + Cur(), "", "number", true),
-                new EntryField("Цена за литр, " + Cur(), LastFuelPricePerLiter(currentCar), "number", false),
-                new EntryField("Комментарий", "", "text", false),
-                new EntryField("Полный бак", "1", "check", false),
-                new EntryField("Цель (Личный/Работа)", "", PurposeOptions(""), false),
-                EntryField.Suggest("АЗС / бренд", "", StationOptions(""), false)
+                    ? L10n.Get("label.odometer_last_record")
+                    : L10n.Get("label.odometer_km"), lastMileage, "number", true),
+                new EntryField(L10n.Get("label.liters"), "", "number", true),
+                new EntryField((L10n.Get("label.cost_comma") + " ") + Cur(), "", "number", true),
+                new EntryField((L10n.Get("label.price_per_liter_comma") + " ") + Cur(), LastFuelPricePerLiter(currentCar), "number", false),
+                new EntryField(L10n.Get("label.comment"), "", "text", false),
+                new EntryField(L10n.Get("label.full_tank"), "1", "check", false),
+                new EntryField(L10n.Get("label.purpose_hint"), "", PurposeOptions(""), false),
+                EntryField.Suggest(L10n.Get("label.station_brand"), "", StationOptions(""), false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Новая заправка", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.new_fuel"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -1750,7 +1761,7 @@ namespace CarExpenses
             string warning = FormatMileageWarning(newKm, last);
             if (warning == null)
                 return true;
-            return MessageBox.Show(warning, "Пробег", MessageBoxButtons.YesNo,
+            return MessageBox.Show(warning, L10n.Get("label.odometer"), MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
         }
 
@@ -1787,10 +1798,10 @@ namespace CarExpenses
                 return null;
             string x = lastKnown.ToString("0.##", CultureInfo.InvariantCulture);
             if (newKm < lastKnown)
-                return "Пробег меньше предыдущего (" + x + "). Сохранить всё равно?";
+                return L10n.Get("warn.odometer_lower_open") + x + L10n.Get("confirm.save_anyway_suffix");
             if (newKm - lastKnown > 5000m)
-                return "Пробег вырос более чем на 5000 км с предыдущего (" + x +
-                    "). Сохранить всё равно?";
+                return L10n.Get("warn.odometer_jump_open") + x +
+                    L10n.Get("confirm.save_anyway_suffix");
             return null;
         }
 
@@ -1800,25 +1811,25 @@ namespace CarExpenses
             string[] categories = DataStore.LoadRepairCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Сначала добавьте категорию ремонта.", L10n.Get("tab.categories"));
+                MessageBox.Show(L10n.Get("error.add_repair_category_first"), L10n.Get("tab.categories"));
                 return;
             }
             string lastMileage = LastCarMileage(currentCar);
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
-                new EntryField("Автомобиль", currentCar, cars, true),
+                new EntryField(L10n.Get("label.date_fmt_lower"), DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
                 new EntryField(lastMileage.Length > 0
-                    ? "Пробег, км (последняя запись)"
-                    : "Пробег, км", lastMileage, "number", false),
-                new EntryField("Категория", categories[0], categories, true),
-                new EntryField("Товар / деталь", "", "text", true),
-                new EntryField("Наименование", "", "text", false),
-                new EntryField("Количество", "1", "number", true),
-                new EntryField("Сумма, " + Cur(), "", "number", true),
-                new EntryField("Комментарий", "", "text", false)
+                    ? L10n.Get("label.odometer_last_record")
+                    : L10n.Get("label.odometer_km"), lastMileage, "number", false),
+                new EntryField(L10n.Get("label.category"), categories[0], categories, true),
+                new EntryField(L10n.Get("label.product_part"), "", "text", true),
+                new EntryField(L10n.Get("label.item_name"), "", "text", false),
+                new EntryField(L10n.Get("label.quantity"), "1", "number", true),
+                new EntryField((L10n.Get("label.amount_comma") + " ") + Cur(), "", "number", true),
+                new EntryField(L10n.Get("label.comment"), "", "text", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Новый ремонт", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.new_repair"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -1835,18 +1846,18 @@ namespace CarExpenses
         private void AddUtility()
         {
             EntryField[] fields = new EntryField[8];
-            fields[0] = new EntryField("Месяц (гггг-мм)", DateTime.Now.ToString("yyyy-MM"), "month", true);
+            fields[0] = new EntryField(L10n.Get("label.month_fmt"), DateTime.Now.ToString("yyyy-MM"), "month", true);
             for (int i = 0; i < DataStore.UtilityLabels.Length; i++)
-                fields[i + 1] = new EntryField(DataStore.UtilityLabels[i] + ", " + Cur(), "", "number", false);
+                fields[i + 1] = new EntryField(DataStore.GetUtilityLabel(i) + ", " + Cur(), "", "number", false);
 
-            using (EntryEditorForm editor = new EntryEditorForm("Коммунальные", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.utilities_full"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string[] values = editor.Values;
                 if (DataStore.ContainsUtilityMonth(values[0]))
                 {
-                    MessageBox.Show("Этот месяц уже есть в учете.", "Коммунальные");
+                    MessageBox.Show(L10n.Get("error.this_month_exists"), L10n.Get("label.utilities_full"));
                     return;
                 }
                 bool hasAmount = false;
@@ -1855,7 +1866,7 @@ namespace CarExpenses
                         hasAmount = true;
                 if (!hasAmount)
                 {
-                    MessageBox.Show("Введите хотя бы одну сумму.", "Учет");
+                    MessageBox.Show(L10n.Get("error.enter_at_least_one_amount"), L10n.Get("title.accounting"));
                     return;
                 }
                 if (!TrySave(delegate { DataStore.AddUtility(values); }))
@@ -1876,7 +1887,7 @@ namespace CarExpenses
             Controls.Clear();
             Text = L10n.Get("tab.vehicles");
             screenHeading = new Label();
-            screenHeading.Text = "Текущий автомобиль: " + currentCar;
+            screenHeading.Text = (L10n.Get("label.current_car_colon") + " ") + currentCar;
             StyleHeading(screenHeading);
             Controls.Add(screenHeading);
 
@@ -1891,7 +1902,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось прочитать автомобили: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.read_cars_failed") + " ") + ex.Message, L10n.Get("title.error"));
                 ShowHome();
                 return;
             }
@@ -1903,15 +1914,15 @@ namespace CarExpenses
             }
 
             MainMenu menu = new MainMenu();
-            MenuItem actions = CreateMenuItem("Действия");
-            actions.MenuItems.Add(CreateMenuItem("Выбрать", new EventHandler(SelectCar)));
-            actions.MenuItems.Add(CreateMenuItem("Добавить", new EventHandler(AddCar)));
-            actions.MenuItems.Add(CreateMenuItem("Свойства", new EventHandler(EditCarPassportFromList)));
-            actions.MenuItems.Add(CreateMenuItem("Избранный", new EventHandler(SetFavoriteCarFromMenu)));
-            actions.MenuItems.Add(CreateMenuItem("Переименовать", new EventHandler(RenameCar)));
-            actions.MenuItems.Add(CreateMenuItem("Удалить", new EventHandler(DeleteCar)));
+            MenuItem actions = CreateMenuItem(L10n.Get("menu.actions"));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.choose"), new EventHandler(SelectCar)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.add"), new EventHandler(AddCar)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.properties"), new EventHandler(EditCarPassportFromList)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("label.favorite"), new EventHandler(SetFavoriteCarFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.rename"), new EventHandler(RenameCar)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.delete"), new EventHandler(DeleteCar)));
             menu.MenuItems.Add(actions);
-            menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.back"), new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
             LayoutScreen();
         }
@@ -1925,7 +1936,7 @@ namespace CarExpenses
         {
             if (recordList == null || recordList.SelectedIndex < 0)
             {
-                MessageBox.Show("Выберите автомобиль.", "Учет");
+                MessageBox.Show(L10n.Get("error.choose_car"), L10n.Get("title.accounting"));
                 return;
             }
             EditCarPassportFor(recordList.SelectedItem.ToString());
@@ -1936,13 +1947,13 @@ namespace CarExpenses
             CarPassport meta = CarsMeta.Get(carName);
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Год", meta.Year, "text", false),
-                new EntryField("Госномер", meta.Plate, "text", false),
+                new EntryField(L10n.Get("label.year"), meta.Year, "text", false),
+                new EntryField(L10n.Get("label.plate"), meta.Plate, "text", false),
                 new EntryField("VIN", meta.Vin, "text", false),
-                new EntryField("Объём бака, л", meta.TankLiters, "number", false),
-                new EntryField("Заметка", meta.Note, "text", false)
+                new EntryField(L10n.Get("label.tank_capacity_l"), meta.TankLiters, "number", false),
+                new EntryField(L10n.Get("label.note"), meta.Note, "text", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Свойства · " + carName, fields))
+            using (EntryEditorForm editor = new EntryEditorForm((L10n.Get("title.properties_dot") + " ") + carName, fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -1974,9 +1985,9 @@ namespace CarExpenses
                 recordList = null;
                 homeButtons = null;
                 Controls.Clear();
-                Text = "Лента";
+                Text = L10n.Get("label.timeline");
                 screenHeading = new Label();
-                screenHeading.Text = "Лента · " + currentCar + CarsMeta.HeaderSuffix(currentCar);
+                screenHeading.Text = (L10n.Get("title.timeline_dot") + " ") + currentCar + CarsMeta.HeaderSuffix(currentCar);
                 StyleHeading(screenHeading);
                 Controls.Add(screenHeading);
                 summaryBox = new TextBox();
@@ -1988,13 +1999,13 @@ namespace CarExpenses
                 summaryBox.Text = text;
                 Controls.Add(summaryBox);
                 MainMenu menu = new MainMenu();
-                menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
+                menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.back"), new EventHandler(ShowHomeFromMenu)));
                 Menu = menu;
                 LayoutScreen();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось построить ленту: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.build_timeline_failed") + " ") + ex.Message, L10n.Get("title.error"));
             }
         }
 
@@ -2002,7 +2013,7 @@ namespace CarExpenses
         {
             if (recordList.SelectedIndex < 0)
             {
-                MessageBox.Show("Выберите автомобиль.", "Учет");
+                MessageBox.Show(L10n.Get("error.choose_car"), L10n.Get("title.accounting"));
                 return;
             }
             currentCar = recordList.SelectedItem.ToString();
@@ -2013,9 +2024,9 @@ namespace CarExpenses
         {
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Название автомобиля", "", "text", true)
+                new EntryField(L10n.Get("label.car_name"), "", "text", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Добавить автомобиль", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.add_car"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -2031,15 +2042,15 @@ namespace CarExpenses
         {
             if (recordList.SelectedIndex < 0)
             {
-                MessageBox.Show("Выберите автомобиль.", "Учет");
+                MessageBox.Show(L10n.Get("error.choose_car"), L10n.Get("title.accounting"));
                 return;
             }
             string oldName = recordList.SelectedItem.ToString();
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Новое название", oldName, "text", true)
+                new EntryField(L10n.Get("label.new_name"), oldName, "text", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Переименовать автомобиль", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.rename_car"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -2056,7 +2067,7 @@ namespace CarExpenses
         {
             if (recordList.SelectedIndex < 0)
             {
-                MessageBox.Show("Выберите автомобиль.", "Учет");
+                MessageBox.Show(L10n.Get("error.choose_car"), L10n.Get("title.accounting"));
                 return;
             }
             string name = recordList.SelectedItem.ToString();
@@ -2077,9 +2088,9 @@ namespace CarExpenses
             recordList = null;
             homeButtons = null;
             Controls.Clear();
-            Text = "Сводка";
+            Text = L10n.Get("tab.summary");
             screenHeading = new Label();
-            screenHeading.Text = "Сводка · " + currentCar + CarsMeta.HeaderSuffix(currentCar);
+            screenHeading.Text = (L10n.Get("title.summary_dot") + " ") + currentCar + CarsMeta.HeaderSuffix(currentCar);
             StyleHeading(screenHeading);
             Controls.Add(screenHeading);
 
@@ -2095,19 +2106,19 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось построить сводку: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.build_summary_failed") + " ") + ex.Message, L10n.Get("title.error"));
                 ShowHome();
                 return;
             }
             Controls.Add(summaryBox);
 
             MainMenu menu = new MainMenu();
-            MenuItem actions = CreateMenuItem("Действия");
-            actions.MenuItems.Add(CreateMenuItem("Сравнить периоды", new EventHandler(ShowPeriodCompareFromMenu)));
-            actions.MenuItems.Add(CreateMenuItem("Отчёт за период", new EventHandler(ExportPeriodReportFromMenu)));
-            actions.MenuItems.Add(CreateMenuItem("Отчёт за год", new EventHandler(ExportYearReportFromMenu)));
+            MenuItem actions = CreateMenuItem(L10n.Get("menu.actions"));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.compare_periods"), new EventHandler(ShowPeriodCompareFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("title.period_report"), new EventHandler(ExportPeriodReportFromMenu)));
+            actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.year_report"), new EventHandler(ExportYearReportFromMenu)));
             menu.MenuItems.Add(actions);
-            menu.MenuItems.Add(CreateMenuItem("Назад", new EventHandler(ShowHomeFromMenu)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.back"), new EventHandler(ShowHomeFromMenu)));
             Menu = menu;
             LayoutScreen();
         }
@@ -2128,14 +2139,14 @@ namespace CarExpenses
                     currentCar, fuels, repairs, expenses, utilities, bFrom, bTo);
                 string text = PeriodCompare.FormatComparison(
                     a, b,
-                    PeriodCompare.FormatRangeLabel(aFrom, aTo) + " (этот месяц)",
-                    PeriodCompare.FormatRangeLabel(bFrom, bTo) + " (прошлый)",
+                    PeriodCompare.FormatRangeLabel(aFrom, aTo) + (" " + L10n.Get("compare.this_month_paren")),
+                    PeriodCompare.FormatRangeLabel(bFrom, bTo) + (" " + L10n.Get("compare.prev_paren")),
                     Cur());
-                MessageBox.Show(text, "Сравнение периодов");
+                MessageBox.Show(text, L10n.Get("title.period_compare"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось сравнить периоды: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.compare_periods_failed") + " ") + ex.Message, L10n.Get("title.error"));
             }
         }
 
@@ -2146,8 +2157,8 @@ namespace CarExpenses
                 string thisFrom, thisTo, prevFrom, prevTo;
                 PeriodCompare.ThisVsPreviousMonth(out thisFrom, out thisTo, out prevFrom, out prevTo);
                 DialogResult choice = MessageBox.Show(
-                    "Этот месяц — Да\r\nПрошлый месяц — Нет\r\nОтмена — закрыть",
-                    "Отчёт за период · " + currentCar,
+                    L10n.Get("prompt.this_or_last_month_yes_no"),
+                    (L10n.Get("report.title_dot") + " ") + currentCar,
                     MessageBoxButtons.YesNoCancel,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button1);
@@ -2159,7 +2170,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось сохранить отчёт: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.save_report_failed") + " ") + ex.Message, L10n.Get("title.error"));
             }
         }
 
@@ -2172,7 +2183,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось сохранить отчёт: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.save_report_failed") + " ") + ex.Message, L10n.Get("title.error"));
             }
         }
 
@@ -2200,7 +2211,7 @@ namespace CarExpenses
                 using (StreamWriter writer = new StreamWriter(htmlPath, false, Encoding.UTF8))
                     writer.Write(PeriodReport.FormatHtml(currentCar, from, to, totals, Cur()));
 
-                MessageBox.Show(text + "\r\n\r\nСохранено:\r\n" + path + "\r\n" + htmlPath, "Отчёт за период");
+                MessageBox.Show(text + ("\r\n\r\n" + L10n.Get("msg.saved_colon") + "\r\n") + path + "\r\n" + htmlPath, L10n.Get("title.period_report"));
             }
         }
 
@@ -2434,25 +2445,25 @@ namespace CarExpenses
                 {
                     if (passport.Vin.Length > 0)
                         result += " · ";
-                    result += "бак " + passport.TankLiters + " л";
+                    result += (L10n.Get("label.tank_short") + " ") + passport.TankLiters + (" " + L10n.Get("unit.liters_short"));
                 }
                 if (passport.Note.Length > 0)
                     result += "\r\n" + passport.Note;
             }
-            result += "\r\n\r\nЗаправки: " + Money(fuelTotal) +
-                " " + Cur() + "\r\nРемонт и ТО: " + Money(repairTotal) +
-                " " + Cur() + "\r\nПрочие расходы: " + Money(expenseTotal) + " " + Cur() + "\r\n";
+            result += ("\r\n\r\n" + L10n.Get("summary.fuel_section_colon") + " ") + Money(fuelTotal) +
+                " " + Cur() + ("\r\n" + L10n.Get("summary.repairs_section_colon") + " ") + Money(repairTotal) +
+                " " + Cur() + ("\r\n" + L10n.Get("summary.expenses_section_colon") + " ") + Money(expenseTotal) + " " + Cur() + "\r\n";
             if (anyPurpose)
             {
-                result += "\r\nЗаправки по цели:\r\nЛичный: " + Money(purposePersonal) +
-                    " " + Cur() + "\r\nРабота: " + Money(purposeWork) + " " + Cur();
+                result += ("\r\n" + L10n.Get("report.fuel_by_purpose_personal") + " ") + Money(purposePersonal) +
+                    " " + Cur() + ("\r\n" + L10n.Get("purpose.work_colon") + " ") + Money(purposeWork) + " " + Cur();
                 if (purposeOther > 0)
-                    result += "\r\nДругое: " + Money(purposeOther) + " " + Cur();
+                    result += ("\r\n" + L10n.Get("report.other_colon") + " ") + Money(purposeOther) + " " + Cur();
                 result += "\r\n";
             }
             if (stationStats.Count > 0)
             {
-                result += "\r\nАЗС / бренд:";
+                result += ("\r\n" + L10n.Get("label.station_colon"));
                 System.Collections.ArrayList stationNames = new System.Collections.ArrayList();
                 foreach (string name in stationStats.Keys)
                     stationNames.Add(name);
@@ -2464,7 +2475,7 @@ namespace CarExpenses
                     int count = (int)bucket[0];
                     decimal avg = count > 0 ? bucket[1] / count : 0;
                     result += "\r\n" + name + ": " + count.ToString(CultureInfo.InvariantCulture) +
-                        " · ср. " + Money(avg) + " " + Cur() + "/л";
+                        (" " + L10n.Get("summary.dot_avg") + " ") + Money(avg) + " " + Cur() + L10n.Get("unit.per_liter");
                 }
                 result += "\r\n";
             }
@@ -2506,17 +2517,17 @@ namespace CarExpenses
                     lastTimingDate = row[0];
                 }
             }
-            result += "Учтённые расходы на км (примерно): ";
+            result += (L10n.Get("summary.counted_cost_per_km") + " ");
             if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
                 result += Money((fuelTotal + repairTotal + expenseTotal) /
-                    (maximumMileage - minimumMileage)) + " " + Cur() + "/км\r\n";
+                    (maximumMileage - minimumMileage)) + " " + Cur() + (L10n.Get("unit.per_km") + "\r\n");
             else
-                result += "недостаточно данных о пробеге\r\n";
+                result += (L10n.Get("forecast.insufficient_mileage") + "\r\n");
 
-            result += "\r\nРемонт по категориям:\r\n";
+            result += ("\r\n" + L10n.Get("report.repairs_by_cat_colon") + "\r\n");
             foreach (KeyValuePair<string, decimal> pair in byCategory)
                 result += pair.Key + ": " + Money(pair.Value) + " " + Cur() + "\r\n";
-            result += "\r\nКоммунальные за весь период:\r\n" + Money(utilityTotal) +
+            result += ("\r\n" + L10n.Get("summary.utilities_all_time") + "\r\n") + Money(utilityTotal) +
                 " " + Cur();
             string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
             decimal monthFuel = 0, monthRepair = 0, monthExpense = 0, monthUtility = 0;
@@ -2529,31 +2540,31 @@ namespace CarExpenses
                 monthExpense = monthBucket.Length > 3 ? monthBucket[3] : 0m;
             }
             result += FormatBudgetBlock(monthKey, monthFuel + monthRepair + monthExpense, monthUtility);
-            result += "\r\n\r\nИтого за год " + yearPrefix + ":\r\n" +
-                "Топливо: " + Money(yearFuel) + " " + Cur() + "\r\n" +
-                "Ремонт: " + Money(yearRepair) + " " + Cur() + "\r\n" +
-                "Прочие: " + Money(yearExpense) + " " + Cur() + "\r\n" +
-                "Коммунальные: " + Money(yearUtility) + " " + Cur() + "\r\n" +
-                "Всего: " + Money(yearFuel + yearRepair + yearExpense + yearUtility) +
-                " " + Cur() + "\r\n\r\nРасходы по месяцам (последние 12):\r\n";
+            result += ("\r\n\r\n" + L10n.Get("summary.year_totals") + " ") + yearPrefix + ":\r\n" +
+                (L10n.Get("label.fuel_colon") + " ") + Money(yearFuel) + " " + Cur() + "\r\n" +
+                (L10n.Get("label.repairs_colon") + " ") + Money(yearRepair) + " " + Cur() + "\r\n" +
+                (L10n.Get("label.expenses_colon") + " ") + Money(yearExpense) + " " + Cur() + "\r\n" +
+                (L10n.Get("label.utilities_colon") + " ") + Money(yearUtility) + " " + Cur() + "\r\n" +
+                (L10n.Get("report.total_colon") + " ") + Money(yearFuel + yearRepair + yearExpense + yearUtility) +
+                " " + Cur() + ("\r\n\r\n" + L10n.Get("summary.monthly_expenses_12") + "\r\n");
             List<string> months = new List<string>(monthlyTotals.Keys);
             months.Sort(StringComparer.Ordinal);
             int firstMonth = Math.Max(0, months.Count - 12);
             for (int i = firstMonth; i < months.Count; i++)
             {
                 decimal[] totals = monthlyTotals[months[i]];
-                result += months[i] + ": топливо " + Money(totals[0]) +
-                    ", ремонт " + Money(totals[1]) + ", коммунальные " +
-                    Money(totals[2]) + ", прочие " +
+                result += months[i] + (L10n.Get("summary.colon_fuel") + " ") + Money(totals[0]) +
+                    (L10n.Get("summary.comma_repairs") + " ") + Money(totals[1]) + (L10n.Get("summary.comma_utilities") + " ") +
+                    Money(totals[2]) + (L10n.Get("summary.comma_expenses") + " ") +
                     Money(totals.Length > 3 ? totals[3] : 0m) + " " + Cur() + "\r\n";
             }
             result += "\r\n" + CarCompare.FormatBlock(
                 CarCompare.Build(cars, fuels, repairs, expenses), Cur()) + "\r\n";
-            result += "\r\nТекущий пробег: " + Money(currentMileage) + " км\r\n";
+            result += ("\r\n" + L10n.Get("forecast.current_odometer_colon") + " ") + Money(currentMileage) + (" " + L10n.Get("unit.km") + "\r\n");
             ToIntervals intervals = ToSettings.Load();
-            result += ServiceStatus("Замена масла", currentMileage, lastOilMileage,
+            result += ServiceStatus(L10n.Get("service.oil_change"), currentMileage, lastOilMileage,
                 lastOilDate, intervals.OilInterval, intervals.OilWarn) + "\r\n";
-            result += ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
+            result += ServiceStatus(L10n.Get("service.timing_belt"), currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn);
             result += ForecastInsights.FormatBlock(
                 currentCar, fuels, repairs, currentMileage,
@@ -2629,17 +2640,17 @@ namespace CarExpenses
             decimal lastMileage, string lastDate, decimal interval, decimal warningDistance)
         {
             if (lastMileage == 0)
-                return name + ": замена не зафиксирована";
-            string lastService = "последняя запись " + lastDate + ", " +
-                Money(lastMileage) + " км; ";
+                return name + L10n.Get("forecast.no_replacement");
+            string lastService = (L10n.Get("summary.last_record") + " ") + lastDate + ", " +
+                Money(lastMileage) + (" " + L10n.Get("unit.km_semi") + " ");
             decimal since = currentMileage - lastMileage;
             if (since >= interval)
-                return name + ": " + lastService + "требуется замена";
+                return name + ": " + lastService + L10n.Get("forecast.replacement_needed");
             if (since >= interval - warningDistance)
-                return name + ": " + lastService + "скоро замена (" +
-                    Money(interval - since) + " км)";
-            return name + ": " + lastService + "в норме (" +
-                Money(interval - since) + " км)";
+                return name + ": " + lastService + L10n.Get("forecast.due_soon_open") +
+                    Money(interval - since) + (" " + L10n.Get("unit.km_close"));
+            return name + ": " + lastService + L10n.Get("forecast.ok_open") +
+                Money(interval - since) + (" " + L10n.Get("unit.km_close"));
         }
 
         private static string Money(decimal value)
@@ -2821,7 +2832,7 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось сохранить данные: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.save_data_failed") + " ") + ex.Message, L10n.Get("title.error"));
                 return false;
             }
         }
@@ -2835,17 +2846,17 @@ namespace CarExpenses
         {
             MessageBox.Show(
                 "Alfa 156\r\nВерсия 1.37.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
-                "АЗС / бренд у заправок; автодополнение; средняя цена/л в сводке.\r\n" +
-                "Оценка пробега в сводке: средний км/день и срок до ТО масла/ремня.\r\n" +
-                "Паспорт авто (cars-meta.dat) и лента расходов.\r\n" +
-                "Шаблоны записей (templates.dat); избранный авто.\r\n" +
-                "Напоминания по дате (reminders.dat): страховка / техосмотр / своё.\r\n" +
-                "Заметки по авто (notes.dat): свободный журнал date|car|text|id.\r\n" +
-                "Сравнение периодов: этот месяц vs прошлый.\r\n" +
-                "Цель заправки (Личный/Работа); итоги за календарный год в сводке.\r\n" +
-                "Экспорт сводки; дубликаты; проверка пробега; поиск.\r\n" +
-                "Полный бак: частичные заправки не входят в расчёт л/100 км.",
-                "О программе");
+                (L10n.Get("onboarding.station_short") + "\r\n") +
+                (L10n.Get("onboarding.forecast_feature") + "\r\n") +
+                (L10n.Get("onboarding.passport_timeline_short") + "\r\n") +
+                (L10n.Get("onboarding.templates_fav_feature") + "\r\n") +
+                (L10n.Get("onboarding.reminders_feature") + "\r\n") +
+                (L10n.Get("onboarding.notes_feature") + "\r\n") +
+                (L10n.Get("onboarding.period_compare_feature") + "\r\n") +
+                (L10n.Get("onboarding.purpose_year_feature") + "\r\n") +
+                (L10n.Get("onboarding.export_dups_search") + "\r\n") +
+                L10n.Get("onboarding.full_tank_feature"),
+                L10n.Get("title.about"));
         }
 
         private void ExportSummaryFromMenu(object sender, EventArgs e)
@@ -2860,11 +2871,11 @@ namespace CarExpenses
                 string path = Path.Combine(folder, fileName);
                 using (StreamWriter writer = new StreamWriter(path, false))
                     writer.Write(text);
-                MessageBox.Show("Сводка сохранена:\r\n" + path, "Экспорт сводки");
+                MessageBox.Show((L10n.Get("msg.summary_saved_colon") + "\r\n") + path, L10n.Get("title.export_summary"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось сохранить сводку: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.save_summary_failed") + " ") + ex.Message, L10n.Get("title.error"));
             }
         }
 
@@ -2877,26 +2888,26 @@ namespace CarExpenses
                 if (report.CanSimpleFix)
                 {
                     DialogResult answer = MessageBox.Show(
-                        text + "\r\n\r\nИсправить простое (добавить категории)?",
-                        "Проверка данных", MessageBoxButtons.YesNo,
+                        text + ("\r\n\r\n" + L10n.Get("confirm.quick_fix_categories")),
+                        L10n.Get("button.data_integrity"), MessageBoxButtons.YesNo,
                         MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                     if (answer == DialogResult.Yes)
                     {
                         int n = DataIntegrity.ApplySimpleFixes(report);
                         MessageBox.Show(n > 0
-                            ? "Добавлено категорий: " + n + "."
-                            : "Нечего исправлять.",
-                            "Проверка данных");
+                            ? (L10n.Get("msg.categories_added") + " ") + n + "."
+                            : L10n.Get("integrity.nothing_to_fix"),
+                            L10n.Get("button.data_integrity"));
                     }
                 }
                 else
                 {
-                    MessageBox.Show(text, "Проверка данных");
+                    MessageBox.Show(text, L10n.Get("button.data_integrity"));
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось проверить данные: " + ex.Message, "Проверка данных");
+                MessageBox.Show((L10n.Get("error.integrity_check_failed") + " ") + ex.Message, L10n.Get("button.data_integrity"));
             }
         }
 
@@ -2909,18 +2920,18 @@ namespace CarExpenses
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось найти дубликаты: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.find_duplicates_failed") + " ") + ex.Message, L10n.Get("title.error"));
                 return;
             }
             if (groups.Count == 0)
             {
-                MessageBox.Show("Дубликатов не найдено.", "Дубликаты");
+                MessageBox.Show(L10n.Get("msg.no_duplicates"), L10n.Get("button.duplicates"));
                 return;
             }
 
             using (Form dialog = new Form())
             {
-                dialog.Text = "Дубликаты";
+                dialog.Text = L10n.Get("button.duplicates");
                 dialog.WindowState = FormWindowState.Maximized;
                 dialog.MinimizeBox = false;
 
@@ -2944,21 +2955,21 @@ namespace CarExpenses
                 }
 
                 MainMenu menu = new MainMenu();
-                MenuItem actions = CreateMenuItem("Действия");
-                actions.MenuItems.Add(CreateMenuItem("Удалить лишние (оставить первую)",
+                MenuItem actions = CreateMenuItem(L10n.Get("menu.actions"));
+                actions.MenuItems.Add(CreateMenuItem(L10n.Get("button.delete_extra_keep_first"),
                     new EventHandler(delegate
                     {
                         int selected = list.SelectedIndex;
                         if (selected < 0 || selected >= items.Count || items[selected] == null)
                         {
-                            MessageBox.Show("Выберите запись внутри группы дубликатов.", "Дубликаты");
+                            MessageBox.Show(L10n.Get("error.select_record_in_dup_group"), L10n.Get("button.duplicates"));
                             return;
                         }
                         DuplicateFinder.Group group = (DuplicateFinder.Group)items[selected];
                         if (MessageBox.Show(
-                            "Удалить " + (group.Indexes.Count - 1).ToString() +
-                            " лишних записей, оставив первую?",
-                            "Дубликаты", MessageBoxButtons.YesNo,
+                            (L10n.Get("button.delete") + " ") + (group.Indexes.Count - 1).ToString() +
+                            (" " + L10n.Get("dup.confirm_delete_extra_suffix")),
+                            L10n.Get("button.duplicates"), MessageBoxButtons.YesNo,
                             MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                             return;
                         List<int> toDelete = new List<int>();
@@ -2983,10 +2994,10 @@ namespace CarExpenses
                         if (!ok)
                             return;
                         dialog.Close();
-                        MessageBox.Show("Лишние записи удалены.", "Дубликаты");
+                        MessageBox.Show(L10n.Get("msg.extra_records_deleted"), L10n.Get("button.duplicates"));
                     })));
                 menu.MenuItems.Add(actions);
-                menu.MenuItems.Add(CreateMenuItem("Закрыть", new EventHandler(delegate
+                menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.close"), new EventHandler(delegate
                 {
                     dialog.Close();
                 })));
@@ -3005,12 +3016,12 @@ namespace CarExpenses
         {
             using (Form searchForm = new Form())
             {
-                searchForm.Text = "Поиск";
+                searchForm.Text = L10n.Get("title.search");
                 searchForm.WindowState = FormWindowState.Maximized;
                 searchForm.MinimizeBox = false;
 
                 Label hint = new Label();
-                hint.Text = "Текст (комментарий, название…):";
+                hint.Text = L10n.Get("label.text_search_colon");
                 hint.Location = new Point(8, 8);
                 hint.Size = new Size(220, 20);
                 searchForm.Controls.Add(hint);
@@ -3021,7 +3032,7 @@ namespace CarExpenses
                 searchForm.Controls.Add(queryBox);
 
                 Button findButton = new Button();
-                findButton.Text = "Найти";
+                findButton.Text = L10n.Get("button.search");
                 findButton.Location = new Point(8, 58);
                 findButton.Size = new Size(100, 28);
                 searchForm.Controls.Add(findButton);
@@ -3067,12 +3078,12 @@ namespace CarExpenses
                         {
                             StringBuilder sb = new StringBuilder(FieldAt(row, 0));
                             for (int i = 0; i < DataStore.UtilityLabels.Length && i + 1 < row.Length; i++)
-                                sb.Append(' ').Append(DataStore.UtilityLabels[i]).Append(' ')
+                                sb.Append(' ').Append(DataStore.GetUtilityLabel(i)).Append(' ')
                                     .Append(row[i + 1]);
                             return sb.ToString();
                         });
                     if (results.Items.Count == 0)
-                        results.Items.Add("Ничего не найдено");
+                        results.Items.Add(L10n.Get("search.nothing_found"));
                 };
 
                 results.SelectedIndexChanged += delegate
@@ -3090,7 +3101,7 @@ namespace CarExpenses
                 };
 
                 Button closeButton = new Button();
-                closeButton.Text = "Закрыть";
+                closeButton.Text = L10n.Get("button.close");
                 closeButton.Location = new Point(120, 58);
                 closeButton.Size = new Size(100, 28);
                 closeButton.Click += delegate { searchForm.Close(); };
@@ -3153,19 +3164,19 @@ namespace CarExpenses
             string[] categories = DataStore.LoadExpenseCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Сначала добавьте категорию прочих расходов.", L10n.Get("tab.categories"));
+                MessageBox.Show(L10n.Get("error.add_expense_category_first"), L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Дата (гггг-мм-дд)", DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
-                new EntryField("Автомобиль", currentCar, cars, true),
-                new EntryField("Категория", categories[0], categories, true),
-                new EntryField("Название", "", "text", true),
-                new EntryField("Сумма, " + Cur(), "", "number", true),
-                new EntryField("Комментарий", "", "text", false)
+                new EntryField(L10n.Get("label.date_fmt_lower"), DateTime.Now.ToString("yyyy-MM-dd"), "date", true),
+                new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                new EntryField(L10n.Get("label.category"), categories[0], categories, true),
+                new EntryField(L10n.Get("label.name"), "", "text", true),
+                new EntryField((L10n.Get("label.amount_comma") + " ") + Cur(), "", "number", true),
+                new EntryField(L10n.Get("label.comment"), "", "text", false)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Прочий расход", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.expense_entry"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -3179,8 +3190,8 @@ namespace CarExpenses
 
         private void AddExpenseCategory(object sender, EventArgs e)
         {
-            EntryField[] fields = new EntryField[] { new EntryField("Название", "", "text", true) };
-            using (EntryEditorForm editor = new EntryEditorForm("Новая кат. прочих", fields))
+            EntryField[] fields = new EntryField[] { new EntryField(L10n.Get("label.name"), "", "text", true) };
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.new_expense_category"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -3195,15 +3206,15 @@ namespace CarExpenses
             string[] categories = DataStore.LoadExpenseCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для переименования.", L10n.Get("tab.categories"));
+                MessageBox.Show(L10n.Get("error.no_categories_to_rename"), L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Категория", categories[0], categories, true),
-                new EntryField("Новое название", "", "text", true)
+                new EntryField(L10n.Get("label.category"), categories[0], categories, true),
+                new EntryField(L10n.Get("label.new_name"), "", "text", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Переименовать кат. прочих", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.rename_expense_category"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -3219,19 +3230,19 @@ namespace CarExpenses
             string[] categories = DataStore.LoadExpenseCategories();
             if (categories.Length == 0)
             {
-                MessageBox.Show("Нет категорий для удаления.", L10n.Get("tab.categories"));
+                MessageBox.Show(L10n.Get("error.no_categories_to_delete"), L10n.Get("tab.categories"));
                 return;
             }
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Категория", categories[0], categories, true)
+                new EntryField(L10n.Get("label.category"), categories[0], categories, true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Удалить кат. прочих", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.delete_expense_category"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 if (MessageBox.Show(
-                    "Записи не удаляются. Если категория используется, сначала перенесите записи в другую. Удалить категорию?",
+                    L10n.Get("confirm.delete_category_detail"),
                     L10n.Get("tab.categories"), MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                     return;
@@ -3246,12 +3257,12 @@ namespace CarExpenses
             ToIntervals values = ToSettings.Load();
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Интервал масла, км", values.OilInterval.ToString(CultureInfo.InvariantCulture), "number", true),
-                new EntryField("Предупр. масла, км", values.OilWarn.ToString(CultureInfo.InvariantCulture), "number", true),
-                new EntryField("Интервал ремня, км", values.BeltInterval.ToString(CultureInfo.InvariantCulture), "number", true),
-                new EntryField("Предупр. ремня, км", values.BeltWarn.ToString(CultureInfo.InvariantCulture), "number", true)
+                new EntryField(L10n.Get("label.oil_interval_km"), values.OilInterval.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField(L10n.Get("label.oil_warn_km"), values.OilWarn.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField(L10n.Get("label.belt_interval_km"), values.BeltInterval.ToString(CultureInfo.InvariantCulture), "number", true),
+                new EntryField(L10n.Get("label.belt_warn_km"), values.BeltWarn.ToString(CultureInfo.InvariantCulture), "number", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Интервалы ТО", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.service_intervals"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -3262,7 +3273,7 @@ namespace CarExpenses
                     !DataStore.TryNumber(raw[2], out beltInterval) || beltInterval <= 0 ||
                     !DataStore.TryNumber(raw[3], out beltWarn) || beltWarn <= 0)
                 {
-                    MessageBox.Show("Введите положительные числа.", "Интервалы ТО");
+                    MessageBox.Show(L10n.Get("error.enter_positive_numbers"), L10n.Get("label.service_intervals"));
                     return;
                 }
                 values.OilInterval = oilInterval;
@@ -3271,7 +3282,7 @@ namespace CarExpenses
                 values.BeltWarn = beltWarn;
                 if (!TrySave(delegate { ToSettings.Save(values); }))
                     return;
-                MessageBox.Show("Интервалы ТО сохранены.", "Интервалы ТО");
+                MessageBox.Show(L10n.Get("msg.intervals_saved"), L10n.Get("label.service_intervals"));
             }
         }
 
@@ -3280,9 +3291,9 @@ namespace CarExpenses
             string current = ToSettings.GetCurrency();
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Код валюты (BYN/RUB/USD/EUR)", current, "text", true)
+                new EntryField(L10n.Get("label.currency_examples"), current, "text", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Валюта", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.currency"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -3293,11 +3304,11 @@ namespace CarExpenses
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Валюта");
+                    MessageBox.Show(ex.Message, L10n.Get("label.currency"));
                     return;
                 }
-                MessageBox.Show("Валюта: " + ToSettings.GetCurrency() +
-                    ". Суммы не пересчитываются — меняется только подпись.", "Валюта");
+                MessageBox.Show((L10n.Get("msg.currency_colon") + " ") + ToSettings.GetCurrency() +
+                    L10n.Get("msg.currency_no_recalc"), L10n.Get("label.currency"));
                 if (summaryBox != null)
                     summaryBox.Text = BuildSummary();
             }
@@ -3310,7 +3321,10 @@ namespace CarExpenses
             int currentIndex = languages.IndexOf(current);
             if (currentIndex < 0) currentIndex = 0;
 
-            using (ChoiceForm choice = new ChoiceForm("Выбор языка", "Язык:", languages))
+            List<string> labels = new List<string>();
+            for (int i = 0; i < languages.Count; i++)
+                labels.Add(L10n.GetLanguageDisplayName(languages[i]) + " (" + languages[i] + ")");
+            using (ChoiceForm choice = new ChoiceForm(L10n.Get("title.language_selection"), L10n.Get("label.language_colon"), labels))
             {
                 choice.SelectedIndex = currentIndex;
                 if (choice.ShowDialog() != DialogResult.OK)
@@ -3321,11 +3335,12 @@ namespace CarExpenses
                     if (!TrySave(delegate { ToSettings.SetLanguage(selected); }))
                         return;
                     LocalizationManager.SetLanguage(selected);
-                    MessageBox.Show("Язык: " + selected + "\nПожалуйста, перезагрузите приложение.", "Язык");
+                    ShowHome();
+                    MessageBox.Show(L10n.Get("msg.language_changed_to") + " " + L10n.GetLanguageDisplayName(selected), L10n.Get("label.language"));
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Язык");
+                    MessageBox.Show(ex.Message, L10n.Get("label.language"));
                 }
             }
         }
@@ -3337,15 +3352,15 @@ namespace CarExpenses
                 return "";
             decimal warnPct = ToSettings.GetBudgetWarnPct();
             decimal pct = budget > 0 ? (spent * 100m) / budget : 0;
-            string block = "\r\n\r\nБюджет месяца " + monthKey + ":\r\n" +
-                "Потрачено (топливо+ремонт+прочие): " +
+            string block = ("\r\n\r\n" + L10n.Get("label.monthly_budget") + " ") + monthKey + ":\r\n" +
+                (L10n.Get("summary.spent_total_colon") + " ") +
                 Money(spent) + " / " + Money(budget) + " " + Cur() +
                 " (" + Money(pct) + "%)\r\n" +
-                "Коммунальные в этом месяце: " + Money(utilitiesMonth) + " " + Cur();
+                (L10n.Get("summary.utilities_this_month") + " ") + Money(utilitiesMonth) + " " + Cur();
             if (spent >= budget)
-                block += "\r\n! Превышен бюджет";
+                block += ("\r\n" + L10n.Get("summary.budget_exceeded_bang"));
             else if (pct >= warnPct)
-                block += "\r\n! Предупреждение: >= " + Money(warnPct) + "% бюджета";
+                block += ("\r\n" + L10n.Get("summary.budget_warn_gte") + " ") + Money(warnPct) + L10n.Get("summary.pct_of_budget");
             return block;
         }
 
@@ -3354,10 +3369,10 @@ namespace CarExpenses
             int days = ToSettings.GetBackupRemindDays();
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Дней (0 = выкл., по умолч. 7)",
+                new EntryField(L10n.Get("label.days_off_default7"),
                     days.ToString(CultureInfo.InvariantCulture), "number", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Напоминание о копии", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.backup_reminder"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
@@ -3365,7 +3380,7 @@ namespace CarExpenses
                 if (!DataStore.TryNumber(editor.Values[0], out value) || value < 0 || value > 3650 ||
                     value != Decimal.Truncate(value))
                 {
-                    MessageBox.Show("Интервал: 0 (выкл.) или целое 1–3650.", "Напоминание");
+                    MessageBox.Show(L10n.Get("error.interval_0_3650"), L10n.Get("label.reminder"));
                     return;
                 }
                 try
@@ -3375,15 +3390,15 @@ namespace CarExpenses
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Напоминание");
+                    MessageBox.Show(ex.Message, L10n.Get("label.reminder"));
                     return;
                 }
                 if (value <= 0)
-                    MessageBox.Show("Напоминание о резервной копии выключено.", "Напоминание");
+                    MessageBox.Show(L10n.Get("msg.backup_reminder_off"), L10n.Get("label.reminder"));
                 else
-                    MessageBox.Show("Напоминание: если копии нет " +
-                        ((int)value).ToString(CultureInfo.InvariantCulture) + " дн. и дольше.",
-                        "Напоминание");
+                    MessageBox.Show((L10n.Get("label.backup_remind_if_none") + " ") +
+                        ((int)value).ToString(CultureInfo.InvariantCulture) + (" " + L10n.Get("reminder.days_and_longer_dot")),
+                        L10n.Get("label.reminder"));
             }
         }
 
@@ -3395,13 +3410,13 @@ namespace CarExpenses
                 name = recordList.SelectedItem.ToString();
             if (name == null || name.Length == 0)
             {
-                MessageBox.Show("Выберите автомобиль.", "Авто");
+                MessageBox.Show(L10n.Get("error.choose_car"), L10n.Get("label.car_short"));
                 return;
             }
             if (!TrySave(delegate { ToSettings.SetDefaultCar(name); }))
                 return;
             currentCar = name;
-            MessageBox.Show("Избранный автомобиль: " + name, "Авто");
+            MessageBox.Show((L10n.Get("label.favorite_car_colon") + " ") + name, L10n.Get("label.car_short"));
         }
 
         private void EditDefaultCar(object sender, EventArgs e)
@@ -3409,13 +3424,13 @@ namespace CarExpenses
             List<string> cars = DataStore.LoadCarNames();
             string current = ToSettings.GetDefaultCar();
             string[] options = new string[cars.Count + 1];
-            options[0] = "(не задан)";
+            options[0] = L10n.Get("common.not_set");
             for (int i = 0; i < cars.Count; i++)
                 options[i + 1] = cars[i];
             string selected = current.Length > 0 ? current : options[0];
-            using (EntryEditorForm editor = new EntryEditorForm("Авто по умолчанию",
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.default_car_full"),
                 new EntryField[] {
-                    new EntryField("Автомобиль", selected, options, true)
+                    new EntryField(L10n.Get("label.vehicle"), selected, options, true)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3427,8 +3442,8 @@ namespace CarExpenses
                 if (name.Length > 0)
                     currentCar = name;
                 MessageBox.Show(name.Length == 0
-                    ? "Авто по умолчанию сброшен."
-                    : "Авто по умолчанию: " + name, "Авто по умолчанию");
+                    ? L10n.Get("msg.default_car_cleared")
+                    : (L10n.Get("msg.default_car_set") + " ") + name, L10n.Get("label.default_car_full"));
                 if (screenType == "home")
                     ShowHome();
             }
@@ -3437,12 +3452,12 @@ namespace CarExpenses
         private void ManageRemindersFromMenu(object sender, EventArgs e)
         {
             DateReminders.EnsureFile();
-            MessageBox.Show(DateReminders.FormatAllBlock(DateTime.Today), "Напоминания");
-            using (EntryEditorForm editor = new EntryEditorForm("Напоминания",
+            MessageBox.Show(DateReminders.FormatAllBlock(DateTime.Today), L10n.Get("label.reminders"));
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.reminders"),
                 new EntryField[] {
-                    new EntryField("Действие", "Добавить",
-                        new string[] { "Добавить", "Удалить", "Срок предупреждения" }, true),
-                    new EntryField("Номер (для удаления)", "", "text", false)
+                    new EntryField(L10n.Get("label.action"), L10n.Get("button.add"),
+                        new string[] { L10n.Get("button.add"), L10n.Get("button.delete"), L10n.Get("label.warn_term") }, true),
+                    new EntryField(L10n.Get("prompt.number_to_delete"), "", "text", false)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3468,13 +3483,13 @@ namespace CarExpenses
                     catch (OverflowException) { }
                     if (!parsed || index < 1 || index > list.Count)
                     {
-                        MessageBox.Show("Укажите номер из списка.", "Напоминания");
+                        MessageBox.Show(L10n.Get("error.pick_number_from_list"), L10n.Get("label.reminders"));
                         return;
                     }
                     DateReminder item = list[index - 1];
                     if (!TrySave(delegate { DateReminders.DeleteById(item.Id); }))
                         return;
-                    MessageBox.Show("Удалено.", "Напоминания");
+                    MessageBox.Show(L10n.Get("msg.deleted"), L10n.Get("label.reminders"));
                     if (screenType == "summary")
                         summaryBox.Text = BuildSummary();
                     return;
@@ -3483,13 +3498,13 @@ namespace CarExpenses
                 string car = currentCar == null ? "" : currentCar;
                 string defaultDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd",
                     CultureInfo.InvariantCulture);
-                using (EntryEditorForm add = new EntryEditorForm("Новое напоминание",
+                using (EntryEditorForm add = new EntryEditorForm(L10n.Get("title.new_reminder"),
                     new EntryField[] {
-                        new EntryField("Дата", defaultDate, "date", true),
-                        new EntryField("Автомобиль", car, "text", true),
-                        new EntryField("Название", "", "text", true),
-                        new EntryField("Тип", "Страховка",
-                            new string[] { "Страховка", "Техосмотр", "Своё" }, true)
+                        new EntryField(L10n.Get("label.date"), defaultDate, "date", true),
+                        new EntryField(L10n.Get("label.vehicle"), car, "text", true),
+                        new EntryField(L10n.Get("label.name"), "", "text", true),
+                        new EntryField(L10n.Get("label.type"), L10n.Get("reminder.insurance"),
+                            new string[] { L10n.Get("reminder.insurance"), L10n.Get("reminder.inspection"), L10n.Get("reminder.custom") }, true)
                     }))
                 {
                     if (add.ShowDialog() != DialogResult.OK)
@@ -3501,7 +3516,7 @@ namespace CarExpenses
                     item.Type = DateReminders.NormalizeType(add.Values[3]);
                     if (!TrySave(delegate { DateReminders.Upsert(item); }))
                         return;
-                    MessageBox.Show("Напоминание сохранено.", "Напоминания");
+                    MessageBox.Show(L10n.Get("msg.reminder_saved"), L10n.Get("label.reminders"));
                     if (screenType == "summary")
                         summaryBox.Text = BuildSummary();
                 }
@@ -3512,12 +3527,12 @@ namespace CarExpenses
         {
             CarNotes.EnsureFile();
             string car = currentCar == null ? "" : currentCar;
-            MessageBox.Show(CarNotes.FormatAllBlock(car), "Заметки");
-            using (EntryEditorForm editor = new EntryEditorForm("Заметки",
+            MessageBox.Show(CarNotes.FormatAllBlock(car), L10n.Get("label.notes"));
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.notes"),
                 new EntryField[] {
-                    new EntryField("Действие", "Добавить",
-                        new string[] { "Добавить", "Изменить", "Удалить" }, true),
-                    new EntryField("Номер (измен./удал.)", "", "text", false)
+                    new EntryField(L10n.Get("label.action"), L10n.Get("button.add"),
+                        new string[] { L10n.Get("button.add"), L10n.Get("button.edit"), L10n.Get("button.delete") }, true),
+                    new EntryField(L10n.Get("prompt.number_edit_delete"), "", "text", false)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3538,7 +3553,7 @@ namespace CarExpenses
                     catch (OverflowException) { }
                     if (!parsed || index < 1 || index > list.Count)
                     {
-                        MessageBox.Show("Укажите номер из списка.", "Заметки");
+                        MessageBox.Show(L10n.Get("error.pick_number_from_list"), L10n.Get("label.notes"));
                         return;
                     }
                     CarNote selected = list[index - 1];
@@ -3546,17 +3561,17 @@ namespace CarExpenses
                     {
                         if (!TrySave(delegate { CarNotes.DeleteById(selected.Id); }))
                             return;
-                        MessageBox.Show("Удалено.", "Заметки");
+                        MessageBox.Show(L10n.Get("msg.deleted"), L10n.Get("label.notes"));
                         if (screenType == "summary" || screenType == "timeline")
                             summaryBox.Text = screenType == "timeline"
                                 ? CarTimeline.FormatList(currentCar) : BuildSummary();
                         return;
                     }
-                    using (EntryEditorForm edit = new EntryEditorForm("Изменить заметку",
+                    using (EntryEditorForm edit = new EntryEditorForm(L10n.Get("button.edit_note"),
                         new EntryField[] {
-                            new EntryField("Дата", selected.Date, "date", true),
-                            new EntryField("Автомобиль", selected.Car, "text", true),
-                            new EntryField("Текст", selected.Text, "text", true)
+                            new EntryField(L10n.Get("label.date"), selected.Date, "date", true),
+                            new EntryField(L10n.Get("label.vehicle"), selected.Car, "text", true),
+                            new EntryField(L10n.Get("label.text"), selected.Text, "text", true)
                         }))
                     {
                         if (edit.ShowDialog() != DialogResult.OK)
@@ -3566,7 +3581,7 @@ namespace CarExpenses
                         selected.Text = edit.Values[2];
                         if (!TrySave(delegate { CarNotes.Upsert(selected); }))
                             return;
-                        MessageBox.Show("Заметка сохранена.", "Заметки");
+                        MessageBox.Show(L10n.Get("msg.note_saved"), L10n.Get("label.notes"));
                         if (screenType == "summary" || screenType == "timeline")
                             summaryBox.Text = screenType == "timeline"
                                 ? CarTimeline.FormatList(currentCar) : BuildSummary();
@@ -3574,11 +3589,11 @@ namespace CarExpenses
                     }
                 }
                 string defaultDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-                using (EntryEditorForm add = new EntryEditorForm("Новая заметка",
+                using (EntryEditorForm add = new EntryEditorForm(L10n.Get("title.new_note"),
                     new EntryField[] {
-                        new EntryField("Дата", defaultDate, "date", true),
-                        new EntryField("Автомобиль", car, "text", true),
-                        new EntryField("Текст", "", "text", true)
+                        new EntryField(L10n.Get("label.date"), defaultDate, "date", true),
+                        new EntryField(L10n.Get("label.vehicle"), car, "text", true),
+                        new EntryField(L10n.Get("label.text"), "", "text", true)
                     }))
                 {
                     if (add.ShowDialog() != DialogResult.OK)
@@ -3589,7 +3604,7 @@ namespace CarExpenses
                     item.Text = add.Values[2];
                     if (!TrySave(delegate { CarNotes.Upsert(item); }))
                         return;
-                    MessageBox.Show("Заметка сохранена.", "Заметки");
+                    MessageBox.Show(L10n.Get("msg.note_saved"), L10n.Get("label.notes"));
                     if (screenType == "summary" || screenType == "timeline")
                         summaryBox.Text = screenType == "timeline"
                             ? CarTimeline.FormatList(currentCar) : BuildSummary();
@@ -3600,9 +3615,9 @@ namespace CarExpenses
         private void EditReminderWarnDays()
         {
             int days = ToSettings.GetReminderWarnDays();
-            using (EntryEditorForm editor = new EntryEditorForm("Срок напоминаний",
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.reminder_term"),
                 new EntryField[] {
-                    new EntryField("Дней до срока",
+                    new EntryField(L10n.Get("label.days_until_due"),
                         days.ToString(CultureInfo.InvariantCulture), "number", true)
                 }))
             {
@@ -3612,13 +3627,13 @@ namespace CarExpenses
                 if (!DataStore.TryNumber(editor.Values[0], out value) || value < 0 || value > 3650 ||
                     value != Decimal.Truncate(value))
                 {
-                    MessageBox.Show("Срок: целое 0–3650.", "Напоминания");
+                    MessageBox.Show(L10n.Get("error.term_0_3650"), L10n.Get("label.reminders"));
                     return;
                 }
                 if (!TrySave(delegate { ToSettings.SetReminderWarnDays((int)value); }))
                     return;
-                MessageBox.Show("Предупреждать за " +
-                    ((int)value).ToString(CultureInfo.InvariantCulture) + " дн.", "Напоминания");
+                MessageBox.Show((L10n.Get("label.warn_before") + " ") +
+                    ((int)value).ToString(CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.days_short")), L10n.Get("label.reminders"));
                 if (screenType == "summary")
                     summaryBox.Text = BuildSummary();
             }
@@ -3626,13 +3641,13 @@ namespace CarExpenses
 
         private void ManageTemplatesFromMenu(object sender, EventArgs e)
         {
-            string[] typeOptions = new string[] { "Заправка", L10n.Get("tab.repairs"), "Прочий расход" };
+            string[] typeOptions = new string[] { L10n.Get("label.fuel_entry"), L10n.Get("tab.repairs"), L10n.Get("label.expense_entry") };
             string[] typeKeys = new string[] {
                 RecordTemplates.TypeFuel, RecordTemplates.TypeRepair, RecordTemplates.TypeExpense
             };
-            using (EntryEditorForm pick = new EntryEditorForm("Шаблоны",
+            using (EntryEditorForm pick = new EntryEditorForm(L10n.Get("label.templates"),
                 new EntryField[] {
-                    new EntryField("Тип", typeOptions[0], typeOptions, true)
+                    new EntryField(L10n.Get("label.type"), typeOptions[0], typeOptions, true)
                 }))
             {
                 if (pick.ShowDialog() != DialogResult.OK)
@@ -3650,10 +3665,10 @@ namespace CarExpenses
         {
             List<RecordTemplate> list = RecordTemplates.ListByType(type);
             StringBuilder sb = new StringBuilder();
-            sb.Append("Шаблоны · ").Append(RecordTemplates.TypeLabelRu(type));
+            sb.Append((L10n.Get("title.templates_dot") + " ")).Append(RecordTemplates.TypeLabelRu(type));
             sb.Append("\r\n\r\n");
             if (list.Count == 0)
-                sb.Append("Пока нет шаблонов.\r\n");
+                sb.Append((L10n.Get("msg.no_templates_yet") + "\r\n"));
             else
             {
                 for (int i = 0; i < list.Count; i++)
@@ -3662,14 +3677,14 @@ namespace CarExpenses
                     sb.Append(i + 1).Append(". ").Append(list[i].Name);
                 }
             }
-            using (EntryEditorForm editor = new EntryEditorForm("Шаблоны",
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.templates"),
                 new EntryField[] {
-                    new EntryField("Действие", "Добавить из шаблона",
-                        new string[] { "Добавить из шаблона", "Сохранить текущую как шаблон", "Удалить шаблон" }, true),
-                    new EntryField("Номер / имя", list.Count > 0 ? list[0].Name : "", "text", false)
+                    new EntryField(L10n.Get("label.action"), L10n.Get("title.add_from_template"),
+                        new string[] { L10n.Get("title.add_from_template"), L10n.Get("button.save_current_as_template"), L10n.Get("button.delete_template") }, true),
+                    new EntryField(L10n.Get("label.number_or_name"), list.Count > 0 ? list[0].Name : "", "text", false)
                 }))
             {
-                MessageBox.Show(sb.ToString(), "Шаблоны");
+                MessageBox.Show(sb.ToString(), L10n.Get("label.templates"));
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 string action = editor.Values[0];
@@ -3678,12 +3693,12 @@ namespace CarExpenses
                 {
                     if (name.Length == 0)
                     {
-                        MessageBox.Show("Укажите имя шаблона.", "Шаблоны");
+                        MessageBox.Show(L10n.Get("error.specify_template_name"), L10n.Get("label.templates"));
                         return;
                     }
                     if (!TrySave(delegate { RecordTemplates.Delete(type, name); }))
                         return;
-                    MessageBox.Show("Удалено: " + name, "Шаблоны");
+                    MessageBox.Show((L10n.Get("msg.deleted_colon") + " ") + name, L10n.Get("label.templates"));
                     return;
                 }
                 if (action == "Сохранить текущую как шаблон")
@@ -3701,7 +3716,7 @@ namespace CarExpenses
                     chosen = list[0];
                 if (chosen == null)
                 {
-                    MessageBox.Show("Шаблон не найден.", "Шаблоны");
+                    MessageBox.Show(L10n.Get("error.template_not_found"), L10n.Get("label.templates"));
                     return;
                 }
                 ApplyTemplate(chosen);
@@ -3721,18 +3736,18 @@ namespace CarExpenses
         private void SaveFuelAsTemplate()
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
-            using (EntryEditorForm editor = new EntryEditorForm("Шаблон заправки",
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.fuel_template"),
                 new EntryField[] {
-                    new EntryField("Название шаблона", "", "text", true),
-                    new EntryField("Автомобиль", currentCar, cars, true),
-                    new EntryField("Пробег, км", LastCarMileage(currentCar), "number", false),
-                    new EntryField("Литры", "", "number", false),
-                    new EntryField("Стоимость", "", "number", false),
-                    new EntryField("Цена за литр", LastFuelPricePerLiter(currentCar), "number", false),
-                    new EntryField("Комментарий", "", "text", false),
-                    new EntryField("Полный бак (1/0)", "1", "text", false),
-                    new EntryField("Цель", "", "text", false),
-                    EntryField.Suggest("АЗС / бренд", "", StationOptions(""), false)
+                    new EntryField(L10n.Get("label.template_name"), "", "text", true),
+                    new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                    new EntryField(L10n.Get("label.odometer_km"), LastCarMileage(currentCar), "number", false),
+                    new EntryField(L10n.Get("label.liters"), "", "number", false),
+                    new EntryField(L10n.Get("label.cost"), "", "number", false),
+                    new EntryField(L10n.Get("label.price_per_liter"), LastFuelPricePerLiter(currentCar), "number", false),
+                    new EntryField(L10n.Get("label.comment"), "", "text", false),
+                    new EntryField(L10n.Get("label.full_tank_10"), "1", "text", false),
+                    new EntryField(L10n.Get("label.purpose"), "", "text", false),
+                    EntryField.Suggest(L10n.Get("label.station_brand"), "", StationOptions(""), false)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3744,7 +3759,7 @@ namespace CarExpenses
                 item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9] };
                 if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
                     return;
-                MessageBox.Show("Шаблон сохранён.", "Шаблоны");
+                MessageBox.Show(L10n.Get("msg.template_saved"), L10n.Get("label.templates"));
             }
         }
 
@@ -3752,17 +3767,17 @@ namespace CarExpenses
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
             string[] cats = DataStore.LoadRepairCategories();
-            using (EntryEditorForm editor = new EntryEditorForm("Шаблон ремонта",
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.repair_template"),
                 new EntryField[] {
-                    new EntryField("Название шаблона", "", "text", true),
-                    new EntryField("Автомобиль", currentCar, cars, true),
-                    new EntryField("Пробег, км", LastCarMileage(currentCar), "number", false),
-                    new EntryField("Категория", cats.Length > 0 ? cats[0] : "", cats, true),
-                    new EntryField("Товар", "", "text", false),
-                    new EntryField("Наименование", "", "text", false),
-                    new EntryField("Кол-во", "1", "number", false),
-                    new EntryField("Сумма", "", "number", false),
-                    new EntryField("Комментарий", "", "text", false)
+                    new EntryField(L10n.Get("label.template_name"), "", "text", true),
+                    new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                    new EntryField(L10n.Get("label.odometer_km"), LastCarMileage(currentCar), "number", false),
+                    new EntryField(L10n.Get("label.category"), cats.Length > 0 ? cats[0] : "", cats, true),
+                    new EntryField(L10n.Get("label.product"), "", "text", false),
+                    new EntryField(L10n.Get("label.item_name"), "", "text", false),
+                    new EntryField(L10n.Get("label.qty_short"), "1", "number", false),
+                    new EntryField(L10n.Get("label.amount"), "", "number", false),
+                    new EntryField(L10n.Get("label.comment"), "", "text", false)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3774,7 +3789,7 @@ namespace CarExpenses
                 item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8] };
                 if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
                     return;
-                MessageBox.Show("Шаблон сохранён.", "Шаблоны");
+                MessageBox.Show(L10n.Get("msg.template_saved"), L10n.Get("label.templates"));
             }
         }
 
@@ -3782,14 +3797,14 @@ namespace CarExpenses
         {
             string[] cars = DataStore.LoadCarNames().ToArray();
             string[] cats = DataStore.LoadExpenseCategories();
-            using (EntryEditorForm editor = new EntryEditorForm("Шаблон прочего",
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.expense_template"),
                 new EntryField[] {
-                    new EntryField("Название шаблона", "", "text", true),
-                    new EntryField("Автомобиль", currentCar, cars, true),
-                    new EntryField("Категория", cats.Length > 0 ? cats[0] : "", cats, true),
-                    new EntryField("Название", "", "text", false),
-                    new EntryField("Сумма", "", "number", false),
-                    new EntryField("Комментарий", "", "text", false)
+                    new EntryField(L10n.Get("label.template_name"), "", "text", true),
+                    new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                    new EntryField(L10n.Get("label.category"), cats.Length > 0 ? cats[0] : "", cats, true),
+                    new EntryField(L10n.Get("label.name"), "", "text", false),
+                    new EntryField(L10n.Get("label.amount"), "", "number", false),
+                    new EntryField(L10n.Get("label.comment"), "", "text", false)
                 }))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
@@ -3801,7 +3816,7 @@ namespace CarExpenses
                 item.Payload = new string[] { v[1], v[2], v[3], v[4], v[5] };
                 if (!TrySave(delegate { RecordTemplates.Upsert(item); }))
                     return;
-                MessageBox.Show("Шаблон сохранён.", "Шаблоны");
+                MessageBox.Show(L10n.Get("msg.template_saved"), L10n.Get("label.templates"));
             }
         }
 
@@ -3822,18 +3837,18 @@ namespace CarExpenses
                 string full = entity.Length > 7 && entity[7].Length > 0 ? entity[7] : "1";
                 string purpose = entity.Length > 8 ? entity[8] : "";
                 string station = entity.Length > 9 ? entity[9] : "";
-                using (EntryEditorForm editor = new EntryEditorForm("Заправка из шаблона",
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.fuel_from_template"),
                     new EntryField[] {
-                        new EntryField("Дата", date, "date", true),
-                        new EntryField("Автомобиль", currentCar, cars, true),
-                        new EntryField("Пробег, км", km, "number", true),
-                        new EntryField("Литры", liters, "number", true),
-                        new EntryField("Стоимость", cost, "number", true),
-                        new EntryField("Цена за литр", price, "number", false),
-                        new EntryField("Комментарий", comment, "text", false),
-                        new EntryField("Полный бак (1/0)", full, "text", false),
-                        new EntryField("Цель", purpose, "text", false),
-                        EntryField.Suggest("АЗС / бренд", station, StationOptions(station), false)
+                        new EntryField(L10n.Get("label.date"), date, "date", true),
+                        new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                        new EntryField(L10n.Get("label.odometer_km"), km, "number", true),
+                        new EntryField(L10n.Get("label.liters"), liters, "number", true),
+                        new EntryField(L10n.Get("label.cost"), cost, "number", true),
+                        new EntryField(L10n.Get("label.price_per_liter"), price, "number", false),
+                        new EntryField(L10n.Get("label.comment"), comment, "text", false),
+                        new EntryField(L10n.Get("label.full_tank_10"), full, "text", false),
+                        new EntryField(L10n.Get("label.purpose"), purpose, "text", false),
+                        EntryField.Suggest(L10n.Get("label.station_brand"), station, StationOptions(station), false)
                     }))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
@@ -3842,24 +3857,24 @@ namespace CarExpenses
                     if (!TrySave(delegate { DataStore.AddFuel(NormalizeFuelValues(values)); }))
                         return;
                     currentCar = values[1];
-                    MessageBox.Show("Заправка добавлена.", "Шаблоны");
+                    MessageBox.Show(L10n.Get("msg.fuel_added"), L10n.Get("label.templates"));
                 }
             }
             else if (chosen.Type == RecordTemplates.TypeRepair)
             {
                 string[] cars = DataStore.LoadCarNames().ToArray();
                 string[] cats = DataStore.LoadRepairCategories();
-                using (EntryEditorForm editor = new EntryEditorForm("Ремонт из шаблона",
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.repair_from_template"),
                     new EntryField[] {
-                        new EntryField("Дата", date, "date", true),
-                        new EntryField("Автомобиль", currentCar, cars, true),
-                        new EntryField("Пробег, км", entity.Length > 2 ? entity[2] : LastCarMileage(currentCar), "number", true),
-                        new EntryField("Категория", entity.Length > 3 ? entity[3] : (cats.Length > 0 ? cats[0] : ""), cats, true),
-                        new EntryField("Товар", entity.Length > 4 ? entity[4] : "", "text", false),
-                        new EntryField("Наименование", entity.Length > 5 ? entity[5] : "", "text", false),
-                        new EntryField("Кол-во", entity.Length > 6 ? entity[6] : "1", "number", true),
-                        new EntryField("Сумма", entity.Length > 7 ? entity[7] : "", "number", true),
-                        new EntryField("Комментарий", entity.Length > 8 ? entity[8] : "", "text", false)
+                        new EntryField(L10n.Get("label.date"), date, "date", true),
+                        new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                        new EntryField(L10n.Get("label.odometer_km"), entity.Length > 2 ? entity[2] : LastCarMileage(currentCar), "number", true),
+                        new EntryField(L10n.Get("label.category"), entity.Length > 3 ? entity[3] : (cats.Length > 0 ? cats[0] : ""), cats, true),
+                        new EntryField(L10n.Get("label.product"), entity.Length > 4 ? entity[4] : "", "text", false),
+                        new EntryField(L10n.Get("label.item_name"), entity.Length > 5 ? entity[5] : "", "text", false),
+                        new EntryField(L10n.Get("label.qty_short"), entity.Length > 6 ? entity[6] : "1", "number", true),
+                        new EntryField(L10n.Get("label.amount"), entity.Length > 7 ? entity[7] : "", "number", true),
+                        new EntryField(L10n.Get("label.comment"), entity.Length > 8 ? entity[8] : "", "text", false)
                     }))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
@@ -3868,21 +3883,21 @@ namespace CarExpenses
                     if (!TrySave(delegate { DataStore.AddRepair(values); }))
                         return;
                     currentCar = values[1];
-                    MessageBox.Show("Ремонт добавлен.", "Шаблоны");
+                    MessageBox.Show(L10n.Get("msg.repair_added"), L10n.Get("label.templates"));
                 }
             }
             else
             {
                 string[] cars = DataStore.LoadCarNames().ToArray();
                 string[] cats = DataStore.LoadExpenseCategories();
-                using (EntryEditorForm editor = new EntryEditorForm("Прочее из шаблона",
+                using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.expense_from_template"),
                     new EntryField[] {
-                        new EntryField("Дата", date, "date", true),
-                        new EntryField("Автомобиль", currentCar, cars, true),
-                        new EntryField("Категория", entity.Length > 2 ? entity[2] : (cats.Length > 0 ? cats[0] : ""), cats, true),
-                        new EntryField("Название", entity.Length > 3 ? entity[3] : "", "text", true),
-                        new EntryField("Сумма", entity.Length > 4 ? entity[4] : "", "number", true),
-                        new EntryField("Комментарий", entity.Length > 5 ? entity[5] : "", "text", false)
+                        new EntryField(L10n.Get("label.date"), date, "date", true),
+                        new EntryField(L10n.Get("label.vehicle"), currentCar, cars, true),
+                        new EntryField(L10n.Get("label.category"), entity.Length > 2 ? entity[2] : (cats.Length > 0 ? cats[0] : ""), cats, true),
+                        new EntryField(L10n.Get("label.name"), entity.Length > 3 ? entity[3] : "", "text", true),
+                        new EntryField(L10n.Get("label.amount"), entity.Length > 4 ? entity[4] : "", "number", true),
+                        new EntryField(L10n.Get("label.comment"), entity.Length > 5 ? entity[5] : "", "text", false)
                     }))
                 {
                     if (editor.ShowDialog() != DialogResult.OK)
@@ -3891,7 +3906,7 @@ namespace CarExpenses
                     if (!TrySave(delegate { DataStore.AddExpense(values); }))
                         return;
                     currentCar = values[1];
-                    MessageBox.Show("Прочий расход добавлен.", "Шаблоны");
+                    MessageBox.Show(L10n.Get("msg.expense_added"), L10n.Get("label.templates"));
                 }
             }
         }
@@ -3902,24 +3917,24 @@ namespace CarExpenses
             decimal warnPct = ToSettings.GetBudgetWarnPct();
             EntryField[] fields = new EntryField[]
             {
-                new EntryField("Лимит (0 = выкл.)",
+                new EntryField(L10n.Get("label.limit_0_off"),
                     budget.ToString(CultureInfo.InvariantCulture), "number", true),
-                new EntryField("Предупр. %",
+                new EntryField(L10n.Get("label.warn_pct"),
                     warnPct.ToString(CultureInfo.InvariantCulture), "number", true)
             };
-            using (EntryEditorForm editor = new EntryEditorForm("Бюджет месяца", fields))
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("label.monthly_budget"), fields))
             {
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
                 decimal monthLimit, pct;
                 if (!DataStore.TryNumber(editor.Values[0], out monthLimit) || monthLimit < 0)
                 {
-                    MessageBox.Show("Лимит: 0 (выкл.) или положительное число.", "Бюджет");
+                    MessageBox.Show(L10n.Get("error.limit_invalid"), L10n.Get("label.budget"));
                     return;
                 }
                 if (!DataStore.TryNumber(editor.Values[1], out pct) || pct <= 0 || pct > 100)
                 {
-                    MessageBox.Show("Порог предупреждения: от 1 до 100 %.", "Бюджет");
+                    MessageBox.Show(L10n.Get("error.warn_pct_range"), L10n.Get("label.budget"));
                     return;
                 }
                 try
@@ -3929,14 +3944,14 @@ namespace CarExpenses
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Бюджет");
+                    MessageBox.Show(ex.Message, L10n.Get("label.budget"));
                     return;
                 }
                 if (monthLimit <= 0)
-                    MessageBox.Show("Месячный бюджет выключен.", "Бюджет");
+                    MessageBox.Show(L10n.Get("msg.budget_disabled"), L10n.Get("label.budget"));
                 else
-                    MessageBox.Show("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
-                        ", предупреждение с " + Money(pct) + "%.", "Бюджет");
+                    MessageBox.Show((L10n.Get("summary.monthly_budget_colon") + " ") + Money(monthLimit) + " " + Cur() +
+                        (L10n.Get("summary.warn_from") + " ") + Money(pct) + "%.", L10n.Get("label.budget"));
                 if (summaryBox != null)
                     summaryBox.Text = BuildSummary();
             }

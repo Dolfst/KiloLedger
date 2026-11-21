@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Windows.Forms;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     /// <summary>
@@ -24,7 +25,7 @@ namespace Alfa156.Desktop.Data
         internal static string PathForId(string dataDirectory, string recordId)
         {
             if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
-                throw new ArgumentException("Неверный id записи для фото чека.", "recordId");
+                throw new ArgumentException(L10n.Get("error.invalid_receipt_id"), "recordId");
             return Path.Combine(GetFolder(dataDirectory), recordId + ".jpg");
         }
 
@@ -50,7 +51,7 @@ namespace Alfa156.Desktop.Data
         internal static void SaveFromFile(string dataDirectory, string recordId, string sourcePath)
         {
             if (!File.Exists(sourcePath))
-                throw new FileNotFoundException("Файл изображения не найден.", sourcePath);
+                throw new FileNotFoundException(L10n.Get("error.image_file_not_found"), sourcePath);
             EnsureFolder(dataDirectory);
             string dest = PathForId(dataDirectory, recordId);
             string temp = dest + ".tmp";
@@ -73,15 +74,15 @@ namespace Alfa156.Desktop.Data
         internal static void OpenOrAttach(string dataDirectory, string recordId, IWin32Window owner)
         {
             if (String.IsNullOrEmpty(dataDirectory))
-                throw new InvalidOperationException("Сначала откройте папку данных.");
+                throw new InvalidOperationException(L10n.Get("error.open_folder_first"));
             if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
-                throw new InvalidOperationException("Выберите строку с id записи (сохраните .dat после добавления).");
+                throw new InvalidOperationException(L10n.Get("error.select_row_with_id"));
 
             if (Exists(dataDirectory, recordId))
             {
                 DialogResult choice = MessageBox.Show(owner,
-                    "Фото уже есть. Открыть текущее или заменить файлом?",
-                    "Фото чека",
+                    L10n.Get("confirm.photo_exists_open_or_replace"),
+                    L10n.Get("button.attach_receipt"),
                     MessageBoxButtons.YesNoCancel,
                     MessageBoxIcon.Question);
                 if (choice == DialogResult.Cancel)
@@ -95,8 +96,8 @@ namespace Alfa156.Desktop.Data
 
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
-                dialog.Title = "Фото чека для " + recordId;
-                dialog.Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp|Все файлы|*.*";
+                dialog.Title = (L10n.Get("title.receipt_photo_for") + " ") + recordId;
+                dialog.Filter = L10n.Get("filter.image_files");
                 if (dialog.ShowDialog(owner) != DialogResult.OK)
                     return;
                 SaveFromFile(dataDirectory, recordId, dialog.FileName);

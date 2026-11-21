@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     /// <summary>
@@ -136,13 +137,13 @@ namespace Alfa156.Desktop.Data
             item.Car = (item.Car ?? "").Trim();
             item.Text = (item.Text ?? "").Trim();
             if (!IsValidDate(item.Date))
-                throw new InvalidOperationException("Дата: ГГГГ-ММ-ДД.");
+                throw new InvalidOperationException(L10n.Get("error.date_format_upper"));
             if (item.Car.Length == 0)
-                throw new InvalidOperationException("Укажите автомобиль.");
+                throw new InvalidOperationException(L10n.Get("error.select_car"));
             if (item.Text.Length == 0)
-                throw new InvalidOperationException("Введите текст заметки.");
+                throw new InvalidOperationException(L10n.Get("error.enter_note_text"));
             if (item.Text.Length > MaxTextLength)
-                throw new InvalidOperationException("Текст заметки: не более 500 символов.");
+                throw new InvalidOperationException(L10n.Get("error.note_text_len"));
 
             bool found = false;
             if (!String.IsNullOrEmpty(item.Id) && RecordIds.LooksLikeId(item.Id))
@@ -218,20 +219,20 @@ namespace Alfa156.Desktop.Data
                 limit = 3;
             List<CarNote> list = ListForCar(rows, carName);
             StringBuilder sb = new StringBuilder();
-            sb.Append("\r\n\r\nЗаметки");
+            sb.Append(("\r\n\r\n" + L10n.Get("label.notes")));
             if (!String.IsNullOrEmpty(carName))
                 sb.Append(" («").Append(carName.Trim()).Append("»)");
             sb.Append(":");
             if (list.Count == 0)
             {
-                sb.Append("\r\nнет");
+                sb.Append(("\r\n" + L10n.Get("common.no_lower")));
                 return sb.ToString();
             }
             int shown = list.Count < limit ? list.Count : limit;
             for (int i = 0; i < shown; i++)
                 sb.Append("\r\n").Append(FormatLine(list[i]));
             if (list.Count > shown)
-                sb.Append("\r\n… ещё ").Append(list.Count - shown);
+                sb.Append(("\r\n" + L10n.Get("summary.and_more") + " ")).Append(list.Count - shown);
             return sb.ToString();
         }
     }

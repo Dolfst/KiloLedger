@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows.Forms;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     internal sealed class EntryField
@@ -63,8 +64,8 @@ namespace CarExpenses
 
             Resize += new EventHandler(ResizeInputs);
             MainMenu menu = new MainMenu();
-            menu.MenuItems.Add(CreateMenuItem("Сохранить", new EventHandler(Save)));
-            menu.MenuItems.Add(CreateMenuItem("Отмена", new EventHandler(Cancel)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.save"), new EventHandler(Save)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.cancel"), new EventHandler(Cancel)));
             Menu = menu;
         }
 
@@ -172,7 +173,7 @@ namespace CarExpenses
                 if (!fields[index].Required)
                 {
                     CheckBox enabled = new CheckBox();
-                    enabled.Text = "Указать";
+                    enabled.Text = L10n.Get("button.specify");
                     enabled.Checked = fields[index].Value.Length > 0;
                     enabled.BackColor = BackColor;
                     enabled.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
@@ -269,7 +270,7 @@ namespace CarExpenses
             {
                 if (fields[i].Required && values[i].Length == 0)
                 {
-                    MessageBox.Show(fields[i].Label + " — обязательное поле.", "Проверьте данные");
+                    MessageBox.Show(fields[i].Label + (" " + L10n.Get("error.required_field_suffix")), L10n.Get("title.check_data"));
                     inputs[i].Focus();
                     return;
                 }
@@ -281,7 +282,7 @@ namespace CarExpenses
                 {
                     if (!IsValidDate(values[i]))
                     {
-                        InvalidValue(i, "Введите дату в формате гггг-мм-дд.");
+                        InvalidValue(i, L10n.Get("error.enter_date_yyyy_mm_dd"));
                         return;
                     }
                 }
@@ -289,7 +290,7 @@ namespace CarExpenses
                 {
                     if (!IsValidMonth(values[i]))
                     {
-                        InvalidValue(i, "Введите месяц в формате гггг-мм.");
+                        InvalidValue(i, L10n.Get("error.enter_month_yyyy_mm"));
                         return;
                     }
                 }
@@ -298,7 +299,7 @@ namespace CarExpenses
                     decimal number;
                     if (!DataStore.TryNumber(values[i], out number) || number < 0)
                     {
-                        InvalidValue(i, "Введите неотрицательное число.");
+                        InvalidValue(i, L10n.Get("error.enter_non_negative"));
                         return;
                     }
                     values[i] = number.ToString(CultureInfo.InvariantCulture);
@@ -364,7 +365,7 @@ namespace CarExpenses
 
         private void InvalidValue(int index, string message)
         {
-            MessageBox.Show(message, "Проверьте данные");
+            MessageBox.Show(message, L10n.Get("title.check_data"));
             inputs[index].Focus();
         }
 

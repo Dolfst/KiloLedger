@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 /// <summary>
@@ -23,18 +24,18 @@ internal static class DuplicateFinder
     internal static List<Group> FindAll(string directory)
     {
         List<Group> result = new List<Group>();
-        Collect(result, directory, "fuel.dat", "Заправки",
+        Collect(result, directory, "fuel.dat", L10n.Get("tab.fuel"),
             ExpenseDataStore.Load(directory, "fuel.dat"),
             new int[] { 0, 1, 2 }, new bool[] { false, true, false });
-        Collect(result, directory, "repairs.dat", "Ремонт",
+        Collect(result, directory, "repairs.dat", L10n.Get("tab.repairs"),
             ExpenseDataStore.Load(directory, "repairs.dat"),
             new int[] { 0, 1, 2, 3, 4 },
             new bool[] { false, true, false, true, false });
-        Collect(result, directory, ExpenseDataCodec.ExpensesFile, "Прочие",
+        Collect(result, directory, ExpenseDataCodec.ExpensesFile, L10n.Get("tab.expenses"),
             ExpenseDataStore.LoadOptional(directory, ExpenseDataCodec.ExpensesFile),
             new int[] { 0, 1, 2, 3 },
             new bool[] { false, true, true, false });
-        Collect(result, directory, "utilities.dat", "Коммуналка",
+        Collect(result, directory, "utilities.dat", L10n.Get("tab.utilities"),
             ExpenseDataStore.Load(directory, "utilities.dat"),
             new int[] { 0 }, new bool[] { false });
         return result;
@@ -68,7 +69,7 @@ internal static class DuplicateFinder
             list.Add(i);
         }
         foreach (KeyValuePair<string, List<int>> pair in byKey)
-            MaybeAdd(result, fileName, title, "одинаковый ключ", rows, pair.Value);
+            MaybeAdd(result, fileName, title, L10n.Get("dup.same_key"), rows, pair.Value);
 
         Dictionary<string, List<int>> byContent = new Dictionary<string, List<int>>();
         for (int i = 0; i < rows.Count; i++)
@@ -83,7 +84,7 @@ internal static class DuplicateFinder
             list.Add(i);
         }
         foreach (KeyValuePair<string, List<int>> pair in byContent)
-            MaybeAdd(result, fileName, title, "одинаковое содержание", rows, pair.Value);
+            MaybeAdd(result, fileName, title, L10n.Get("dup.same_content"), rows, pair.Value);
     }
 
     private static void MaybeAdd(

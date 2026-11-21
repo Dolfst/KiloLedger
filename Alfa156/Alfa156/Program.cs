@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     static class Program
@@ -17,7 +18,7 @@ namespace CarExpenses
             }
             catch (System.Exception ex)
             {
-                MessageBox.Show("Не удалось запустить приложение: " + ex.Message, "Ошибка");
+                MessageBox.Show((L10n.Get("error.start_app_failed") + " ") + ex.Message, L10n.Get("title.error"));
             }
         }
     }

@@ -7,6 +7,7 @@ using System.Text;
 using System.Xml;
 using Alfa156.Desktop.Data;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Exchange
 {
     internal static class XlsxExchange
@@ -68,9 +69,9 @@ namespace Alfa156.Desktop.Exchange
                 List<string[]> expenseCategories = ReadNamedSheetOptional(zip, sheetMap,
                     new string[] { "Кат. прочих", "expense-categories", "Sheet7" }, 1);
                 if (cars.Count == 0)
-                    throw new InvalidDataException("В Excel нет данных на листе «Автомобили».");
+                    throw new InvalidDataException(L10n.Get("error.excel_no_cars_sheet"));
                 if (DengiFormat.LooksLikeMonthList(cars))
-                    throw new InvalidDataException("На листе «Автомобили» похоже месяцы. Для файла «Деньги» нужны листы Заправки/Ремонт/Коммунальные/Справочник.");
+                    throw new InvalidDataException(L10n.Get("error.dengi_sheets_expected"));
                 repo.ReplaceAll(cars, fuel, repairs, utilities, categories, expenses, expenseCategories,
                     repo.Settings);
             }
@@ -174,7 +175,7 @@ namespace Alfa156.Desktop.Exchange
             ZipArchiveEntry workbook = zip.GetEntry("xl/workbook.xml");
             ZipArchiveEntry rels = zip.GetEntry("xl/_rels/workbook.xml.rels");
             if (workbook == null || rels == null)
-                throw new InvalidDataException("Некорректный xlsx: нет workbook.");
+                throw new InvalidDataException(L10n.Get("error.invalid_xlsx_no_workbook"));
 
             Dictionary<string, string> relTargets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             using (Stream stream = rels.Open())

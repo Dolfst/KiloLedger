@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     internal static class RecordIds
@@ -288,19 +289,19 @@ namespace Alfa156.Desktop.Data
         public string FormatSummary()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Итог синхронизации:");
-            sb.AppendLine("  добавлено: " + Added);
-            sb.AppendLine("  удалено (tombstone): " + Removed);
-            sb.AppendLine("  конфликтов: " + Conflicts);
-            sb.AppendLine("  конфликтов, оставлено локальное: " + ConflictKeptLocal);
-            sb.AppendLine("  конфликтов, принято удалённое: " + ConflictKeptIncoming);
-            sb.AppendLine("  конфликтов, объединено: " + ConflictMerged);
-            sb.Append("  только локально: " + KeptLocalOnly);
+            sb.AppendLine(L10n.Get("sync.result_colon"));
+            sb.AppendLine(("  " + L10n.Get("sync.added_colon") + " ") + Added);
+            sb.AppendLine(("  " + L10n.Get("sync.deleted_tombstone_colon") + " ") + Removed);
+            sb.AppendLine(("  " + L10n.Get("sync.conflicts_colon") + " ") + Conflicts);
+            sb.AppendLine(("  " + L10n.Get("sync.conflicts_kept_local_colon") + " ") + ConflictKeptLocal);
+            sb.AppendLine(("  " + L10n.Get("sync.conflicts_took_remote_colon") + " ") + ConflictKeptIncoming);
+            sb.AppendLine(("  " + L10n.Get("sync.conflicts_merged_colon") + " ") + ConflictMerged);
+            sb.Append(("  " + L10n.Get("sync.local_only_colon") + " ") + KeptLocalOnly);
             AppendExamples(sb);
             if (!String.IsNullOrEmpty(RollbackReason))
             {
                 sb.AppendLine();
-                sb.Append("Причина отката: ").Append(RollbackReason);
+                sb.Append((L10n.Get("error.rollback_reason_colon") + " ")).Append(RollbackReason);
             }
             return sb.ToString();
         }
@@ -308,20 +309,20 @@ namespace Alfa156.Desktop.Data
         public string FormatPreview()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Предпросмотр слияния:");
-            sb.AppendLine("  только локально: " + KeptLocalOnly);
-            sb.AppendLine("  только удалённо: " + Added);
-            sb.AppendLine("  обновления/конфликты: " + Conflicts);
-            sb.AppendLine("  оставить локальное: " + ConflictKeptLocal);
-            sb.AppendLine("  принять удалённое: " + ConflictKeptIncoming);
-            sb.AppendLine("  объединить поля: " + ConflictMerged);
-            sb.Append("  удаления (tombstone): " + Removed);
+            sb.AppendLine(L10n.Get("sync.merge_preview_colon"));
+            sb.AppendLine(("  " + L10n.Get("sync.local_only_colon") + " ") + KeptLocalOnly);
+            sb.AppendLine(("  " + L10n.Get("sync.remote_only_colon") + " ") + Added);
+            sb.AppendLine(("  " + L10n.Get("sync.updates_conflicts_colon") + " ") + Conflicts);
+            sb.AppendLine(("  " + L10n.Get("sync.keep_local_colon") + " ") + ConflictKeptLocal);
+            sb.AppendLine(("  " + L10n.Get("sync.take_remote_colon") + " ") + ConflictKeptIncoming);
+            sb.AppendLine(("  " + L10n.Get("sync.merge_fields_colon") + " ") + ConflictMerged);
+            sb.Append(("  " + L10n.Get("sync.deletions_tombstone_colon") + " ") + Removed);
             AppendExamples(sb);
             if (!String.IsNullOrEmpty(SafetyPath))
             {
                 sb.AppendLine();
                 sb.AppendLine();
-                sb.Append("Перед применением: ").Append(SafetyPath);
+                sb.Append((L10n.Get("import.before_apply_colon") + " ")).Append(SafetyPath);
             }
             return sb.ToString();
         }
@@ -332,7 +333,7 @@ namespace Alfa156.Desktop.Data
                 return;
             sb.AppendLine();
             sb.AppendLine();
-            sb.Append("Примеры:");
+            sb.Append(L10n.Get("label.examples_colon"));
             for (int i = 0; i < Examples.Count; i++)
                 sb.AppendLine().Append("  • ").Append(Examples[i]);
         }

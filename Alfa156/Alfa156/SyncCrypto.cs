@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -14,7 +15,7 @@ namespace CarExpenses
         // SYNC2 crypto; "R" = receipts over Wi-Fi (1.15+). Same XOR session as 1.12–1.14.
         internal const string ProtocolHeader = "ALFA156SYNC2R|";
         internal const string UpgradeMessage =
-            "Обновите до 1.15+ для обмена фото";
+            L10n.Get("error.update_for_photos");
 
         private const string Salt = "Alfa156-WiFi-Sync-v2";
 

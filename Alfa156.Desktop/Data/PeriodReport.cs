@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     /// <summary>
@@ -49,18 +50,18 @@ namespace Alfa156.Desktop.Data
             if (money == null)
                 money = DefaultMoney;
 
-            string title = "Alfa 156 · отчёт за период";
+            string title = L10n.Get("report.header");
             string range = PeriodCompare.FormatRangeLabel(from, to);
             string costKm = totals.HasCostPerKm
-                ? money(totals.CostPerKm) + " " + currency + "/км"
-                : "н/д";
+                ? money(totals.CostPerKm) + " " + currency + L10n.Get("unit.per_km")
+                : L10n.Get("common.na");
             string kmRange = totals.HasCostPerKm
                 ? DefaultMoney(totals.MinKm) + "…" + DefaultMoney(totals.MaxKm) +
-                  " км (Δ " + DefaultMoney(totals.MaxKm - totals.MinKm) + " км)"
-                : "н/д";
+                  (" " + L10n.Get("report.km_delta_open") + " ") + DefaultMoney(totals.MaxKm - totals.MinKm) + (" " + L10n.Get("unit.km_close"))
+                : L10n.Get("common.na");
             string consumption = totals.HasConsumption
-                ? DefaultMoney(totals.LitersPer100Km) + " л/100 км"
-                : "н/д";
+                ? DefaultMoney(totals.LitersPer100Km) + (" " + L10n.Get("unit.l_per_100km"))
+                : L10n.Get("common.na");
             string budget = "";
             if (totals.PeriodBudget > 0)
             {
@@ -68,39 +69,39 @@ namespace Alfa156.Desktop.Data
                 budget = money(spent) + " / " + money(totals.PeriodBudget) + " " + currency +
                     " (" + DefaultMoney(spent * 100m / totals.PeriodBudget) + "%)";
                 if (spent >= totals.PeriodBudget)
-                    budget += " — превышен";
+                    budget += (" " + L10n.Get("report.budget_exceeded"));
             }
 
             if (!html)
             {
                 StringBuilder sb = new StringBuilder();
                 sb.Append(title);
-                sb.Append(nl).Append("Авто: ").Append(car ?? "");
-                sb.Append(nl).Append("Период: ").Append(range);
+                sb.Append(nl).Append((L10n.Get("label.car_colon") + " ")).Append(car ?? "");
+                sb.Append(nl).Append((L10n.Get("report.period_colon") + " ")).Append(range);
                 sb.Append(nl);
-                sb.Append(nl).Append("Топливо: ").Append(money(totals.Fuel)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Ремонт: ").Append(money(totals.Repair)).Append(' ').Append(currency);
+                sb.Append(nl).Append((L10n.Get("label.fuel_colon") + " ")).Append(money(totals.Fuel)).Append(' ').Append(currency);
+                sb.Append(nl).Append((L10n.Get("label.repairs_colon") + " ")).Append(money(totals.Repair)).Append(' ').Append(currency);
                 if (totals.TopRepairLabel.Length > 0)
-                    sb.Append(nl).Append("  Топ ремонта: ").Append(totals.TopRepairLabel).Append(" — ")
+                    sb.Append(nl).Append(("  " + L10n.Get("report.top_repairs_colon") + " ")).Append(totals.TopRepairLabel).Append(" — ")
                         .Append(money(totals.TopRepairAmount)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Прочие: ").Append(money(totals.Expense)).Append(' ').Append(currency);
+                sb.Append(nl).Append((L10n.Get("label.expenses_colon") + " ")).Append(money(totals.Expense)).Append(' ').Append(currency);
                 if (totals.TopExpenseLabel.Length > 0)
-                    sb.Append(nl).Append("  Топ прочих: ").Append(totals.TopExpenseLabel).Append(" — ")
+                    sb.Append(nl).Append(("  " + L10n.Get("report.top_expenses_colon") + " ")).Append(totals.TopExpenseLabel).Append(" — ")
                         .Append(money(totals.TopExpenseAmount)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Коммунальные: ").Append(money(totals.Utility)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Всего (без коммун.): ").Append(money(totals.CostBase)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Всего (с коммунальными): ").Append(money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
-                sb.Append(nl).Append("Пробег: ").Append(kmRange);
-                sb.Append(nl).Append("Заправлено: ").Append(DefaultMoney(totals.Liters)).Append(" л");
-                sb.Append(nl).Append("Расход: ").Append(consumption);
+                sb.Append(nl).Append((L10n.Get("label.utilities_colon") + " ")).Append(money(totals.Utility)).Append(' ').Append(currency);
+                sb.Append(nl).Append((L10n.Get("report.total_excl_util_colon") + " ")).Append(money(totals.CostBase)).Append(' ').Append(currency);
+                sb.Append(nl).Append((L10n.Get("report.total_incl_util_colon") + " ")).Append(money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
+                sb.Append(nl).Append((L10n.Get("report.cost_per_km_colon") + " ")).Append(costKm);
+                sb.Append(nl).Append((L10n.Get("label.odometer_colon") + " ")).Append(kmRange);
+                sb.Append(nl).Append((L10n.Get("report.fueled_colon") + " ")).Append(DefaultMoney(totals.Liters)).Append((" " + L10n.Get("unit.liters_short")));
+                sb.Append(nl).Append((L10n.Get("report.consumption_colon") + " ")).Append(consumption);
                 if (budget.Length > 0)
-                    sb.Append(nl).Append("Бюджет: ").Append(budget);
+                    sb.Append(nl).Append((L10n.Get("report.budget_colon") + " ")).Append(budget);
                 if (totals.TopStationLabel.Length > 0)
-                    sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
+                    sb.Append(nl).Append((L10n.Get("report.top_station_colon") + " ")).Append(totals.TopStationLabel).Append(" — ")
                         .Append(money(totals.TopStationAmount)).Append(' ').Append(currency);
-                sb.Append(nl).Append("Поездки личные: ").Append(DefaultMoney(totals.PersonalTripKm)).Append(" км");
-                sb.Append(nl).Append("Поездки рабочие: ").Append(DefaultMoney(totals.WorkTripKm)).Append(" км");
+                sb.Append(nl).Append((L10n.Get("report.trips_personal_colon") + " ")).Append(DefaultMoney(totals.PersonalTripKm)).Append((" " + L10n.Get("unit.km")));
+                sb.Append(nl).Append((L10n.Get("report.trips_work_colon") + " ")).Append(DefaultMoney(totals.WorkTripKm)).Append((" " + L10n.Get("unit.km")));
                 return sb.ToString();
             }
 
@@ -115,29 +116,29 @@ namespace Alfa156.Desktop.Data
             h.Append("<p class=\"meta\">Авто: ").Append(Esc(car ?? "")).Append("</p>");
             h.Append("<p class=\"meta\">Период: ").Append(Esc(range)).Append("</p>");
             h.Append("<table>");
-            AppendRow(h, "Топливо", money(totals.Fuel) + " " + currency);
-            AppendRow(h, "Ремонт", money(totals.Repair) + " " + currency);
+            AppendRow(h, L10n.Get("label.fuel"), money(totals.Fuel) + " " + currency);
+            AppendRow(h, L10n.Get("tab.repairs"), money(totals.Repair) + " " + currency);
             if (totals.TopRepairLabel.Length > 0)
-                AppendRow(h, "Топ ремонта", totals.TopRepairLabel + " — " +
+                AppendRow(h, L10n.Get("report.top_repairs"), totals.TopRepairLabel + " — " +
                     money(totals.TopRepairAmount) + " " + currency);
-            AppendRow(h, "Прочие", money(totals.Expense) + " " + currency);
+            AppendRow(h, L10n.Get("tab.expenses"), money(totals.Expense) + " " + currency);
             if (totals.TopExpenseLabel.Length > 0)
-                AppendRow(h, "Топ прочих", totals.TopExpenseLabel + " — " +
+                AppendRow(h, L10n.Get("report.top_expenses"), totals.TopExpenseLabel + " — " +
                     money(totals.TopExpenseAmount) + " " + currency);
-            AppendRow(h, "Коммунальные", money(totals.Utility) + " " + currency);
-            AppendRow(h, "Всего (без коммун.)", money(totals.CostBase) + " " + currency);
-            AppendRow(h, "Всего (с коммунальными)", money(totals.CostBase + totals.Utility) + " " + currency);
-            AppendRow(h, "Стоимость/км", costKm);
-            AppendRow(h, "Пробег", kmRange);
-            AppendRow(h, "Заправлено", DefaultMoney(totals.Liters) + " л");
-            AppendRow(h, "Расход", consumption);
+            AppendRow(h, L10n.Get("label.utilities_full"), money(totals.Utility) + " " + currency);
+            AppendRow(h, L10n.Get("report.total_excl_util"), money(totals.CostBase) + " " + currency);
+            AppendRow(h, L10n.Get("report.total_incl_util_label"), money(totals.CostBase + totals.Utility) + " " + currency);
+            AppendRow(h, L10n.Get("label.cost_per_km"), costKm);
+            AppendRow(h, L10n.Get("label.odometer"), kmRange);
+            AppendRow(h, L10n.Get("label.fueled"), DefaultMoney(totals.Liters) + (" " + L10n.Get("unit.liters_short")));
+            AppendRow(h, L10n.Get("label.consumption"), consumption);
             if (budget.Length > 0)
-                AppendRow(h, "Бюджет", budget);
+                AppendRow(h, L10n.Get("label.budget"), budget);
             if (totals.TopStationLabel.Length > 0)
-                AppendRow(h, "Топ АЗС/бренд", totals.TopStationLabel + " — " +
+                AppendRow(h, L10n.Get("report.top_station"), totals.TopStationLabel + " — " +
                     money(totals.TopStationAmount) + " " + currency);
-            AppendRow(h, "Поездки личные", DefaultMoney(totals.PersonalTripKm) + " км");
-            AppendRow(h, "Поездки рабочие", DefaultMoney(totals.WorkTripKm) + " км");
+            AppendRow(h, L10n.Get("trips.personal"), DefaultMoney(totals.PersonalTripKm) + (" " + L10n.Get("unit.km")));
+            AppendRow(h, L10n.Get("trips.work"), DefaultMoney(totals.WorkTripKm) + (" " + L10n.Get("unit.km")));
             h.Append("</table></body></html>");
             return h.ToString();
         }

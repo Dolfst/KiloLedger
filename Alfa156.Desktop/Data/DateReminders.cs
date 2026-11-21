@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     /// <summary>
@@ -174,7 +175,7 @@ namespace Alfa156.Desktop.Data
             type = NormalizeType(type);
             if (type == TypeInsurance) return "Страховка";
             if (type == TypeInspection) return "Техосмотр";
-            return "Своё";
+            return L10n.Get("reminder.custom");
         }
 
         internal static string FormatLine(DateReminder item, DateTime today)
@@ -184,11 +185,11 @@ namespace Alfa156.Desktop.Data
             int days = DaysUntil(item, today);
             string when;
             if (days < 0)
-                when = "просрочено " + (-days) + " дн.";
+                when = (L10n.Get("reminder.overdue") + " ") + (-days) + (" " + L10n.Get("unit.days_short"));
             else if (days == 0)
-                when = "сегодня";
+                when = L10n.Get("reminder.today");
             else
-                when = "через " + days + " дн.";
+                when = (L10n.Get("reminder.in_days") + " ") + days + (" " + L10n.Get("unit.days_short"));
             return item.Date + " · " + TypeLabelRu(item.Type) + " · " + item.Title +
                 " (" + item.Car + ") — " + when;
         }
@@ -197,10 +198,10 @@ namespace Alfa156.Desktop.Data
         {
             List<DateReminder> due = ListDueWithin(rows, warnDays, today);
             StringBuilder sb = new StringBuilder();
-            sb.Append("\r\n\r\nНапоминания (в ближайшие ").Append(warnDays).Append(" дн.):");
+            sb.Append(("\r\n\r\n" + L10n.Get("reminder.upcoming_open") + " ")).Append(warnDays).Append((" " + L10n.Get("unit.days_close_colon")));
             if (due.Count == 0)
             {
-                sb.Append("\r\nнет ближайших");
+                sb.Append(("\r\n" + L10n.Get("reminder.none_upcoming")));
                 return sb.ToString();
             }
             for (int i = 0; i < due.Count; i++)
@@ -219,13 +220,13 @@ namespace Alfa156.Desktop.Data
             item.Title = (item.Title ?? "").Trim();
             item.Type = NormalizeType(item.Type);
             if (!IsValidDate(item.Date))
-                throw new InvalidOperationException("Дата: ГГГГ-ММ-ДД.");
+                throw new InvalidOperationException(L10n.Get("error.date_format_upper"));
             if (item.Car.Length == 0)
-                throw new InvalidOperationException("Укажите автомобиль.");
+                throw new InvalidOperationException(L10n.Get("error.select_car"));
             if (item.Title.Length == 0)
-                throw new InvalidOperationException("Введите название напоминания.");
+                throw new InvalidOperationException(L10n.Get("error.enter_reminder_title"));
             if (item.Title.Length > 80)
-                throw new InvalidOperationException("Название напоминания: не более 80 символов.");
+                throw new InvalidOperationException(L10n.Get("error.reminder_title_len"));
 
             bool found = false;
             if (!String.IsNullOrEmpty(item.Id) && RecordIds.LooksLikeId(item.Id))

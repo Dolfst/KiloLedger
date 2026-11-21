@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     internal sealed class SyncOptionsForm : Form
@@ -17,7 +18,7 @@ namespace CarExpenses
         internal SyncOptionsForm(string summary)
         {
             plan = new SyncPlan();
-            Text = "Предпросмотр";
+            Text = L10n.Get("title.preview");
             // Design size for QVGA; Maximize + LayoutControls adapt to any resolution (QVGA/VGA).
             ClientSize = new Size(240, 268);
             AutoScroll = false;
@@ -26,7 +27,7 @@ namespace CarExpenses
             WindowState = FormWindowState.Maximized;
 
             summaryLabel = new Label();
-            summaryLabel.Text = "Предпросмотр слияния:";
+            summaryLabel.Text = L10n.Get("sync.merge_preview_colon");
             summaryLabel.BackColor = BackColor;
             summaryLabel.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(summaryLabel);
@@ -41,21 +42,21 @@ namespace CarExpenses
             Controls.Add(summaryBox);
 
             addBox = new CheckBox();
-            addBox.Text = "Добавить только с Android";
+            addBox.Text = L10n.Get("sync.add_android_only");
             addBox.Checked = true;
             addBox.BackColor = BackColor;
             addBox.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(addBox);
 
             removeBox = new CheckBox();
-            removeBox.Text = "Удалить отсутствующие на Android";
+            removeBox.Text = L10n.Get("sync.delete_missing_android");
             removeBox.Checked = false;
             removeBox.BackColor = BackColor;
             removeBox.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(removeBox);
 
             conflictLabel = new Label();
-            conflictLabel.Text = "Если запись отличается:";
+            conflictLabel.Text = L10n.Get("sync.if_record_differs");
             conflictLabel.BackColor = BackColor;
             conflictLabel.ForeColor = Color.FromArgb(35, 51, 70);
             Controls.Add(conflictLabel);
@@ -64,15 +65,15 @@ namespace CarExpenses
             conflictBox.DropDownStyle = ComboBoxStyle.DropDownList;
             conflictBox.BackColor = Color.White;
             conflictBox.ForeColor = Color.FromArgb(35, 51, 70);
-            conflictBox.Items.Add("Оставить КПК");
-            conflictBox.Items.Add("Взять Android");
-            conflictBox.Items.Add("Спрашивать каждый раз");
+            conflictBox.Items.Add(L10n.Get("sync.keep_pda"));
+            conflictBox.Items.Add(L10n.Get("sync.take_android"));
+            conflictBox.Items.Add(L10n.Get("sync.ask_every_time"));
             conflictBox.SelectedIndex = 0;
             Controls.Add(conflictBox);
 
             MainMenu menu = new MainMenu();
-            menu.MenuItems.Add(CreateMenuItem("Применить", new EventHandler(Accept)));
-            menu.MenuItems.Add(CreateMenuItem("Отмена", new EventHandler(Cancel)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.apply"), new EventHandler(Accept)));
+            menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.cancel"), new EventHandler(Cancel)));
             Menu = menu;
 
             Resize += new EventHandler(FormResized);

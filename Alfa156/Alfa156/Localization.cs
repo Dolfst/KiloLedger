@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -18,7 +19,6 @@ namespace Alfa156.Localization
             LoadLanguage(_currentLanguage);
         }
 
-        /// <summary>Получить или создать единственный экземпляр LocalizationManager</summary>
         public static LocalizationManager Instance
         {
             get
@@ -29,78 +29,91 @@ namespace Alfa156.Localization
             }
         }
 
-        /// <summary>Текущий язык (ru, en, es, fr, de)</summary>
         public string CurrentLanguage
         {
             get { return _currentLanguage; }
             set
             {
-                if (_currentLanguage != value)
+                string next = (value == null || value.Trim().Length == 0)
+                    ? "ru"
+                    : value.Trim().ToLower(CultureInfo.InvariantCulture);
+                if (_currentLanguage != next)
                 {
-                    _currentLanguage = value;
+                    _currentLanguage = next;
                     LoadLanguage(_currentLanguage);
                 }
             }
         }
 
-        /// <summary>Удобный статический доступ для смены языка из UI кода</summary>
         public static void SetLanguage(string language)
         {
             Instance.CurrentLanguage = language;
         }
 
-        /// <summary>Удобный статический доступ к текущему языку</summary>
         public static string GetCurrentLanguage()
         {
             return Instance.CurrentLanguage;
         }
 
-        /// <summary>Получить переведенную строку по ключу</summary>
         public string GetString(string key, string defaultValue)
         {
-            if (_strings == null || !_strings.ContainsKey(key))
+            if (_strings == null || key == null || key.Length == 0 || !_strings.ContainsKey(key))
             {
-                return defaultValue.Length == 0 ? key : defaultValue;
+                return (defaultValue == null || defaultValue.Length == 0) ? (key ?? "") : defaultValue;
             }
             return _strings[key];
         }
 
-        /// <summary>Получить все доступные языки (встроенные ресурсы exe)</summary>
         public string[] GetAvailableLanguages()
         {
             List<string> languages = new List<string>();
+            string[] order = new string[] { "ru", "en", "es", "fr", "de" };
+            List<string> found = new List<string>();
             string[] names = Assembly.GetExecutingAssembly().GetManifestResourceNames();
             for (int i = 0; i < names.Length; i++)
             {
                 string name = names[i];
-                if (name.StartsWith("strings.") && name.EndsWith(".json"))
+                if (name.StartsWith("strings.") && name.EndsWith(".json") && name.Length > 13)
                 {
-                    string lang = name.Substring(8, name.Length - 8 - 5); // убрать "strings." и ".json"
-                    languages.Add(lang);
+                    string lang = name.Substring(8, name.Length - 8 - 5).ToLower(CultureInfo.InvariantCulture);
+                    if (!found.Contains(lang))
+                        found.Add(lang);
                 }
             }
-            return languages.ToArray();
+            for (int i = 0; i < order.Length; i++)
+            {
+                if (found.Contains(order[i]))
+                    languages.Add(order[i]);
+            }
+            for (int i = 0; i < found.Count; i++)
+            {
+                if (!languages.Contains(found[i]))
+                    languages.Add(found[i]);
+            }
+            return languages.Count > 0 ? languages.ToArray() : order;
         }
 
-        /// <summary>Загрузить языковой пакет из встроенного ресурса exe</summary>
         private void LoadLanguage(string language)
         {
             _strings = new Dictionary<string, string>();
+            LoadResourceIntoMap("strings.ru.json");
+            if (language != null && language.Length > 0 && !string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase))
+            {
+                LoadResourceIntoMap("strings." + language + ".json");
+            }
+        }
 
-            string json = ReadResource("strings." + language + ".json");
-            if (json == null)
-                json = ReadResource("strings.ru.json"); // Fallback на русский
-
+        private void LoadResourceIntoMap(string resourceName)
+        {
+            string json = ReadResource(resourceName);
             if (json == null)
                 return;
-
             try
             {
                 ParseJsonStrings(json);
             }
             catch (Exception)
             {
-                // не ломаем запуск приложения при повреждённых переводах
             }
         }
 
@@ -124,63 +137,83 @@ namespace Alfa156.Localization
             }
         }
 
-        /// <summary>Простой парсер JSON для строк (без внешних зависимостей)</summary>
         private void ParseJsonStrings(string json)
         {
-            // Простой парсер для { "key": "value" }
+            if (json == null || json.Length == 0)
+                return;
             int pos = 0;
             while (pos < json.Length)
             {
-                int keyStart = json.IndexOf("\"", pos);
+                int keyStart = FindNextQuote(json, pos);
                 if (keyStart < 0) break;
+                string key = ReadJsonString(json, keyStart, out pos);
+                if (key == null) break;
 
-                int keyEnd = json.IndexOf("\"", keyStart + 1);
-                if (keyEnd < 0) break;
-
-                string key = json.Substring(keyStart + 1, keyEnd - keyStart - 1);
-
-                int colonPos = json.IndexOf(":", keyEnd);
+                int colonPos = json.IndexOf(':', pos);
                 if (colonPos < 0) break;
 
-                int valueStart = json.IndexOf("\"", colonPos);
-                if (valueStart < 0) break;
+                int valStart = FindNextQuote(json, colonPos + 1);
+                if (valStart < 0) break;
+                string val = ReadJsonString(json, valStart, out pos);
+                if (val == null) break;
 
-                int valueEnd = valueStart + 1;
-                bool escaped = false;
-                while (valueEnd < json.Length)
-                {
-                    if (json[valueEnd] == '\\' && !escaped)
-                    {
-                        escaped = true;
-                    }
-                    else if (json[valueEnd] == '"' && !escaped)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        escaped = false;
-                    }
-                    valueEnd++;
-                }
-
-                if (valueEnd < json.Length)
-                {
-                    string value = json.Substring(valueStart + 1, valueEnd - valueStart - 1);
-                    // Обработать экранированные символы
-                    value = value.Replace("\\n", "\n").Replace("\\r", "\r").Replace("\\t", "\t").Replace("\\\"", "\"").Replace("\\\\", "\\");
-                    _strings[key] = value;
-                    pos = valueEnd + 1;
-                }
-                else
-                {
-                    break;
-                }
+                _strings[key] = val;
             }
+        }
+
+        private static int FindNextQuote(string s, int start)
+        {
+            for (int i = start; i < s.Length; i++)
+            {
+                if (s[i] == '"') return i;
+            }
+            return -1;
+        }
+
+        private static string ReadJsonString(string s, int quoteStart, out int nextPos)
+        {
+            StringBuilder sb = new StringBuilder();
+            int i = quoteStart + 1;
+            while (i < s.Length)
+            {
+                char c = s[i];
+                if (c == '"')
+                {
+                    nextPos = i + 1;
+                    return sb.ToString();
+                }
+                if (c == '\\' && i + 1 < s.Length)
+                {
+                    char esc = s[i + 1];
+                    if (esc == 'n') { sb.Append('\n'); i += 2; continue; }
+                    if (esc == 'r') { sb.Append('\r'); i += 2; continue; }
+                    if (esc == 't') { sb.Append('\t'); i += 2; continue; }
+                    if (esc == '"') { sb.Append('"'); i += 2; continue; }
+                    if (esc == '\\') { sb.Append('\\'); i += 2; continue; }
+                    if (esc == '/') { sb.Append('/'); i += 2; continue; }
+                    if (esc == 'u' && i + 5 < s.Length)
+                    {
+                        try
+                        {
+                            int code = int.Parse(s.Substring(i + 2, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                            sb.Append((char)code);
+                            i += 6;
+                            continue;
+                        }
+                        catch (Exception) { }
+                    }
+                    sb.Append(esc);
+                    i += 2;
+                    continue;
+                }
+                sb.Append(c);
+                i++;
+            }
+            nextPos = s.Length;
+            return null;
         }
     }
 
-    /// <summary>Удобные методы доступа к строкам локализации</summary>
     public static class L10n
     {
         public static string Get(string key)
@@ -191,6 +224,15 @@ namespace Alfa156.Localization
         public static string Get(string key, string defaultValue)
         {
             return LocalizationManager.Instance.GetString(key, defaultValue);
+        }
+
+        public static string Format(string key, params object[] args)
+        {
+            string pattern = Get(key);
+            if (args == null || args.Length == 0)
+                return pattern;
+            try { return string.Format(pattern, args); }
+            catch (Exception) { return pattern; }
         }
 
         public static string GetLanguage()
@@ -206,6 +248,16 @@ namespace Alfa156.Localization
         public static string[] GetAvailableLanguages()
         {
             return LocalizationManager.Instance.GetAvailableLanguages();
+        }
+
+        public static string GetLanguageDisplayName(string code)
+        {
+            if (code == "ru") return "Русский";
+            if (code == "en") return "English";
+            if (code == "es") return "Español";
+            if (code == "fr") return "Français";
+            if (code == "de") return "Deutsch";
+            return code;
         }
     }
 }

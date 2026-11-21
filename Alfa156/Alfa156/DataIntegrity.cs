@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -61,7 +62,7 @@ namespace CarExpenses
             Report report = new Report();
             if (!Directory.Exists(DataDirectory))
             {
-                report.Findings.Add(new Finding("данные", "error", "Папка данных не найдена."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_data"), "error", L10n.Get("error.data_folder_not_found")));
                 return report;
             }
 
@@ -89,17 +90,17 @@ namespace CarExpenses
             CheckReceipts(report, fuels, repairs, expenses);
             CheckTombstones(report, fuels, repairs, expenses, utilities);
             if (report.Findings.Count == 0)
-                report.Findings.Add(new Finding("итог", "info", "Проблем не найдено."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_summary"), "info", L10n.Get("integrity.no_issues")));
             return report;
         }
 
         internal static string Format(Report report)
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Проверка данных\r\n");
-            sb.Append("ошибок: ").Append(report.ErrorCount)
-                .Append(", предупреждений: ").Append(report.WarnCount)
-                .Append(", сведений: ").Append(report.InfoCount).Append("\r\n");
+            sb.Append((L10n.Get("button.data_integrity") + "\r\n"));
+            sb.Append((L10n.Get("integrity.errors_colon") + " ")).Append(report.ErrorCount)
+                .Append((L10n.Get("integrity.comma_warnings") + " ")).Append(report.WarnCount)
+                .Append((L10n.Get("integrity.comma_info") + " ")).Append(report.InfoCount).Append("\r\n");
             string lastCat = null;
             for (int i = 0; i < report.Findings.Count; i++)
             {
@@ -112,7 +113,7 @@ namespace CarExpenses
                 sb.Append("· ").Append(f.Severity).Append(": ").Append(f.Message).Append("\r\n");
             }
             if (report.CanSimpleFix)
-                sb.Append("\r\nМожно «Исправить простое»: добавить отсутствующие категории в списки.");
+                sb.Append(("\r\n" + L10n.Get("integrity.can_quick_fix")));
             return sb.ToString();
         }
 
@@ -151,23 +152,23 @@ namespace CarExpenses
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] c = RecordIds.StripId(rows[i]);
-                string label = "заправка #" + (i + 1);
+                string label = L10n.Get("integrity.fuel_prefix") + (i + 1);
                 if (c.Length < 5)
                 {
-                    report.Findings.Add(new Finding("поля", "error", label + ": слишком мало полей."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error", label + L10n.Get("integrity.too_few_fields")));
                     continue;
                 }
                 CheckDate(report, label, c[0]);
-                CheckRequired(report, label, "авто", c[1]);
-                CheckRequired(report, label, "пробег", c[2]);
-                CheckRequired(report, label, "литры", c[3]);
-                CheckRequired(report, label, "сумма", c[4]);
-                CheckNonNegative(report, label, "пробег", c[2]);
-                CheckNonNegative(report, label, "литры", c[3]);
-                CheckNonNegative(report, label, "сумма", c[4]);
+                CheckRequired(report, label, L10n.Get("integrity.field_car"), c[1]);
+                CheckRequired(report, label, L10n.Get("integrity.field_odometer"), c[2]);
+                CheckRequired(report, label, L10n.Get("integrity.field_liters"), c[3]);
+                CheckRequired(report, label, L10n.Get("integrity.field_amount"), c[4]);
+                CheckNonNegative(report, label, L10n.Get("integrity.field_odometer"), c[2]);
+                CheckNonNegative(report, label, L10n.Get("integrity.field_liters"), c[3]);
+                CheckNonNegative(report, label, L10n.Get("integrity.field_amount"), c[4]);
                 if (c[1] != null && c[1].Length > 0 && !cars.ContainsKey(c[1]))
-                    report.Findings.Add(new Finding("сироты", "warn",
-                        label + ": авто «" + c[1] + "» нет в списке."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_orphans"), "warn",
+                        label + L10n.Get("integrity.car_open") + c[1] + L10n.Get("integrity.not_in_list")));
             }
         }
 
@@ -178,28 +179,28 @@ namespace CarExpenses
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] c = RecordIds.StripId(rows[i]);
-                string label = "ремонт #" + (i + 1);
+                string label = L10n.Get("integrity.repair_prefix") + (i + 1);
                 if (c.Length < 8)
                 {
-                    report.Findings.Add(new Finding("поля", "error", label + ": слишком мало полей."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error", label + L10n.Get("integrity.too_few_fields")));
                     continue;
                 }
                 CheckDate(report, label, c[0]);
-                CheckRequired(report, label, "авто", c[1]);
-                CheckRequired(report, label, "категория", c[3]);
-                CheckRequired(report, label, "товар", c[4]);
-                CheckRequired(report, label, "сумма", c[7]);
+                CheckRequired(report, label, L10n.Get("integrity.field_car"), c[1]);
+                CheckRequired(report, label, L10n.Get("integrity.field_category"), c[3]);
+                CheckRequired(report, label, L10n.Get("integrity.field_product"), c[4]);
+                CheckRequired(report, label, L10n.Get("integrity.field_amount"), c[7]);
                 if (c[2] != null && c[2].Length > 0)
-                    CheckNonNegative(report, label, "пробег", c[2]);
-                CheckNonNegative(report, label, "сумма", c[7]);
+                    CheckNonNegative(report, label, L10n.Get("integrity.field_odometer"), c[2]);
+                CheckNonNegative(report, label, L10n.Get("integrity.field_amount"), c[7]);
                 if (c[1] != null && c[1].Length > 0 && !cars.ContainsKey(c[1]))
-                    report.Findings.Add(new Finding("сироты", "warn",
-                        label + ": авто «" + c[1] + "» нет в списке."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_orphans"), "warn",
+                        label + L10n.Get("integrity.car_open") + c[1] + L10n.Get("integrity.not_in_list")));
                 string cat = c[3] == null ? "" : c[3].Trim();
                 if (cat.Length > 0 && !known.ContainsKey(cat))
                 {
-                    report.Findings.Add(new Finding("категории", "warn",
-                        label + ": категория ремонта «" + cat + "» отсутствует в списке."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_categories"), "warn",
+                        label + L10n.Get("integrity.repair_cat_open") + cat + L10n.Get("integrity.missing_in_list_suffix")));
                     if (!ContainsIgnoreCase(report.MissingRepairCategories, cat))
                         report.MissingRepairCategories.Add(cat);
                 }
@@ -213,25 +214,25 @@ namespace CarExpenses
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] c = RecordIds.StripId(rows[i]);
-                string label = "прочие #" + (i + 1);
+                string label = L10n.Get("integrity.expense_prefix") + (i + 1);
                 if (c.Length < 5)
                 {
-                    report.Findings.Add(new Finding("поля", "error", label + ": слишком мало полей."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error", label + L10n.Get("integrity.too_few_fields")));
                     continue;
                 }
                 CheckDate(report, label, c[0]);
-                CheckRequired(report, label, "авто", c[1]);
-                CheckRequired(report, label, "категория", c[2]);
-                CheckRequired(report, label, "сумма", c[4]);
-                CheckNonNegative(report, label, "сумма", c[4]);
+                CheckRequired(report, label, L10n.Get("integrity.field_car"), c[1]);
+                CheckRequired(report, label, L10n.Get("integrity.field_category"), c[2]);
+                CheckRequired(report, label, L10n.Get("integrity.field_amount"), c[4]);
+                CheckNonNegative(report, label, L10n.Get("integrity.field_amount"), c[4]);
                 if (c[1] != null && c[1].Length > 0 && !cars.ContainsKey(c[1]))
-                    report.Findings.Add(new Finding("сироты", "warn",
-                        label + ": авто «" + c[1] + "» нет в списке."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_orphans"), "warn",
+                        label + L10n.Get("integrity.car_open") + c[1] + L10n.Get("integrity.not_in_list")));
                 string cat = c[2] == null ? "" : c[2].Trim();
                 if (cat.Length > 0 && !known.ContainsKey(cat))
                 {
-                    report.Findings.Add(new Finding("категории", "warn",
-                        label + ": категория прочих «" + cat + "» отсутствует в списке."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_categories"), "warn",
+                        label + L10n.Get("integrity.expense_cat_open") + cat + L10n.Get("integrity.missing_in_list_suffix")));
                     if (!ContainsIgnoreCase(report.MissingExpenseCategories, cat))
                         report.MissingExpenseCategories.Add(cat);
                 }
@@ -243,17 +244,17 @@ namespace CarExpenses
             for (int i = 0; i < rows.Count; i++)
             {
                 string[] c = RecordIds.StripId(rows[i]);
-                string label = "коммуналка #" + (i + 1);
+                string label = L10n.Get("integrity.utility_prefix") + (i + 1);
                 if (c.Length < 1)
                 {
-                    report.Findings.Add(new Finding("поля", "error", label + ": пустая строка."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error", label + L10n.Get("integrity.empty_row")));
                     continue;
                 }
                 CheckMonth(report, label, c[0]);
                 for (int j = 1; j < c.Length && j <= 7; j++)
                 {
                     if (c[j] != null && c[j].Length > 0)
-                        CheckNonNegative(report, label, "сумма[" + j + "]", c[j]);
+                        CheckNonNegative(report, label, L10n.Get("integrity.amount_bracket") + j + "]", c[j]);
                 }
             }
         }
@@ -271,8 +272,8 @@ namespace CarExpenses
             for (int i = 0; i < repairCats.Count; i++)
             {
                 if (repairCats[i].Length > 0 && !usedRepair.ContainsKey(repairCats[i]))
-                    report.Findings.Add(new Finding("категории", "info",
-                        "категория ремонта «" + repairCats[i] + "» не используется."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_categories"), "info",
+                        L10n.Get("integrity.unused_repair_cat_open") + repairCats[i] + L10n.Get("integrity.not_used_suffix")));
             }
 
             Dictionary<string, bool> usedExpense = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
@@ -285,8 +286,8 @@ namespace CarExpenses
             for (int i = 0; i < expenseCats.Count; i++)
             {
                 if (expenseCats[i].Length > 0 && !usedExpense.ContainsKey(expenseCats[i]))
-                    report.Findings.Add(new Finding("категории", "info",
-                        "категория прочих «" + expenseCats[i] + "» не используется."));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_categories"), "info",
+                        L10n.Get("integrity.unused_expense_cat_open") + expenseCats[i] + L10n.Get("integrity.not_used_suffix")));
             }
         }
 
@@ -308,21 +309,21 @@ namespace CarExpenses
                 string name = Path.GetFileNameWithoutExtension(files[i]);
                 if (!RecordIds.LooksLikeId(name))
                 {
-                    report.Findings.Add(new Finding("чеки", "warn",
-                        "чек с некорректным именем: " + Path.GetFileName(files[i])));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_receipts"), "warn",
+                        (L10n.Get("integrity.bad_receipt_name") + " ") + Path.GetFileName(files[i])));
                     continue;
                 }
                 if (!ids.ContainsKey(name))
                 {
-                    report.Findings.Add(new Finding("чеки", "warn",
-                        "файл чека без записи: " + Path.GetFileName(files[i])));
+                    report.Findings.Add(new Finding(L10n.Get("integrity.cat_receipts"), "warn",
+                        (L10n.Get("integrity.orphan_receipt_file") + " ") + Path.GetFileName(files[i])));
                     continue;
                 }
                 try
                 {
                     if (new FileInfo(files[i]).Length <= 0)
-                        report.Findings.Add(new Finding("чеки", "warn",
-                            "пустой файл чека: " + Path.GetFileName(files[i])));
+                        report.Findings.Add(new Finding(L10n.Get("integrity.cat_receipts"), "warn",
+                            (L10n.Get("integrity.empty_receipt_file") + " ") + Path.GetFileName(files[i])));
                 }
                 catch { }
             }
@@ -346,7 +347,7 @@ namespace CarExpenses
                     dangling++;
             if (dangling > 0)
                 report.Findings.Add(new Finding("tombstone", "info",
-                    "tombstone без живой записи: " + dangling + " (нормально после удалений)."));
+                    (L10n.Get("integrity.dangling_tombstone") + " ") + dangling + (" " + L10n.Get("integrity.tombstone_normal"))));
         }
 
         private static void CheckDate(Report report, string label, string value)
@@ -354,12 +355,12 @@ namespace CarExpenses
             value = value == null ? "" : value.Trim();
             if (value.Length == 0)
             {
-                report.Findings.Add(new Finding("даты", "error", label + ": пустая дата."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_dates"), "error", label + L10n.Get("integrity.empty_date")));
                 return;
             }
             if (!TryParseYmd(value))
-                report.Findings.Add(new Finding("даты", "error",
-                    label + ": неверная дата «" + value + "» (ожидается yyyy-MM-dd)."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_dates"), "error",
+                    label + L10n.Get("integrity.invalid_date_open") + value + L10n.Get("integrity.expected_date_close")));
         }
 
         private static void CheckMonth(Report report, string label, string value)
@@ -367,19 +368,19 @@ namespace CarExpenses
             value = value == null ? "" : value.Trim();
             if (value.Length == 0)
             {
-                report.Findings.Add(new Finding("даты", "error", label + ": пустой месяц."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_dates"), "error", label + L10n.Get("integrity.empty_month")));
                 return;
             }
             if (!TryParseYm(value) && !TryParseYmd(value))
-                report.Findings.Add(new Finding("даты", "error",
-                    label + ": неверный месяц «" + value + "»."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_dates"), "error",
+                    label + L10n.Get("integrity.invalid_month_open") + value + "»."));
         }
 
         private static void CheckRequired(Report report, string label, string field, string value)
         {
             if (value == null || value.Trim().Length == 0)
-                report.Findings.Add(new Finding("поля", "error",
-                    label + ": пустое обязательное поле «" + field + "»."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error",
+                    label + L10n.Get("integrity.empty_required_open") + field + "»."));
         }
 
         private static void CheckNonNegative(Report report, string label, string field, string value)
@@ -390,13 +391,13 @@ namespace CarExpenses
             decimal n;
             if (!DataStore.TryNumber(value, out n))
             {
-                report.Findings.Add(new Finding("поля", "error",
-                    label + ": «" + field + "» не число («" + value + "»)."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error",
+                    label + ": «" + field + L10n.Get("integrity.not_number_mid") + value + "»)."));
                 return;
             }
             if (n < 0)
-                report.Findings.Add(new Finding("поля", "error",
-                    label + ": отрицательное «" + field + "» (" + value + ")."));
+                report.Findings.Add(new Finding(L10n.Get("integrity.cat_fields"), "error",
+                    label + L10n.Get("integrity.negative_open") + field + "» (" + value + ")."));
         }
 
         private static bool TryParseYmd(string value)

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 internal static class RecordIds
@@ -301,34 +302,34 @@ internal sealed class SyncJournal
     public string FormatSummary()
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append("Итог синхронизации:\n");
-        sb.Append("  добавлено: ").Append(Added).Append('\n');
-        sb.Append("  удалено (tombstone): ").Append(Removed).Append('\n');
-        sb.Append("  конфликтов: ").Append(Conflicts).Append('\n');
-        sb.Append("  конфликтов, оставлено локальное: ").Append(ConflictKeptLocal).Append('\n');
-        sb.Append("  конфликтов, принято удалённое: ").Append(ConflictKeptIncoming).Append('\n');
-        sb.Append("  конфликтов, объединено: ").Append(ConflictMerged).Append('\n');
-        sb.Append("  только локально: ").Append(KeptLocalOnly);
+        sb.Append((L10n.Get("sync.result_colon") + "\n"));
+        sb.Append(("  " + L10n.Get("sync.added_colon") + " ")).Append(Added).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.deleted_tombstone_colon") + " ")).Append(Removed).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.conflicts_colon") + " ")).Append(Conflicts).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.conflicts_kept_local_colon") + " ")).Append(ConflictKeptLocal).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.conflicts_took_remote_colon") + " ")).Append(ConflictKeptIncoming).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.conflicts_merged_colon") + " ")).Append(ConflictMerged).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.local_only_colon") + " ")).Append(KeptLocalOnly);
         AppendExamples(sb);
         if (!String.IsNullOrEmpty(RollbackReason))
-            sb.Append("\nПричина отката: ").Append(RollbackReason);
+            sb.Append(("\n" + L10n.Get("error.rollback_reason_colon") + " ")).Append(RollbackReason);
         return sb.ToString();
     }
 
     public string FormatPreview()
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append("Предпросмотр слияния:\n");
-        sb.Append("  только локально: ").Append(KeptLocalOnly).Append('\n');
-        sb.Append("  только удалённо: ").Append(Added).Append('\n');
-        sb.Append("  обновления/конфликты: ").Append(Conflicts).Append('\n');
-        sb.Append("  оставить локальное: ").Append(ConflictKeptLocal).Append('\n');
-        sb.Append("  принять удалённое: ").Append(ConflictKeptIncoming).Append('\n');
-        sb.Append("  объединить поля: ").Append(ConflictMerged).Append('\n');
-        sb.Append("  удаления (tombstone): ").Append(Removed);
+        sb.Append((L10n.Get("sync.merge_preview_colon") + "\n"));
+        sb.Append(("  " + L10n.Get("sync.local_only_colon") + " ")).Append(KeptLocalOnly).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.remote_only_colon") + " ")).Append(Added).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.updates_conflicts_colon") + " ")).Append(Conflicts).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.keep_local_colon") + " ")).Append(ConflictKeptLocal).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.take_remote_colon") + " ")).Append(ConflictKeptIncoming).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.merge_fields_colon") + " ")).Append(ConflictMerged).Append('\n');
+        sb.Append(("  " + L10n.Get("sync.deletions_tombstone_colon") + " ")).Append(Removed);
         AppendExamples(sb);
         if (!String.IsNullOrEmpty(SafetyPath))
-            sb.Append("\n\nПеред применением: ").Append(SafetyPath);
+            sb.Append(("\n\n" + L10n.Get("import.before_apply_colon") + " ")).Append(SafetyPath);
         return sb.ToString();
     }
 
@@ -336,7 +337,7 @@ internal sealed class SyncJournal
     {
         if (Examples.Count == 0)
             return;
-        sb.Append("\n\nПримеры:");
+        sb.Append(("\n\n" + L10n.Get("label.examples_colon")));
         for (int i = 0; i < Examples.Count; i++)
             sb.Append("\n  • ").Append(Examples[i]);
     }

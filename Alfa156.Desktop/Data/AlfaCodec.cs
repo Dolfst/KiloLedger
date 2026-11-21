@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     internal static class AlfaCodec
@@ -32,18 +33,25 @@ namespace Alfa156.Desktop.Data
 
         internal static readonly string[] UtilityLabels = new string[]
         {
-            "Коммунальные платежи", "Электроэнергия", "Газ", "Стационарный телефон",
-            "Домашний интернет", "Налог на аренду", "Аренда жилья"
+            L10n.Get("utility.label_0"), L10n.Get("utility.label_1"), L10n.Get("utility.label_2"), L10n.Get("utility.label_3"),
+            L10n.Get("utility.label_4"), L10n.Get("utility.label_5"), L10n.Get("utility.label_6")
         };
+        internal static string GetUtilityLabel(int index)
+        {
+            if (index >= 0 && index < UtilityLabels.Length)
+                return Alfa156.Localization.L10n.Get("utility.label_" + index);
+            return "";
+        }
+
 
         internal static readonly string[] DefaultRepairCategories = new string[]
         {
-            "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
+            L10n.Get("service.oil_short"), L10n.Get("service.belt_short"), L10n.Get("category.parts"), L10n.Get("category.fluids"), L10n.Get("category.brakes"), L10n.Get("category.body"), L10n.Get("category.consumables")
         };
 
         internal static readonly string[] DefaultExpenseCategories = new string[]
         {
-            "Страховка", "Техосмотр", "Штрафы", "Мойка", "Парковка", "Прочее"
+            L10n.Get("reminder.insurance"), L10n.Get("reminder.inspection"), L10n.Get("category.fines"), L10n.Get("category.wash"), L10n.Get("category.parking"), L10n.Get("label.other")
         };
 
         private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
@@ -149,8 +157,8 @@ namespace Alfa156.Desktop.Data
                 }
                 catch (Exception restoreError)
                 {
-                    throw new IOException("Не удалось сохранить файл: " + saveError.Message +
-                        ". Не удалось вернуть предыдущий файл: " + restoreError.Message, saveError);
+                    throw new IOException((L10n.Get("error.save_file_failed") + " ") + saveError.Message +
+                        (L10n.Get("error.rollback_prev_file_failed") + " ") + restoreError.Message, saveError);
                 }
                 throw;
             }
@@ -165,7 +173,7 @@ namespace Alfa156.Desktop.Data
         {
             for (int i = 0; i < CoreDataFiles.Length; i++)
                 if (!File.Exists(Path.Combine(directory, CoreDataFiles[i])))
-                    throw new InvalidDataException("Нужны все четыре файла: cars.dat, fuel.dat, repairs.dat и utilities.dat.");
+                    throw new InvalidDataException(L10n.Get("error.need_four_dat_files"));
 
             for (int i = 0; i < CoreDataFiles.Length; i++)
             {
@@ -173,10 +181,10 @@ namespace Alfa156.Desktop.Data
                 for (int j = 0; j < rows.Count; j++)
                 {
                     if (!IsValidColumnCount(CoreDataFiles[i], rows[j].Length))
-                        throw new InvalidDataException("Неверный формат записи в " + CoreDataFiles[i] + " (строка " + (j + 1) + ").");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + CoreDataFiles[i] + (" " + L10n.Get("error.line_open") + " ") + (j + 1) + ").");
                 }
                 if (i == 0 && rows.Count == 0)
-                    throw new InvalidDataException("В cars.dat нет автомобилей.");
+                    throw new InvalidDataException(L10n.Get("error.no_cars_in_dat"));
             }
 
             string expensesPath = Path.Combine(directory, ExpensesFile);
@@ -185,8 +193,8 @@ namespace Alfa156.Desktop.Data
                 List<string[]> expenses = ReadRows(expensesPath);
                 for (int j = 0; j < expenses.Count; j++)
                     if (!IsValidColumnCount(ExpensesFile, expenses[j].Length))
-                        throw new InvalidDataException("Неверный формат записи в " + ExpensesFile +
-                            " (строка " + (j + 1) + ").");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + ExpensesFile +
+                            (" " + L10n.Get("error.line_open") + " ") + (j + 1) + ").");
             }
 
             string expenseCategoriesPath = Path.Combine(directory, ExpenseCategoriesFile);
@@ -195,7 +203,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> expenseCategories = ReadRows(expenseCategoriesPath);
                 for (int j = 0; j < expenseCategories.Count; j++)
                     if (!IsValidCategoryRow(expenseCategories[j]))
-                        throw new InvalidDataException("Неверный формат записи в " +
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") +
                             ExpenseCategoriesFile + ".");
             }
 
@@ -205,7 +213,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> settings = ReadRows(settingsPath);
                 for (int j = 0; j < settings.Count; j++)
                     if (!ToSettings.IsValidRow(settings[j]))
-                        throw new InvalidDataException("Неверный формат записи в " + SettingsFile + ".");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + SettingsFile + ".");
             }
 
             string carsMetaPath = Path.Combine(directory, CarsMetaFile);
@@ -214,7 +222,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> meta = ReadRows(carsMetaPath);
                 for (int j = 0; j < meta.Count; j++)
                     if (!CarsMeta.IsValidRow(meta[j]))
-                        throw new InvalidDataException("Неверный формат записи в " + CarsMetaFile + ".");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + CarsMetaFile + ".");
             }
 
             string templatesPath = Path.Combine(directory, TemplatesFile);
@@ -223,7 +231,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> templates = ReadRows(templatesPath);
                 for (int j = 0; j < templates.Count; j++)
                     if (!RecordTemplates.IsValidRow(templates[j]))
-                        throw new InvalidDataException("Неверный формат записи в " + TemplatesFile + ".");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + TemplatesFile + ".");
             }
 
             string remindersPath = Path.Combine(directory, RemindersFile);
@@ -232,7 +240,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> reminders = ReadRows(remindersPath);
                 for (int j = 0; j < reminders.Count; j++)
                     if (!DateReminders.IsValidRow(reminders[j]))
-                        throw new InvalidDataException("Неверный формат записи в " + RemindersFile + ".");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + RemindersFile + ".");
             }
 
             string notesPath = Path.Combine(directory, NotesFile);
@@ -241,7 +249,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> notes = ReadRows(notesPath);
                 for (int j = 0; j < notes.Count; j++)
                     if (!CarNotes.IsValidRow(notes[j]))
-                        throw new InvalidDataException("Неверный формат записи в " + NotesFile + ".");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + NotesFile + ".");
             }
 
             string tripsPath = Path.Combine(directory, TripsFile);
@@ -250,7 +258,7 @@ namespace Alfa156.Desktop.Data
                 List<string[]> trips = ReadRows(tripsPath);
                 for (int j = 0; j < trips.Count; j++)
                     if (!IsValidTripRow(trips[j]))
-                        throw new InvalidDataException("Неверный формат записи в " + TripsFile + ".");
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + TripsFile + ".");
             }
         }
 

@@ -5,6 +5,7 @@ using System.Net;
 using System.Text;
 using Alfa156.Desktop.Data;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Exchange
 {
     internal sealed class GoogleSyncSettings
@@ -62,14 +63,14 @@ namespace Alfa156.Desktop.Exchange
         internal static string TestConnection(GoogleSyncSettings settings)
         {
             AlfaRepository remote = Pull(settings);
-            return "Соединение успешно.\r\n" +
-                "Автомобили: " + remote.Cars.Count + "\r\n" +
-                "Заправки: " + remote.Fuel.Count + "\r\n" +
-                "Ремонт: " + remote.Repairs.Count + "\r\n" +
-                "Прочие: " + remote.Expenses.Count + "\r\n" +
-                "Коммуналка: " + remote.Utilities.Count + "\r\n" +
-                "Категории: " + remote.Categories.Count + "\r\n" +
-                "Кат. прочих: " + remote.ExpenseCategories.Count;
+            return (L10n.Get("msg.connection_ok") + "\r\n") +
+                (L10n.Get("label.cars_colon") + " ") + remote.Cars.Count + "\r\n" +
+                (L10n.Get("summary.fuel_section_colon") + " ") + remote.Fuel.Count + "\r\n" +
+                (L10n.Get("label.repairs_colon") + " ") + remote.Repairs.Count + "\r\n" +
+                (L10n.Get("label.expenses_colon") + " ") + remote.Expenses.Count + "\r\n" +
+                (L10n.Get("label.utilities_short_colon") + " ") + remote.Utilities.Count + "\r\n" +
+                (L10n.Get("label.categories_colon") + " ") + remote.Categories.Count + "\r\n" +
+                (L10n.Get("label.expense_cat_colon") + " ") + remote.ExpenseCategories.Count;
         }
 
         internal static string ApplyAndPush(
@@ -88,21 +89,21 @@ namespace Alfa156.Desktop.Exchange
             {
                 if (SyncMerge.LastJournal != null)
                     SyncMerge.LastJournal.RollbackReason =
-                        "Запись в Google не удалась: " + pushError.Message;
+                        (L10n.Get("error.google_write_failed") + " ") + pushError.Message;
                 throw;
             }
-            string counts = "Синхронизация с Google: авто=" + local.Cars.Count +
-                ", заправки=" + local.Fuel.Count +
-                ", ремонт=" + local.Repairs.Count +
-                ", прочие=" + local.Expenses.Count +
-                ", коммуналка=" + local.Utilities.Count +
-                " (из Google: ремонт " + remote.Repairs.Count +
-                ", заправки " + remote.Fuel.Count +
-                ", прочие " + remote.Expenses.Count + ")";
+            string counts = L10n.Get("msg.google_sync_stats_cars") + local.Cars.Count +
+                L10n.Get("sync.comma_fuel_eq") + local.Fuel.Count +
+                L10n.Get("sync.comma_repairs_eq") + local.Repairs.Count +
+                L10n.Get("sync.comma_expenses_eq") + local.Expenses.Count +
+                L10n.Get("sync.comma_util_eq") + local.Utilities.Count +
+                (" " + L10n.Get("summary.from_google_repair") + " ") + remote.Repairs.Count +
+                (L10n.Get("summary.comma_fuel") + " ") + remote.Fuel.Count +
+                (L10n.Get("summary.comma_expenses") + " ") + remote.Expenses.Count + ")";
             if (journal != null)
                 return counts + "\r\n\r\n" + journal.FormatSummary() +
-                    "\r\n\r\nПримечание: Google Sheets по-прежнему сопоставляет записи по естественным ключам; " +
-                    "стабильные id хранятся в локальных .dat / ZIP и не пишутся в таблицу Dengi.";
+                    ("\r\n\r\n" + L10n.Get("google.natural_keys_remark") + " ") +
+                    L10n.Get("google.ids_stay_local");
             return counts;
         }
 
@@ -168,9 +169,9 @@ namespace Alfa156.Desktop.Exchange
         {
             if (String.IsNullOrEmpty(text)) return "";
             string s = text.Trim().Replace(" ", "").Replace("₽", "");
-            s = ReplaceIgnoreCase(s, "р.", "");
-            s = ReplaceIgnoreCase(s, "руб.", "");
-            s = ReplaceIgnoreCase(s, "руб", "");
+            s = ReplaceIgnoreCase(s, L10n.Get("currency.r_dot"), "");
+            s = ReplaceIgnoreCase(s, L10n.Get("currency.rub_dot"), "");
+            s = ReplaceIgnoreCase(s, L10n.Get("currency.rub"), "");
             s = ReplaceIgnoreCase(s, "BYN", "");
             s = ReplaceIgnoreCase(s, "RUB", "");
             s = ReplaceIgnoreCase(s, "USD", "");
@@ -207,7 +208,7 @@ namespace Alfa156.Desktop.Exchange
             if (JsonUtil.GetBool(response, "ok") != true)
             {
                 string error = JsonUtil.GetString(response, "error");
-                throw new InvalidDataException("Google отклонил запись: " +
+                throw new InvalidDataException((L10n.Get("error.google_rejected_write") + " ") +
                     (String.IsNullOrEmpty(error) ? response : error));
             }
         }
@@ -216,15 +217,15 @@ namespace Alfa156.Desktop.Exchange
         {
             if (settings == null || String.IsNullOrEmpty(settings.ScriptUrl))
                 throw new InvalidOperationException(
-                    "Не задан URL веб-приложения Apps Script. См. google-sync/README.md");
+                    L10n.Get("error.apps_script_url_not_set"));
             if (String.IsNullOrEmpty(settings.Token))
-                throw new InvalidOperationException("Не задан SYNC_TOKEN.");
+                throw new InvalidOperationException(L10n.Get("error.sync_token_not_set"));
         }
 
         private static AlfaRepository ParseSnapshot(string json)
         {
             if (JsonUtil.GetBool(json, "ok") == false)
-                throw new InvalidDataException(JsonUtil.GetString(json, "error") ?? "Ошибка Google Sync");
+                throw new InvalidDataException(JsonUtil.GetString(json, "error") ?? L10n.Get("title.google_sync_error"));
 
             string data = JsonUtil.GetObjectJson(json, "data") ?? json;
             AlfaRepository repo = new AlfaRepository();
@@ -238,7 +239,7 @@ namespace Alfa156.Desktop.Exchange
                 JsonUtil.GetTable(data, "expenseCategories"),
                 null);
             if (repo.Cars.Count == 0)
-                throw new InvalidDataException("Из Google пришёл пустой список автомобилей.");
+                throw new InvalidDataException(L10n.Get("error.google_empty_cars"));
             return repo;
         }
 
@@ -305,8 +306,8 @@ namespace Alfa156.Desktop.Exchange
                 string text = reader.ReadToEnd();
                 if (LooksLikeHtmlError(text))
                     throw new InvalidDataException(
-                        "Google вернул HTML вместо JSON. Обычно это ошибка записи в таблицу " +
-                        "(проверки данных / data validation). Обновите Apps Script: clearDataValidations перед setValues. " +
+                        (L10n.Get("error.google_html_instead_of_json") + " ") +
+                        (L10n.Get("error.google_validation_hint") + " ") +
                         ExtractHtmlHint(text));
                 return text;
             }
@@ -331,7 +332,7 @@ namespace Alfa156.Desktop.Exchange
             int start = Math.Max(0, idx - 40);
             int len = Math.Min(180, html.Length - start);
             string snippet = html.Substring(start, len).Replace('\n', ' ').Replace('\r', ' ');
-            return " Фрагмент: " + snippet;
+            return (" " + L10n.Get("timeline.excerpt_colon") + " ") + snippet;
         }
     }
 

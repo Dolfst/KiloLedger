@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     internal static class DataStore
@@ -42,19 +43,26 @@ namespace CarExpenses
 
         private static readonly string[] DefaultRepairCategories = new string[]
         {
-            "ТО Масло", "ТО ГРМ", "Запчасти", "Жидкости", "Тормоза", "Кузов", "Расходники"
+            L10n.Get("service.oil_short"), L10n.Get("service.belt_short"), L10n.Get("category.parts"), L10n.Get("category.fluids"), L10n.Get("category.brakes"), L10n.Get("category.body"), L10n.Get("category.consumables")
         };
 
         private static readonly string[] DefaultExpenseCategories = new string[]
         {
-            "Страховка", "Техосмотр", "Штрафы", "Мойка", "Парковка", "Прочее"
+            L10n.Get("reminder.insurance"), L10n.Get("reminder.inspection"), L10n.Get("category.fines"), L10n.Get("category.wash"), L10n.Get("category.parking"), L10n.Get("label.other")
         };
 
         internal static readonly string[] UtilityLabels = new string[]
         {
-            "Коммунальные платежи", "Электроэнергия", "Газ", "Стационарный телефон",
-            "Домашний интернет", "Налог на аренду", "Аренда жилья"
+            L10n.Get("utility.label_0"), L10n.Get("utility.label_1"), L10n.Get("utility.label_2"), L10n.Get("utility.label_3"),
+            L10n.Get("utility.label_4"), L10n.Get("utility.label_5"), L10n.Get("utility.label_6")
         };
+        internal static string GetUtilityLabel(int index)
+        {
+            if (index >= 0 && index < UtilityLabels.Length)
+                return Alfa156.Localization.L10n.Get("utility.label_" + index);
+            return "";
+        }
+
 
         internal static void Initialize()
         {
@@ -146,7 +154,7 @@ namespace CarExpenses
         internal static string ReceiptPathForId(string recordId)
         {
             if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
-                throw new ArgumentException("Неверный id записи для фото чека.", "recordId");
+                throw new ArgumentException(L10n.Get("error.invalid_receipt_id"), "recordId");
             return Path.Combine(Path.Combine(DataDirectory, ReceiptsFolderName),
                 recordId + ".jpg");
         }
@@ -234,9 +242,9 @@ namespace CarExpenses
         private static void RestoreBackup(string folderName, string backupRoot)
         {
             if (folderName == null || folderName.Length == 0)
-                throw new ArgumentException("Выбрана неверная папка резервной копии.", "folderName");
+                throw new ArgumentException(L10n.Get("error.invalid_backup_folder"), "folderName");
             if (Path.GetFileName(folderName) != folderName)
-                throw new InvalidDataException("Выбрана неверная папка резервной копии.");
+                throw new InvalidDataException(L10n.Get("error.invalid_backup_folder"));
 
             string[] backupNames = ListBackupNames(backupRoot);
             bool found = false;
@@ -244,11 +252,11 @@ namespace CarExpenses
                 if (backupNames[i] == folderName)
                     found = true;
             if (!found)
-                throw new InvalidDataException("Выбрана неверная или неполная резервная копия.");
+                throw new InvalidDataException(L10n.Get("error.invalid_incomplete_backup"));
 
             string backupPath = Path.Combine(backupRoot, folderName);
             if (!HasCompleteBackup(backupPath))
-                throw new InvalidDataException("Резервная копия неполная или отсутствует.");
+                throw new InvalidDataException(L10n.Get("error.backup_incomplete_or_missing"));
             ValidateSnapshotJson(backupPath);
 
             string safetyBackup = AllocateSafetyBackupPath(backupRoot);
@@ -274,9 +282,9 @@ namespace CarExpenses
                 }
                 catch (Exception rollbackError)
                 {
-                    throw new IOException("Восстановление прервано: " + restoreError.Message +
-                        ". Автоматический возврат текущих данных не удался: " + rollbackError.Message +
-                        ". Текущая копия сохранена в " + safetyBackup);
+                    throw new IOException((L10n.Get("error.restore_aborted") + " ") + restoreError.Message +
+                        (L10n.Get("error.auto_rollback_failed") + " ") + rollbackError.Message +
+                        (L10n.Get("msg.current_backup_saved_in") + " ") + safetyBackup);
                 }
                 throw;
             }
@@ -300,8 +308,8 @@ namespace CarExpenses
                     string path = GetPath(DataFiles[i]);
                     byte[] content = File.Exists(path) ? ReadFileBytes(path) : new byte[0];
                     if (content.Length > 16 * 1024 * 1024)
-                        throw new InvalidDataException("Файл " + DataFiles[i] +
-                            " превышает допустимый размер синхронизации.");
+                        throw new InvalidDataException((L10n.Get("menu.file") + " ") + DataFiles[i] +
+                            (" " + L10n.Get("error.exceeds_sync_size")));
                     if (content.Length > 0)
                         crypto.TransformInPlace(content);
                     WriteSyncInt32(stream, content.Length);
@@ -350,7 +358,7 @@ namespace CarExpenses
                     {
                         int length = ReadSyncInt32(stream);
                         if (length < 0 || length > 16 * 1024 * 1024)
-                            throw new InvalidDataException("Размер файла синхронизации превышает допустимый.");
+                            throw new InvalidDataException(L10n.Get("error.sync_file_too_large"));
                         byte[] content = ReadSyncBytes(stream, length);
                         if (content.Length > 0)
                             crypto.TransformInPlace(content);
@@ -371,7 +379,7 @@ namespace CarExpenses
                 previewText.Append(preview.FormatPreview());
                 SyncPlan plan = resolvePlan(previewText.ToString());
                 if (plan == null || plan.Cancelled)
-                    throw new InvalidOperationException("Синхронизация отменена.");
+                    throw new InvalidOperationException(L10n.Get("sync.cancelled"));
 
                 Directory.CreateDirectory(merged);
                 SyncMerge.ApplyPlan(DataDirectory, staging, merged, plan, resolveConflict);
@@ -414,11 +422,11 @@ namespace CarExpenses
                     {
                         if (SyncMerge.LastJournal != null)
                             SyncMerge.LastJournal.RollbackReason =
-                                installError.Message + ". Не удалось вернуть прежние данные: " +
+                                installError.Message + (L10n.Get("error.rollback_data_failed") + " ") +
                                 rollbackError.Message;
-                        throw new IOException("Синхронизация не завершена: " +
-                            installError.Message + ". Не удалось вернуть прежние данные: " +
-                            rollbackError.Message + ". Копия сохранена в " + safety);
+                        throw new IOException((L10n.Get("error.sync_incomplete") + " ") +
+                            installError.Message + (L10n.Get("error.rollback_data_failed") + " ") +
+                            rollbackError.Message + (L10n.Get("msg.backup_saved_in") + " ") + safety);
                     }
                     throw;
                 }
@@ -451,16 +459,16 @@ namespace CarExpenses
             using (StreamReader reader = new StreamReader(path, Encoding.UTF8))
                 json = reader.ReadToEnd();
             if (json == null || json.Length == 0)
-                throw new InvalidDataException("Пустой snapshot.json.");
+                throw new InvalidDataException(L10n.Get("error.empty_snapshot"));
             if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
                 json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
-                throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+                throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_schema"));
             if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
                 json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
-                throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+                throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_version"));
             if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
                 json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
-                throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
+                throw new InvalidDataException(L10n.Get("error.snapshot_missing_meta"));
         }
 
         private static void TryDeleteDirectory(string path)
@@ -488,7 +496,7 @@ namespace CarExpenses
         {
             int length = ReadSyncInt32(stream);
             if (length < 0 || length > 4096)
-                throw new InvalidDataException("Неверное сообщение синхронизации.");
+                throw new InvalidDataException(L10n.Get("error.invalid_sync_message"));
             return Encoding.UTF8.GetString(ReadSyncBytes(stream, length), 0, length);
         }
 
@@ -528,21 +536,21 @@ namespace CarExpenses
         {
             int count = ReadSyncInt32(stream);
             if (count < 0 || count > MaxReceiptSyncFiles)
-                throw new InvalidDataException("Неверное число фото чеков в синхронизации.");
+                throw new InvalidDataException(L10n.Get("error.invalid_receipt_sync_count"));
             string folder = Path.Combine(directory, ReceiptsFolderName);
             Directory.CreateDirectory(folder);
             for (int i = 0; i < count; i++)
             {
                 int nameLength = ReadSyncInt32(stream);
                 if (nameLength <= 0 || nameLength > 128)
-                    throw new InvalidDataException("Неверное имя файла чека.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_receipt_filename"));
                 byte[] nameBytes = ReadSyncBytes(stream, nameLength);
                 string name = Encoding.UTF8.GetString(nameBytes, 0, nameBytes.Length);
                 if (!IsSafeReceiptFileName(name))
-                    throw new InvalidDataException("Недопустимое имя файла чека.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_receipt_name_dot"));
                 int length = ReadSyncInt32(stream);
                 if (length < 0 || length > MaxReceiptSyncFileBytes)
-                    throw new InvalidDataException("Файл чека превышает лимит 2 МБ.");
+                    throw new InvalidDataException(L10n.Get("error.receipt_over_2mb"));
                 byte[] content = ReadSyncBytes(stream, length);
                 if (content.Length > 0)
                     crypto.TransformInPlace(content);
@@ -710,14 +718,14 @@ namespace CarExpenses
             {
                 string path = Path.Combine(directory, CoreDataFiles[i]);
                 if (!File.Exists(path))
-                    throw new InvalidDataException("Не получен файл " + CoreDataFiles[i] + ".");
+                    throw new InvalidDataException((L10n.Get("error.file_not_received") + " ") + CoreDataFiles[i] + ".");
                 List<string[]> rows = ReadRowsFromPath(path);
                 for (int j = 0; j < rows.Count; j++)
                     if (!IsValidSyncColumnCount(CoreDataFiles[i], rows[j].Length))
-                        throw new InvalidDataException("Неверный формат записи в " +
+                        throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") +
                             CoreDataFiles[i] + ".");
                 if (i == 0 && rows.Count == 0)
-                    throw new InvalidDataException("Список автомобилей пуст.");
+                    throw new InvalidDataException(L10n.Get("error.car_list_empty"));
             }
 
             string categoriesPath = Path.Combine(directory, RepairCategoriesFile);
@@ -728,9 +736,9 @@ namespace CarExpenses
                 {
                     if (categories[i].Length < 1 || categories[i].Length > 2 ||
                         categories[i][0].Trim().Length == 0)
-                        throw new InvalidDataException("Неверный формат repair-categories.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_repair_cats_fmt"));
                     if (categories[i].Length == 2 && !RecordIds.LooksLikeId(categories[i][1]))
-                        throw new InvalidDataException("Неверный id в repair-categories.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_id_repair_cats"));
                 }
             }
 
@@ -740,7 +748,7 @@ namespace CarExpenses
                 List<string[]> expenses = ReadRowsFromPath(expensesPath);
                 for (int i = 0; i < expenses.Count; i++)
                     if (!IsValidSyncColumnCount(ExpensesFile, expenses[i].Length))
-                        throw new InvalidDataException("Неверный формат expenses.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_expenses_dat"));
             }
 
             string expenseCategoriesPath = Path.Combine(directory, ExpenseCategoriesFile);
@@ -751,9 +759,9 @@ namespace CarExpenses
                 {
                     if (expenseCategories[i].Length < 1 || expenseCategories[i].Length > 2 ||
                         expenseCategories[i][0].Trim().Length == 0)
-                        throw new InvalidDataException("Неверный формат expense-categories.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_expense_cats_fmt"));
                     if (expenseCategories[i].Length == 2 && !RecordIds.LooksLikeId(expenseCategories[i][1]))
-                        throw new InvalidDataException("Неверный id в expense-categories.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_id_expense_cats"));
                 }
             }
 
@@ -763,7 +771,7 @@ namespace CarExpenses
                 List<string[]> meta = ReadRowsFromPath(carsMetaPath);
                 for (int i = 0; i < meta.Count; i++)
                     if (!CarsMeta.IsValidRow(meta[i]))
-                        throw new InvalidDataException("Неверный формат cars-meta.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_cars_meta_dat"));
             }
 
             string templatesPath = Path.Combine(directory, TemplatesFile);
@@ -772,7 +780,7 @@ namespace CarExpenses
                 List<string[]> templates = ReadRowsFromPath(templatesPath);
                 for (int i = 0; i < templates.Count; i++)
                     if (!RecordTemplates.IsValidRow(templates[i]))
-                        throw new InvalidDataException("Неверный формат templates.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_templates_dat"));
             }
 
             string remindersPath = Path.Combine(directory, RemindersFile);
@@ -781,7 +789,7 @@ namespace CarExpenses
                 List<string[]> reminders = ReadRowsFromPath(remindersPath);
                 for (int i = 0; i < reminders.Count; i++)
                     if (!DateReminders.IsValidRow(reminders[i]))
-                        throw new InvalidDataException("Неверный формат reminders.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_reminders_dat"));
             }
 
             string notesPath = Path.Combine(directory, NotesFile);
@@ -790,7 +798,7 @@ namespace CarExpenses
                 List<string[]> notes = ReadRowsFromPath(notesPath);
                 for (int i = 0; i < notes.Count; i++)
                     if (!CarNotes.IsValidRow(notes[i]))
-                        throw new InvalidDataException("Неверный формат notes.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_notes_dat"));
             }
 
             string tripsPath = Path.Combine(directory, TripsFile);
@@ -799,7 +807,7 @@ namespace CarExpenses
                 List<string[]> trips = ReadRowsFromPath(tripsPath);
                 for (int i = 0; i < trips.Count; i++)
                     if (!IsValidTripRow(trips[i]))
-                        throw new InvalidDataException("Неверный формат trips.dat.");
+                        throw new InvalidDataException(L10n.Get("error.invalid_trips_dat"));
             }
         }
 
@@ -867,14 +875,14 @@ namespace CarExpenses
             using (FileStream input = File.OpenRead(path))
             {
                 if (input.Length > Int32.MaxValue)
-                    throw new InvalidDataException("Слишком большой файл синхронизации.");
+                    throw new InvalidDataException(L10n.Get("error.sync_file_too_big"));
                 byte[] content = new byte[(int)input.Length];
                 int offset = 0;
                 while (offset < content.Length)
                 {
                     int count = input.Read(content, offset, content.Length - offset);
                     if (count == 0)
-                        throw new EndOfStreamException("Не удалось прочитать файл для синхронизации.");
+                        throw new EndOfStreamException(L10n.Get("error.read_sync_file_failed"));
                     offset += count;
                 }
                 return content;
@@ -890,7 +898,7 @@ namespace CarExpenses
                 WaitForSyncBytes();
                 int count = stream.Read(bytes, offset, length - offset);
                 if (count == 0)
-                    throw new EndOfStreamException("Соединение синхронизации прервано.");
+                    throw new EndOfStreamException(L10n.Get("error.sync_connection_interrupted"));
                 offset += count;
             }
             return bytes;
@@ -985,9 +993,9 @@ namespace CarExpenses
             }
 
             int seconds = syncReadTimeoutMicroseconds / 1000000;
-            throw new IOException("Телефон не ответил за " +
+            throw new IOException((L10n.Get("error.phone_no_response_in") + " ") +
                 seconds.ToString(CultureInfo.InvariantCulture) +
-                " с. Оставьте на Android открытым окно синхронизации.");
+                (" " + L10n.Get("sync.wait_hint_android")));
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -1028,7 +1036,7 @@ namespace CarExpenses
                 if (Directory.Exists(cardRoots[i]))
                     return Path.Combine(cardRoots[i], "Alfa156_Backups");
             throw new DirectoryNotFoundException(
-                "Не найдена SD-карта. Проверьте, что она доступна как «Storage Card» или «SD Card».");
+                L10n.Get("error.sd_card_not_found"));
         }
 
         private static string GetLocalBackupRoot()
@@ -1136,7 +1144,7 @@ namespace CarExpenses
             // «Пуск → Программы»: основной ярлык, который виден в меню на КПК.
             string programsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
             if (programsDirectory == null || programsDirectory.Length == 0)
-                throw new IOException("Windows Mobile не вернул путь к меню «Пуск → Программы».");
+                throw new IOException(L10n.Get("error.wm_start_menu_path"));
             EnsureStartMenuShortcut(programsDirectory, executablePath);
 
             // Если старый ярлык лежит в корне «Пуск», перенацелим и его на текущий exe.
@@ -1178,7 +1186,7 @@ namespace CarExpenses
             StringBuilder path = new StringBuilder(260);
             int length = GetModuleFileName(IntPtr.Zero, path, path.Capacity);
             if (length <= 0 || length >= path.Capacity)
-                throw new IOException("Не удалось определить путь к файлу Alfa156.exe.");
+                throw new IOException(L10n.Get("error.cannot_find_exe_path"));
             return path.ToString();
         }
 
@@ -1198,7 +1206,7 @@ namespace CarExpenses
 
                 Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
                 if (stream == null)
-                    throw new InvalidOperationException("Не найден файл начальных данных: " + resourceName);
+                    throw new InvalidOperationException((L10n.Get("error.seed_file_not_found") + " ") + resourceName);
 
                 using (stream)
                 using (StreamReader reader = new StreamReader(stream))
@@ -1245,7 +1253,7 @@ namespace CarExpenses
                 if (rows[i].Length > 0 && rows[i][0] != "")
                     cars.Add(new string[] { rows[i][0] });
             if (cars.Count == 0)
-                throw new InvalidDataException("Список автомобилей пуст. Добавьте автомобиль в файл cars.dat.");
+                throw new InvalidDataException(L10n.Get("error.car_list_empty_dat"));
             return cars;
         }
 
@@ -1289,7 +1297,7 @@ namespace CarExpenses
             name = ValidateRepairCategoryName(name);
             List<string> categories = RepairCategoryNames();
             if (ContainsCategory(categories, name))
-                throw new InvalidOperationException("Такая категория уже есть.");
+                throw new InvalidOperationException(L10n.Get("error.category_duplicate"));
             categories.Add(name);
             SaveRepairCategories(categories);
         }
@@ -1300,11 +1308,11 @@ namespace CarExpenses
             List<string> categories = RepairCategoryNames();
             int categoryIndex = FindCategory(categories, oldName);
             if (categoryIndex < 0)
-                throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+                throw new InvalidOperationException(L10n.Get("error.category_missing"));
             if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Новое название совпадает с текущим.");
+                throw new InvalidOperationException(L10n.Get("error.same_name"));
             if (ContainsCategory(categories, newName))
-                throw new InvalidOperationException("Категория с таким названием уже есть.");
+                throw new InvalidOperationException(L10n.Get("error.category_exists"));
 
             List<string[]> repairs = LoadRepairs();
             for (int i = 0; i < repairs.Count; i++)
@@ -1326,8 +1334,8 @@ namespace CarExpenses
                 }
                 catch (Exception rollbackError)
                 {
-                    throw new IOException("Не удалось переименовать категорию: " +
-                        renameError.Message + ". Не удалось вернуть список категорий: " +
+                    throw new IOException((L10n.Get("error.rename_category_failed") + " ") +
+                        renameError.Message + (L10n.Get("error.rollback_categories_failed") + " ") +
                         rollbackError.Message);
                 }
                 throw;
@@ -1339,12 +1347,12 @@ namespace CarExpenses
             List<string> categories = RepairCategoryNames();
             int categoryIndex = FindCategory(categories, name);
             if (categoryIndex < 0)
-                throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+                throw new InvalidOperationException(L10n.Get("error.category_missing"));
             List<string[]> repairs = LoadRepairs();
             for (int i = 0; i < repairs.Count; i++)
                 if (String.Equals(repairs[i][3], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException(
-                        "Сначала перенесите записи из этой категории в другую.");
+                        L10n.Get("error.move_records_from_category"));
             List<string[]> categoryRows = ReadRows(RepairCategoriesFile);
             string deletedId = null;
             for (int i = 0; i < categoryRows.Count; i++)
@@ -1392,11 +1400,11 @@ namespace CarExpenses
             for (int i = 0; i < categoryRows.Count; i++)
             {
                 if (categoryRows[i].Length < 1 || categoryRows[i][0].Trim().Length == 0)
-                    throw new InvalidDataException("Неверная запись в expense-categories.dat.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_expense_categories_dat"));
                 if (categoryRows[i].Length > 2)
-                    throw new InvalidDataException("Неверная запись в expense-categories.dat.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_expense_categories_dat"));
                 if (categoryRows[i].Length == 2 && !RecordIds.LooksLikeId(categoryRows[i][1]))
-                    throw new InvalidDataException("Неверная запись в expense-categories.dat.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_expense_categories_dat"));
                 if (!RecordIds.HasId(categoryRows[i]))
                     changed = true;
                 string name = categoryRows[i][0].Trim();
@@ -1441,7 +1449,7 @@ namespace CarExpenses
             name = ValidateRepairCategoryName(name);
             List<string> categories = new List<string>(LoadExpenseCategories());
             if (ContainsCategory(categories, name))
-                throw new InvalidOperationException("Такая категория уже есть.");
+                throw new InvalidOperationException(L10n.Get("error.category_duplicate"));
             categories.Add(name);
             SaveExpenseCategories(categories);
         }
@@ -1452,11 +1460,11 @@ namespace CarExpenses
             List<string> categories = new List<string>(LoadExpenseCategories());
             int categoryIndex = FindCategory(categories, oldName);
             if (categoryIndex < 0)
-                throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+                throw new InvalidOperationException(L10n.Get("error.category_missing"));
             if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Новое название совпадает с текущим.");
+                throw new InvalidOperationException(L10n.Get("error.same_name"));
             if (ContainsCategory(categories, newName))
-                throw new InvalidOperationException("Категория с таким названием уже есть.");
+                throw new InvalidOperationException(L10n.Get("error.category_exists"));
             string previousName = categories[categoryIndex];
             List<string> previousCategories = new List<string>(categories);
             List<string[]> expenses = ReadRows(ExpensesFile);
@@ -1477,8 +1485,8 @@ namespace CarExpenses
                 }
                 catch (Exception rollbackError)
                 {
-                    throw new IOException("Не удалось переименовать категорию: " +
-                        renameError.Message + ". Не удалось вернуть список категорий: " +
+                    throw new IOException((L10n.Get("error.rename_category_failed") + " ") +
+                        renameError.Message + (L10n.Get("error.rollback_categories_failed") + " ") +
                         rollbackError.Message);
                 }
                 throw;
@@ -1490,12 +1498,12 @@ namespace CarExpenses
             List<string> categories = new List<string>(LoadExpenseCategories());
             int categoryIndex = FindCategory(categories, name);
             if (categoryIndex < 0)
-                throw new InvalidOperationException("Выбранная категория уже отсутствует.");
+                throw new InvalidOperationException(L10n.Get("error.category_missing"));
             List<string[]> expenses = ReadRows(ExpensesFile);
             for (int i = 0; i < expenses.Count; i++)
                 if (String.Equals(expenses[i][2], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException(
-                        "Сначала перенесите записи из этой категории в другую.");
+                        L10n.Get("error.move_records_from_category"));
             List<string[]> categoryRows = ReadRows(ExpenseCategoriesFile);
             string deletedId = null;
             for (int i = 0; i < categoryRows.Count; i++)
@@ -1564,9 +1572,9 @@ namespace CarExpenses
             {
                 if (categoryRows[i].Length < 1 || categoryRows[i].Length > 2 ||
                     categoryRows[i][0].Trim().Length == 0)
-                    throw new InvalidDataException("Неверная запись в repair-categories.dat.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_repair_categories_dat"));
                 if (categoryRows[i].Length == 2 && !RecordIds.LooksLikeId(categoryRows[i][1]))
-                    throw new InvalidDataException("Неверная запись в repair-categories.dat.");
+                    throw new InvalidDataException(L10n.Get("error.invalid_repair_categories_dat"));
                 if (!RecordIds.HasId(categoryRows[i]))
                     changed = true;
                 if (ContainsCategory(categories, categoryRows[i][0]))
@@ -1644,11 +1652,11 @@ namespace CarExpenses
         {
             name = (name ?? "").Trim();
             if (name.Length == 0)
-                throw new InvalidOperationException("Введите название категории.");
+                throw new InvalidOperationException(L10n.Get("error.enter_category_name"));
             if (String.Equals(name, "Все категории", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Это название зарезервировано для фильтра.");
+                throw new InvalidOperationException(L10n.Get("error.reserved_for_filter"));
             if (name.IndexOf('\r') >= 0 || name.IndexOf('\n') >= 0)
-                throw new InvalidOperationException("Название категории не должно содержать перевод строки.");
+                throw new InvalidOperationException(L10n.Get("error.category_name_newline"));
             return name;
         }
 
@@ -1725,7 +1733,7 @@ namespace CarExpenses
             ValidateIndex(records, index);
             for (int i = 0; i < records.Count; i++)
                 if (i != index && records[i][0] == values[0])
-                    throw new InvalidOperationException("Запись за этот месяц уже существует.");
+                    throw new InvalidOperationException(L10n.Get("error.utility_month_exists"));
             records[index] = values;
             SaveRows(UtilitiesFile, records);
         }
@@ -1764,7 +1772,7 @@ namespace CarExpenses
         {
             name = ValidateCarName(name);
             if (ContainsCar(name))
-                throw new InvalidOperationException("Такой автомобиль уже есть.");
+                throw new InvalidOperationException(L10n.Get("error.car_duplicate"));
             Append(CarsFile, RecordIds.EnsureId(new string[] { name },
                 RecordIds.PrefixForFile(CarsFile)));
         }
@@ -1775,11 +1783,11 @@ namespace CarExpenses
             List<string> cars = LoadCarNames();
             int carIndex = FindCar(cars, oldName);
             if (carIndex < 0)
-                throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+                throw new InvalidOperationException(L10n.Get("error.car_missing"));
             if (String.Equals(cars[carIndex], newName, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Новое название совпадает с текущим.");
+                throw new InvalidOperationException(L10n.Get("error.same_name"));
             if (ContainsCar(newName))
-                throw new InvalidOperationException("Автомобиль с таким названием уже есть.");
+                throw new InvalidOperationException(L10n.Get("error.car_exists"));
 
             string previousName = cars[carIndex];
             List<string[]> fuel = LoadFuel();
@@ -1813,8 +1821,8 @@ namespace CarExpenses
                 }
                 catch (Exception rollbackError)
                 {
-                    throw new IOException("Не удалось переименовать автомобиль: " +
-                        renameError.Message + ". Не удалось вернуть список автомобилей: " +
+                    throw new IOException((L10n.Get("error.rename_car_failed") + " ") +
+                        renameError.Message + (L10n.Get("error.rollback_cars_failed") + " ") +
                         rollbackError.Message);
                 }
                 throw;
@@ -1826,9 +1834,9 @@ namespace CarExpenses
             List<string> cars = LoadCarNames();
             int carIndex = FindCar(cars, name);
             if (carIndex < 0)
-                throw new InvalidOperationException("Выбранный автомобиль уже отсутствует.");
+                throw new InvalidOperationException(L10n.Get("error.car_missing"));
             if (cars.Count <= 1)
-                throw new InvalidOperationException("Нельзя удалить единственный автомобиль.");
+                throw new InvalidOperationException(L10n.Get("error.cannot_delete_only_car"));
 
             string carName = cars[carIndex];
             List<string[]> carRows = ReadRows(CarsFile);
@@ -1903,8 +1911,8 @@ namespace CarExpenses
                 }
                 catch (Exception rollbackError)
                 {
-                    throw new IOException("Не удалось удалить автомобиль: " +
-                        deleteError.Message + ". Не удалось вернуть список автомобилей: " +
+                    throw new IOException((L10n.Get("error.delete_car_failed") + " ") +
+                        deleteError.Message + (L10n.Get("error.rollback_cars_failed") + " ") +
                         rollbackError.Message);
                 }
                 throw;
@@ -1920,9 +1928,9 @@ namespace CarExpenses
         {
             name = name == null ? "" : name.Trim();
             if (name.Length == 0)
-                throw new InvalidOperationException("Введите название автомобиля.");
+                throw new InvalidOperationException(L10n.Get("error.enter_car_name"));
             if (name.IndexOf('\n') >= 0 || name.IndexOf('\r') >= 0)
-                throw new InvalidOperationException("Название автомобиля не должно содержать перевод строки.");
+                throw new InvalidOperationException(L10n.Get("error.car_name_newline"));
             return name;
         }
 
@@ -1997,7 +2005,7 @@ namespace CarExpenses
         private static void ValidateIndex(List<string[]> records, int index)
         {
             if (index < 0 || index >= records.Count)
-                throw new ArgumentOutOfRangeException("index", "Выбранная запись уже отсутствует.");
+                throw new ArgumentOutOfRangeException("index", L10n.Get("error.record_missing"));
         }
 
         private static void SaveRows(string fileName, List<string[]> records)

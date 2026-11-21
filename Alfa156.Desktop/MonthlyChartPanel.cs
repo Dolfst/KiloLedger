@@ -1,3 +1,4 @@
+using Alfa156.Localization;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -26,7 +27,14 @@ namespace Alfa156.Desktop
             Color.FromArgb(140, 120, 80)
         };
 
-        private static readonly string[] Names = { "Топливо", "Ремонт", "Прочие", "Коммун." };
+        private static string GetSeriesName(int index)
+        {
+            if (index == 0) return L10n.Get("label.fuel");
+            if (index == 1) return L10n.Get("tab.repairs");
+            if (index == 2) return L10n.Get("tab.expenses");
+            if (index == 3) return L10n.Get("chart.utilities_short");
+            return "";
+        }
 
         public MonthlyChartPanel()
         {
@@ -102,12 +110,12 @@ namespace Alfa156.Desktop
             {
                 if (compareMode)
                 {
-                    g.DrawString("Сравнение: стоимость/км" +
+                    g.DrawString(L10n.Get("chart.compare_cost_per_km") +
                         (compareUnit.Length > 0 ? " (" + compareUnit + ")" : ""),
                         font, textBrush, left, h - legendH + 3);
                     if (compareValues.Count == 0)
                     {
-                        g.DrawString("Нет данных для сравнения /км", font, textBrush,
+                        g.DrawString(L10n.Get("compare.no_data_per_km"), font, textBrush,
                             w / 2f - 80, (top + bottom) / 2f);
                         return;
                     }
@@ -146,13 +154,13 @@ namespace Alfa156.Desktop
                 {
                     using (Brush b = new SolidBrush(Colors[i]))
                         g.FillRectangle(b, lx, h - legendH + 6, 10, 10);
-                    g.DrawString(Names[i], font, textBrush, lx + 14, h - legendH + 3);
-                    lx += 14 + g.MeasureString(Names[i], font).Width + 12;
+                    g.DrawString(GetSeriesName(i), font, textBrush, lx + 14, h - legendH + 3);
+                    lx += 14 + g.MeasureString(GetSeriesName(i), font).Width + 12;
                 }
 
                 if (series.Count == 0)
                 {
-                    g.DrawString("Нет данных за 12 месяцев", font, textBrush, w / 2f - 70, (top + bottom) / 2f);
+                    g.DrawString(L10n.Get("chart.no_data_12m"), font, textBrush, w / 2f - 70, (top + bottom) / 2f);
                     return;
                 }
 

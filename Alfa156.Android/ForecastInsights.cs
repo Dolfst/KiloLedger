@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 /// <summary>
@@ -44,18 +45,18 @@ internal static class ForecastInsights
             return "";
 
         StringBuilder sb = new StringBuilder();
-        sb.Append(nl).Append(nl).Append("Оценка пробега:");
-        sb.Append(nl).Append("Средний: ~").Append(Money(avgKmPerDay))
-            .Append(" км/день (за ")
+        sb.Append(nl).Append(nl).Append(L10n.Get("forecast.title_colon"));
+        sb.Append(nl).Append(L10n.Get("forecast.avg_tilde")).Append(Money(avgKmPerDay))
+            .Append((" " + L10n.Get("forecast.km_per_day_in") + " "))
             .Append(spanDays.ToString(CultureInfo.InvariantCulture))
-            .Append(" дн.)");
+            .Append((" " + L10n.Get("unit.days_close")));
 
         if (lastOilMileage > 0 && oilInterval > 0)
             sb.Append(nl).Append(FormatServiceEstimate(
-                "До замены масла", currentMileage, lastOilMileage, oilInterval, avgKmPerDay));
+                L10n.Get("forecast.until_oil"), currentMileage, lastOilMileage, oilInterval, avgKmPerDay));
         if (lastBeltMileage > 0 && beltInterval > 0)
             sb.Append(nl).Append(FormatServiceEstimate(
-                "До ремня ГРМ", currentMileage, lastBeltMileage, beltInterval, avgKmPerDay));
+                L10n.Get("forecast.until_belt"), currentMileage, lastBeltMileage, beltInterval, avgKmPerDay));
 
         return sb.ToString();
     }
@@ -145,15 +146,15 @@ internal static class ForecastInsights
     {
         decimal remaining = interval - (currentMileage - lastMileage);
         if (remaining <= 0)
-            return title + ": срок прошёл (оценка)";
+            return title + L10n.Get("forecast.overdue_est");
         if (avgKmPerDay <= 0)
-            return title + ": ~" + Money(remaining) + " км (оценка)";
+            return title + ": ~" + Money(remaining) + (" " + L10n.Get("forecast.km_est"));
         decimal daysExact = remaining / avgKmPerDay;
         int days = (int)(daysExact + 0.5m);
         if (days < 1)
             days = 1;
-        return title + ": ~" + Money(remaining) + " км ≈ " +
-            days.ToString(CultureInfo.InvariantCulture) + " дн. (оценка)";
+        return title + ": ~" + Money(remaining) + (" " + L10n.Get("forecast.km_approx") + " ") +
+            days.ToString(CultureInfo.InvariantCulture) + (" " + L10n.Get("forecast.days_est"));
     }
 
     private static bool SameCar(string rowCar, string car)

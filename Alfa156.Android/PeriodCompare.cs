@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 /// <summary>
@@ -255,7 +256,7 @@ internal static class PeriodCompare
     {
         label = (label ?? "").Trim();
         if (label.Length == 0)
-            label = "Без категории";
+            label = L10n.Get("common.uncategorized");
         if (!totals.ContainsKey(label))
             totals[label] = 0;
         totals[label] += amount;
@@ -288,24 +289,24 @@ internal static class PeriodCompare
         if (nl == null || nl.Length == 0)
             nl = "\n";
         StringBuilder sb = new StringBuilder();
-        sb.Append("Сравнение периодов:");
+        sb.Append(L10n.Get("compare.title_colon"));
         sb.Append(nl).Append("A: ").Append(labelA);
         sb.Append(nl).Append("B: ").Append(labelB);
-        AppendMetric(sb, nl, "Топливо", a.Fuel, b.Fuel, currency, money);
-        AppendMetric(sb, nl, "Ремонт", a.Repair, b.Repair, currency, money);
-        AppendMetric(sb, nl, "Прочие", a.Expense, b.Expense, currency, money);
-        AppendMetric(sb, nl, "Коммунальные", a.Utility, b.Utility, currency, money);
-        AppendMetric(sb, nl, "Всего (без коммун.)", a.CostBase, b.CostBase, currency, money);
-        sb.Append(nl).Append("Стоимость/км:");
+        AppendMetric(sb, nl, L10n.Get("label.fuel"), a.Fuel, b.Fuel, currency, money);
+        AppendMetric(sb, nl, L10n.Get("tab.repairs"), a.Repair, b.Repair, currency, money);
+        AppendMetric(sb, nl, L10n.Get("tab.expenses"), a.Expense, b.Expense, currency, money);
+        AppendMetric(sb, nl, L10n.Get("label.utilities_full"), a.Utility, b.Utility, currency, money);
+        AppendMetric(sb, nl, L10n.Get("report.total_excl_util"), a.CostBase, b.CostBase, currency, money);
+        sb.Append(nl).Append(L10n.Get("report.cost_per_km_colon"));
         sb.Append(nl).Append("  A ").Append(FormatCostPerKm(a, currency, money));
         sb.Append(nl).Append("  B ").Append(FormatCostPerKm(b, currency, money));
         if (a.HasCostPerKm && b.HasCostPerKm)
         {
             decimal delta = a.CostPerKm - b.CostPerKm;
-            sb.Append(nl).Append("  Δ ").Append(Signed(money, delta)).Append(' ').Append(currency).Append("/км");
+            sb.Append(nl).Append("  Δ ").Append(Signed(money, delta)).Append(' ').Append(currency).Append(L10n.Get("unit.per_km"));
         }
         else
-            sb.Append(nl).Append("  Δ н/д");
+            sb.Append(nl).Append(("  " + L10n.Get("compare.delta_na")));
         return sb.ToString();
     }
 
@@ -327,8 +328,8 @@ internal static class PeriodCompare
     private static string FormatCostPerKm(Totals t, string currency, Func<decimal, string> money)
     {
         if (!t.HasCostPerKm)
-            return "н/д";
-        return money(t.CostPerKm) + " " + currency + "/км";
+            return L10n.Get("common.na");
+        return money(t.CostPerKm) + " " + currency + L10n.Get("unit.per_km");
     }
 
     private static string Signed(Func<decimal, string> money, decimal delta)

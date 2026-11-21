@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using Alfa156.Desktop.Data;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Exchange
 {
     /// <summary>
@@ -48,7 +49,7 @@ namespace Alfa156.Desktop.Exchange
         {
             AlfaRepository temp = new AlfaRepository();
             temp.LoadDirectory(folder);
-            ImportPreview preview = FromRepository(temp, "Папка .dat", folder);
+            ImportPreview preview = FromRepository(temp, L10n.Get("import.dat_folder_short"), folder);
             string receipts = Path.Combine(folder, "Receipts");
             if (Directory.Exists(receipts))
                 preview.ReceiptCount = Directory.GetFiles(receipts).Length;
@@ -97,18 +98,18 @@ namespace Alfa156.Desktop.Exchange
                     entryName = entryName.Substring(0, entryName.Length - 1);
                 if (String.IsNullOrEmpty(entryName) || entryName.IndexOf('\\') >= 0 ||
                     entryName.StartsWith("/", StringComparison.Ordinal))
-                    throw new InvalidDataException("Недопустимый путь в ZIP: " + archive.Entries[i].FullName);
+                    throw new InvalidDataException((L10n.Get("error.invalid_zip_path") + " ") + archive.Entries[i].FullName);
 
                 string[] parts = entryName.Split('/');
                 for (int p = 0; p < parts.Length; p++)
                     if (parts[p].Length == 0 || parts[p] == "." || parts[p] == ".." ||
                         parts[p].IndexOf(':') >= 0)
-                        throw new InvalidDataException("Недопустимый путь в ZIP: " + archive.Entries[i].FullName);
+                        throw new InvalidDataException((L10n.Get("error.invalid_zip_path") + " ") + archive.Entries[i].FullName);
 
                 bool hasNestedRoot = !IsDataFile(parts[0]) &&
                     !String.Equals(parts[0], ReceiptStore.FolderName, StringComparison.Ordinal);
                 if (nested.HasValue && nested.Value != hasNestedRoot)
-                    throw new InvalidDataException("ZIP должен содержать файлы в корне или в одной общей папке.");
+                    throw new InvalidDataException(L10n.Get("error.zip_structure"));
                 nested = hasNestedRoot;
 
                 string[] relative;
@@ -117,7 +118,7 @@ namespace Alfa156.Desktop.Exchange
                     if (nestedRoot == null)
                         nestedRoot = parts[0];
                     else if (!String.Equals(nestedRoot, parts[0], StringComparison.Ordinal))
-                        throw new InvalidDataException("В ZIP найдено несколько корневых папок.");
+                        throw new InvalidDataException(L10n.Get("error.zip_multiple_roots"));
                     relative = new string[parts.Length - 1];
                     Array.Copy(parts, 1, relative, 0, relative.Length);
                 }
@@ -127,7 +128,7 @@ namespace Alfa156.Desktop.Exchange
                 if (relative.Length == 0)
                 {
                     if (!isDirectory)
-                        throw new InvalidDataException("Недопустимый файл в ZIP: " + archive.Entries[i].FullName);
+                        throw new InvalidDataException((L10n.Get("error.invalid_zip_file") + " ") + archive.Entries[i].FullName);
                     continue;
                 }
 
@@ -135,7 +136,7 @@ namespace Alfa156.Desktop.Exchange
                 {
                     if (relative.Length != 1 ||
                         !String.Equals(relative[0], ReceiptStore.FolderName, StringComparison.Ordinal))
-                        throw new InvalidDataException("Недопустимая папка в ZIP: " + archive.Entries[i].FullName);
+                        throw new InvalidDataException((L10n.Get("error.invalid_zip_folder") + " ") + archive.Entries[i].FullName);
                     continue;
                 }
 
@@ -144,27 +145,27 @@ namespace Alfa156.Desktop.Exchange
                     String.Equals(relative[0], ReceiptStore.FolderName, StringComparison.Ordinal) &&
                     ReceiptStore.IsSafeReceiptFileName(relative[1]);
                 if (!isDataFile && !isReceipt)
-                    throw new InvalidDataException("Недопустимый файл в ZIP: " + archive.Entries[i].FullName);
+                    throw new InvalidDataException((L10n.Get("error.invalid_zip_file") + " ") + archive.Entries[i].FullName);
 
                 string normalizedName = String.Join("/", relative);
                 if (!files.Add(normalizedName))
-                    throw new InvalidDataException("Повторяющийся файл в ZIP: " + normalizedName);
+                    throw new InvalidDataException((L10n.Get("error.duplicate_file_in_zip") + " ") + normalizedName);
             }
         }
 
         internal static void ValidateSnapshotJson(string json)
         {
             if (String.IsNullOrEmpty(json))
-                throw new InvalidDataException("Пустой snapshot.json.");
+                throw new InvalidDataException(L10n.Get("error.empty_snapshot"));
             if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
                 json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
-                throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+                throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_schema"));
             if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
                 json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
-                throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+                throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_version"));
             if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
                 json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
-                throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
+                throw new InvalidDataException(L10n.Get("error.snapshot_missing_meta"));
         }
 
         private static bool IsDataFile(string name)
@@ -179,7 +180,7 @@ namespace Alfa156.Desktop.Exchange
         {
             AlfaRepository temp = new AlfaRepository();
             CsvExchange.ImportFolder(temp, folder);
-            return FromRepository(temp, "CSV-папка", folder);
+            return FromRepository(temp, L10n.Get("import.csv_folder_label"), folder);
         }
 
         internal static ImportPreview FromExcel(string xlsxPath)
@@ -208,10 +209,10 @@ namespace Alfa156.Desktop.Exchange
         internal string FormatSummary()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Источник: ").Append(SourceKindLabel ?? "");
+            sb.Append((L10n.Get("label.source_colon") + " ")).Append(SourceKindLabel ?? "");
             if (!String.IsNullOrEmpty(SourcePath))
                 sb.Append("\r\n").Append(SourcePath);
-            sb.Append("\r\n\r\nАвтомобили (").Append(CarNames.Count).Append("): ");
+            sb.Append(("\r\n\r\n" + L10n.Get("import.preview_cars_open"))).Append(CarNames.Count).Append("): ");
             if (CarNames.Count == 0)
                 sb.Append("—");
             else
@@ -223,20 +224,20 @@ namespace Alfa156.Desktop.Exchange
                     sb.Append(CarNames[i]);
                 }
             }
-            sb.Append("\r\n\r\nЗаправки: ").Append(FuelCount);
-            sb.Append("\r\nРемонт и ТО: ").Append(RepairCount);
-            sb.Append("\r\nПрочие расходы: ").Append(ExpenseCount);
-            sb.Append("\r\nКоммунальные: ").Append(UtilityCount);
-            sb.Append("\r\nКат. ремонта: ").Append(RepairCategoryCount);
-            sb.Append("\r\nКат. прочих: ").Append(ExpenseCategoryCount);
+            sb.Append(("\r\n\r\n" + L10n.Get("summary.fuel_section_colon") + " ")).Append(FuelCount);
+            sb.Append(("\r\n" + L10n.Get("summary.repairs_section_colon") + " ")).Append(RepairCount);
+            sb.Append(("\r\n" + L10n.Get("summary.expenses_section_colon") + " ")).Append(ExpenseCount);
+            sb.Append(("\r\n" + L10n.Get("label.utilities_colon") + " ")).Append(UtilityCount);
+            sb.Append(("\r\n" + L10n.Get("label.repair_cat_colon") + " ")).Append(RepairCategoryCount);
+            sb.Append(("\r\n" + L10n.Get("label.expense_cat_colon") + " ")).Append(ExpenseCategoryCount);
             if (TemplateCount > 0)
-                sb.Append("\r\nШаблоны: ").Append(TemplateCount);
+                sb.Append(("\r\n" + L10n.Get("label.templates_colon") + " ")).Append(TemplateCount);
             if (ReminderCount > 0)
-                sb.Append("\r\nНапоминания: ").Append(ReminderCount);
+                sb.Append(("\r\n" + L10n.Get("summary.reminders_colon") + " ")).Append(ReminderCount);
             if (NoteCount > 0)
-                sb.Append("\r\nЗаметки: ").Append(NoteCount);
+                sb.Append(("\r\n" + L10n.Get("summary.notes_colon") + " ")).Append(NoteCount);
             if (ReceiptCount > 0)
-                sb.Append("\r\nФото чеков: ").Append(ReceiptCount);
+                sb.Append(("\r\n" + L10n.Get("label.receipt_photos_colon") + " ")).Append(ReceiptCount);
             return sb.ToString();
         }
 

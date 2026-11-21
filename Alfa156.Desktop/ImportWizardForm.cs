@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Alfa156.Desktop.Data;
 using Alfa156.Desktop.Exchange;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop
 {
     /// <summary>
@@ -54,7 +55,7 @@ namespace Alfa156.Desktop
             repository = repo;
             ensurePathForImport = ensurePath;
 
-            Text = "Импорт";
+            Text = L10n.Get("title.import");
             Width = 700;
             Height = 460;
             StartPosition = FormStartPosition.CenterParent;
@@ -86,7 +87,7 @@ namespace Alfa156.Desktop
 
             backButton = new Button
             {
-                Text = "Назад",
+                Text = L10n.Get("button.back"),
                 Left = 300,
                 Top = 370,
                 Width = 100,
@@ -94,7 +95,7 @@ namespace Alfa156.Desktop
             };
             nextButton = new Button
             {
-                Text = "Далее",
+                Text = L10n.Get("button.next"),
                 Left = 410,
                 Top = 370,
                 Width = 120,
@@ -102,7 +103,7 @@ namespace Alfa156.Desktop
             };
             cancelButton = new Button
             {
-                Text = "Отмена",
+                Text = L10n.Get("button.cancel"),
                 Left = 540,
                 Top = 370,
                 Width = 100,
@@ -142,8 +143,8 @@ namespace Alfa156.Desktop
 
         private void BuildStepChoose()
         {
-            stepLabel.Text = "Шаг 1 из 3 — что импортировать";
-            nextButton.Text = "Далее";
+            stepLabel.Text = L10n.Get("wizard.imp_step1_title");
+            nextButton.Text = L10n.Get("button.next");
 
             Label hint = new Label
             {
@@ -151,13 +152,13 @@ namespace Alfa156.Desktop
                 Top = 12,
                 Width = 620,
                 Height = 40,
-                Text = "Выберите формат. На следующем шаге укажите файл или папку; " +
-                    "перед заменой данных будет показан предпросмотр, затем создаётся копия Safety_."
+                Text = (L10n.Get("wizard.choose_format_hint") + " ") +
+                    L10n.Get("wizard.preview_then_safety_copy")
             };
 
-            zipRadio = MakeRadio("ZIP-архив (.zip с .dat — копия Android / КПК)", 60, SourceKind.Zip);
-            folderRadio = MakeRadio("Папка данных (.dat)", 100, SourceKind.DatFolder);
-            csvRadio = MakeRadio("CSV-папка (cars.csv, fuel.csv, repairs.csv, …)", 140, SourceKind.CsvFolder);
+            zipRadio = MakeRadio(L10n.Get("import.zip_desc"), 60, SourceKind.Zip);
+            folderRadio = MakeRadio(L10n.Get("import.dat_folder_label"), 100, SourceKind.DatFolder);
+            csvRadio = MakeRadio(L10n.Get("import.csv_folder_desc"), 140, SourceKind.CsvFolder);
             excelRadio = MakeRadio("Excel (.xlsx)", 180, SourceKind.Excel);
 
             zipRadio.Checked = kind == SourceKind.Zip;
@@ -193,14 +194,14 @@ namespace Alfa156.Desktop
 
         private void BuildStepPath()
         {
-            stepLabel.Text = "Шаг 2 из 3 — выбрать источник";
-            nextButton.Text = "Далее";
+            stepLabel.Text = L10n.Get("wizard.imp_step2_title");
+            nextButton.Text = L10n.Get("button.next");
 
             string kindText =
                 kind == SourceKind.Zip ? "ZIP-файл с резервной копией" :
                 kind == SourceKind.DatFolder ? "Папка с файлами cars.dat, fuel.dat, …" :
                 kind == SourceKind.CsvFolder ? "Папка с CSV (cars.csv, fuel.csv, …)" :
-                "Файл Excel (.xlsx)";
+                L10n.Get("import.excel_file_label");
 
             Label hint = new Label
             {
@@ -218,7 +219,7 @@ namespace Alfa156.Desktop
                 Width = 620,
                 Height = 48,
                 ForeColor = Color.FromArgb(35, 51, 70),
-                Text = String.IsNullOrEmpty(sourcePath) ? "(ещё не выбран)" : sourcePath
+                Text = String.IsNullOrEmpty(sourcePath) ? L10n.Get("common.not_selected_yet") : sourcePath
             };
 
             Button browse = new Button
@@ -227,7 +228,7 @@ namespace Alfa156.Desktop
                 Top = 112,
                 Width = 160,
                 Height = 30,
-                Text = "Обзор…"
+                Text = L10n.Get("button.browse")
             };
             browse.Click += BrowseClicked;
 
@@ -243,7 +244,7 @@ namespace Alfa156.Desktop
                     Top = 112,
                     Width = 220,
                     Height = 30,
-                    Text = "Скачать шаблоны CSV…"
+                    Text = L10n.Get("button.download_csv_templates")
                 };
                 templates.Click += ExportTemplatesClicked;
                 Label templateHint = new Label
@@ -253,8 +254,8 @@ namespace Alfa156.Desktop
                     Width = 620,
                     Height = 60,
                     ForeColor = Color.FromArgb(70, 90, 110),
-                    Text = "Шаблоны — пустые CSV только с заголовками для заправок, ремонта и прочих расходов " +
-                        "(удобно заполнить в Excel / Google Sheets и импортировать)."
+                    Text = (L10n.Get("hint.csv_templates_desc") + " ") +
+                        L10n.Get("hint.csv_templates_usage")
                 };
                 stepHost.Controls.Add(templates);
                 stepHost.Controls.Add(templateHint);
@@ -263,8 +264,8 @@ namespace Alfa156.Desktop
 
         private void BuildStepPreview()
         {
-            stepLabel.Text = "Шаг 3 из 3 — предпросмотр и применение";
-            nextButton.Text = "Применить";
+            stepLabel.Text = L10n.Get("wizard.imp_step3_title");
+            nextButton.Text = L10n.Get("button.apply");
 
             previewBox = new TextBox
             {
@@ -286,8 +287,8 @@ namespace Alfa156.Desktop
                 Width = 620,
                 Height = 48,
                 ForeColor = Color.FromArgb(120, 50, 40),
-                Text = "«Применить» заменит данные в открытой папке. " +
-                    "Если там уже есть cars.dat, сначала будет создана копия Safety_yyyyMMdd_HHmmss."
+                Text = (L10n.Get("wizard.apply_replaces_folder") + " ") +
+                    L10n.Get("hint.safety_copy_if_cars_exists")
             };
 
             stepHost.Controls.Add(previewBox);
@@ -310,7 +311,7 @@ namespace Alfa156.Desktop
                 {
                     if (String.IsNullOrEmpty(sourcePath))
                     {
-                        MessageBox.Show(this, "Сначала выберите файл или папку.", "Импорт",
+                        MessageBox.Show(this, L10n.Get("error.select_file_or_folder_first"), L10n.Get("title.import"),
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
@@ -333,7 +334,7 @@ namespace Alfa156.Desktop
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Импорт: " + ex.Message, "Импорт",
+                MessageBox.Show(this, (L10n.Get("label.import_colon") + " ") + ex.Message, L10n.Get("title.import"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -344,8 +345,8 @@ namespace Alfa156.Desktop
             {
                 using (OpenFileDialog dialog = new OpenFileDialog())
                 {
-                    dialog.Filter = "ZIP (*.zip)|*.zip|Все файлы|*.*";
-                    dialog.Title = "ZIP с копией Alfa156";
+                    dialog.Filter = L10n.Get("filter.zip_files");
+                    dialog.Title = L10n.Get("prompt.zip_with_backup");
                     if (dialog.ShowDialog(this) != DialogResult.OK)
                         return;
                     sourcePath = dialog.FileName;
@@ -367,8 +368,8 @@ namespace Alfa156.Desktop
                 using (FolderBrowserDialog dialog = new FolderBrowserDialog())
                 {
                     dialog.Description = kind == SourceKind.CsvFolder
-                        ? "Папка с cars.csv, fuel.csv, …"
-                        : "Папка с cars.dat, fuel.dat, …";
+                        ? L10n.Get("import.csv_files_desc_short")
+                        : L10n.Get("import.dat_files_desc_short");
                     if (dialog.ShowDialog(this) != DialogResult.OK)
                         return;
                     sourcePath = dialog.SelectedPath;
@@ -382,7 +383,7 @@ namespace Alfa156.Desktop
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Куда сохранить шаблоны CSV (пустые заголовки)";
+                dialog.Description = L10n.Get("prompt.where_save_csv_templates");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -390,13 +391,13 @@ namespace Alfa156.Desktop
                     string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv-templates");
                     CsvExchange.ExportTemplates(folder);
                     MessageBox.Show(this,
-                        "Шаблоны сохранены в:\r\n" + folder +
-                        "\r\n\r\nfuel.csv, repairs.csv, expenses.csv — только заголовки.",
-                        "Шаблоны CSV", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        (L10n.Get("msg.templates_saved_to") + "\r\n") + folder +
+                        ("\r\n\r\n" + L10n.Get("msg.csv_templates_headers_only")),
+                        L10n.Get("button.csv_templates"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, ex.Message, "Шаблоны CSV",
+                    MessageBox.Show(this, ex.Message, L10n.Get("button.csv_templates"),
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
@@ -423,7 +424,7 @@ namespace Alfa156.Desktop
             if (ensurePathForImport != null)
                 ensurePathForImport();
             if (String.IsNullOrEmpty(repository.DirectoryPath))
-                throw new InvalidOperationException("Не выбрана папка данных.");
+                throw new InvalidOperationException(L10n.Get("error.no_data_folder_selected"));
 
             safetyPath = null;
             if (File.Exists(Path.Combine(repository.DirectoryPath, "cars.dat")))

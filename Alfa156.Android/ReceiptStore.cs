@@ -4,6 +4,7 @@ using System.IO;
 using AndroidBitmap = global::Android.Graphics.Bitmap;
 using AndroidBitmapFactory = global::Android.Graphics.BitmapFactory;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 /// <summary>
@@ -24,7 +25,7 @@ internal static class ReceiptStore
     internal static string PathForId(string dataDirectory, string recordId)
     {
         if (String.IsNullOrEmpty(recordId) || !RecordIds.LooksLikeId(recordId))
-            throw new ArgumentException("Неверный id записи для фото чека.", "recordId");
+            throw new ArgumentException(L10n.Get("error.invalid_receipt_id"), "recordId");
         return Path.Combine(GetFolder(dataDirectory), recordId + ".jpg");
     }
 
@@ -58,7 +59,7 @@ internal static class ReceiptStore
         using (FileStream output = File.Create(temp))
         {
             if (!scaled.Compress(AndroidBitmap.CompressFormat.Jpeg, JpegQuality, output))
-                throw new IOException("Не удалось сжать фото чека.");
+                throw new IOException(L10n.Get("error.compress_receipt_failed"));
         }
         if (File.Exists(path))
             File.Delete(path);
@@ -72,7 +73,7 @@ internal static class ReceiptStore
         using (AndroidBitmap decoded = AndroidBitmapFactory.DecodeStream(input))
         {
             if (decoded == null)
-                throw new InvalidDataException("Не удалось прочитать изображение.");
+                throw new InvalidDataException(L10n.Get("error.read_image_failed"));
             SaveJpegFromBitmap(dataDirectory, recordId, decoded);
         }
     }

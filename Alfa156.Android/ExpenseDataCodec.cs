@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 internal static class ExpenseDataCodec
@@ -25,7 +26,7 @@ internal static class ExpenseDataCodec
 
     internal static readonly string[] DefaultExpenseCategories =
     {
-        "Страховка", "Техосмотр", "Штрафы", "Мойка", "Парковка", "Прочее"
+        L10n.Get("reminder.insurance"), L10n.Get("reminder.inspection"), L10n.Get("category.fines"), L10n.Get("category.wash"), L10n.Get("category.parking"), L10n.Get("label.other")
     };
 
     internal static readonly string[] DataFiles =
@@ -131,8 +132,8 @@ internal static class ExpenseDataCodec
             }
             catch (Exception restoreError)
             {
-                throw new IOException("Не удалось сохранить файл: " + saveError.Message +
-                    ". Не удалось вернуть предыдущий файл: " + restoreError.Message);
+                throw new IOException((L10n.Get("error.save_file_failed") + " ") + saveError.Message +
+                    (L10n.Get("error.rollback_prev_file_failed") + " ") + restoreError.Message);
             }
             throw;
         }
@@ -147,16 +148,16 @@ internal static class ExpenseDataCodec
     {
         for (int i = 0; i < CoreDataFiles.Length; i++)
             if (!File.Exists(Path.Combine(directory, CoreDataFiles[i])))
-                throw new InvalidDataException("Нужны все четыре файла: cars.dat, fuel.dat, repairs.dat и utilities.dat.");
+                throw new InvalidDataException(L10n.Get("error.need_four_dat_files"));
 
         for (int i = 0; i < CoreDataFiles.Length; i++)
         {
             List<string[]> rows = ReadRows(Path.Combine(directory, CoreDataFiles[i]));
             for (int j = 0; j < rows.Count; j++)
                 if (!IsValidColumnCount(CoreDataFiles[i], rows[j].Length))
-                    throw new InvalidDataException("Неверный формат записи в " + CoreDataFiles[i] + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + CoreDataFiles[i] + ".");
             if (i == 0 && rows.Count == 0)
-                throw new InvalidDataException("В cars.dat нет автомобилей.");
+                throw new InvalidDataException(L10n.Get("error.no_cars_in_dat"));
         }
 
         string categoriesPath = Path.Combine(directory, RepairCategoriesFile);
@@ -165,7 +166,7 @@ internal static class ExpenseDataCodec
             List<string[]> categories = ReadRows(categoriesPath);
             for (int i = 0; i < categories.Count; i++)
                 if (!IsValidCategoryRow(categories[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + RepairCategoriesFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + RepairCategoriesFile + ".");
         }
 
         string expensesPath = Path.Combine(directory, ExpensesFile);
@@ -174,7 +175,7 @@ internal static class ExpenseDataCodec
             List<string[]> expenses = ReadRows(expensesPath);
             for (int i = 0; i < expenses.Count; i++)
                 if (!IsValidColumnCount(ExpensesFile, expenses[i].Length))
-                    throw new InvalidDataException("Неверный формат записи в " + ExpensesFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + ExpensesFile + ".");
         }
 
         string expenseCategoriesPath = Path.Combine(directory, ExpenseCategoriesFile);
@@ -183,7 +184,7 @@ internal static class ExpenseDataCodec
             List<string[]> expenseCategories = ReadRows(expenseCategoriesPath);
             for (int i = 0; i < expenseCategories.Count; i++)
                 if (!IsValidCategoryRow(expenseCategories[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + ExpenseCategoriesFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + ExpenseCategoriesFile + ".");
         }
 
         string settingsPath = Path.Combine(directory, SettingsFile);
@@ -192,7 +193,7 @@ internal static class ExpenseDataCodec
             List<string[]> settings = ReadRows(settingsPath);
             for (int i = 0; i < settings.Count; i++)
                 if (!ToSettings.IsValidRow(settings[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + SettingsFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + SettingsFile + ".");
         }
 
         string carsMetaPath = Path.Combine(directory, CarsMetaFile);
@@ -201,7 +202,7 @@ internal static class ExpenseDataCodec
             List<string[]> meta = ReadRows(carsMetaPath);
             for (int i = 0; i < meta.Count; i++)
                 if (!CarsMeta.IsValidRow(meta[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + CarsMetaFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + CarsMetaFile + ".");
         }
 
         string templatesPath = Path.Combine(directory, TemplatesFile);
@@ -210,7 +211,7 @@ internal static class ExpenseDataCodec
             List<string[]> templates = ReadRows(templatesPath);
             for (int i = 0; i < templates.Count; i++)
                 if (!RecordTemplates.IsValidRow(templates[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + TemplatesFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + TemplatesFile + ".");
         }
 
         string remindersPath = Path.Combine(directory, RemindersFile);
@@ -219,7 +220,7 @@ internal static class ExpenseDataCodec
             List<string[]> reminders = ReadRows(remindersPath);
             for (int i = 0; i < reminders.Count; i++)
                 if (!DateReminders.IsValidRow(reminders[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + RemindersFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + RemindersFile + ".");
         }
 
         string notesPath = Path.Combine(directory, NotesFile);
@@ -228,7 +229,7 @@ internal static class ExpenseDataCodec
             List<string[]> notes = ReadRows(notesPath);
             for (int i = 0; i < notes.Count; i++)
                 if (!CarNotes.IsValidRow(notes[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + NotesFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + NotesFile + ".");
         }
 
         string tripsPath = Path.Combine(directory, TripsFile);
@@ -237,7 +238,7 @@ internal static class ExpenseDataCodec
             List<string[]> trips = ReadRows(tripsPath);
             for (int i = 0; i < trips.Count; i++)
                 if (!IsValidTripRow(trips[i]))
-                    throw new InvalidDataException("Неверный формат записи в " + TripsFile + ".");
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_format_in") + " ") + TripsFile + ".");
         }
     }
 

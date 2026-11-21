@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     internal enum SyncConflictPolicy
@@ -43,21 +44,21 @@ namespace Alfa156.Desktop.Data
         {
             List<Tombstone> tombs = RecordIds.UnionTombstones(local.Deleted, remote.Deleted);
             List<SyncTableDiff> diffs = new List<SyncTableDiff>();
-            diffs.Add(AnalyzeTable("Автомобили", local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true },
+            diffs.Add(AnalyzeTable(L10n.Get("tab.vehicles"), local.Cars, remote.Cars, new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCar)));
-            diffs.Add(AnalyzeTable("Заправки", local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false },
+            diffs.Add(AnalyzeTable(L10n.Get("tab.fuel"), local.Fuel, remote.Fuel, new int[] { 0, 1, 2 }, new bool[] { false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeFuel)));
-            diffs.Add(AnalyzeTable("Ремонт", local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
+            diffs.Add(AnalyzeTable(L10n.Get("tab.repairs"), local.Repairs, remote.Repairs, new int[] { 0, 1, 2, 3, 4 },
                 new bool[] { false, true, false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeRepair)));
-            diffs.Add(AnalyzeTable("Коммуналка", local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false },
+            diffs.Add(AnalyzeTable(L10n.Get("tab.utilities"), local.Utilities, remote.Utilities, new int[] { 0 }, new bool[] { false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
-            diffs.Add(AnalyzeTable("Категории", local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true },
+            diffs.Add(AnalyzeTable(L10n.Get("tab.categories"), local.Categories, remote.Categories, new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
-            diffs.Add(AnalyzeTable("Прочие расходы", local.Expenses, remote.Expenses, new int[] { 0, 1, 2, 3 },
+            diffs.Add(AnalyzeTable(L10n.Get("label.other_expenses"), local.Expenses, remote.Expenses, new int[] { 0, 1, 2, 3 },
                 new bool[] { false, true, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeExpense)));
-            diffs.Add(AnalyzeTable("Кат. прочих", local.ExpenseCategories, remote.ExpenseCategories,
+            diffs.Add(AnalyzeTable(L10n.Get("tab.expense_categories"), local.ExpenseCategories, remote.ExpenseCategories,
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
             return diffs;
@@ -66,16 +67,16 @@ namespace Alfa156.Desktop.Data
         internal static string FormatSummary(List<SyncTableDiff> diffs)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Сравнение локальных данных и Google:");
+            sb.AppendLine(L10n.Get("sync.compare_local_google"));
             sb.AppendLine();
             for (int i = 0; i < diffs.Count; i++)
             {
                 SyncTableDiff d = diffs[i];
-                sb.AppendLine(d.Title + ": локально " + d.LocalCount + ", в Google " + d.RemoteCount +
-                    " | только локально " + d.OnlyLocal +
-                    ", только в Google " + d.OnlyRemote +
-                    ", отличаются " + d.Conflicts +
-                    (d.TombstoneHits > 0 ? ", удалений " + d.TombstoneHits : ""));
+                sb.AppendLine(d.Title + (L10n.Get("sync.colon_local") + " ") + d.LocalCount + (L10n.Get("sync.comma_in_google") + " ") + d.RemoteCount +
+                    (" " + L10n.Get("sync.pipe_local_only") + " ") + d.OnlyLocal +
+                    (L10n.Get("sync.comma_google_only") + " ") + d.OnlyRemote +
+                    (L10n.Get("sync.comma_differ") + " ") + d.Conflicts +
+                    (d.TombstoneHits > 0 ? (L10n.Get("sync.comma_deletions") + " ") + d.TombstoneHits : ""));
             }
             return sb.ToString();
         }

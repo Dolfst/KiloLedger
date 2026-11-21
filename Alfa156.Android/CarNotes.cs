@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Android;
 
 /// <summary>
@@ -156,13 +157,13 @@ internal static class CarNotes
         item.Car = (item.Car ?? "").Trim();
         item.Text = (item.Text ?? "").Trim();
         if (!IsValidDate(item.Date))
-            throw new InvalidOperationException("Дата: ГГГГ-ММ-ДД.");
+            throw new InvalidOperationException(L10n.Get("error.date_format_upper"));
         if (item.Car.Length == 0)
-            throw new InvalidOperationException("Укажите автомобиль.");
+            throw new InvalidOperationException(L10n.Get("error.select_car"));
         if (item.Text.Length == 0)
-            throw new InvalidOperationException("Введите текст заметки.");
+            throw new InvalidOperationException(L10n.Get("error.enter_note_text"));
         if (item.Text.Length > MaxTextLength)
-            throw new InvalidOperationException("Текст заметки: не более 500 символов.");
+            throw new InvalidOperationException(L10n.Get("error.note_text_len"));
 
         List<string[]> rows = LoadRows(directory);
         bool found = false;
@@ -243,7 +244,7 @@ internal static class CarNotes
             limit = 3;
         List<CarNote> list = ListForCar(directory, carName);
         StringBuilder sb = new StringBuilder();
-        sb.Append(nl).Append(nl).Append("Заметки");
+        sb.Append(nl).Append(nl).Append(L10n.Get("label.notes"));
         if (!String.IsNullOrEmpty(carName))
             sb.Append(" («").Append(carName.Trim()).Append("»)");
         sb.Append(":");
@@ -256,7 +257,7 @@ internal static class CarNotes
         for (int i = 0; i < shown; i++)
             sb.Append(nl).Append(FormatLine(list[i]));
         if (list.Count > shown)
-            sb.Append(nl).Append("… ещё ").Append(list.Count - shown);
+            sb.Append(nl).Append((L10n.Get("summary.and_more") + " ")).Append(list.Count - shown);
         return sb.ToString();
     }
 
@@ -266,13 +267,13 @@ internal static class CarNotes
             nl = "\n";
         List<CarNote> list = ListForCar(directory, carName);
         StringBuilder sb = new StringBuilder();
-        sb.Append("Заметки");
+        sb.Append(L10n.Get("label.notes"));
         if (!String.IsNullOrEmpty(carName))
             sb.Append(" · ").Append(carName.Trim());
         sb.Append(":");
         if (list.Count == 0)
         {
-            sb.Append(nl).Append("пока нет");
+            sb.Append(nl).Append(L10n.Get("summary.none_yet"));
             return sb.ToString();
         }
         for (int i = 0; i < list.Count; i++)

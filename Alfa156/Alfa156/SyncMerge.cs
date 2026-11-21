@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     internal enum SyncConflictChoice
@@ -57,63 +58,63 @@ namespace CarExpenses
                 RecordIds.ReadTombstones(remoteDirectory));
 
             List<SyncTableDiff> diffs = new List<SyncTableDiff>();
-            diffs.Add(AnalyzeTable("Автомобили",
+            diffs.Add(AnalyzeTable(L10n.Get("tab.vehicles"),
                 DataStore.ReadSyncTable(localDirectory, "cars.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "cars.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCar)));
-            diffs.Add(AnalyzeTable("Заправки",
+            diffs.Add(AnalyzeTable(L10n.Get("tab.fuel"),
                 DataStore.ReadSyncTable(localDirectory, "fuel.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "fuel.dat"),
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeFuel)));
-            diffs.Add(AnalyzeTable("Ремонт",
+            diffs.Add(AnalyzeTable(L10n.Get("tab.repairs"),
                 DataStore.ReadSyncTable(localDirectory, "repairs.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "repairs.dat"),
                 new int[] { 0, 1, 2, 3, 4 },
                 new bool[] { false, true, false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeRepair)));
-            diffs.Add(AnalyzeTable("Коммуналка",
+            diffs.Add(AnalyzeTable(L10n.Get("tab.utilities"),
                 DataStore.ReadSyncTable(localDirectory, "utilities.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "utilities.dat"),
                 new int[] { 0 }, new bool[] { false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeUtility)));
-            diffs.Add(AnalyzeTable("Категории",
+            diffs.Add(AnalyzeTable(L10n.Get("tab.categories"),
                 DataStore.ReadSyncTable(localDirectory, "repair-categories.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "repair-categories.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCategory)));
-            diffs.Add(AnalyzeTable("Прочие расходы",
+            diffs.Add(AnalyzeTable(L10n.Get("label.other_expenses"),
                 DataStore.ReadSyncTable(localDirectory, "expenses.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "expenses.dat"),
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeExpense)));
-            diffs.Add(AnalyzeTable("Кат. прочих",
+            diffs.Add(AnalyzeTable(L10n.Get("tab.expense_categories"),
                 DataStore.ReadSyncTable(localDirectory, "expense-categories.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "expense-categories.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeExpenseCategory)));
-            diffs.Add(AnalyzeTable("Паспорт авто",
+            diffs.Add(AnalyzeTable(L10n.Get("title.car_passport"),
                 DataStore.ReadSyncTable(localDirectory, "cars-meta.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "cars-meta.dat"),
                 new int[] { 0 }, new bool[] { true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeCarMeta)));
-            diffs.Add(AnalyzeTable("Шаблоны",
+            diffs.Add(AnalyzeTable(L10n.Get("label.templates"),
                 DataStore.ReadSyncTable(localDirectory, "templates.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "templates.dat"),
                 new int[] { 0, 1 }, new bool[] { true, true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeTemplate)));
-            diffs.Add(AnalyzeTable("Напоминания",
+            diffs.Add(AnalyzeTable(L10n.Get("label.reminders"),
                 DataStore.ReadSyncTable(localDirectory, "reminders.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "reminders.dat"),
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, true, true },
                 RecordIds.IdsForType(tombs, RecordIds.TypeReminder)));
-            diffs.Add(AnalyzeTable("Заметки",
+            diffs.Add(AnalyzeTable(L10n.Get("label.notes"),
                 DataStore.ReadSyncTable(localDirectory, "notes.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "notes.dat"),
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeNote)));
-            diffs.Add(AnalyzeTable("Поездки",
+            diffs.Add(AnalyzeTable(L10n.Get("label.trips"),
                 DataStore.ReadSyncTable(localDirectory, "trips.dat"),
                 DataStore.ReadSyncTable(remoteDirectory, "trips.dat"),
                 new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false },
@@ -124,25 +125,25 @@ namespace CarExpenses
         internal static string FormatSummary(List<SyncTableDiff> diffs)
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Сравнение: КПК ↔ Android\n");
+            sb.Append((L10n.Get("sync.compare_pda_android") + "\n"));
             for (int i = 0; i < diffs.Count; i++)
             {
                 SyncTableDiff d = diffs[i];
                 sb.Append("\n");
                 sb.Append(d.Title);
-                sb.Append(": КПК ");
+                sb.Append((L10n.Get("sync.colon_pda") + " "));
                 sb.Append(d.LocalCount.ToString());
                 sb.Append(", Android ");
                 sb.Append(d.RemoteCount.ToString());
-                sb.Append("\n  только КПК: ");
+                sb.Append(("\n  " + L10n.Get("sync.pda_only_colon") + " "));
                 sb.Append(d.OnlyLocal.ToString());
-                sb.Append(", только Android: ");
+                sb.Append((L10n.Get("sync.comma_android_only") + " "));
                 sb.Append(d.OnlyRemote.ToString());
-                sb.Append(", отличаются: ");
+                sb.Append((L10n.Get("sync.comma_differ_colon") + " "));
                 sb.Append(d.Conflicts.ToString());
                 if (d.TombstoneHits > 0)
                 {
-                    sb.Append(", удалений: ");
+                    sb.Append((L10n.Get("sync.comma_deletions_colon") + " "));
                     sb.Append(d.TombstoneHits.ToString());
                 }
             }
@@ -368,7 +369,7 @@ namespace CarExpenses
                     choice = resolveConflict(title, FormatRow(local), FormatRow(remote));
 
                 if (choice == SyncConflictChoice.Cancel)
-                    throw new InvalidOperationException("Синхронизация отменена пользователем.");
+                    throw new InvalidOperationException(L10n.Get("sync.cancelled_by_user"));
                 if (choice == SyncConflictChoice.KeepIncoming)
                 {
                     journal.ConflictKeptIncoming++;
@@ -438,27 +439,27 @@ namespace CarExpenses
         private static string ConflictTitle(string fileName)
         {
             if (fileName == "cars.dat")
-                return "Автомобили";
+                return L10n.Get("tab.vehicles");
             if (fileName == "fuel.dat")
-                return "Заправки";
+                return L10n.Get("tab.fuel");
             if (fileName == "repairs.dat")
-                return "Ремонт";
+                return L10n.Get("tab.repairs");
             if (fileName == "utilities.dat")
-                return "Коммуналка";
+                return L10n.Get("tab.utilities");
             if (fileName == "repair-categories.dat")
-                return "Категории";
+                return L10n.Get("tab.categories");
             if (fileName == "expenses.dat")
-                return "Прочие расходы";
+                return L10n.Get("label.other_expenses");
             if (fileName == "expense-categories.dat")
-                return "Кат. прочих";
+                return L10n.Get("tab.expense_categories");
             if (fileName == "cars-meta.dat")
-                return "Паспорт авто";
+                return L10n.Get("title.car_passport");
             if (fileName == "templates.dat")
-                return "Шаблоны";
+                return L10n.Get("label.templates");
             if (fileName == "reminders.dat")
-                return "Напоминания";
+                return L10n.Get("label.reminders");
             if (fileName == "notes.dat")
-                return "Заметки";
+                return L10n.Get("label.notes");
             return fileName;
         }
 

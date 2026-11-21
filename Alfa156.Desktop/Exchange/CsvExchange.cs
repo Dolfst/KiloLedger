@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Alfa156.Desktop.Data;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Exchange
 {
     internal static class CsvExchange
@@ -97,7 +98,7 @@ namespace Alfa156.Desktop.Exchange
         {
             string id = ExtractSpreadsheetId(spreadsheetUrl);
             if (id == null)
-                throw new InvalidDataException("Не удалось распознать ссылку Google Sheets. Нужна ссылка вида https://docs.google.com/spreadsheets/d/ID/...");
+                throw new InvalidDataException(L10n.Get("error.invalid_google_sheet_url"));
 
             // Формат «Деньги»: Заправки Alfa Romeo 156 / Ремонт ... / Коммунальные / Справочник
             string fuelSheet;
@@ -143,7 +144,7 @@ namespace Alfa156.Desktop.Exchange
             List<string[]> canonicalUtilities = DownloadSheetOptional(id, new string[] { "Коммуналка", "utilities" }, 8, true);
             List<string[]> canonicalCategories = DownloadSheetOptional(id, new string[] { "Категории", "repair-categories" }, 1, true);
             if (canonicalCars.Count == 0)
-                throw new InvalidDataException("Не найдены данные. Для «Деньги» откройте доступ по ссылке; либо используйте листы Автомобили/Заправки/Ремонт/Коммуналка.");
+                throw new InvalidDataException(L10n.Get("error.google_no_data_found"));
             repo.ReplaceAll(canonicalCars, canonicalFuel, canonicalRepairs, canonicalUtilities, canonicalCategories);
         }
 
@@ -185,7 +186,7 @@ namespace Alfa156.Desktop.Exchange
                 }
             }
             if (lastError != null && names.Length == 1)
-                throw new InvalidDataException("Не удалось скачать лист «" + names[0] + "»: " + lastError.Message, lastError);
+                throw new InvalidDataException(L10n.Get("error.download_sheet_failed_open") + names[0] + "»: " + lastError.Message, lastError);
             return new List<string[]>();
         }
 
@@ -249,7 +250,7 @@ namespace Alfa156.Desktop.Exchange
         private static List<string[]> ReadCsvFlexible(string path, int minColumns, int maxColumns)
         {
             if (!File.Exists(path))
-                throw new FileNotFoundException("Не найден файл: " + path, path);
+                throw new FileNotFoundException((L10n.Get("error.file_not_found_colon") + " ") + path, path);
             string text = File.ReadAllText(path, Encoding.UTF8);
             List<string[]> raw = ParseCsvRecords(text);
             List<string[]> rows = new List<string[]>();
@@ -279,7 +280,7 @@ namespace Alfa156.Desktop.Exchange
         internal static List<string[]> ReadCsv(string path, int columns, bool hasHeader)
         {
             if (!File.Exists(path))
-                throw new FileNotFoundException("Не найден файл: " + path, path);
+                throw new FileNotFoundException((L10n.Get("error.file_not_found_colon") + " ") + path, path);
             string text = File.ReadAllText(path, Encoding.UTF8);
             return ParseCsvCore(text, columns, hasHeader, true);
         }
@@ -370,7 +371,7 @@ namespace Alfa156.Desktop.Exchange
                 rows.Add(fields.ToArray());
             }
             if (inQuotes)
-                throw new InvalidDataException("CSV содержит незакрытую кавычку.");
+                throw new InvalidDataException(L10n.Get("error.csv_unclosed_quote"));
             return rows;
         }
 

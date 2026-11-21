@@ -35,7 +35,7 @@ namespace Alfa156.Desktop
         private readonly DataGridView expenseCategoriesGrid = CreateGrid();
         private readonly TextBox summaryBox = new TextBox();
         private readonly MonthlyChartPanel summaryChart = new MonthlyChartPanel();
-        private readonly TabPage summaryTab = new TabPage("Сводка");
+        private readonly TabPage summaryTab = new TabPage(L10n.Get("tab.summary"));
         private readonly TextBox oilIntervalBox = new TextBox();
         private readonly TextBox oilWarnBox = new TextBox();
         private readonly TextBox beltIntervalBox = new TextBox();
@@ -48,7 +48,7 @@ namespace Alfa156.Desktop
         private readonly ComboBox defaultCarBox = new ComboBox();
         private readonly ComboBox languageBox = new ComboBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
-        private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("Откройте папку данных или ZIP с Android/КПК.");
+        private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel(L10n.Get("hint.open_folder_or_zip"));
         private readonly TextBox googleUrlBox = new TextBox();
         private bool suppressDirty;
         private bool dirty;
@@ -143,7 +143,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton(L10n.Get("button.attach_receipt"), AttachReceiptPhoto));
             toolbar.Controls.Add(MakeButton(L10n.Get("button.delete_receipt"), DeleteReceiptPhoto));
             globalSearchBox.Width = 140;
-            globalSearchBox.Text = "Поиск…";
+            globalSearchBox.Text = L10n.Get("button.search_ellipsis");
             globalSearchBox.ForeColor = Color.Gray;
             globalSearchBox.GotFocus += delegate
             {
@@ -222,13 +222,13 @@ namespace Alfa156.Desktop
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.oil_interval"), AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
             oilIntervalBox.Width = 70;
             intervalRow.Controls.Add(oilIntervalBox);
-            intervalRow.Controls.Add(new Label { Text = "предупр.", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warning"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             oilWarnBox.Width = 60;
             intervalRow.Controls.Add(oilWarnBox);
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.belt_interval"), AutoSize = true, Padding = new Padding(12, 8, 0, 0) });
             beltIntervalBox.Width = 70;
             intervalRow.Controls.Add(beltIntervalBox);
-            intervalRow.Controls.Add(new Label { Text = "предупр.", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warning"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             beltWarnBox.Width = 60;
             intervalRow.Controls.Add(beltWarnBox);
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_intervals"), SaveToIntervals));
@@ -241,7 +241,7 @@ namespace Alfa156.Desktop
             budgetBox.Width = 70;
             budgetBox.Text = "0";
             intervalRow.Controls.Add(budgetBox);
-            intervalRow.Controls.Add(new Label { Text = "предупр.%", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warn_pct_compact"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             budgetWarnBox.Width = 40;
             budgetWarnBox.Text = "80";
             intervalRow.Controls.Add(budgetWarnBox);
@@ -395,14 +395,14 @@ namespace Alfa156.Desktop
             fuelFilterPurpose.Items.Add("Личный");
             fuelFilterPurpose.Items.Add("Работа");
             fuelFilterPurpose.SelectedIndex = 0;
-            bar.Controls.Add(FilterLabel("Цель"));
+            bar.Controls.Add(FilterLabel(L10n.Get("label.purpose")));
             bar.Controls.Add(fuelFilterPurpose);
             fuelFilterStation.DropDownStyle = ComboBoxStyle.DropDownList;
             fuelFilterStation.Width = 120;
             fuelFilterStation.Items.Clear();
             fuelFilterStation.Items.Add("Все АЗС");
             fuelFilterStation.SelectedIndex = 0;
-            bar.Controls.Add(FilterLabel("АЗС"));
+            bar.Controls.Add(FilterLabel(L10n.Get("label.station")));
             bar.Controls.Add(fuelFilterStation);
             // Move apply/reset after purpose/station: rebuild order by bringing buttons to end.
             Control apply = null;
@@ -449,13 +449,13 @@ namespace Alfa156.Desktop
                 utilityFilterFrom, utilityFilterTo, utilityFilterText,
                 delegate { ApplyUtilityFilterFromUi(); },
                 delegate { ResetUtilityFilter(); },
-                "Месяц с", "Месяц по", "Поиск");
+                L10n.Get("label.month_from"), L10n.Get("label.month_to"), L10n.Get("title.search"));
         }
 
         private static FlowLayoutPanel BuildPeriodTextFilterBar(
             TextBox fromBox, TextBox toBox, TextBox textBox,
             EventHandler apply, EventHandler reset,
-            string fromLabel = "С", string toLabel = "По", string textLabel = "Поиск")
+            string fromLabel = L10n.Get("label.from"), string toLabel = L10n.Get("label.to"), string textLabel = L10n.Get("title.search"))
         {
             FlowLayoutPanel bar = new FlowLayoutPanel
             {
@@ -472,8 +472,8 @@ namespace Alfa156.Desktop
             bar.Controls.Add(FilterLabel(textLabel));
             textBox.Width = 140;
             bar.Controls.Add(textBox);
-            bar.Controls.Add(MakeButton("Применить", apply));
-            bar.Controls.Add(MakeButton("Сбросить", reset));
+            bar.Controls.Add(MakeButton(L10n.Get("button.apply"), apply));
+            bar.Controls.Add(MakeButton(L10n.Get("button.reset"), reset));
             return bar;
         }
 
@@ -489,19 +489,19 @@ namespace Alfa156.Desktop
             };
             categoryBox.DropDownStyle = ComboBoxStyle.DropDownList;
             categoryBox.Width = 140;
-            bar.Controls.Add(FilterLabel("Категория"));
+            bar.Controls.Add(FilterLabel(L10n.Get("label.category")));
             bar.Controls.Add(categoryBox);
-            bar.Controls.Add(FilterLabel("С"));
+            bar.Controls.Add(FilterLabel(L10n.Get("label.from")));
             fromBox.Width = 90;
             bar.Controls.Add(fromBox);
-            bar.Controls.Add(FilterLabel("По"));
+            bar.Controls.Add(FilterLabel(L10n.Get("label.to")));
             toBox.Width = 90;
             bar.Controls.Add(toBox);
-            bar.Controls.Add(FilterLabel("Поиск"));
+            bar.Controls.Add(FilterLabel(L10n.Get("title.search")));
             textBox.Width = 140;
             bar.Controls.Add(textBox);
-            bar.Controls.Add(MakeButton("Применить", apply));
-            bar.Controls.Add(MakeButton("Сбросить", reset));
+            bar.Controls.Add(MakeButton(L10n.Get("button.apply"), apply));
+            bar.Controls.Add(MakeButton(L10n.Get("button.reset"), reset));
             return bar;
         }
 
@@ -649,12 +649,12 @@ namespace Alfa156.Desktop
                 count++;
             }
             MessageBox.Show(this,
-                "Отчёт поездок · " + car +
-                "\nКоличество: " + count +
-                "\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
-                "\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
-                "\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км",
-                "Поездки", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                (L10n.Get("trips.report_title_dot") + " ") + car +
+                ("\n" + L10n.Get("label.quantity_colon") + " ") + count +
+                ("\n" + L10n.Get("report.personal_colon") + " ") + personal.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")) +
+                ("\n" + L10n.Get("report.work_colon") + " ") + work.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")) +
+                ("\n" + L10n.Get("report.total_colon") + " ") + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")),
+                L10n.Get("label.trips"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void OpenTripEntry(object sender, EventArgs e)
@@ -664,7 +664,7 @@ namespace Alfa156.Desktop
                 EnsurePath();
                 if (repository.Cars.Count == 0)
                 {
-                    MessageBox.Show(this, "Нет автомобилей.", "Поездка",
+                    MessageBox.Show(this, L10n.Get("error.no_cars"), L10n.Get("button.trip"),
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
@@ -677,7 +677,7 @@ namespace Alfa156.Desktop
                 }
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Новая поездка";
+                    dialog.Text = L10n.Get("title.new_trip");
                     dialog.Width = 420;
                     dialog.Height = 390;
                     dialog.StartPosition = FormStartPosition.CenterParent;
@@ -699,23 +699,23 @@ namespace Alfa156.Desktop
                     TextBox driverBox = new TextBox { Left = 206, Top = 180, Width = 180 };
                     TextBox commentBox = new TextBox { Left = 16, Top = 234, Width = 370 };
 
-                    Button ok = new Button { Text = "Сохранить", Left = 206, Top = 310, Width = 90, DialogResult = DialogResult.OK };
-                    Button cancel = new Button { Text = "Отмена", Left = 306, Top = 310, Width = 80, DialogResult = DialogResult.Cancel };
+                    Button ok = new Button { Text = L10n.Get("button.save"), Left = 206, Top = 310, Width = 90, DialogResult = DialogResult.OK };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), Left = 306, Top = 310, Width = 80, DialogResult = DialogResult.Cancel };
                     dialog.Controls.AddRange(new Control[]
                     {
-                        new Label { Text = "Дата", Left = 16, Top = 16, Width = 370 },
+                        new Label { Text = L10n.Get("label.date"), Left = 16, Top = 16, Width = 370 },
                         dateBox,
-                        new Label { Text = "Автомобиль", Left = 16, Top = 62, Width = 370 },
+                        new Label { Text = L10n.Get("label.vehicle"), Left = 16, Top = 62, Width = 370 },
                         carBox,
-                        new Label { Text = "Начало пробега, км", Left = 16, Top = 106, Width = 180 },
+                        new Label { Text = L10n.Get("label.odometer_start_km"), Left = 16, Top = 106, Width = 180 },
                         startBox,
-                        new Label { Text = "Конец пробега, км", Left = 206, Top = 106, Width = 180 },
+                        new Label { Text = L10n.Get("label.odometer_end_km"), Left = 206, Top = 106, Width = 180 },
                         endBox,
-                        new Label { Text = "Назначение", Left = 16, Top = 160, Width = 180 },
+                        new Label { Text = L10n.Get("label.purpose_alt"), Left = 16, Top = 160, Width = 180 },
                         purposeBox,
-                        new Label { Text = "Водитель", Left = 206, Top = 160, Width = 180 },
+                        new Label { Text = L10n.Get("label.driver"), Left = 206, Top = 160, Width = 180 },
                         driverBox,
-                        new Label { Text = "Комментарий", Left = 16, Top = 214, Width = 370 },
+                        new Label { Text = L10n.Get("label.comment"), Left = 16, Top = 214, Width = 370 },
                         commentBox,
                         ok, cancel
                     });
@@ -734,8 +734,8 @@ namespace Alfa156.Desktop
                         !AlfaCodec.TryNumber(endBox.Text, out endKm) || endKm < startKm)
                     {
                         MessageBox.Show(this,
-                            "Проверьте дату и пробег: конец не меньше начала.",
-                            "Поездка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            L10n.Get("error.check_trip_date_odometer"),
+                            L10n.Get("button.trip"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                     string[] trip = new string[]
@@ -751,8 +751,8 @@ namespace Alfa156.Desktop
                     repository.TripsRows.Add(trip);
                     repository.Save();
                     BindAll();
-                    SetStatus("Поездка сохранена: " +
-                        (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + " км");
+                    SetStatus((L10n.Get("msg.trip_saved") + " ") +
+                        (endKm - startKm).ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")));
                 }
             }
             catch (Exception ex)
@@ -775,8 +775,8 @@ namespace Alfa156.Desktop
                 }
                 if (cars.Count == 0)
                 {
-                    MessageBox.Show(this, "Нет автомобилей. Добавьте авто на вкладке Автомобили.",
-                        "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, L10n.Get("error.no_cars_add_tab"),
+                        L10n.Get("button.quick_fuel"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 string preferred = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
@@ -785,7 +785,7 @@ namespace Alfa156.Desktop
 
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Быстрая заправка";
+                    dialog.Text = L10n.Get("button.quick_fuel");
                     dialog.Width = 420;
                     dialog.Height = 340;
                     dialog.StartPosition = FormStartPosition.CenterParent;
@@ -794,7 +794,7 @@ namespace Alfa156.Desktop
                     dialog.MinimizeBox = false;
                     dialog.BackColor = Color.FromArgb(245, 247, 250);
 
-                    Label carLabel = new Label { Text = "Автомобиль", Left = 16, Top = 16, Width = 370 };
+                    Label carLabel = new Label { Text = L10n.Get("label.vehicle"), Left = 16, Top = 16, Width = 370 };
                     ComboBox carBox = new ComboBox
                     {
                         Left = 16, Top = 36, Width = 370, DropDownStyle = ComboBoxStyle.DropDownList
@@ -804,21 +804,21 @@ namespace Alfa156.Desktop
                     int sel = cars.IndexOf(preferred);
                     carBox.SelectedIndex = sel >= 0 ? sel : 0;
 
-                    Label kmLabel = new Label { Text = "Пробег, км", Left = 16, Top = 70, Width = 370 };
+                    Label kmLabel = new Label { Text = L10n.Get("label.odometer_km"), Left = 16, Top = 70, Width = 370 };
                     TextBox kmBox = new TextBox { Left = 16, Top = 90, Width = 370 };
-                    Label litersLabel = new Label { Text = "Литры", Left = 16, Top = 124, Width = 180 };
+                    Label litersLabel = new Label { Text = L10n.Get("label.liters"), Left = 16, Top = 124, Width = 180 };
                     TextBox litersBox = new TextBox { Left = 16, Top = 144, Width = 180 };
-                    Label costLabel = new Label { Text = "Стоимость, " + Cur(), Left = 206, Top = 124, Width = 180 };
+                    Label costLabel = new Label { Text = (L10n.Get("label.cost_comma") + " ") + Cur(), Left = 206, Top = 124, Width = 180 };
                     TextBox costBox = new TextBox { Left = 206, Top = 144, Width = 180 };
                     Label priceLabel = new Label
                     {
-                        Text = "Цена/л, " + Cur() + " (авто)",
+                        Text = (L10n.Get("label.price_per_l_comma") + " ") + Cur() + (" " + L10n.Get("label.auto_paren")),
                         Left = 16, Top = 178, Width = 370
                     };
                     TextBox priceBox = new TextBox { Left = 16, Top = 198, Width = 370 };
                     CheckBox fullTankBox = new CheckBox
                     {
-                        Text = "Полный бак",
+                        Text = L10n.Get("label.full_tank"),
                         Left = 16, Top = 232, Width = 200,
                         Checked = true,
                         BackColor = dialog.BackColor
@@ -860,12 +860,12 @@ namespace Alfa156.Desktop
 
                     Button ok = new Button
                     {
-                        Text = "Сохранить", Left = 206, Top = 268, Width = 90,
+                        Text = L10n.Get("button.save"), Left = 206, Top = 268, Width = 90,
                         DialogResult = DialogResult.OK
                     };
                     Button cancel = new Button
                     {
-                        Text = "Отмена", Left = 306, Top = 268, Width = 80,
+                        Text = L10n.Get("button.cancel"), Left = 306, Top = 268, Width = 80,
                         DialogResult = DialogResult.Cancel
                     };
                     dialog.Controls.AddRange(new Control[]
@@ -885,8 +885,8 @@ namespace Alfa156.Desktop
                     string price = priceBox.Text.Trim();
                     if (carName.Length == 0 || km.Length == 0 || liters.Length == 0 || cost.Length == 0)
                     {
-                        MessageBox.Show(this, "Заполните автомобиль, пробег, литры и стоимость.",
-                            "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(this, L10n.Get("error.fill_car_km_liters_cost"),
+                            L10n.Get("button.quick_fuel"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                     decimal kmN;
@@ -900,8 +900,8 @@ namespace Alfa156.Desktop
                             (!AlfaCodec.TryNumber(price, out priceN) || priceN <= 0)))
                     {
                         MessageBox.Show(this,
-                            "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.",
-                            "Быстрая заправка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            L10n.Get("error.check_fuel_values"),
+                            L10n.Get("button.quick_fuel"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                     if (price.Length == 0 &&
@@ -915,7 +915,7 @@ namespace Alfa156.Desktop
                         decimal last = LastKnownMileageFromGrids(carName, null, -1);
                         string warning = FormatMileageWarning(newKm, last);
                         if (warning != null &&
-                            MessageBox.Show(this, warning, "Пробег", MessageBoxButtons.YesNo,
+                            MessageBox.Show(this, warning, L10n.Get("label.odometer"), MessageBoxButtons.YesNo,
                                 MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                             return;
                     }
@@ -939,7 +939,7 @@ namespace Alfa156.Desktop
                     repository.Save();
                     dirty = false;
                     BindAll();
-                    SetStatus("Быстрая заправка сохранена: " + carName + ", " + liters + " л.");
+                    SetStatus((L10n.Get("msg.quick_fuel_saved") + " ") + carName + ", " + liters + (" " + L10n.Get("unit.liters_dot_end")));
                 }
             }
             catch (Exception ex)
@@ -973,7 +973,7 @@ namespace Alfa156.Desktop
                 if (wizard.ShowDialog(this) != DialogResult.OK)
                     return;
                 ApplyGoogleSettingsToUi(GoogleSyncSettings.Load());
-                SetStatus("Google Sync настроен. Можно синхронизировать.");
+                SetStatus(L10n.Get("wizard.gs_configured"));
             }
         }
 
@@ -982,19 +982,19 @@ namespace Alfa156.Desktop
             GoogleSyncSettings settings = GoogleSyncSettings.Load();
             using (Form dialog = new Form())
             {
-                dialog.Text = "Синхронизация Google (расширенная)";
+                dialog.Text = L10n.Get("title.google_sync_advanced");
                 dialog.Width = 640;
                 dialog.Height = 260;
                 dialog.StartPosition = FormStartPosition.CenterParent;
                 dialog.BackColor = Color.FromArgb(245, 247, 250);
-                Label urlLabel = new Label { Text = "URL веб-приложения Apps Script", Left = 12, Top = 12, Width = 600 };
+                Label urlLabel = new Label { Text = L10n.Get("google.script_url_label"), Left = 12, Top = 12, Width = 600 };
                 TextBox urlBox = new TextBox { Left = 12, Top = 36, Width = 600, Text = settings.ScriptUrl ?? "" };
                 Label tokenLabel = new Label { Text = "SYNC_TOKEN", Left = 12, Top = 70, Width = 600 };
                 TextBox tokenBox = new TextBox { Left = 12, Top = 94, Width = 600, Text = settings.Token ?? "" };
-                Label sheetLabel = new Label { Text = "Ссылка на таблицу (для импорта CSV)", Left = 12, Top = 128, Width = 600 };
+                Label sheetLabel = new Label { Text = L10n.Get("label.sheet_url_csv"), Left = 12, Top = 128, Width = 600 };
                 TextBox sheetBox = new TextBox { Left = 12, Top = 152, Width = 600, Text = settings.SpreadsheetUrl ?? "" };
-                Button ok = new Button { Text = "Сохранить", Left = 430, Top = 190, Width = 90, DialogResult = DialogResult.OK };
-                Button cancel = new Button { Text = "Отмена", Left = 530, Top = 190, Width = 80, DialogResult = DialogResult.Cancel };
+                Button ok = new Button { Text = L10n.Get("button.save"), Left = 430, Top = 190, Width = 90, DialogResult = DialogResult.OK };
+                Button cancel = new Button { Text = L10n.Get("button.cancel"), Left = 530, Top = 190, Width = 80, DialogResult = DialogResult.Cancel };
                 dialog.Controls.AddRange(new Control[] { urlLabel, urlBox, tokenLabel, tokenBox, sheetLabel, sheetBox, ok, cancel });
                 dialog.AcceptButton = ok;
                 dialog.CancelButton = cancel;
@@ -1005,7 +1005,7 @@ namespace Alfa156.Desktop
                 settings.SpreadsheetUrl = sheetBox.Text.Trim();
                 settings.Save();
                 ApplyGoogleSettingsToUi(settings);
-                SetStatus("Настройки Google сохранены.");
+                SetStatus(L10n.Get("msg.google_settings_saved"));
             }
         }
 
@@ -1036,7 +1036,7 @@ namespace Alfa156.Desktop
                 {
                     if (options.ShowDialog(this) != DialogResult.OK)
                     {
-                        SetStatus("Синхронизация отменена.");
+                        SetStatus(L10n.Get("sync.cancelled"));
                         return;
                     }
                     Cursor = Cursors.WaitCursor;
@@ -1046,11 +1046,11 @@ namespace Alfa156.Desktop
                     BindAll();
                     repository.Save();
                     dirty = false;
-                    SetStatus(message + "\r\nКопия: " + safetyPath);
+                    SetStatus(message + ("\r\n" + L10n.Get("backup.copy_colon") + " ") + safetyPath);
                     SyncJournal journal = SyncMerge.LastJournal;
                     if (journal != null)
                         MessageBox.Show(this, journal.FormatSummary() +
-                            "\r\n\r\nКопия: " + safetyPath, "Синхронизация Google",
+                            ("\r\n\r\n" + L10n.Get("backup.copy_colon") + " ") + safetyPath, L10n.Get("button.google_sync"),
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
@@ -1067,28 +1067,28 @@ namespace Alfa156.Desktop
         private void SetupCarsGrid()
         {
             carsGrid.Columns.Clear();
-            carsGrid.Columns.Add("name", "Автомобиль");
-            carsGrid.Columns.Add("year", "Год");
-            carsGrid.Columns.Add("plate", "Госномер");
+            carsGrid.Columns.Add("name", L10n.Get("label.vehicle"));
+            carsGrid.Columns.Add("year", L10n.Get("label.year"));
+            carsGrid.Columns.Add("plate", L10n.Get("label.plate"));
             carsGrid.Columns.Add("vin", "VIN");
-            carsGrid.Columns.Add("tank", "Бак, л");
-            carsGrid.Columns.Add("note", "Заметка");
+            carsGrid.Columns.Add("tank", L10n.Get("label.tank_l"));
+            carsGrid.Columns.Add("note", L10n.Get("label.note"));
         }
 
         private void SetupFuelGrid()
         {
             fuelGrid.Columns.Clear();
-            fuelGrid.Columns.Add("date", "Дата");
-            fuelGrid.Columns.Add("car", "Автомобиль");
-            fuelGrid.Columns.Add("km", "Пробег, км");
-            fuelGrid.Columns.Add("liters", "Литры");
-            fuelGrid.Columns.Add("sum", "Сумма, " + Cur());
-            fuelGrid.Columns.Add("price", "Цена/л");
-            fuelGrid.Columns.Add("comment", "Комментарий");
+            fuelGrid.Columns.Add("date", L10n.Get("label.date"));
+            fuelGrid.Columns.Add("car", L10n.Get("label.vehicle"));
+            fuelGrid.Columns.Add("km", L10n.Get("label.odometer_km"));
+            fuelGrid.Columns.Add("liters", L10n.Get("label.liters"));
+            fuelGrid.Columns.Add("sum", (L10n.Get("label.amount_comma") + " ") + Cur());
+            fuelGrid.Columns.Add("price", L10n.Get("label.price_per_l"));
+            fuelGrid.Columns.Add("comment", L10n.Get("label.comment"));
             DataGridViewCheckBoxColumn fullTank = new DataGridViewCheckBoxColumn
             {
                 Name = "fullTank",
-                HeaderText = "Полный бак",
+                HeaderText = L10n.Get("label.full_tank"),
                 TrueValue = true,
                 FalseValue = false,
                 ThreeState = false,
@@ -1099,7 +1099,7 @@ namespace Alfa156.Desktop
             DataGridViewComboBoxColumn purpose = new DataGridViewComboBoxColumn
             {
                 Name = "purpose",
-                HeaderText = "Цель",
+                HeaderText = L10n.Get("label.purpose"),
                 FlatStyle = FlatStyle.Flat,
                 Width = 90,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
@@ -1108,7 +1108,7 @@ namespace Alfa156.Desktop
             purpose.Items.Add("Личный");
             purpose.Items.Add("Работа");
             fuelGrid.Columns.Add(purpose);
-            fuelGrid.Columns.Add("station", "АЗС / бренд");
+            fuelGrid.Columns.Add("station", L10n.Get("label.station_brand"));
             fuelGrid.EditingControlShowing -= FuelGridEditingControlShowing;
             fuelGrid.EditingControlShowing += FuelGridEditingControlShowing;
         }
@@ -1140,46 +1140,46 @@ namespace Alfa156.Desktop
         private void SetupRepairsGrid()
         {
             repairsGrid.Columns.Clear();
-            repairsGrid.Columns.Add("date", "Дата");
-            repairsGrid.Columns.Add("car", "Автомобиль");
-            repairsGrid.Columns.Add("km", "Пробег, км");
-            repairsGrid.Columns.Add("cat", "Категория");
-            repairsGrid.Columns.Add("product", "Товар");
-            repairsGrid.Columns.Add("desc", "Описание");
-            repairsGrid.Columns.Add("qty", "Кол-во");
-            repairsGrid.Columns.Add("sum", "Сумма, " + Cur());
-            repairsGrid.Columns.Add("comment", "Комментарий");
+            repairsGrid.Columns.Add("date", L10n.Get("label.date"));
+            repairsGrid.Columns.Add("car", L10n.Get("label.vehicle"));
+            repairsGrid.Columns.Add("km", L10n.Get("label.odometer_km"));
+            repairsGrid.Columns.Add("cat", L10n.Get("label.category"));
+            repairsGrid.Columns.Add("product", L10n.Get("label.product"));
+            repairsGrid.Columns.Add("desc", L10n.Get("label.description"));
+            repairsGrid.Columns.Add("qty", L10n.Get("label.qty_short"));
+            repairsGrid.Columns.Add("sum", (L10n.Get("label.amount_comma") + " ") + Cur());
+            repairsGrid.Columns.Add("comment", L10n.Get("label.comment"));
         }
 
         private void SetupUtilitiesGrid()
         {
             utilitiesGrid.Columns.Clear();
-            utilitiesGrid.Columns.Add("month", "Месяц");
+            utilitiesGrid.Columns.Add("month", L10n.Get("label.month"));
             for (int i = 0; i < AlfaCodec.UtilityLabels.Length; i++)
-                utilitiesGrid.Columns.Add("u" + i, AlfaCodec.UtilityLabels[i]);
+                utilitiesGrid.Columns.Add("u" + i, AlfaCodec.GetUtilityLabel(i));
         }
 
         private void SetupCategoriesGrid()
         {
             categoriesGrid.Columns.Clear();
-            categoriesGrid.Columns.Add("name", "Категория");
+            categoriesGrid.Columns.Add("name", L10n.Get("label.category"));
         }
 
         private void SetupExpensesGrid()
         {
             expensesGrid.Columns.Clear();
-            expensesGrid.Columns.Add("date", "Дата");
-            expensesGrid.Columns.Add("car", "Автомобиль");
-            expensesGrid.Columns.Add("cat", "Категория");
-            expensesGrid.Columns.Add("name", "Название");
-            expensesGrid.Columns.Add("sum", "Сумма, " + Cur());
-            expensesGrid.Columns.Add("comment", "Комментарий");
+            expensesGrid.Columns.Add("date", L10n.Get("label.date"));
+            expensesGrid.Columns.Add("car", L10n.Get("label.vehicle"));
+            expensesGrid.Columns.Add("cat", L10n.Get("label.category"));
+            expensesGrid.Columns.Add("name", L10n.Get("label.name"));
+            expensesGrid.Columns.Add("sum", (L10n.Get("label.amount_comma") + " ") + Cur());
+            expensesGrid.Columns.Add("comment", L10n.Get("label.comment"));
         }
 
         private void SetupExpenseCategoriesGrid()
         {
             expenseCategoriesGrid.Columns.Clear();
-            expenseCategoriesGrid.Columns.Add("name", "Категория");
+            expenseCategoriesGrid.Columns.Add("name", L10n.Get("label.category"));
         }
 
         private void SaveToIntervals(object sender, EventArgs e)
@@ -1193,7 +1193,7 @@ namespace Alfa156.Desktop
                     !AlfaCodec.TryNumber(oilWarnBox.Text, out oilWarn) || oilWarn <= 0 ||
                     !AlfaCodec.TryNumber(beltIntervalBox.Text, out beltInterval) || beltInterval <= 0 ||
                     !AlfaCodec.TryNumber(beltWarnBox.Text, out beltWarn) || beltWarn <= 0)
-                    throw new InvalidOperationException("Введите положительные числа для интервалов ТО.");
+                    throw new InvalidOperationException(L10n.Get("error.enter_positive_intervals"));
                 values.OilInterval = oilInterval;
                 values.OilWarn = oilWarn;
                 values.BeltInterval = beltInterval;
@@ -1202,7 +1202,7 @@ namespace Alfa156.Desktop
                 PullAll();
                 repository.Save();
                 dirty = false;
-                SetStatus("Интервалы ТО сохранены.");
+                SetStatus(L10n.Get("msg.intervals_saved"));
                 RefreshSummaryText();
             }
             catch (Exception ex)
@@ -1224,7 +1224,7 @@ namespace Alfa156.Desktop
                 SetupFuelGrid();
                 SetupRepairsGrid();
                 SetupExpensesGrid();
-                SetStatus("Валюта: " + Cur() + " (суммы не пересчитываются).");
+                SetStatus((L10n.Get("msg.currency_colon") + " ") + Cur() + (" " + L10n.Get("msg.amounts_not_recalculated")));
                 RefreshSummaryText();
                 BindAll();
             }
@@ -1241,9 +1241,9 @@ namespace Alfa156.Desktop
                 EnsurePath();
                 decimal monthLimit, warnPct;
                 if (!AlfaCodec.TryNumber(budgetBox.Text, out monthLimit) || monthLimit < 0)
-                    throw new InvalidOperationException("Бюджет месяца: 0 (выкл.) или положительное число.");
+                    throw new InvalidOperationException(L10n.Get("error.budget_invalid"));
                 if (!AlfaCodec.TryNumber(budgetWarnBox.Text, out warnPct) || warnPct <= 0 || warnPct > 100)
-                    throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+                    throw new InvalidOperationException(L10n.Get("error.warn_pct_range"));
                 repository.Settings = ToSettings.SetBudget(repository.Settings, monthLimit, warnPct);
                 PullAll();
                 repository.Save();
@@ -1253,10 +1253,10 @@ namespace Alfa156.Desktop
                 budgetWarnBox.Text = ToSettings.GetBudgetWarnPct(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 if (monthLimit <= 0)
-                    SetStatus("Месячный бюджет выключен.");
+                    SetStatus(L10n.Get("msg.budget_disabled"));
                 else
-                    SetStatus("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
-                        ", предупреждение с " + Money(warnPct) + "%.");
+                    SetStatus((L10n.Get("summary.monthly_budget_colon") + " ") + Money(monthLimit) + " " + Cur() +
+                        (L10n.Get("summary.warn_from") + " ") + Money(warnPct) + "%.");
                 RefreshSummaryText();
             }
             catch (Exception ex)
@@ -1273,7 +1273,7 @@ namespace Alfa156.Desktop
                 decimal days;
                 if (!AlfaCodec.TryNumber(backupRemindBox.Text, out days) || days < 0 || days > 3650 ||
                     days != Decimal.Truncate(days))
-                    throw new InvalidOperationException("Интервал напоминания: 0 (выкл.) или целое 1–3650.");
+                    throw new InvalidOperationException(L10n.Get("error.reminder_interval_int"));
                 repository.Settings = ToSettings.SetBackupRemindDays(repository.Settings, (int)days);
                 PullAll();
                 repository.Save();
@@ -1281,9 +1281,9 @@ namespace Alfa156.Desktop
                 backupRemindBox.Text = ToSettings.GetBackupRemindDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 if (days <= 0)
-                    SetStatus("Напоминание о резервной копии выключено.");
+                    SetStatus(L10n.Get("msg.backup_reminder_off"));
                 else
-                    SetStatus("Напоминание о копии: каждые " + ((int)days) + " дн. без бэкапа.");
+                    SetStatus((L10n.Get("msg.backup_remind_every") + " ") + ((int)days) + (" " + L10n.Get("reminder.days_no_backup")));
             }
             catch (Exception ex)
             {
@@ -1299,14 +1299,14 @@ namespace Alfa156.Desktop
                 decimal days;
                 if (!AlfaCodec.TryNumber(reminderWarnBox.Text, out days) || days < 0 || days > 3650 ||
                     days != Decimal.Truncate(days))
-                    throw new InvalidOperationException("Срок напоминаний: целое 0–3650.");
+                    throw new InvalidOperationException(L10n.Get("error.reminder_term_int"));
                 repository.Settings = ToSettings.SetReminderWarnDays(repository.Settings, (int)days);
                 PullAll();
                 repository.Save();
                 dirty = false;
                 reminderWarnBox.Text = ToSettings.GetReminderWarnDays(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
-                SetStatus("Предупреждать за " + ((int)days) + " дн. до даты напоминания.");
+                SetStatus((L10n.Get("label.warn_before") + " ") + ((int)days) + (" " + L10n.Get("msg.days_before_reminder_saved")));
                 RefreshSummaryText();
             }
             catch (Exception ex)
@@ -1324,31 +1324,31 @@ namespace Alfa156.Desktop
                 string car = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Новое напоминание";
+                    dialog.Text = L10n.Get("title.new_reminder");
                     dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.ClientSize = new Size(420, 200);
                     dialog.MaximizeBox = false;
                     dialog.MinimizeBox = false;
-                    Label dateLabel = new Label { Text = "Дата (ГГГГ-ММ-ДД)", Left = 12, Top = 14, Width = 160 };
+                    Label dateLabel = new Label { Text = L10n.Get("label.date_fmt_upper"), Left = 12, Top = 14, Width = 160 };
                     TextBox dateBox = new TextBox
                     {
                         Left = 180, Top = 12, Width = 220,
                         Text = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                     };
-                    Label carLabel = new Label { Text = "Автомобиль", Left = 12, Top = 44, Width = 160 };
+                    Label carLabel = new Label { Text = L10n.Get("label.vehicle"), Left = 12, Top = 44, Width = 160 };
                     TextBox carBox = new TextBox { Left = 180, Top = 42, Width = 220, Text = car };
-                    Label titleLabel = new Label { Text = "Название", Left = 12, Top = 74, Width = 160 };
+                    Label titleLabel = new Label { Text = L10n.Get("label.name"), Left = 12, Top = 74, Width = 160 };
                     TextBox titleBox = new TextBox { Left = 180, Top = 72, Width = 220 };
-                    Label typeLabel = new Label { Text = "Тип", Left = 12, Top = 104, Width = 160 };
+                    Label typeLabel = new Label { Text = L10n.Get("label.type"), Left = 12, Top = 104, Width = 160 };
                     ComboBox typeBox = new ComboBox
                     {
                         Left = 180, Top = 102, Width = 220, DropDownStyle = ComboBoxStyle.DropDownList
                     };
-                    typeBox.Items.AddRange(new object[] { "Страховка", "Техосмотр", "Своё" });
+                    typeBox.Items.AddRange(new object[] { L10n.Get("reminder.insurance"), L10n.Get("reminder.inspection"), L10n.Get("reminder.custom") });
                     typeBox.SelectedIndex = 0;
-                    Button ok = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, Left = 220, Top = 150, Width = 90 };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 320, Top = 150, Width = 80 };
+                    Button ok = new Button { Text = L10n.Get("button.save"), DialogResult = DialogResult.OK, Left = 220, Top = 150, Width = 90 };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, Left = 320, Top = 150, Width = 80 };
                     dialog.Controls.Add(dateLabel);
                     dialog.Controls.Add(dateBox);
                     dialog.Controls.Add(carLabel);
@@ -1373,7 +1373,7 @@ namespace Alfa156.Desktop
                     DateReminders.Upsert(repository.RemindersRows, repository.Deleted, item);
                     repository.Save();
                     dirty = false;
-                    SetStatus("Напоминание сохранено.");
+                    SetStatus(L10n.Get("msg.reminder_saved"));
                     RefreshSummaryText();
                 }
             }
@@ -1392,13 +1392,13 @@ namespace Alfa156.Desktop
                 List<DateReminder> list = DateReminders.FromRows(repository.RemindersRows);
                 if (list.Count == 0)
                 {
-                    MessageBox.Show(this, "Нет напоминаний.", "Напоминания",
+                    MessageBox.Show(this, L10n.Get("msg.no_reminders"), L10n.Get("label.reminders"),
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Удалить напоминание";
+                    dialog.Text = L10n.Get("button.delete_reminder");
                     dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.ClientSize = new Size(520, 140);
@@ -1411,8 +1411,8 @@ namespace Alfa156.Desktop
                     for (int i = 0; i < list.Count; i++)
                         pick.Items.Add(DateReminders.FormatLine(list[i], DateTime.Today));
                     pick.SelectedIndex = 0;
-                    Button ok = new Button { Text = "Удалить", DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
+                    Button ok = new Button { Text = L10n.Get("button.delete"), DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
                     dialog.Controls.Add(pick);
                     dialog.Controls.Add(ok);
                     dialog.Controls.Add(cancel);
@@ -1424,7 +1424,7 @@ namespace Alfa156.Desktop
                     DateReminders.DeleteById(repository.RemindersRows, repository.Deleted, item.Id);
                     repository.Save();
                     dirty = false;
-                    SetStatus("Напоминание удалено.");
+                    SetStatus(L10n.Get("msg.reminder_deleted"));
                     RefreshSummaryText();
                 }
             }
@@ -1448,28 +1448,28 @@ namespace Alfa156.Desktop
                 string car = ResolveSummaryCar();
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Новая заметка";
+                    dialog.Text = L10n.Get("title.new_note");
                     dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.ClientSize = new Size(460, 220);
                     dialog.MaximizeBox = false;
                     dialog.MinimizeBox = false;
-                    Label dateLabel = new Label { Text = "Дата (ГГГГ-ММ-ДД)", Left = 12, Top = 14, Width = 160 };
+                    Label dateLabel = new Label { Text = L10n.Get("label.date_fmt_upper"), Left = 12, Top = 14, Width = 160 };
                     TextBox dateBox = new TextBox
                     {
                         Left = 180, Top = 12, Width = 260,
                         Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                     };
-                    Label carLabel = new Label { Text = "Автомобиль", Left = 12, Top = 44, Width = 160 };
+                    Label carLabel = new Label { Text = L10n.Get("label.vehicle"), Left = 12, Top = 44, Width = 160 };
                     TextBox carBox = new TextBox { Left = 180, Top = 42, Width = 260, Text = car };
-                    Label textLabel = new Label { Text = "Текст", Left = 12, Top = 74, Width = 160 };
+                    Label textLabel = new Label { Text = L10n.Get("label.text"), Left = 12, Top = 74, Width = 160 };
                     TextBox textBox = new TextBox
                     {
                         Left = 180, Top = 72, Width = 260, Height = 80, Multiline = true,
                         ScrollBars = ScrollBars.Vertical
                     };
-                    Button ok = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, Left = 260, Top = 170, Width = 90 };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 360, Top = 170, Width = 80 };
+                    Button ok = new Button { Text = L10n.Get("button.save"), DialogResult = DialogResult.OK, Left = 260, Top = 170, Width = 90 };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, Left = 360, Top = 170, Width = 80 };
                     dialog.Controls.Add(dateLabel);
                     dialog.Controls.Add(dateBox);
                     dialog.Controls.Add(carLabel);
@@ -1491,7 +1491,7 @@ namespace Alfa156.Desktop
                     CarNotes.Upsert(repository.NotesRows, repository.Deleted, item);
                     repository.Save();
                     dirty = false;
-                    SetStatus("Заметка сохранена.");
+                    SetStatus(L10n.Get("msg.note_saved"));
                     RefreshSummaryText();
                 }
             }
@@ -1511,13 +1511,13 @@ namespace Alfa156.Desktop
                 List<CarNote> list = CarNotes.ListForCar(repository.NotesRows, car);
                 if (list.Count == 0)
                 {
-                    MessageBox.Show(this, "Нет заметок для выбранного авто.", "Заметки",
+                    MessageBox.Show(this, L10n.Get("msg.no_notes_for_car"), L10n.Get("label.notes"),
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 using (Form pickDialog = new Form())
                 {
-                    pickDialog.Text = "Изменить заметку";
+                    pickDialog.Text = L10n.Get("button.edit_note");
                     pickDialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                     pickDialog.StartPosition = FormStartPosition.CenterParent;
                     pickDialog.ClientSize = new Size(520, 140);
@@ -1530,8 +1530,8 @@ namespace Alfa156.Desktop
                     for (int i = 0; i < list.Count; i++)
                         pick.Items.Add(CarNotes.FormatLine(list[i]));
                     pick.SelectedIndex = 0;
-                    Button ok = new Button { Text = "Изменить", DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
+                    Button ok = new Button { Text = L10n.Get("button.edit"), DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
                     pickDialog.Controls.Add(pick);
                     pickDialog.Controls.Add(ok);
                     pickDialog.Controls.Add(cancel);
@@ -1542,24 +1542,24 @@ namespace Alfa156.Desktop
                     CarNote item = list[pick.SelectedIndex];
                     using (Form dialog = new Form())
                     {
-                        dialog.Text = "Изменить заметку";
+                        dialog.Text = L10n.Get("button.edit_note");
                         dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                         dialog.StartPosition = FormStartPosition.CenterParent;
                         dialog.ClientSize = new Size(460, 220);
                         dialog.MaximizeBox = false;
                         dialog.MinimizeBox = false;
-                        Label dateLabel = new Label { Text = "Дата (ГГГГ-ММ-ДД)", Left = 12, Top = 14, Width = 160 };
+                        Label dateLabel = new Label { Text = L10n.Get("label.date_fmt_upper"), Left = 12, Top = 14, Width = 160 };
                         TextBox dateBox = new TextBox { Left = 180, Top = 12, Width = 260, Text = item.Date };
-                        Label carLabel = new Label { Text = "Автомобиль", Left = 12, Top = 44, Width = 160 };
+                        Label carLabel = new Label { Text = L10n.Get("label.vehicle"), Left = 12, Top = 44, Width = 160 };
                         TextBox carBox = new TextBox { Left = 180, Top = 42, Width = 260, Text = item.Car };
-                        Label textLabel = new Label { Text = "Текст", Left = 12, Top = 74, Width = 160 };
+                        Label textLabel = new Label { Text = L10n.Get("label.text"), Left = 12, Top = 74, Width = 160 };
                         TextBox textBox = new TextBox
                         {
                             Left = 180, Top = 72, Width = 260, Height = 80, Multiline = true,
                             ScrollBars = ScrollBars.Vertical, Text = item.Text
                         };
-                        Button save = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, Left = 260, Top = 170, Width = 90 };
-                        Button cancelEdit = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 360, Top = 170, Width = 80 };
+                        Button save = new Button { Text = L10n.Get("button.save"), DialogResult = DialogResult.OK, Left = 260, Top = 170, Width = 90 };
+                        Button cancelEdit = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, Left = 360, Top = 170, Width = 80 };
                         dialog.Controls.Add(dateLabel);
                         dialog.Controls.Add(dateBox);
                         dialog.Controls.Add(carLabel);
@@ -1580,7 +1580,7 @@ namespace Alfa156.Desktop
                         CarNotes.Upsert(repository.NotesRows, repository.Deleted, item);
                         repository.Save();
                         dirty = false;
-                        SetStatus("Заметка сохранена.");
+                        SetStatus(L10n.Get("msg.note_saved"));
                         RefreshSummaryText();
                     }
                 }
@@ -1601,13 +1601,13 @@ namespace Alfa156.Desktop
                 List<CarNote> list = CarNotes.ListForCar(repository.NotesRows, car);
                 if (list.Count == 0)
                 {
-                    MessageBox.Show(this, "Нет заметок для выбранного авто.", "Заметки",
+                    MessageBox.Show(this, L10n.Get("msg.no_notes_for_car"), L10n.Get("label.notes"),
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Удалить заметку";
+                    dialog.Text = L10n.Get("button.delete_note");
                     dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.ClientSize = new Size(520, 140);
@@ -1620,8 +1620,8 @@ namespace Alfa156.Desktop
                     for (int i = 0; i < list.Count; i++)
                         pick.Items.Add(CarNotes.FormatLine(list[i]));
                     pick.SelectedIndex = 0;
-                    Button ok = new Button { Text = "Удалить", DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
+                    Button ok = new Button { Text = L10n.Get("button.delete"), DialogResult = DialogResult.OK, Left = 320, Top = 70, Width = 90 };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, Left = 420, Top = 70, Width = 80 };
                     dialog.Controls.Add(pick);
                     dialog.Controls.Add(ok);
                     dialog.Controls.Add(cancel);
@@ -1633,7 +1633,7 @@ namespace Alfa156.Desktop
                     CarNotes.DeleteById(repository.NotesRows, repository.Deleted, item.Id);
                     repository.Save();
                     dirty = false;
-                    SetStatus("Заметка удалена.");
+                    SetStatus(L10n.Get("msg.note_deleted"));
                     RefreshSummaryText();
                 }
             }
@@ -1646,7 +1646,7 @@ namespace Alfa156.Desktop
         private void RefreshDefaultCarBox()
         {
             defaultCarBox.Items.Clear();
-            defaultCarBox.Items.Add("(не задан)");
+            defaultCarBox.Items.Add(L10n.Get("common.not_set"));
             string preferred = ToSettings.GetDefaultCar(repository.Settings);
             int selected = 0;
             for (int i = 0; i < repository.Cars.Count; i++)
@@ -1676,13 +1676,13 @@ namespace Alfa156.Desktop
                 repository.Save();
                 dirty = false;
                 SetStatus(name.Length == 0
-                    ? "Авто по умолчанию сброшен."
-                    : "Авто по умолчанию: " + name);
+                    ? L10n.Get("msg.default_car_cleared")
+                    : (L10n.Get("msg.default_car_set") + " ") + name);
                 RefreshSummaryText();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Авто по умолчанию",
+                MessageBox.Show(this, ex.Message, L10n.Get("label.default_car_full"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -1697,12 +1697,13 @@ namespace Alfa156.Desktop
                 repository.Save();
                 dirty = false;
                 LocalizationManager.SetLanguage(lang);
-                SetStatus("Язык: " + lang);
-                MessageBox.Show(this, "Язык изменён на: " + lang + "\nПожалуйста, перезагрузите приложение.", "Язык", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetStatus(L10n.Get("label.language_colon") + " " + L10n.GetLanguageDisplayName(lang));
+                RefreshSummaryText();
+                MessageBox.Show(this, L10n.Get("msg.language_changed_to") + " " + L10n.GetLanguageDisplayName(lang) + "\n" + L10n.Get("msg.please_restart"), L10n.Get("label.language"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Язык",
+                MessageBox.Show(this, ex.Message, L10n.Get("label.language"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -1739,8 +1740,8 @@ namespace Alfa156.Desktop
                 if (type == null || grid == null)
                 {
                     MessageBox.Show(this,
-                        "Откройте вкладку Заправки, Ремонт или Прочие.",
-                        "Из шаблона", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        L10n.Get("error.open_tab_fuel_repairs_expenses"),
+                        L10n.Get("button.apply_template"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 if (repository.TemplatesRows == null)
@@ -1748,14 +1749,14 @@ namespace Alfa156.Desktop
                 List<RecordTemplate> list = RecordTemplates.ListByType(repository.TemplatesRows, type);
                 if (list.Count == 0)
                 {
-                    MessageBox.Show(this, "Нет шаблонов этого типа. Сначала сохраните строку как шаблон.",
-                        "Из шаблона", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, L10n.Get("msg.no_templates_of_type"),
+                        L10n.Get("button.apply_template"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 string[] names = new string[list.Count];
                 for (int i = 0; i < list.Count; i++)
                     names[i] = list[i].Name;
-                string chosen = PickFromList("Из шаблона", names);
+                string chosen = PickFromList(L10n.Get("button.apply_template"), names);
                 if (chosen == null)
                     return;
                 RecordTemplate tpl = null;
@@ -1780,11 +1781,11 @@ namespace Alfa156.Desktop
                 if (index >= 0 && index < grid.Rows.Count)
                     grid.Rows[index].Selected = true;
                 MarkDirty();
-                SetStatus("Строка из шаблона «" + chosen + "» добавлена. Сохраните .dat.");
+                SetStatus(L10n.Get("msg.row_from_template_open") + chosen + L10n.Get("msg.added_save_dat_suffix"));
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Из шаблона",
+                MessageBox.Show(this, ex.Message, L10n.Get("button.apply_template"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -1798,14 +1799,14 @@ namespace Alfa156.Desktop
                 if (type == null || grid == null)
                 {
                     MessageBox.Show(this,
-                        "Откройте вкладку Заправки, Ремонт или Прочие и выберите строку.",
-                        "Шаблон", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        L10n.Get("error.open_tab_select_row"),
+                        L10n.Get("label.template"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 if (grid.CurrentRow == null || grid.CurrentRow.IsNewRow)
                 {
-                    MessageBox.Show(this, "Выберите заполненную строку.",
-                        "Шаблон", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, L10n.Get("error.select_filled_row"),
+                        L10n.Get("label.template"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 DataGridViewRow row = grid.CurrentRow;
@@ -1830,7 +1831,7 @@ namespace Alfa156.Desktop
                     else
                         entity[c] = Convert.ToString(val) ?? "";
                 }
-                string name = PromptText("Сохранить как шаблон", "Название шаблона:",
+                string name = PromptText(L10n.Get("button.save_template"), L10n.Get("label.template_name_colon"),
                     RecordTemplates.TypeLabelRu(type));
                 if (name == null)
                     return;
@@ -1844,11 +1845,11 @@ namespace Alfa156.Desktop
                 MarkDirty();
                 repository.Save();
                 dirty = false;
-                SetStatus("Шаблон сохранён: " + name);
+                SetStatus((L10n.Get("msg.template_saved_colon") + " ") + name);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Шаблон",
+                MessageBox.Show(this, ex.Message, L10n.Get("label.template"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -1875,7 +1876,7 @@ namespace Alfa156.Desktop
                     Height = 40
                 };
                 Button ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
-                Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
+                Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, AutoSize = true };
                 buttons.Controls.Add(ok);
                 buttons.Controls.Add(cancel);
                 dialog.Controls.Add(list);
@@ -1919,7 +1920,7 @@ namespace Alfa156.Desktop
                     Height = 40
                 };
                 Button ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
-                Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
+                Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, AutoSize = true };
                 buttons.Controls.Add(ok);
                 buttons.Controls.Add(cancel);
                 dialog.Controls.Add(buttons);
@@ -1972,14 +1973,14 @@ namespace Alfa156.Desktop
             if (suppressDirty)
                 return;
             dirty = true;
-            SetStatus("Есть несохранённые изменения.");
+            SetStatus(L10n.Get("confirm.unsaved_changes"));
         }
 
         private void OpenFolder(object sender, EventArgs e)
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Папка с cars.dat / fuel.dat / repairs.dat / utilities.dat";
+                dialog.Description = L10n.Get("import.dat_files_desc_long");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -1988,7 +1989,7 @@ namespace Alfa156.Desktop
                     BindAll();
                     pathBox.Text = dialog.SelectedPath;
                     dirty = false;
-                    SetStatus("Открыта папка данных.");
+                    SetStatus(L10n.Get("msg.data_folder_opened"));
                     MaybeShowOnboardingTip();
                     MaybeShowBackupReminder();
                 }
@@ -2003,8 +2004,8 @@ namespace Alfa156.Desktop
         {
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
-                dialog.Filter = "ZIP (*.zip)|*.zip|Все файлы|*.*";
-                dialog.Title = "ZIP-бэкап Alfa156";
+                dialog.Filter = L10n.Get("filter.zip_files");
+                dialog.Title = L10n.Get("title.zip_backup");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -2014,7 +2015,7 @@ namespace Alfa156.Desktop
                     BindAll();
                     pathBox.Text = extract;
                     dirty = false;
-                    SetStatus("Открыт ZIP. Сохраните в постоянную папку при необходимости.");
+                    SetStatus(L10n.Get("msg.zip_opened_save_permanent"));
                 }
                 catch (Exception ex)
                 {
@@ -2027,7 +2028,7 @@ namespace Alfa156.Desktop
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Куда создать новую папку данных Alfa156";
+                dialog.Description = L10n.Get("prompt.where_create_alfa_folder");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -2037,7 +2038,7 @@ namespace Alfa156.Desktop
                     BindAll();
                     pathBox.Text = target;
                     dirty = false;
-                    SetStatus("Создана новая папка данных: " + target);
+                    SetStatus((L10n.Get("msg.new_folder_created") + " ") + target);
                     MaybeShowOnboardingTip();
                 }
                 catch (Exception ex)
@@ -2069,12 +2070,12 @@ namespace Alfa156.Desktop
                 if (!empty)
                     return;
                 string tip =
-                    "Подсказка Alfa 156:\r\n" +
-                    "• Синхронизация по Wi‑Fi — обмен .dat с телефоном/КПК\r\n" +
-                    "• Экспорт всего (ZIP) — .dat + Receipts/ + settings\r\n" +
-                    "• Вкладка «Сводка» — итоги, график и ТО";
+                    (L10n.Get("onboarding.title_colon") + "\r\n") +
+                    (L10n.Get("about.bullet_wifi_phone_pda") + "\r\n") +
+                    (L10n.Get("about.bullet_export_all_zip") + "\r\n") +
+                    L10n.Get("about.bullet_summary_tab");
                 MessageBox.Show(this, tip, "Alfa 156", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                SetStatus("Подсказка показана один раз (onboarding_seen).");
+                SetStatus(L10n.Get("onboarding.shown_once_note"));
             }
             catch
             {
@@ -2094,11 +2095,11 @@ namespace Alfa156.Desktop
                 try { repository.Save(); }
                 catch { dirty = true; }
                 int days = ToSettings.DaysSinceLastBackup(repository.Settings);
-                string age = days < 0 ? "копии ещё не было" : ("прошло " + days + " дн.");
+                string age = days < 0 ? L10n.Get("summary.no_backup_yet") : ((L10n.Get("forecast.elapsed") + " ") + days + (" " + L10n.Get("unit.days_short")));
                 MessageBox.Show(this,
-                    "Давно не было резервной копии (" + age + ").\r\n" +
-                    "Рекомендуем «Экспорт всего (ZIP)» — все .dat, Receipts/ и settings.",
-                    "Резервная копия",
+                    L10n.Get("reminder.backup_overdue_open") + age + ").\r\n" +
+                    L10n.Get("hint.recommend_export_all_zip"),
+                    L10n.Get("title.backup"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
             }
@@ -2116,12 +2117,12 @@ namespace Alfa156.Desktop
                 PullAll();
                 if (!ConfirmAllMileageWarnings())
                 {
-                    SetStatus("Сохранение отменено: проверка пробега.");
+                    SetStatus(L10n.Get("msg.save_cancelled_odometer"));
                     return;
                 }
                 repository.Save();
                 dirty = false;
-                SetStatus("Сохранено в .dat: " + repository.DirectoryPath);
+                SetStatus((L10n.Get("msg.saved_to_dat") + " ") + repository.DirectoryPath);
             }
             catch (Exception ex)
             {
@@ -2143,12 +2144,12 @@ namespace Alfa156.Desktop
                     PullAll();
                     if (!ConfirmAllMileageWarnings())
                     {
-                        SetStatus("Сохранение ZIP отменено: проверка пробега.");
+                        SetStatus(L10n.Get("msg.zip_save_cancelled_odometer"));
                         return;
                     }
                     repository.SaveZip(dialog.FileName);
                     dirty = false;
-                    SetStatus("Экспорт всего (ZIP) сохранён: " + dialog.FileName);
+                    SetStatus((L10n.Get("msg.export_all_zip_saved") + " ") + dialog.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -2169,8 +2170,8 @@ namespace Alfa156.Desktop
                     BindAll();
                     dirty = false;
                     string safety = wizard.SafetyPath;
-                    SetStatus("Импорт завершён." +
-                        (safety != null ? " Копия Safety: " + safety : ""));
+                    SetStatus(L10n.Get("msg.import_complete") +
+                        (safety != null ? " " + L10n.Get("backup.safety_copy_colon") + " " + safety : ""));
                 }
             }
             catch (Exception ex)
@@ -2183,14 +2184,14 @@ namespace Alfa156.Desktop
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Куда сохранить шаблоны CSV (пустые заголовки fuel/repairs/expenses)";
+                dialog.Description = L10n.Get("prompt.where_save_csv_templates_long");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
                 {
                     string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv-templates");
                     CsvExchange.ExportTemplates(folder);
-                    SetStatus("Шаблоны CSV: " + folder);
+                    SetStatus((L10n.Get("label.csv_templates_colon") + " ") + folder);
                 }
                 catch (Exception ex)
                 {
@@ -2211,7 +2212,7 @@ namespace Alfa156.Desktop
                 {
                     PullAll();
                     XlsxExchange.Export(repository, dialog.FileName);
-                    SetStatus("Excel экспортирован: " + dialog.FileName);
+                    SetStatus((L10n.Get("msg.excel_exported") + " ") + dialog.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -2234,8 +2235,8 @@ namespace Alfa156.Desktop
                     XlsxExchange.Import(repository, dialog.FileName);
                     BindAll();
                     dirty = true;
-                    SetStatus("Импортировано из Excel. Нажмите «Сохранить .dat»." +
-                        (safety != null ? " Копия: " + safety : ""));
+                    SetStatus(L10n.Get("msg.imported_excel_save") +
+                        (safety != null ? " " + L10n.Get("backup.copy_colon") + " " + safety : ""));
                 }
                 catch (Exception ex)
                 {
@@ -2248,7 +2249,7 @@ namespace Alfa156.Desktop
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Папка для CSV (удобно загрузить в Google Sheets)";
+                dialog.Description = L10n.Get("prompt.csv_export_folder");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -2256,7 +2257,7 @@ namespace Alfa156.Desktop
                     PullAll();
                     string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv");
                     CsvExchange.ExportFolder(repository, folder);
-                    SetStatus("CSV экспортированы в " + folder + ". В Google Sheets: Файл → Импорт.");
+                    SetStatus((L10n.Get("msg.csv_exported_to") + " ") + folder + L10n.Get("hint.google_sheets_file_import"));
                 }
                 catch (Exception ex)
                 {
@@ -2269,7 +2270,7 @@ namespace Alfa156.Desktop
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Папка с cars.csv, fuel.csv, repairs.csv, utilities.csv";
+                dialog.Description = L10n.Get("import.csv_files_desc_long");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -2279,8 +2280,8 @@ namespace Alfa156.Desktop
                     CsvExchange.ImportFolder(repository, dialog.SelectedPath);
                     BindAll();
                     dirty = true;
-                    SetStatus("Импортированы CSV. Нажмите «Сохранить .dat»." +
-                        (safety != null ? " Копия: " + safety : ""));
+                    SetStatus(L10n.Get("msg.imported_csv_save") +
+                        (safety != null ? " " + L10n.Get("backup.copy_colon") + " " + safety : ""));
                 }
                 catch (Exception ex)
                 {
@@ -2295,7 +2296,7 @@ namespace Alfa156.Desktop
             if (url.Length == 0)
             {
                 MessageBox.Show(this,
-                    "Вставьте ссылку на Google Таблицу.\nТаблица должна быть доступна по ссылке (Файл → Доступ → Все, у кого есть ссылка).",
+                    L10n.Get("prompt.paste_google_sheet_link"),
                     "Google Sheets", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -2307,8 +2308,8 @@ namespace Alfa156.Desktop
                 CsvExchange.ImportGoogleSheetWorkbook(repository, url);
                 BindAll();
                 dirty = true;
-                SetStatus("Импортировано из Google Sheets. Нажмите «Сохранить .dat»." +
-                    (safety != null ? " Копия: " + safety : ""));
+                SetStatus(L10n.Get("msg.imported_google_save") +
+                    (safety != null ? " " + L10n.Get("backup.copy_colon") + " " + safety : ""));
             }
             catch (Exception ex)
             {
@@ -2342,9 +2343,9 @@ namespace Alfa156.Desktop
                 return;
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "Выберите папку для сохранения данных Alfa156";
+                dialog.Description = L10n.Get("prompt.choose_folder_save_alfa");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
-                    throw new InvalidOperationException("Папка не выбрана.");
+                    throw new InvalidOperationException(L10n.Get("error.no_folder_selected"));
                 string target = Path.Combine(dialog.SelectedPath, "Alfa156");
                 Directory.CreateDirectory(target);
                 repository.CreateNew(target);
@@ -2665,7 +2666,7 @@ namespace Alfa156.Desktop
             }
             catch (Exception ex)
             {
-                summaryBox.Text = "Не удалось обновить сводку: " + ex.Message;
+                summaryBox.Text = (L10n.Get("error.refresh_summary_failed") + " ") + ex.Message;
             }
             finally
             {
@@ -2715,7 +2716,7 @@ namespace Alfa156.Desktop
                     labels.Add(stats[i].Name);
                     values.Add(cpk);
                 }
-                summaryChart.SetCompareData(labels, values, Cur() + "/км");
+                summaryChart.SetCompareData(labels, values, Cur() + L10n.Get("unit.per_km"));
                 return;
             }
 
@@ -2762,8 +2763,8 @@ namespace Alfa156.Desktop
             chartShowsCostPerKm = !chartShowsCostPerKm;
             RefreshSummaryChart();
             SetStatus(chartShowsCostPerKm
-                ? "График: сравнение стоимости/км по автомобилям."
-                : "График: расходы по месяцам.");
+                ? L10n.Get("chart.caption_cost_per_km")
+                : L10n.Get("chart.caption_monthly"));
         }
 
         private void DeleteReceiptPhoto(object sender, EventArgs e)
@@ -2774,22 +2775,22 @@ namespace Alfa156.Desktop
                 string id = GetSelectedRecordId();
                 if (!ReceiptStore.Exists(repository.DirectoryPath, id))
                 {
-                    MessageBox.Show(this, "У выбранной записи нет фото чека.",
-                        "Фото чека", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, L10n.Get("error.no_receipt_for_record"),
+                        L10n.Get("button.attach_receipt"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 DialogResult answer = MessageBox.Show(this,
-                    "Удалить фото чека выбранной записи?",
-                    "Фото чека", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    L10n.Get("confirm.delete_receipt_photo"),
+                    L10n.Get("button.attach_receipt"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (answer == DialogResult.Yes)
                 {
                     ReceiptStore.Delete(repository.DirectoryPath, id);
-                    SetStatus("Фото чека удалено.");
+                    SetStatus(L10n.Get("msg.receipt_deleted"));
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Фото чека",
+                MessageBox.Show(this, ex.Message, L10n.Get("button.attach_receipt"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -2802,8 +2803,8 @@ namespace Alfa156.Desktop
                 string id = GetSelectedRecordId();
                 ReceiptStore.OpenOrAttach(repository.DirectoryPath, id, this);
                 SetStatus(ReceiptStore.Exists(repository.DirectoryPath, id)
-                    ? "Фото чека: " + ReceiptStore.PathForId(repository.DirectoryPath, id)
-                    : "Фото чека не сохранено.");
+                    ? (L10n.Get("label.receipt_photo_colon") + " ") + ReceiptStore.PathForId(repository.DirectoryPath, id)
+                    : L10n.Get("error.receipt_not_saved"));
             }
             catch (Exception ex)
             {
@@ -2821,7 +2822,7 @@ namespace Alfa156.Desktop
                     ? (RecordIds.StripId(repository.Cars[0])[0] ?? "")
                     : "";
                 if (car.Length == 0)
-                    throw new InvalidOperationException("Нет автомобиля для ленты.");
+                    throw new InvalidOperationException(L10n.Get("error.no_car_for_timeline"));
                 CarPassport passport = FindPassport(car);
                 string text = CarTimeline.FormatList(
                     CarTimeline.Build(repository.Fuel, repository.Repairs, repository.Expenses,
@@ -2830,7 +2831,7 @@ namespace Alfa156.Desktop
                     FormatPassportSuffix(passport));
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Лента · " + car;
+                    dialog.Text = (L10n.Get("title.timeline_dot") + " ") + car;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.Size = new Size(640, 480);
                     dialog.MinimizeBox = false;
@@ -2864,14 +2865,14 @@ namespace Alfa156.Desktop
                     ? (RecordIds.StripId(repository.Cars[0])[0] ?? "")
                     : "";
                 if (car.Length == 0)
-                    throw new InvalidOperationException("Нет автомобиля для сравнения.");
+                    throw new InvalidOperationException(L10n.Get("error.no_car_for_compare"));
 
                 string aFrom, aTo, bFrom, bTo;
                 PeriodCompare.ThisVsPreviousMonth(out aFrom, out aTo, out bFrom, out bTo);
 
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Сравнить периоды · " + car;
+                    dialog.Text = (L10n.Get("compare.periods_dot") + " ") + car;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.Size = new Size(520, 420);
                     dialog.MinimizeBox = false;
@@ -2895,13 +2896,13 @@ namespace Alfa156.Desktop
                     TextBox aToBox = new TextBox { Text = aTo, Dock = DockStyle.Fill };
                     TextBox bFromBox = new TextBox { Text = bFrom, Dock = DockStyle.Fill };
                     TextBox bToBox = new TextBox { Text = bTo, Dock = DockStyle.Fill };
-                    layout.Controls.Add(new Label { Text = "A с", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+                    layout.Controls.Add(new Label { Text = L10n.Get("compare.a_from"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
                     layout.Controls.Add(aFromBox, 1, 0);
-                    layout.Controls.Add(new Label { Text = "A по", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+                    layout.Controls.Add(new Label { Text = L10n.Get("compare.a_to"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
                     layout.Controls.Add(aToBox, 1, 1);
-                    layout.Controls.Add(new Label { Text = "B с", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+                    layout.Controls.Add(new Label { Text = L10n.Get("compare.b_from"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
                     layout.Controls.Add(bFromBox, 1, 2);
-                    layout.Controls.Add(new Label { Text = "B по", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
+                    layout.Controls.Add(new Label { Text = L10n.Get("compare.b_to"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
                     layout.Controls.Add(bToBox, 1, 3);
 
                     FlowLayoutPanel presets = new FlowLayoutPanel
@@ -2909,7 +2910,7 @@ namespace Alfa156.Desktop
                         Dock = DockStyle.Fill,
                         WrapContents = true
                     };
-                    Button thisVsPrev = new Button { Text = "Этот / прошлый месяц", AutoSize = true };
+                    Button thisVsPrev = new Button { Text = L10n.Get("preset.this_or_last_month"), AutoSize = true };
                     thisVsPrev.Click += delegate
                     {
                         string af, at, bf, bt;
@@ -2920,7 +2921,7 @@ namespace Alfa156.Desktop
                         bToBox.Text = bt;
                     };
                     presets.Controls.Add(thisVsPrev);
-                    layout.Controls.Add(new Label { Text = "Пресет", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 4);
+                    layout.Controls.Add(new Label { Text = L10n.Get("label.preset"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 4);
                     layout.Controls.Add(presets, 1, 4);
 
                     FlowLayoutPanel buttons = new FlowLayoutPanel
@@ -2928,8 +2929,8 @@ namespace Alfa156.Desktop
                         Dock = DockStyle.Fill,
                         FlowDirection = FlowDirection.RightToLeft
                     };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
-                    Button ok = new Button { Text = "Сравнить", DialogResult = DialogResult.OK, AutoSize = true };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, AutoSize = true };
+                    Button ok = new Button { Text = L10n.Get("button.compare"), DialogResult = DialogResult.OK, AutoSize = true };
                     buttons.Controls.Add(ok);
                     buttons.Controls.Add(cancel);
                     layout.Controls.Add(buttons, 0, 5);
@@ -2937,7 +2938,7 @@ namespace Alfa156.Desktop
 
                     Label hint = new Label
                     {
-                        Text = "Даты в формате yyyy-MM-dd. A — текущий период, B — база для Δ (A−B).",
+                        Text = L10n.Get("compare.dates_hint"),
                         AutoSize = true,
                         Dock = DockStyle.Top
                     };
@@ -2955,9 +2956,9 @@ namespace Alfa156.Desktop
                     string bf2 = (bFromBox.Text ?? "").Trim();
                     string bt2 = (bToBox.Text ?? "").Trim();
                     if (!IsDay(af2) || !IsDay(at2) || !IsDay(bf2) || !IsDay(bt2))
-                        throw new InvalidOperationException("Укажите даты в формате yyyy-MM-dd.");
+                        throw new InvalidOperationException(L10n.Get("error.dates_yyyy_mm_dd"));
                     if (String.CompareOrdinal(af2, at2) > 0 || String.CompareOrdinal(bf2, bt2) > 0)
-                        throw new InvalidOperationException("В каждом периоде дата «с» не позже «по».");
+                        throw new InvalidOperationException(L10n.Get("error.period_from_after_to"));
 
                     PeriodCompare.Totals ta = PeriodCompare.Build(
                         car, repository.Fuel, repository.Repairs, repository.Expenses,
@@ -2973,7 +2974,7 @@ namespace Alfa156.Desktop
 
                     using (Form result = new Form())
                     {
-                        result.Text = "Сравнение · " + car;
+                        result.Text = (L10n.Get("compare.short_dot") + " ") + car;
                         result.StartPosition = FormStartPosition.CenterParent;
                         result.Size = new Size(560, 480);
                         result.MinimizeBox = false;
@@ -3013,14 +3014,14 @@ namespace Alfa156.Desktop
                 PullAll();
                 string car = ToSettings.ResolvePreferredCar(repository.Cars, repository.Settings);
                 if (car == null || car.Length == 0)
-                    throw new InvalidOperationException("Нет автомобиля для отчёта.");
+                    throw new InvalidOperationException(L10n.Get("error.no_car_for_report"));
 
                 string from, to, prevFrom, prevTo;
                 PeriodCompare.ThisVsPreviousMonth(out from, out to, out prevFrom, out prevTo);
 
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Отчёт за период · " + car;
+                    dialog.Text = (L10n.Get("report.title_dot") + " ") + car;
                     dialog.StartPosition = FormStartPosition.CenterParent;
                     dialog.Size = new Size(480, 280);
                     dialog.MinimizeBox = false;
@@ -3042,9 +3043,9 @@ namespace Alfa156.Desktop
 
                     TextBox fromBox = new TextBox { Text = from, Dock = DockStyle.Fill };
                     TextBox toBox = new TextBox { Text = to, Dock = DockStyle.Fill };
-                    layout.Controls.Add(new Label { Text = "С", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+                    layout.Controls.Add(new Label { Text = L10n.Get("label.from"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
                     layout.Controls.Add(fromBox, 1, 0);
-                    layout.Controls.Add(new Label { Text = "По", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+                    layout.Controls.Add(new Label { Text = L10n.Get("label.to"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
                     layout.Controls.Add(toBox, 1, 1);
 
                     FlowLayoutPanel presets = new FlowLayoutPanel
@@ -3052,7 +3053,7 @@ namespace Alfa156.Desktop
                         Dock = DockStyle.Fill,
                         WrapContents = true
                     };
-                    Button thisMonth = new Button { Text = "Этот месяц", AutoSize = true };
+                    Button thisMonth = new Button { Text = L10n.Get("preset.this_month"), AutoSize = true };
                     thisMonth.Click += delegate
                     {
                         string af, at, bf, bt;
@@ -3060,7 +3061,7 @@ namespace Alfa156.Desktop
                         fromBox.Text = af;
                         toBox.Text = at;
                     };
-                    Button prevMonth = new Button { Text = "Прошлый месяц", AutoSize = true };
+                    Button prevMonth = new Button { Text = L10n.Get("preset.last_month"), AutoSize = true };
                     prevMonth.Click += delegate
                     {
                         string af, at, bf, bt;
@@ -3068,7 +3069,7 @@ namespace Alfa156.Desktop
                         fromBox.Text = bf;
                         toBox.Text = bt;
                     };
-                    Button thisYear = new Button { Text = "Этот год", AutoSize = true };
+                    Button thisYear = new Button { Text = L10n.Get("preset.this_year"), AutoSize = true };
                     thisYear.Click += delegate
                     {
                         DateTime today = DateTime.Today;
@@ -3078,7 +3079,7 @@ namespace Alfa156.Desktop
                     presets.Controls.Add(thisMonth);
                     presets.Controls.Add(prevMonth);
                     presets.Controls.Add(thisYear);
-                    layout.Controls.Add(new Label { Text = "Пресет", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+                    layout.Controls.Add(new Label { Text = L10n.Get("label.preset"), AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
                     layout.Controls.Add(presets, 1, 2);
 
                     FlowLayoutPanel buttons = new FlowLayoutPanel
@@ -3086,8 +3087,8 @@ namespace Alfa156.Desktop
                         Dock = DockStyle.Fill,
                         FlowDirection = FlowDirection.RightToLeft
                     };
-                    Button cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
-                    Button ok = new Button { Text = "Показать", DialogResult = DialogResult.OK, AutoSize = true };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), DialogResult = DialogResult.Cancel, AutoSize = true };
+                    Button ok = new Button { Text = L10n.Get("button.show"), DialogResult = DialogResult.OK, AutoSize = true };
                     buttons.Controls.Add(ok);
                     buttons.Controls.Add(cancel);
                     layout.Controls.Add(buttons, 0, 3);
@@ -3095,7 +3096,7 @@ namespace Alfa156.Desktop
 
                     Label hint = new Label
                     {
-                        Text = "Даты yyyy-MM-dd. Топливо, ремонт, прочие, коммунальные и стоимость/км.",
+                        Text = L10n.Get("report.dates_hint"),
                         AutoSize = true,
                         Dock = DockStyle.Top
                     };
@@ -3111,9 +3112,9 @@ namespace Alfa156.Desktop
                     string f = (fromBox.Text ?? "").Trim();
                     string t = (toBox.Text ?? "").Trim();
                     if (!IsDay(f) || !IsDay(t))
-                        throw new InvalidOperationException("Укажите даты в формате yyyy-MM-dd.");
+                        throw new InvalidOperationException(L10n.Get("error.dates_yyyy_mm_dd"));
                     if (String.CompareOrdinal(f, t) > 0)
-                        throw new InvalidOperationException("Дата «с» не позже «по».");
+                        throw new InvalidOperationException(L10n.Get("error.date_from_after_to"));
 
                     PeriodCompare.Totals totals = PeriodCompare.Build(
                         car, repository.Fuel, repository.Repairs, repository.Expenses,
@@ -3135,7 +3136,7 @@ namespace Alfa156.Desktop
         {
             using (Form result = new Form())
             {
-                result.Text = "Отчёт · " + car + " · " + PeriodCompare.FormatRangeLabel(from, to);
+                result.Text = (L10n.Get("report.short_dot") + " ") + car + " · " + PeriodCompare.FormatRangeLabel(from, to);
                 result.StartPosition = FormStartPosition.CenterParent;
                 result.Size = new Size(560, 520);
                 result.MinimizeBox = false;
@@ -3155,13 +3156,13 @@ namespace Alfa156.Desktop
                     Dock = DockStyle.Fill,
                     WrapContents = false
                 };
-                Button saveTxt = new Button { Text = "Сохранить .txt", AutoSize = true };
-                Button saveHtml = new Button { Text = "Сохранить .html", AutoSize = true };
-                Button print = new Button { Text = "Печать…", AutoSize = true };
-                Button close = new Button { Text = "Закрыть", DialogResult = DialogResult.OK, AutoSize = true };
+                Button saveTxt = new Button { Text = L10n.Get("button.save_txt"), AutoSize = true };
+                Button saveHtml = new Button { Text = L10n.Get("button.save_html"), AutoSize = true };
+                Button print = new Button { Text = L10n.Get("button.print_ellipsis"), AutoSize = true };
+                Button close = new Button { Text = L10n.Get("button.close"), DialogResult = DialogResult.OK, AutoSize = true };
                 saveTxt.Click += delegate
                 {
-                    SavePeriodReportFile(text, "Текст (*.txt)|*.txt",
+                    SavePeriodReportFile(text, L10n.Get("filter.txt_files"),
                         "Report_" + from + "_" + to + ".txt", Encoding.UTF8);
                 };
                 saveHtml.Click += delegate
@@ -3203,7 +3204,7 @@ namespace Alfa156.Desktop
                 try
                 {
                     File.WriteAllText(dialog.FileName, content ?? "", encoding);
-                    SetStatus("Отчёт сохранён: " + dialog.FileName);
+                    SetStatus((L10n.Get("msg.report_saved_colon") + " ") + dialog.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -3219,7 +3220,7 @@ namespace Alfa156.Desktop
                 string[] lines = (text ?? "").Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
                 int index = 0;
                 PrintDocument doc = new PrintDocument();
-                doc.DocumentName = "Alfa 156 · отчёт за период";
+                doc.DocumentName = L10n.Get("report.header");
                 doc.PrintPage += delegate(object s, PrintPageEventArgs e)
                 {
                     Font font = new Font("Consolas", 10F);
@@ -3294,11 +3295,11 @@ namespace Alfa156.Desktop
             }
             if (grid == null || grid.CurrentRow == null || grid.CurrentRow.IsNewRow)
                 throw new InvalidOperationException(
-                    "Выберите строку на вкладке Заправки, Ремонт или Прочие.");
+                    L10n.Get("error.select_row_on_tab"));
             string id = grid.CurrentRow.Tag as string;
             if (String.IsNullOrEmpty(id) || !RecordIds.LooksLikeId(id))
                 throw new InvalidOperationException(
-                    "У выбранной строки нет id. Сохраните .dat и откройте папку снова.");
+                    L10n.Get("error.row_no_id_save_reopen"));
             return id;
         }
 
@@ -3437,25 +3438,25 @@ namespace Alfa156.Desktop
                 {
                     if (passport.Vin.Length > 0)
                         result.Append(" · ");
-                    result.Append("бак ").Append(passport.TankLiters).Append(" л");
+                    result.Append((L10n.Get("label.tank_short") + " ")).Append(passport.TankLiters).Append((" " + L10n.Get("unit.liters_short")));
                 }
                 if (passport.Note.Length > 0)
                     result.Append("\r\n").Append(passport.Note);
             }
-            result.Append("\r\n\r\nЗаправки: ").Append(Money(fuelTotal))
+            result.Append(("\r\n\r\n" + L10n.Get("summary.fuel_section_colon") + " ")).Append(Money(fuelTotal))
 
-                .Append(" " + Cur() + "\r\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur() + "\r\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur() + "\r\n");
+                .Append(" " + Cur() + ("\r\n" + L10n.Get("summary.repairs_section_colon") + " ")).Append(Money(repairTotal)).Append(" " + Cur() + ("\r\n" + L10n.Get("summary.expenses_section_colon") + " ")).Append(Money(expenseTotal)).Append(" " + Cur() + "\r\n");
             if (anyPurpose)
             {
-                result.Append("\r\nЗаправки по цели:\r\nЛичный: ").Append(Money(purposePersonal))
-                    .Append(" " + Cur() + "\r\nРабота: ").Append(Money(purposeWork)).Append(" " + Cur());
+                result.Append(("\r\n" + L10n.Get("report.fuel_by_purpose_personal") + " ")).Append(Money(purposePersonal))
+                    .Append(" " + Cur() + ("\r\n" + L10n.Get("purpose.work_colon") + " ")).Append(Money(purposeWork)).Append(" " + Cur());
                 if (purposeOther > 0)
-                    result.Append("\r\nДругое: ").Append(Money(purposeOther)).Append(" " + Cur());
+                    result.Append(("\r\n" + L10n.Get("report.other_colon") + " ")).Append(Money(purposeOther)).Append(" " + Cur());
                 result.Append("\r\n");
             }
             if (stationStats.Count > 0)
             {
-                result.Append("\r\nАЗС / бренд:");
+                result.Append(("\r\n" + L10n.Get("label.station_colon")));
                 List<string> stationNames = new List<string>(stationStats.Keys);
                 stationNames.Sort(StringComparer.OrdinalIgnoreCase);
                 for (int s = 0; s < stationNames.Count; s++)
@@ -3465,7 +3466,7 @@ namespace Alfa156.Desktop
                     decimal avg = count > 0 ? bucket[1] / count : 0;
                     result.Append("\r\n").Append(stationNames[s])
                         .Append(": ").Append(count.ToString(CultureInfo.InvariantCulture))
-                        .Append(" · ср. ").Append(Money(avg)).Append(" " + Cur()).Append("/л");
+                        .Append((" " + L10n.Get("summary.dot_avg") + " ")).Append(Money(avg)).Append(" " + Cur()).Append(L10n.Get("unit.per_liter"));
                 }
                 result.Append("\r\n");
             }
@@ -3507,17 +3508,17 @@ namespace Alfa156.Desktop
                     lastTimingDate = row[0];
                 }
             }
-            result.Append("Учтённые расходы на км (примерно): ");
+            result.Append((L10n.Get("summary.counted_cost_per_km") + " "));
             if (minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage)
                 result.Append(Money((fuelTotal + repairTotal + expenseTotal) /
-                    (maximumMileage - minimumMileage))).Append(" " + Cur() + "/км\r\n");
+                    (maximumMileage - minimumMileage))).Append(" " + Cur() + (L10n.Get("unit.per_km") + "\r\n"));
             else
-                result.Append("недостаточно данных о пробеге\r\n");
+                result.Append((L10n.Get("forecast.insufficient_mileage") + "\r\n"));
 
-            result.Append("\r\nРемонт по категориям:\r\n");
+            result.Append(("\r\n" + L10n.Get("report.repairs_by_cat_colon") + "\r\n"));
             foreach (KeyValuePair<string, decimal> pair in byCategory)
                 result.Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur() + "\r\n");
-            result.Append("\r\nКоммунальные за весь период:\r\n").Append(Money(utilityTotal))
+            result.Append(("\r\n" + L10n.Get("summary.utilities_all_time") + "\r\n")).Append(Money(utilityTotal))
                 .Append(" " + Cur());
             string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
             decimal monthFuel = 0, monthRepair = 0, monthExpense = 0, monthUtility = 0;
@@ -3530,30 +3531,30 @@ namespace Alfa156.Desktop
                 monthExpense = monthBucket.Length > 3 ? monthBucket[3] : 0;
             }
             AppendBudgetBlock(result, monthKey, monthFuel + monthRepair + monthExpense, monthUtility);
-            result.Append("\r\n\r\nИтого за год ").Append(yearPrefix).Append(":\r\n")
-                .Append("Топливо: ").Append(Money(yearFuel)).Append(" " + Cur() + "\r\n")
-                .Append("Ремонт: ").Append(Money(yearRepair)).Append(" " + Cur() + "\r\n")
-                .Append("Прочие: ").Append(Money(yearExpense)).Append(" " + Cur() + "\r\n")
-                .Append("Коммунальные: ").Append(Money(yearUtility)).Append(" " + Cur() + "\r\n")
-                .Append("Всего: ").Append(Money(yearFuel + yearRepair + yearExpense + yearUtility))
-                .Append(" " + Cur() + "\r\n\r\nРасходы по месяцам (последние 12):\r\n");
+            result.Append(("\r\n\r\n" + L10n.Get("summary.year_totals") + " ")).Append(yearPrefix).Append(":\r\n")
+                .Append((L10n.Get("label.fuel_colon") + " ")).Append(Money(yearFuel)).Append(" " + Cur() + "\r\n")
+                .Append((L10n.Get("label.repairs_colon") + " ")).Append(Money(yearRepair)).Append(" " + Cur() + "\r\n")
+                .Append((L10n.Get("label.expenses_colon") + " ")).Append(Money(yearExpense)).Append(" " + Cur() + "\r\n")
+                .Append((L10n.Get("label.utilities_colon") + " ")).Append(Money(yearUtility)).Append(" " + Cur() + "\r\n")
+                .Append((L10n.Get("report.total_colon") + " ")).Append(Money(yearFuel + yearRepair + yearExpense + yearUtility))
+                .Append(" " + Cur() + ("\r\n\r\n" + L10n.Get("summary.monthly_expenses_12") + "\r\n"));
             List<string> months = new List<string>(monthlyTotals.Keys);
             months.Sort(StringComparer.Ordinal);
             int firstMonth = Math.Max(0, months.Count - 12);
             for (int i = firstMonth; i < months.Count; i++)
             {
                 decimal[] totals = monthlyTotals[months[i]];
-                result.Append(months[i]).Append(": топливо ").Append(Money(totals[0]))
-                    .Append(", ремонт ").Append(Money(totals[1])).Append(", коммунальные ").Append(Money(totals[2])).Append(", прочие ")
+                result.Append(months[i]).Append((L10n.Get("summary.colon_fuel") + " ")).Append(Money(totals[0]))
+                    .Append((L10n.Get("summary.comma_repairs") + " ")).Append(Money(totals[1])).Append((L10n.Get("summary.comma_utilities") + " ")).Append(Money(totals[2])).Append((L10n.Get("summary.comma_expenses") + " "))
                     .Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" " + Cur() + "\r\n");
             }
             result.Append("\r\n").Append(CarCompare.FormatBlock(
                 CarCompare.Build(cars, fuels, repairs, expenses), Cur(), Money)).Append("\r\n");
-            result.Append("\r\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км\r\n");
+            result.Append(("\r\n" + L10n.Get("forecast.current_odometer_colon") + " ")).Append(Money(currentMileage)).Append((" " + L10n.Get("unit.km") + "\r\n"));
             ToIntervals intervals = ToSettings.FromRows(repository.Settings);
-            result.Append(ServiceStatus("Замена масла", currentMileage, lastOilMileage,
+            result.Append(ServiceStatus(L10n.Get("service.oil_change"), currentMileage, lastOilMileage,
                 lastOilDate, intervals.OilInterval, intervals.OilWarn)).Append("\r\n");
-            result.Append(ServiceStatus("Ремень ГРМ", currentMileage, lastTimingMileage,
+            result.Append(ServiceStatus(L10n.Get("service.timing_belt"), currentMileage, lastTimingMileage,
                 lastTimingDate, intervals.BeltInterval, intervals.BeltWarn));
             result.Append(ForecastInsights.FormatBlock(
                 currentCar, fuels, repairs, currentMileage,
@@ -3575,16 +3576,16 @@ namespace Alfa156.Desktop
                 return;
             decimal warnPct = ToSettings.GetBudgetWarnPct(repository.Settings);
             decimal pct = budget > 0 ? (spent * 100m) / budget : 0;
-            result.Append("\r\n\r\nБюджет месяца ").Append(monthKey).Append(":\r\n")
-                .Append("Потрачено (топливо+ремонт+прочие): ")
+            result.Append(("\r\n\r\n" + L10n.Get("label.monthly_budget") + " ")).Append(monthKey).Append(":\r\n")
+                .Append((L10n.Get("summary.spent_total_colon") + " "))
                 .Append(Money(spent)).Append(" / ").Append(Money(budget)).Append(" ").Append(Cur())
                 .Append(" (").Append(Money(pct)).Append("%)\r\n")
-                .Append("Коммунальные в этом месяце: ")
+                .Append((L10n.Get("summary.utilities_this_month") + " "))
                 .Append(Money(utilitiesMonth)).Append(" ").Append(Cur());
             if (spent >= budget)
-                result.Append("\r\n⚠ Превышен бюджет");
+                result.Append(("\r\n" + L10n.Get("summary.budget_exceeded_warn")));
             else if (pct >= warnPct)
-                result.Append("\r\n⚠ Предупреждение: ≥").Append(Money(warnPct)).Append("% бюджета");
+                result.Append(("\r\n" + L10n.Get("summary.budget_warn_symbol"))).Append(Money(warnPct)).Append(L10n.Get("summary.pct_of_budget"));
         }
 
         private static bool TryParseYearMonth(string value, out DateTime month)
@@ -3650,17 +3651,17 @@ namespace Alfa156.Desktop
             decimal lastMileage, string lastDate, decimal interval, decimal warningDistance)
         {
             if (lastMileage == 0)
-                return name + ": замена не зафиксирована";
-            string lastService = "последняя запись " + lastDate + ", " +
-                Money(lastMileage) + " км; ";
+                return name + L10n.Get("forecast.no_replacement");
+            string lastService = (L10n.Get("summary.last_record") + " ") + lastDate + ", " +
+                Money(lastMileage) + (" " + L10n.Get("unit.km_semi") + " ");
             decimal since = currentMileage - lastMileage;
             if (since >= interval)
-                return name + ": " + lastService + "требуется замена";
+                return name + ": " + lastService + L10n.Get("forecast.replacement_needed");
             if (since >= interval - warningDistance)
-                return name + ": " + lastService + "скоро замена (" +
-                    Money(interval - since) + " км)";
-            return name + ": " + lastService + "в норме (" +
-                Money(interval - since) + " км)";
+                return name + ": " + lastService + L10n.Get("forecast.due_soon_open") +
+                    Money(interval - since) + (" " + L10n.Get("unit.km_close"));
+            return name + ": " + lastService + L10n.Get("forecast.ok_open") +
+                Money(interval - since) + (" " + L10n.Get("unit.km_close"));
         }
 
         private static decimal UtilityTotal(string[] row)
@@ -3769,7 +3770,7 @@ namespace Alfa156.Desktop
             fuelFilterStationValue = String.Equals(station, "Все АЗС", StringComparison.OrdinalIgnoreCase)
                 ? "" : (station ?? "").Trim();
             ApplyFuelFilterVisibility();
-            SetStatus("Фильтр заправок применён (данные не удаляются).");
+            SetStatus(L10n.Get("status.fuel_filter_applied"));
         }
 
         private void ResetFuelFilter()
@@ -3782,7 +3783,7 @@ namespace Alfa156.Desktop
             if (fuelFilterStation.Items.Count > 0)
                 fuelFilterStation.SelectedIndex = 0;
             ApplyFuelFilterVisibility();
-            SetStatus("Фильтр заправок сброшен.");
+            SetStatus(L10n.Get("status.fuel_filter_reset"));
         }
 
         private void ApplyRepairFilterFromUi()
@@ -3793,7 +3794,7 @@ namespace Alfa156.Desktop
             repairFilterCategoryValue = repairFilterCategory.SelectedItem == null
                 ? "" : repairFilterCategory.SelectedItem.ToString();
             ApplyRepairFilterVisibility();
-            SetStatus("Фильтр ремонта применён (данные не удаляются).");
+            SetStatus(L10n.Get("status.repairs_filter_applied"));
         }
 
         private void ResetRepairFilter()
@@ -3804,7 +3805,7 @@ namespace Alfa156.Desktop
             if (repairFilterCategory.Items.Count > 0)
                 repairFilterCategory.SelectedIndex = 0;
             ApplyRepairFilterVisibility();
-            SetStatus("Фильтр ремонта сброшен.");
+            SetStatus(L10n.Get("status.repairs_filter_reset"));
         }
 
         private void ApplyExpenseFilterFromUi()
@@ -3815,7 +3816,7 @@ namespace Alfa156.Desktop
             expenseFilterCategoryValue = expenseFilterCategory.SelectedItem == null
                 ? "" : expenseFilterCategory.SelectedItem.ToString();
             ApplyExpenseFilterVisibility();
-            SetStatus("Фильтр прочих расходов применён (данные не удаляются).");
+            SetStatus(L10n.Get("status.expenses_filter_applied"));
         }
 
         private void ResetExpenseFilter()
@@ -3826,7 +3827,7 @@ namespace Alfa156.Desktop
             if (expenseFilterCategory.Items.Count > 0)
                 expenseFilterCategory.SelectedIndex = 0;
             ApplyExpenseFilterVisibility();
-            SetStatus("Фильтр прочих расходов сброшен.");
+            SetStatus(L10n.Get("status.expenses_filter_reset"));
         }
 
         private void ApplyUtilityFilterFromUi()
@@ -3835,7 +3836,7 @@ namespace Alfa156.Desktop
             utilityFilterToValue = (utilityFilterTo.Text ?? "").Trim();
             utilityFilterTextValue = (utilityFilterText.Text ?? "").Trim();
             ApplyUtilityFilterVisibility();
-            SetStatus("Фильтр коммуналки применён (данные не удаляются).");
+            SetStatus(L10n.Get("status.utilities_filter_applied"));
         }
 
         private void ResetUtilityFilter()
@@ -3843,7 +3844,7 @@ namespace Alfa156.Desktop
             utilityFilterFromValue = utilityFilterToValue = utilityFilterTextValue = "";
             utilityFilterFrom.Text = utilityFilterTo.Text = utilityFilterText.Text = "";
             ApplyUtilityFilterVisibility();
-            SetStatus("Фильтр коммуналки сброшен.");
+            SetStatus(L10n.Get("status.utilities_filter_reset"));
         }
 
         private void ApplyFuelFilterVisibility()
@@ -3969,7 +3970,7 @@ namespace Alfa156.Desktop
         private void ShowError(Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Alfa156 Desktop", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            SetStatus("Ошибка: " + ex.Message);
+            SetStatus((L10n.Get("label.error_colon") + " ") + ex.Message);
         }
 
         private void MileageCellEndEdit(object sender, DataGridViewCellEventArgs e)
@@ -3994,7 +3995,7 @@ namespace Alfa156.Desktop
             string warning = FormatMileageWarning(newKm, last);
             if (warning == null)
                 return;
-            if (MessageBox.Show(this, warning, "Пробег", MessageBoxButtons.YesNo,
+            if (MessageBox.Show(this, warning, L10n.Get("label.odometer"), MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
                 return;
             suppressingMileagePrompt = true;
@@ -4040,7 +4041,7 @@ namespace Alfa156.Desktop
                     continue;
                 string context = fileName == "fuel.dat" ? "Заправка" : L10n.Get("tab.repairs");
                 string message = context + " " + CellText(row, 0) + " / " + car + ":\r\n" + warning;
-                if (MessageBox.Show(this, message, "Пробег", MessageBoxButtons.YesNo,
+                if (MessageBox.Show(this, message, L10n.Get("label.odometer"), MessageBoxButtons.YesNo,
                         MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                     return false;
             }
@@ -4080,10 +4081,10 @@ namespace Alfa156.Desktop
                 return null;
             string x = lastKnown.ToString("0.##", CultureInfo.InvariantCulture);
             if (newKm < lastKnown)
-                return "Пробег меньше предыдущего (" + x + "). Сохранить всё равно?";
+                return L10n.Get("warn.odometer_lower_open") + x + L10n.Get("confirm.save_anyway_suffix");
             if (newKm - lastKnown > 5000m)
-                return "Пробег вырос более чем на 5000 км с предыдущего (" + x +
-                    "). Сохранить всё равно?";
+                return L10n.Get("warn.odometer_jump_open") + x +
+                    L10n.Get("confirm.save_anyway_suffix");
             return null;
         }
 
@@ -4114,13 +4115,13 @@ namespace Alfa156.Desktop
             string text = summaryBox.Text ?? "";
             if (text.Length == 0 || text.IndexOf("Откройте папку", StringComparison.Ordinal) >= 0)
             {
-                MessageBox.Show(this, "Сначала откройте папку данных.", "Сводка",
+                MessageBox.Show(this, L10n.Get("error.open_folder_first"), L10n.Get("tab.summary"),
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
-                dialog.Filter = "Текст (*.txt)|*.txt";
+                dialog.Filter = L10n.Get("filter.txt_files");
                 dialog.FileName = "Summary_" +
                     DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt";
                 if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -4128,7 +4129,7 @@ namespace Alfa156.Desktop
                 try
                 {
                     File.WriteAllText(dialog.FileName, text, Encoding.UTF8);
-                    SetStatus("Сводка сохранена: " + dialog.FileName);
+                    SetStatus((L10n.Get("msg.summary_saved_colon") + " ") + dialog.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -4143,7 +4144,7 @@ namespace Alfa156.Desktop
             {
                 if (String.IsNullOrEmpty(repository.DirectoryPath))
                 {
-                    MessageBox.Show(this, "Сначала откройте папку данных.", "Проверка данных",
+                    MessageBox.Show(this, L10n.Get("error.open_folder_first"), L10n.Get("button.data_integrity"),
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
@@ -4152,7 +4153,7 @@ namespace Alfa156.Desktop
                 string text = DataIntegrity.Format(report);
                 using (Form dialog = new Form())
                 {
-                    dialog.Text = "Проверка данных";
+                    dialog.Text = L10n.Get("button.data_integrity");
                     dialog.Width = 640;
                     dialog.Height = 480;
                     dialog.StartPosition = FormStartPosition.CenterParent;
@@ -4173,12 +4174,12 @@ namespace Alfa156.Desktop
                         Height = 40,
                         FlowDirection = FlowDirection.RightToLeft
                     };
-                    Button close = new Button { Text = "Закрыть", Width = 100 };
+                    Button close = new Button { Text = L10n.Get("button.close"), Width = 100 };
                     close.Click += delegate { dialog.Close(); };
                     buttons.Controls.Add(close);
                     if (report.CanSimpleFix)
                     {
-                        Button fix = new Button { Text = "Исправить простое", Width = 140 };
+                        Button fix = new Button { Text = L10n.Get("button.fix_simple"), Width = 140 };
                         fix.Click += delegate
                         {
                             try
@@ -4186,8 +4187,8 @@ namespace Alfa156.Desktop
                                 int n = DataIntegrity.ApplySimpleFixes(repository, report);
                                 BindAll();
                                 MessageBox.Show(dialog,
-                                    n > 0 ? "Добавлено категорий: " + n + "." : "Нечего исправлять.",
-                                    "Проверка данных", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    n > 0 ? (L10n.Get("msg.categories_added") + " ") + n + "." : L10n.Get("integrity.nothing_to_fix"),
+                                    L10n.Get("button.data_integrity"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 dialog.Close();
                             }
                             catch (Exception ex)
@@ -4224,14 +4225,14 @@ namespace Alfa156.Desktop
             List<DuplicateFinder.Group> groups = DuplicateFinder.FindAll(repository);
             if (groups.Count == 0)
             {
-                MessageBox.Show(this, "Дубликатов не найдено.", "Дубликаты",
+                MessageBox.Show(this, L10n.Get("msg.no_duplicates"), L10n.Get("button.duplicates"),
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             using (Form dialog = new Form())
             {
-                dialog.Text = "Дубликаты";
+                dialog.Text = L10n.Get("button.duplicates");
                 dialog.Width = 720;
                 dialog.Height = 520;
                 dialog.StartPosition = FormStartPosition.CenterParent;
@@ -4242,12 +4243,12 @@ namespace Alfa156.Desktop
                 ListBox list = new ListBox { Left = 12, Top = 12, Width = 680, Height = 400 };
                 Button deleteExtras = new Button
                 {
-                    Text = "Удалить лишние в группе",
+                    Text = L10n.Get("button.delete_extra_in_group"),
                     Left = 12,
                     Top = 430,
                     Width = 200
                 };
-                Button close = new Button { Text = "Закрыть", Left = 580, Top = 430, Width = 110 };
+                Button close = new Button { Text = L10n.Get("button.close"), Left = 580, Top = 430, Width = 110 };
                 dialog.Controls.Add(list);
                 dialog.Controls.Add(deleteExtras);
                 dialog.Controls.Add(close);
@@ -4272,15 +4273,15 @@ namespace Alfa156.Desktop
                     int selected = list.SelectedIndex;
                     if (selected < 0 || selected >= rowGroup.Count || rowGroup[selected] == null)
                     {
-                        MessageBox.Show(dialog, "Выберите запись внутри группы.", "Дубликаты",
+                        MessageBox.Show(dialog, L10n.Get("error.select_record_in_group"), L10n.Get("button.duplicates"),
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
                     DuplicateFinder.Group group = rowGroup[selected];
                     if (MessageBox.Show(dialog,
-                        "Удалить " + (group.Indexes.Count - 1) +
-                        " лишних записей, оставив первую?",
-                        "Дубликаты", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                        (L10n.Get("button.delete") + " ") + (group.Indexes.Count - 1) +
+                        (" " + L10n.Get("dup.confirm_delete_extra_suffix")),
+                        L10n.Get("button.duplicates"), MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                         MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                         return;
                     try
@@ -4290,7 +4291,7 @@ namespace Alfa156.Desktop
                         MarkDirty();
                         dialog.DialogResult = DialogResult.OK;
                         dialog.Close();
-                        SetStatus("Лишние дубликаты удалены (" + group.Title + ").");
+                        SetStatus(L10n.Get("msg.extra_dups_deleted_open") + group.Title + ").");
                     }
                     catch (Exception ex)
                     {
@@ -4342,7 +4343,7 @@ namespace Alfa156.Desktop
             string preset = globalSearchBox.ForeColor == Color.Gray ? "" : (globalSearchBox.Text ?? "").Trim();
             using (Form dialog = new Form())
             {
-                dialog.Text = "Поиск по записям";
+                dialog.Text = L10n.Get("title.search_records");
                 dialog.Width = 640;
                 dialog.Height = 480;
                 dialog.StartPosition = FormStartPosition.CenterParent;
@@ -4352,10 +4353,10 @@ namespace Alfa156.Desktop
 
                 TextBox query = new TextBox { Left = 12, Top = 12, Width = 480 };
                 query.Text = preset;
-                Button find = new Button { Text = "Найти", Left = 500, Top = 10, Width = 100 };
+                Button find = new Button { Text = L10n.Get("button.search"), Left = 500, Top = 10, Width = 100 };
                 ListBox list = new ListBox { Left = 12, Top = 48, Width = 588, Height = 340 };
-                Button open = new Button { Text = "Открыть", Left = 400, Top = 400, Width = 100 };
-                Button close = new Button { Text = "Закрыть", Left = 510, Top = 400, Width = 90 };
+                Button open = new Button { Text = L10n.Get("button.open"), Left = 400, Top = 400, Width = 100 };
+                Button close = new Button { Text = L10n.Get("button.close"), Left = 510, Top = 400, Width = 90 };
                 dialog.Controls.Add(query);
                 dialog.Controls.Add(find);
                 dialog.Controls.Add(list);
@@ -4374,7 +4375,7 @@ namespace Alfa156.Desktop
                     for (int i = 0; i < hits.Count; i++)
                         list.Items.Add(hits[i].Label);
                     if (list.Items.Count == 0)
-                        list.Items.Add("Ничего не найдено");
+                        list.Items.Add(L10n.Get("search.nothing_found"));
                 };
                 find.Click += delegate { run(); };
                 query.KeyDown += delegate(object s, KeyEventArgs ke)
@@ -4492,7 +4493,7 @@ namespace Alfa156.Desktop
             if (row.Cells.Count > 0 && row.Cells[0].Visible)
                 grid.CurrentCell = row.Cells[0];
             try { grid.FirstDisplayedScrollingRowIndex = hit.RowIndex; } catch { }
-            SetStatus("Найдено: " + hit.Label);
+            SetStatus((L10n.Get("search.found_colon") + " ") + hit.Label);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -4500,7 +4501,7 @@ namespace Alfa156.Desktop
             if (dirty)
             {
                 DialogResult result = MessageBox.Show(this,
-                    "Есть несохранённые изменения. Выйти без сохранения?",
+                    L10n.Get("confirm.unsaved_exit"),
                     "Alfa156 Desktop",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);

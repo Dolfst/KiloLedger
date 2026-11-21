@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     internal sealed class AlfaRepository
@@ -130,7 +131,7 @@ namespace Alfa156.Desktop.Data
         public void Save()
         {
             if (String.IsNullOrEmpty(DirectoryPath))
-                throw new InvalidOperationException("Сначала откройте или создайте папку данных.");
+                throw new InvalidOperationException(L10n.Get("error.open_or_create_folder_first"));
             NormalizeBeforeSave();
             Directory.CreateDirectory(DirectoryPath);
             AlfaCodec.SaveRows(Path.Combine(DirectoryPath, "cars.dat"), Cars);
@@ -202,7 +203,7 @@ namespace Alfa156.Desktop.Data
         public string CreateSafetyBackup(string allocatedPath)
         {
             if (String.IsNullOrEmpty(DirectoryPath))
-                throw new InvalidOperationException("Нет открытой папки данных для копии.");
+                throw new InvalidOperationException(L10n.Get("error.no_open_folder_for_backup"));
             if (!File.Exists(Path.Combine(DirectoryPath, "cars.dat")))
                 return null;
 
@@ -390,7 +391,7 @@ namespace Alfa156.Desktop.Data
                 return content.Length == 0 || String.IsNullOrEmpty(content[0]);
             });
             if (Cars.Count == 0)
-                throw new InvalidDataException("Нужен хотя бы один автомобиль.");
+                throw new InvalidDataException(L10n.Get("error.need_one_car"));
             RecordIds.EnsureIds(Cars, "cars.dat");
 
             for (int i = 0; i < Fuel.Count; i++)

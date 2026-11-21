@@ -144,14 +144,14 @@ public sealed class MainActivity : Activity
             }
             ToSettings.SetOnboardingSeen(DataDirectory, true);
             new AlertDialog.Builder(this)
-                .SetTitle("Добро пожаловать")
+                .SetTitle(L10n.Get("title.welcome"))
                 .SetMessage(
-                    "Кратко:\n" +
-                    "• Wi‑Fi sync — обмен .dat с КПК/ПК в одной сети\n" +
-                    "• Полный экспорт ZIP — .dat + Receipts/ + settings\n" +
-                    "• Сводка и ТО — итоги, график и напоминания\n\n" +
-                    "Начните с «Данные → Начать с нуля» или «Импорт копии».")
-                .SetPositiveButton("ОК", delegate { })
+                    (L10n.Get("label.brief_colon") + "\n") +
+                    (L10n.Get("about.bullet_wifi_pda_pc") + "\n") +
+                    (L10n.Get("about.bullet_full_zip") + "\n") +
+                    (L10n.Get("about.bullet_summary_chart_reminders") + "\n\n") +
+                    L10n.Get("hint.start_with_data_menu"))
+                .SetPositiveButton(L10n.Get("button.ok"), delegate { })
                 .Show();
         }
         catch
@@ -195,7 +195,7 @@ public sealed class MainActivity : Activity
                 if (data == null)
                     return;
                 ExportTo(data.Data);
-                ShowMessage("Полный экспорт ZIP сохранён (.dat включая templates/reminders/cars-meta + Receipts/).");
+                ShowMessage(L10n.Get("msg.full_zip_saved_desc"));
             }
             else if (requestCode == SummaryExportRequest)
             {
@@ -204,12 +204,12 @@ public sealed class MainActivity : Activity
                 using (Stream output = ContentResolver.OpenOutputStream(data.Data))
                 {
                     if (output == null)
-                        throw new IOException("Не удалось открыть файл для записи.");
+                        throw new IOException(L10n.Get("error.open_file_write_failed"));
                     byte[] bytes = Encoding.UTF8.GetBytes(pendingSummaryText);
                     output.Write(bytes, 0, bytes.Length);
                 }
                 pendingSummaryText = null;
-                ShowMessage("Сводка сохранена в .txt.");
+                ShowMessage(L10n.Get("msg.summary_saved_txt"));
             }
             else if (requestCode == PhotoGalleryRequest)
             {
@@ -224,7 +224,7 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Операция не выполнена: " + ex.Message);
+            ShowMessage((L10n.Get("error.operation_failed_colon") + " ") + ex.Message);
         }
     }
 
@@ -248,22 +248,22 @@ public sealed class MainActivity : Activity
         title.SetTextColor(AndroidColor.Rgb(180, 40, 40));
         titleRow.AddView(title, new LinearLayout.LayoutParams(0,
             ViewGroup.LayoutParams.WrapContent, 1));
-        dataMenuButton = CreateButton("Данные", ButtonIcons.Menu, delegate { ShowDataMenu(); });
+        dataMenuButton = CreateButton(L10n.Get("menu.data"), ButtonIcons.Menu, delegate { ShowDataMenu(); });
         dataMenuButton.TextSize = 12;
         titleRow.AddView(dataMenuButton, new LinearLayout.LayoutParams(
             Dp(126), ViewGroup.LayoutParams.WrapContent));
         root.AddView(titleRow, MatchWrap());
 
         // Состояние sync/backup/restore хранится флагами; кнопки — тонкие заглушки для старого кода.
-        syncButton = CreateButton("Синхронизация по Wi-Fi", ButtonIcons.Sync, delegate { ToggleWiFiSync(); });
-        backupButton = CreateButton("Копия на телефоне", ButtonIcons.Backup, delegate { CreateLocalBackup(); });
-        restoreButton = CreateButton("Восстановить", ButtonIcons.Restore, delegate { RestoreLocalBackup(); });
+        syncButton = CreateButton(L10n.Get("sync.wifi_title"), ButtonIcons.Sync, delegate { ToggleWiFiSync(); });
+        backupButton = CreateButton(L10n.Get("backup.on_phone"), ButtonIcons.Backup, delegate { CreateLocalBackup(); });
+        restoreButton = CreateButton(L10n.Get("button.restore"), ButtonIcons.Restore, delegate { RestoreLocalBackup(); });
 
         LinearLayout carRow = NewRow();
         carRow.SetGravity(GravityFlags.CenterVertical);
         carRow.SetPadding(0, Dp(2), 0, Dp(2));
         TextView carLabel = new TextView(this);
-        carLabel.Text = "Авто";
+        carLabel.Text = L10n.Get("label.car_short");
         carLabel.TextSize = 14;
         carLabel.SetTextColor(AndroidColor.Rgb(35, 51, 70));
         carRow.AddView(carLabel, new LinearLayout.LayoutParams(Dp(42), ViewGroup.LayoutParams.WrapContent));
@@ -271,14 +271,14 @@ public sealed class MainActivity : Activity
         carSpinner.ItemSelected += CarSelected;
         carRow.AddView(carSpinner, new LinearLayout.LayoutParams(0,
             ViewGroup.LayoutParams.WrapContent, 1));
-        addCarButton = CreateButton("Авто", ButtonIcons.Menu, delegate { ManageCars(); });
+        addCarButton = CreateButton(L10n.Get("label.car_short"), ButtonIcons.Menu, delegate { ManageCars(); });
         carRow.AddView(addCarButton, new LinearLayout.LayoutParams(Dp(88), ViewGroup.LayoutParams.WrapContent));
         root.AddView(carRow);
 
         LinearLayout sectionRow1 = NewRow();
         sectionRow1.SetPadding(0, Dp(2), 0, Dp(2));
         fuelButton = CreateSectionButton(L10n.Get("tab.fuel"), ButtonIcons.Fuel, delegate { SelectSection(Fuel); });
-        repairsButton = CreateSectionButton("Ремонт и ТО", ButtonIcons.Repairs, delegate { SelectSection(Repairs); });
+        repairsButton = CreateSectionButton(L10n.Get("section.repairs_and_service"), ButtonIcons.Repairs, delegate { SelectSection(Repairs); });
         sectionRow1.AddView(fuelButton, WeightedButton(Dp(3)));
         sectionRow1.AddView(repairsButton, WeightedButton(Dp(3)));
         root.AddView(sectionRow1);
@@ -286,15 +286,15 @@ public sealed class MainActivity : Activity
         LinearLayout sectionRow2 = NewRow();
         sectionRow2.SetPadding(0, 0, 0, Dp(2));
         expensesButton = CreateSectionButton(L10n.Get("tab.expenses"), ButtonIcons.Categories, delegate { SelectSection(Expenses); });
-        utilitiesButton = CreateSectionButton("Коммунальные", ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
+        utilitiesButton = CreateSectionButton(L10n.Get("label.utilities_full"), ButtonIcons.Utilities, delegate { SelectSection(Utilities); });
         sectionRow2.AddView(expensesButton, WeightedButton(Dp(3)));
         sectionRow2.AddView(utilitiesButton, WeightedButton(Dp(3)));
         root.AddView(sectionRow2);
 
         LinearLayout sectionRow3 = NewRow();
         sectionRow3.SetPadding(0, 0, 0, Dp(2));
-        summaryButton = CreateSectionButton("Сводка и ТО", ButtonIcons.Summary, delegate { ShowSummary(); });
-        Button quickFuelButton = CreateSectionButton("Быстрая заправка", ButtonIcons.Fuel,
+        summaryButton = CreateSectionButton(L10n.Get("button.summary_and_to"), ButtonIcons.Summary, delegate { ShowSummary(); });
+        Button quickFuelButton = CreateSectionButton(L10n.Get("button.quick_fuel"), ButtonIcons.Fuel,
             delegate { ShowQuickFuelEntry(); });
         sectionRow3.AddView(summaryButton, WeightedButton(Dp(3)));
         sectionRow3.AddView(quickFuelButton, WeightedButton(Dp(3)));
@@ -302,17 +302,17 @@ public sealed class MainActivity : Activity
 
         LinearLayout recordActions = NewRow();
         recordActions.SetPadding(0, Dp(2), 0, Dp(2));
-        addButton = CreateButton("Добавить", ButtonIcons.Add, delegate { AddRecord(); });
-        editButton = CreateButton("Изменить", ButtonIcons.Edit, delegate { EditSelectedRecord(); });
-        deleteButton = CreateButton("Удалить", ButtonIcons.Delete, delegate { DeleteSelectedRecord(); });
+        addButton = CreateButton(L10n.Get("button.add"), ButtonIcons.Add, delegate { AddRecord(); });
+        editButton = CreateButton(L10n.Get("button.edit"), ButtonIcons.Edit, delegate { EditSelectedRecord(); });
+        deleteButton = CreateButton(L10n.Get("button.delete"), ButtonIcons.Delete, delegate { DeleteSelectedRecord(); });
         recordActions.AddView(addButton, WeightedButton(Dp(2)));
         recordActions.AddView(editButton, WeightedButton(Dp(2)));
         recordActions.AddView(deleteButton, WeightedButton(Dp(2)));
         root.AddView(recordActions);
 
         filterRow = NewRow();
-        filterButton = CreateButton("Фильтр", ButtonIcons.Filter, delegate { EditSectionFilter(); });
-        resetFilterButton = CreateButton("Сбросить", ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
+        filterButton = CreateButton(L10n.Get("label.filter"), ButtonIcons.Filter, delegate { EditSectionFilter(); });
+        resetFilterButton = CreateButton(L10n.Get("button.reset"), ButtonIcons.ResetFilter, delegate { ResetSectionFilter(); });
         categoriesButton = CreateButton(L10n.Get("tab.categories"), ButtonIcons.Categories, delegate
         {
             if (selectedSection == Expenses)
@@ -347,78 +347,78 @@ public sealed class MainActivity : Activity
 
         if (syncActive)
         {
-            labels.Add("Остановить синхронизацию");
+            labels.Add(L10n.Get("button.stop_sync"));
             actions.Add(delegate { ToggleWiFiSync(); });
         }
         else
         {
             if (!hasData)
             {
-                labels.Add("Начать с нуля");
+                labels.Add(L10n.Get("button.start_fresh"));
                 actions.Add(delegate { StartFromScratch(); });
             }
-            labels.Add("Импорт копии");
+            labels.Add(L10n.Get("button.import_backup"));
             actions.Add(delegate { ChooseImportFiles(); });
             if (hasData)
             {
-                labels.Add("Полный экспорт ZIP");
+                labels.Add(L10n.Get("button.full_zip_export"));
                 actions.Add(delegate { ChooseExportFile(); });
             }
-            labels.Add("Синхронизация по Wi-Fi");
+            labels.Add(L10n.Get("sync.wifi_title"));
             actions.Add(delegate { ToggleWiFiSync(); });
-            labels.Add("Синхронизация Google");
+            labels.Add(L10n.Get("button.google_sync"));
             actions.Add(delegate { SyncGoogle(); });
-            labels.Add("Google: настройка");
+            labels.Add(L10n.Get("button.google_settings"));
             actions.Add(delegate { ConfigureGoogleSync(); });
             if (hasData)
             {
-                labels.Add("Поиск");
+                labels.Add(L10n.Get("title.search"));
                 actions.Add(delegate { ShowGlobalSearch(); });
-                labels.Add("Дубликаты");
+                labels.Add(L10n.Get("button.duplicates"));
                 actions.Add(delegate { ShowDuplicates(); });
-                labels.Add("Проверка данных");
+                labels.Add(L10n.Get("button.data_integrity"));
                 actions.Add(delegate { ShowDataIntegrity(); });
-                labels.Add("Интервалы ТО");
+                labels.Add(L10n.Get("label.service_intervals"));
                 actions.Add(delegate { EditToIntervals(); });
-                labels.Add("Валюта");
+                labels.Add(L10n.Get("label.currency"));
                 actions.Add(delegate { EditCurrency(); });
-                labels.Add("Язык");
+                labels.Add(L10n.Get("label.language"));
                 actions.Add(delegate { EditLanguage(); });
-                labels.Add("Бюджет месяца");
+                labels.Add(L10n.Get("label.monthly_budget"));
                 actions.Add(delegate { EditBudget(); });
-                labels.Add("Авто по умолчанию");
+                labels.Add(L10n.Get("label.default_car_full"));
                 actions.Add(delegate { EditDefaultCar(); });
-                labels.Add("Быстрая заправка");
+                labels.Add(L10n.Get("button.quick_fuel"));
                 actions.Add(delegate { ShowQuickFuelEntry(); });
-                labels.Add("Поездка");
+                labels.Add(L10n.Get("button.trip"));
                 actions.Add(delegate { ShowTripEntry(); });
-                labels.Add("Отчёт поездок");
+                labels.Add(L10n.Get("button.trip_report"));
                 actions.Add(delegate { ShowTripReport(); });
-                labels.Add("Напоминание о копии");
+                labels.Add(L10n.Get("title.backup_reminder"));
                 actions.Add(delegate { EditBackupReminder(); });
-                labels.Add("Напоминания");
+                labels.Add(L10n.Get("label.reminders"));
                 actions.Add(delegate { ManageDateReminders(); });
-                labels.Add("Срок напоминаний");
+                labels.Add(L10n.Get("label.reminder_term"));
                 actions.Add(delegate { EditReminderWarnDays(); });
-                labels.Add("Заметки");
+                labels.Add(L10n.Get("label.notes"));
                 actions.Add(delegate { ManageCarNotes(); });
-                labels.Add("Копия на телефоне");
+                labels.Add(L10n.Get("backup.on_phone"));
                 actions.Add(delegate { CreateLocalBackup(); });
-                labels.Add("Восстановить копию");
+                labels.Add(L10n.Get("title.restore_backup"));
                 actions.Add(delegate { RestoreLocalBackup(); });
             }
         }
-        labels.Add("О программе");
+        labels.Add(L10n.Get("title.about"));
         actions.Add(delegate { ShowAbout(); });
 
         new AlertDialog.Builder(this)
-            .SetTitle(syncActive ? "Данные · идёт синхронизация" : "Данные")
+            .SetTitle(syncActive ? L10n.Get("status.data_syncing") : L10n.Get("menu.data"))
             .SetItems(labels.ToArray(), (sender, args) =>
             {
                 if (args.Which >= 0 && args.Which < actions.Count)
                     actions[args.Which]();
             })
-            .SetNegativeButton("Закрыть", delegate { })
+            .SetNegativeButton(L10n.Get("button.close"), delegate { })
             .Show();
     }
 
@@ -568,14 +568,14 @@ public sealed class MainActivity : Activity
         SetDataActionsEnabled(hasData);
         if (!hasData)
         {
-            status.Text = "«Данные» → «Начать с нуля» или «Импорт копии».";
+            status.Text = L10n.Get("hint.data_start_or_import");
             allRows = new List<string[]>();
             visibleRows = new List<string[]>();
             visibleIndexes = new List<int>();
             selectedRecordPosition = -1;
             recordList.Adapter = CreateAdapter(new List<string>
             {
-                "Нет данных. Можно начать с нуля или импортировать копию."
+                L10n.Get("msg.no_data_start_or_import")
             });
             SetCarOptions(new List<string>());
             UpdateSectionButtons();
@@ -614,28 +614,28 @@ public sealed class MainActivity : Activity
         }
 
         string sectionTitle = selectedSection == Fuel ? L10n.Get("tab.fuel")
-            : selectedSection == Repairs ? "Ремонт и ТО"
-            : selectedSection == Expenses ? "Прочие расходы" : "Коммунальные";
-        string scope = selectedSection == Utilities ? "все месяцы" : currentCar;
-        string filterNote = HasCurrentFilter() ? " · фильтр" : "";
+            : selectedSection == Repairs ? L10n.Get("section.repairs_and_service")
+            : selectedSection == Expenses ? L10n.Get("label.other_expenses") : L10n.Get("label.utilities_full");
+        string scope = selectedSection == Utilities ? L10n.Get("label.all_months") : currentCar;
+        string filterNote = HasCurrentFilter() ? (" " + L10n.Get("status.filter")) : "";
         if (displayRows.Count == 0)
         {
-            status.Text = sectionTitle + " · " + scope + " · нет записей" + filterNote;
+            status.Text = sectionTitle + " · " + scope + (" " + L10n.Get("status.no_records")) + filterNote;
             displayRows.Add(HasCurrentFilter()
-                ? "Нет записей по фильтру. Сбросьте фильтр или добавьте запись."
-                : "Пока нет записей. Нажмите «Добавить».");
+                ? L10n.Get("msg.no_records_filter_reset")
+                : L10n.Get("msg.no_records_tap_add"));
         }
         else if (selectedSection == Utilities)
         {
-            status.Text = sectionTitle + " · показано " + displayRows.Count +
-                " из " + utilityRows.Count + filterNote;
+            status.Text = sectionTitle + (" " + L10n.Get("status.shown") + " ") + displayRows.Count +
+                (" " + L10n.Get("common.of_preposition") + " ") + utilityRows.Count + filterNote;
         }
         else
         {
-            status.Text = sectionTitle + " · " + currentCar + " · в списке " +
+            status.Text = sectionTitle + " · " + currentCar + (" " + L10n.Get("status.in_list") + " ") +
                 displayRows.Count + filterNote +
-                " · в базе: заправки " + fuelRows.Count +
-                ", ремонт " + repairRows.Count + ", комм. " + utilityRows.Count;
+                (" " + L10n.Get("status.in_db_fuel") + " ") + fuelRows.Count +
+                (L10n.Get("summary.comma_repairs") + " ") + repairRows.Count + (L10n.Get("summary.comma_util_short") + " ") + utilityRows.Count;
         }
         recordList.Adapter = CreateAdapter(displayRows);
         UpdateRecordActions();
@@ -699,7 +699,7 @@ public sealed class MainActivity : Activity
         if (filterButton == null)
             return;
         bool active = HasCurrentFilter();
-        filterButton.Text = (selectedSection == Fuel ? "Фильтр заправок" : "Фильтр") +
+        filterButton.Text = (selectedSection == Fuel ? L10n.Get("title.fuel_filter") : L10n.Get("label.filter")) +
             (active ? " ●" : "");
         filterButton.Enabled = enabled;
         filterButton.SetBackgroundColor(active
@@ -744,7 +744,7 @@ public sealed class MainActivity : Activity
         root.SetBackgroundColor(AndroidColor.Rgb(245, 247, 250));
 
         TextView title = new TextView(this);
-        title.Text = "Не удалось открыть приложение";
+        title.Text = L10n.Get("error.open_app_failed");
         title.TextSize = 20;
         title.SetTextColor(AndroidColor.Rgb(150, 30, 30));
         root.AddView(title, MatchWrap());
@@ -777,37 +777,37 @@ public sealed class MainActivity : Activity
         LinearLayout box = new LinearLayout(this) { Orientation = Orientation.Vertical };
         box.SetPadding(Dp(20), Dp(8), Dp(20), Dp(8));
         TextView help = new TextView(this);
-        help.Text = "Кратко: вставьте Alfa156Sync.gs, задайте SYNC_TOKEN, опубликуйте Web App. " +
-            "Пошаговый мастер — в Desktop («Google: мастер»). README: google-sync/ в репозитории.";
+        help.Text = (L10n.Get("wizard.gs_summary") + " ") +
+            L10n.Get("hint.desktop_wizard_readme");
         help.TextSize = 13;
         help.SetPadding(0, 0, 0, Dp(8));
         box.AddView(help);
         box.AddView(urlInput);
         box.AddView(tokenInput);
         new AlertDialog.Builder(this)
-            .SetTitle("Google: настройка")
+            .SetTitle(L10n.Get("button.google_settings"))
             .SetView(box)
-            .SetPositiveButton("Сохранить", delegate
+            .SetPositiveButton(L10n.Get("button.save"), delegate
             {
                 GoogleSyncService.SaveSettings(this, urlInput.Text, tokenInput.Text);
-                ShowMessage("Настройки Google сохранены.");
+                ShowMessage(L10n.Get("msg.google_settings_saved"));
             })
-            .SetNeutralButton("Справка", delegate { ShowGoogleSyncHelp(); })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNeutralButton(L10n.Get("menu.help"), delegate { ShowGoogleSyncHelp(); })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
     private void ShowGoogleSyncHelp()
     {
         new AlertDialog.Builder(this)
-            .SetTitle("Google Sync — справка")
+            .SetTitle(L10n.Get("title.google_sync_help"))
             .SetMessage(
-                "1. В Google Sheets откройте таблицу «Деньги».\n" +
-                "2. Расширения → Apps Script — код из google-sync/Alfa156Sync.gs.\n" +
+                (L10n.Get("wizard.gs_step1_open") + "\n") +
+                (L10n.Get("wizard.gs_step2_code") + "\n") +
                 "3. Script properties: SYNC_TOKEN.\n" +
-                "4. Deploy → Web app → скопируйте URL сюда.\n\n" +
-                "Удобный мастер настройки есть в Alfa156 Desktop: кнопка «Google: мастер».\n" +
-                "Подробности: github.com/Dolfst/alfa → google-sync/README.md")
+                (L10n.Get("wizard.gs_step4_deploy") + "\n\n") +
+                (L10n.Get("hint.desktop_google_wizard_btn") + "\n") +
+                L10n.Get("hint.github_google_sync_readme"))
             .SetPositiveButton("OK", delegate { })
             .Show();
     }
@@ -816,15 +816,15 @@ public sealed class MainActivity : Activity
     {
         if (syncActive)
         {
-            ShowMessage("Сначала остановите синхронизацию по Wi-Fi.");
+            ShowMessage(L10n.Get("error.stop_wifi_sync_first"));
             return;
         }
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала создайте или импортируйте данные.");
+            ShowMessage(L10n.Get("error.create_or_import_first"));
             return;
         }
-        status.Text = "Синхронизация с Google…";
+        status.Text = L10n.Get("status.google_syncing");
         Task.Run(async delegate
         {
             try
@@ -849,7 +849,7 @@ public sealed class MainActivity : Activity
                 RunOnUiThread(delegate
                 {
                     if (!IsFinishing)
-                        ShowMessage("Синхронизация с Google отменена.");
+                        ShowMessage(L10n.Get("msg.google_sync_cancelled"));
                 });
             }
             catch (Exception ex)
@@ -875,15 +875,15 @@ public sealed class MainActivity : Activity
         {
             string[] addresses = ExpenseSyncService.GetLocalIpv4Addresses().ToArray();
             string addressText = addresses.Length == 0
-                ? "IP не найден. Включите точку доступа или Wi-Fi.\nЧастый адрес точки доступа: 192.168.43.1"
+                ? L10n.Get("sync.ip_not_found_hint")
                 : String.Join("\n", addresses);
             bool hasHotspot = false;
             for (int i = 0; i < addresses.Length; i++)
                 if (addresses[i].IndexOf("точка доступа", StringComparison.OrdinalIgnoreCase) >= 0)
                     hasHotspot = true;
             if (!hasHotspot && addresses.Length > 0)
-                addressText += "\n\nЕсли раздаёте интернет с телефона, а в списке нет «точки доступа», " +
-                    "на КПК попробуйте 192.168.43.1 (Samsung/часто) или IP выше, оканчивающийся на .1";
+                addressText += ("\n\n" + L10n.Get("sync.hotspot_missing_hint1") + " ") +
+                    L10n.Get("sync.pda_try_192_168_43_1");
             string pairingCode = System.Security.Cryptography.RandomNumberGenerator
                 .GetInt32(100000, 1000000).ToString(CultureInfo.InvariantCulture);
 
@@ -892,22 +892,22 @@ public sealed class MainActivity : Activity
             listener.Start(8);
             syncListener = listener;
             syncActive = true;
-            syncButton.Text = "Остановить синхронизацию";
+            syncButton.Text = L10n.Get("button.stop_sync");
             if (dataMenuButton != null)
-                dataMenuButton.Text = "Данные ●";
+                dataMenuButton.Text = L10n.Get("status.data_dirty");
             SetDataActionsEnabled(IsCompleteData(DataDirectory));
             UpdateRecordActions();
 
             new AlertDialog.Builder(this)
-                .SetTitle("Синхронизация с КПК")
-                .SetMessage("Вариант A: КПК подключается к точке доступа телефона " +
-                    "(мобильный интернет на КПК не нужен).\n" +
-                    "Вариант B: оба в одной Wi-Fi сети.\n\n" +
-                    "IP телефона:\n" + addressText +
-                    "\n\nКод: " + pairingCode +
-                    "\n\nНа КПК: Данные → Синхронизация по Wi-Fi → введите IP с пометкой «точка доступа» и код.")
-                .SetPositiveButton("Скрыть", delegate { })
-                .SetNegativeButton("Остановить", delegate { StopWiFiSync(); })
+                .SetTitle(L10n.Get("title.sync_with_pda"))
+                .SetMessage((L10n.Get("sync.option_a_hotspot") + " ") +
+                    (L10n.Get("sync.no_mobile_net_needed") + "\n") +
+                    (L10n.Get("sync.option_b_same_wifi") + "\n\n") +
+                    (L10n.Get("sync.phone_ip_colon") + "\n") + addressText +
+                    ("\n\n" + L10n.Get("sync.code_colon") + " ") + pairingCode +
+                    ("\n\n" + L10n.Get("sync.on_pda_wifi_steps")))
+                .SetPositiveButton(L10n.Get("button.hide"), delegate { })
+                .SetNegativeButton(L10n.Get("button.stop"), delegate { StopWiFiSync(); })
                 .Show();
 
             TcpClient acceptedClient = null;
@@ -920,10 +920,10 @@ public sealed class MainActivity : Activity
                         pairingCode,
                         DataDirectory,
                         CacheDir.AbsolutePath,
-                        delegate(string summary) { return ResolveSyncPlan(summary, "КПК", true); },
+                        delegate(string summary) { return ResolveSyncPlan(summary, L10n.Get("platform.pda"), true); },
                         delegate(string title, string localRow, string incomingRow)
                         {
-                            return ResolveSyncConflict(title, localRow, incomingRow, "КПК", true);
+                            return ResolveSyncConflict(title, localRow, incomingRow, L10n.Get("platform.pda"), true);
                         },
                         delegate(TcpClient client)
                         {
@@ -939,13 +939,13 @@ public sealed class MainActivity : Activity
                                 RefreshRecords();
                                 SyncJournal journal = ExpenseSyncService.LastJournal;
                                 if (journal != null)
-                                    ShowMessage("Синхронизация с КПК завершена.\n\n" +
+                                    ShowMessage((L10n.Get("msg.pda_sync_complete") + "\n\n") +
                                         journal.FormatSummary());
                                 else
-                                    ShowMessage("Синхронизация с КПК завершена.");
+                                    ShowMessage(L10n.Get("msg.pda_sync_complete"));
                             }
                             else
-                                ShowMessage("Синхронизация не выполнена: " + error);
+                                ShowMessage((L10n.Get("error.sync_failed_colon") + " ") + error);
                         }
                     });
                 }
@@ -955,7 +955,7 @@ public sealed class MainActivity : Activity
                         RunOnUiThread(delegate
                         {
                             if (!IsFinishing)
-                                ShowMessage("Синхронизация не выполнена: " + ex.Message);
+                                ShowMessage((L10n.Get("error.sync_failed_colon") + " ") + ex.Message);
                         });
                 }
                 finally
@@ -970,9 +970,9 @@ public sealed class MainActivity : Activity
                         {
                             if (syncButton != null)
                             {
-                                syncButton.Text = "Синхронизация по Wi-Fi";
+                                syncButton.Text = L10n.Get("sync.wifi_title");
                                 if (dataMenuButton != null)
-                                    dataMenuButton.Text = "Данные";
+                                    dataMenuButton.Text = L10n.Get("menu.data");
                                 SetDataActionsEnabled(IsCompleteData(DataDirectory));
                                 UpdateRecordActions();
                             }
@@ -984,7 +984,7 @@ public sealed class MainActivity : Activity
         catch (Exception ex)
         {
             StopWiFiSync();
-            ShowMessage("Не удалось запустить синхронизацию: " + ex.Message);
+            ShowMessage((L10n.Get("error.start_sync_failed") + " ") + ex.Message);
         }
     }
 
@@ -1017,30 +1017,30 @@ public sealed class MainActivity : Activity
                         (int)(280 * Resources.DisplayMetrics.Density)));
 
                     CheckBox addBox = new CheckBox(this);
-                    addBox.Text = "Добавить записи, которые есть только на " + remoteName;
+                    addBox.Text = (L10n.Get("sync.add_only_on") + " ") + remoteName;
                     addBox.Checked = true;
                     root.AddView(addBox);
 
                     CheckBox removeBox = new CheckBox(this);
-                    removeBox.Text = "Удалить локальные записи, которых нет на " + remoteName;
+                    removeBox.Text = (L10n.Get("sync.delete_local_missing_on") + " ") + remoteName;
                     removeBox.Checked = false;
                     root.AddView(removeBox);
 
                     TextView conflictLabel = new TextView(this);
-                    conflictLabel.Text = "Если одна и та же запись отличается:";
+                    conflictLabel.Text = L10n.Get("sync.if_same_differs");
                     conflictLabel.SetPadding(0, 16, 0, 0);
                     root.AddView(conflictLabel);
 
                     RadioGroup conflictGroup = new RadioGroup(this);
                     RadioButton preferLocal = new RadioButton(this);
                     preferLocal.Id = View.GenerateViewId();
-                    preferLocal.Text = "Оставить версию Android";
+                    preferLocal.Text = L10n.Get("sync.keep_android_version");
                     RadioButton preferRemote = new RadioButton(this);
                     preferRemote.Id = View.GenerateViewId();
-                    preferRemote.Text = "Взять версию с " + remoteName;
+                    preferRemote.Text = (L10n.Get("sync.take_version_from") + " ") + remoteName;
                     RadioButton askEach = new RadioButton(this);
                     askEach.Id = View.GenerateViewId();
-                    askEach.Text = "Спрашивать по каждой записи";
+                    askEach.Text = L10n.Get("sync.ask_per_record");
                     conflictGroup.AddView(preferLocal);
                     conflictGroup.AddView(preferRemote);
                     conflictGroup.AddView(askEach);
@@ -1048,10 +1048,10 @@ public sealed class MainActivity : Activity
                     root.AddView(conflictGroup);
 
                     new AlertDialog.Builder(this)
-                        .SetTitle("Предпросмотр: " + remoteName)
+                        .SetTitle((L10n.Get("label.preview_colon") + " ") + remoteName)
                         .SetView(root)
                         .SetCancelable(false)
-                        .SetPositiveButton("Применить", delegate
+                        .SetPositiveButton(L10n.Get("button.apply"), delegate
                         {
                             plan.Cancelled = false;
                             plan.AddIncoming = addBox.Checked;
@@ -1064,7 +1064,7 @@ public sealed class MainActivity : Activity
                                 plan.ConflictPolicy = SyncConflictPolicy.PreferLocal;
                             completed.Set();
                         })
-                        .SetNegativeButton("Отмена", delegate
+                        .SetNegativeButton(L10n.Get("button.cancel"), delegate
                         {
                             plan.Cancelled = true;
                             completed.Set();
@@ -1106,21 +1106,21 @@ public sealed class MainActivity : Activity
                         return;
                     }
                     new AlertDialog.Builder(this)
-                        .SetTitle("Конфликт: " + title)
-                        .SetMessage("На Android:\n" + localRow + "\n\nНа " + remoteName + ":\n" +
-                            incomingRow + "\n\nКакую запись оставить?")
+                        .SetTitle((L10n.Get("sync.conflict_colon") + " ") + title)
+                        .SetMessage((L10n.Get("sync.on_android_colon") + "\n") + localRow + ("\n\n" + L10n.Get("common.on_preposition") + " ") + remoteName + ":\n" +
+                            incomingRow + ("\n\n" + L10n.Get("sync.which_record_to_keep")))
                         .SetCancelable(false)
-                        .SetNegativeButton("Оставить Android", delegate
+                        .SetNegativeButton(L10n.Get("sync.keep_android"), delegate
                         {
                             choice = SyncConflictChoice.KeepLocal;
                             completed.Set();
                         })
-                        .SetPositiveButton("Оставить " + remoteName, delegate
+                        .SetPositiveButton((L10n.Get("button.keep") + " ") + remoteName, delegate
                         {
                             choice = SyncConflictChoice.KeepIncoming;
                             completed.Set();
                         })
-                        .SetNeutralButton("Отменить синхронизацию", delegate
+                        .SetNeutralButton(L10n.Get("button.cancel_sync"), delegate
                         {
                             choice = SyncConflictChoice.Cancel;
                             completed.Set();
@@ -1155,9 +1155,9 @@ public sealed class MainActivity : Activity
             client.Close();
         if (syncButton != null)
         {
-            syncButton.Text = "Синхронизация по Wi-Fi";
+            syncButton.Text = L10n.Get("sync.wifi_title");
             if (dataMenuButton != null)
-                dataMenuButton.Text = "Данные";
+                dataMenuButton.Text = L10n.Get("menu.data");
             SetDataActionsEnabled(IsCompleteData(DataDirectory));
             UpdateRecordActions();
         }
@@ -1178,8 +1178,8 @@ public sealed class MainActivity : Activity
     {
         if (selectedSection == Fuel && row.Length >= 5)
         {
-            string formatted = row[0] + " · " + row[2] + " км · " + row[3] +
-                " л · " + row[4] + " " + Cur();
+            string formatted = row[0] + " · " + row[2] + (" " + L10n.Get("unit.km_dot") + " ") + row[3] +
+                (" " + L10n.Get("unit.liters_dot") + " ") + row[4] + " " + Cur();
             string station = ExpenseDataCodec.GetStation(row);
             if (station.Length > 0)
                 formatted += " · " + station;
@@ -1188,12 +1188,12 @@ public sealed class MainActivity : Activity
                 formatted += " · " + purpose;
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
-                formatted += " · " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + " л/100";
+                formatted += " · " + consumption.ToString("0.0", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.l_per_100_short"));
             return formatted;
         }
         if (selectedSection == Repairs && row.Length >= 9)
         {
-            string mileage = row[2].Length > 0 ? " · " + row[2] + " км" : "";
+            string mileage = row[2].Length > 0 ? " · " + row[2] + (" " + L10n.Get("unit.km")) : "";
             return row[0] + mileage + " · " + row[3] + ": " + ShortText(row[4], 22) +
                 " · " + row[7] + " " + Cur();
         }
@@ -1205,7 +1205,7 @@ public sealed class MainActivity : Activity
                     " · " + content[4] + " " + Cur();
         }
         if (selectedSection == Utilities && row.Length >= 8)
-            return row[0] + " · итого " + ExpenseDataCodec.Sum(row, 1)
+            return row[0] + (" " + L10n.Get("status.total") + " ") + ExpenseDataCodec.Sum(row, 1)
                 .ToString("0.##", CultureInfo.InvariantCulture) + " " + Cur();
         return String.Join(" | ", row);
     }
@@ -1239,64 +1239,64 @@ public sealed class MainActivity : Activity
         if (selectedSection == Fuel && row.Length >= 5)
         {
             StringBuilder details = new StringBuilder();
-            details.Append("Авто: ").Append(row[1])
-                .Append("\nДата: ").Append(row[0])
-                .Append("\nПробег: ").Append(row[2]).Append(" км")
-                .Append("\nЛитры: ").Append(row[3])
-                .Append("\nСтоимость: ").Append(row[4]).Append(" " + Cur());
+            details.Append((L10n.Get("label.car_colon") + " ")).Append(row[1])
+                .Append(("\n" + L10n.Get("label.date_colon") + " ")).Append(row[0])
+                .Append(("\n" + L10n.Get("label.odometer_colon") + " ")).Append(row[2]).Append((" " + L10n.Get("unit.km")))
+                .Append(("\n" + L10n.Get("label.liters_colon") + " ")).Append(row[3])
+                .Append(("\n" + L10n.Get("label.cost_colon") + " ")).Append(row[4]).Append(" " + Cur());
             string storedPrice = FieldAt(row, 5).Trim();
             decimal liters;
             decimal cost;
             if (storedPrice.Length > 0)
-                details.Append("\nЦена за литр: ").Append(storedPrice).Append(" " + Cur());
+                details.Append(("\n" + L10n.Get("label.price_per_liter_colon") + " ")).Append(storedPrice).Append(" " + Cur());
             else if (TryNumber(row[3], out liters) && liters > 0 && TryNumber(row[4], out cost))
-                details.Append("\nЦена за литр: ")
+                details.Append(("\n" + L10n.Get("label.price_per_liter_colon") + " "))
                     .Append((cost / liters).ToString("0.00", CultureInfo.InvariantCulture))
                     .Append(" " + Cur());
             string station = ExpenseDataCodec.GetStation(row);
             if (station.Length > 0)
-                details.Append("\nАЗС / бренд: ").Append(station);
+                details.Append(("\n" + L10n.Get("label.station_colon") + " ")).Append(station);
             string comment = FieldAt(row, 6).Trim();
             if (comment.Length > 0)
-                details.Append("\nКомментарий: ").Append(comment);
-            details.Append("\nПолный бак: ").Append(ExpenseDataCodec.IsFullTank(row) ? "да" : "нет");
+                details.Append(("\n" + L10n.Get("label.comment_colon") + " ")).Append(comment);
+            details.Append(("\n" + L10n.Get("label.full_tank_colon") + " ")).Append(ExpenseDataCodec.IsFullTank(row) ? L10n.Get("common.yes_lower") : L10n.Get("common.no_lower"));
             string purpose = ExpenseDataCodec.GetPurpose(row);
             if (purpose.Length > 0)
-                details.Append("\nЦель: ").Append(purpose);
+                details.Append(("\n" + L10n.Get("label.purpose_colon") + " ")).Append(purpose);
             decimal consumption = FuelConsumption(row);
             if (consumption > 0)
-                details.Append("\nРасход: ")
+                details.Append(("\n" + L10n.Get("report.consumption_colon") + " "))
                     .Append(consumption.ToString("0.0", CultureInfo.InvariantCulture))
-                    .Append(" л/100 км");
+                    .Append((" " + L10n.Get("unit.l_per_100km")));
             return details.ToString();
         }
         if (selectedSection == Repairs && row.Length >= 9)
         {
             StringBuilder details = new StringBuilder();
-            details.Append("Авто: ").Append(row[1])
-                .Append("\nДата: ").Append(row[0])
-                .Append("\nПробег: ").Append(row[2].Length > 0 ? row[2] + " км" : "—")
-                .Append("\nКатегория: ").Append(row[3])
-                .Append("\nТовар: ").Append(row[4])
-                .Append("\nНаименование: ").Append(row[5].Length > 0 ? row[5] : "—")
-                .Append("\nКоличество: ").Append(row[6])
-                .Append("\nСумма: ").Append(row[7]).Append(" " + Cur())
-                .Append("\nКомментарий: ").Append(row[8].Length > 0 ? row[8] : "—");
+            details.Append((L10n.Get("label.car_colon") + " ")).Append(row[1])
+                .Append(("\n" + L10n.Get("label.date_colon") + " ")).Append(row[0])
+                .Append(("\n" + L10n.Get("label.odometer_colon") + " ")).Append(row[2].Length > 0 ? row[2] + (" " + L10n.Get("unit.km")) : "—")
+                .Append(("\n" + L10n.Get("label.category_colon") + " ")).Append(row[3])
+                .Append(("\n" + L10n.Get("label.product_colon") + " ")).Append(row[4])
+                .Append(("\n" + L10n.Get("label.item_name_colon") + " ")).Append(row[5].Length > 0 ? row[5] : "—")
+                .Append(("\n" + L10n.Get("label.quantity_colon") + " ")).Append(row[6])
+                .Append(("\n" + L10n.Get("label.amount_colon") + " ")).Append(row[7]).Append(" " + Cur())
+                .Append(("\n" + L10n.Get("label.comment_colon") + " ")).Append(row[8].Length > 0 ? row[8] : "—");
             return details.ToString();
         }
         if (selectedSection == Utilities && row.Length >= 8)
         {
-            StringBuilder details = new StringBuilder("Месяц: ");
+            StringBuilder details = new StringBuilder((L10n.Get("label.month_colon") + " "));
             details.Append(row[0]);
             for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length; i++)
             {
                 string amount = row[i + 1];
                 if (amount == null || amount.Trim().Length == 0 || amount == "0")
                     continue;
-                details.Append("\n").Append(ExpenseDataStore.UtilityLabels[i])
+                details.Append("\n").Append(ExpenseDataStore.GetUtilityLabel(i))
                     .Append(": ").Append(amount).Append(" " + Cur());
             }
-            details.Append("\nИтого: ")
+            details.Append(("\n" + L10n.Get("report.subtotal_colon") + " "))
                 .Append(ExpenseDataCodec.Sum(row, 1).ToString("0.##", CultureInfo.InvariantCulture))
                 .Append(" " + Cur());
             return details.ToString();
@@ -1313,11 +1313,11 @@ public sealed class MainActivity : Activity
         string[] row = visibleRows[e.Position];
         int sourceIndex = visibleIndexes[e.Position];
         new AlertDialog.Builder(this)
-            .SetTitle("Запись")
+            .SetTitle(L10n.Get("label.record"))
             .SetMessage(FormatDetails(row))
-            .SetPositiveButton("Закрыть", delegate { })
-            .SetNeutralButton("Изменить", delegate { ShowRecordEditor(true, row, sourceIndex); })
-            .SetNegativeButton("Удалить", delegate { ConfirmDelete(row, sourceIndex); })
+            .SetPositiveButton(L10n.Get("button.close"), delegate { })
+            .SetNeutralButton(L10n.Get("button.edit"), delegate { ShowRecordEditor(true, row, sourceIndex); })
+            .SetNegativeButton(L10n.Get("button.delete"), delegate { ConfirmDelete(row, sourceIndex); })
             .Show();
     }
 
@@ -1332,10 +1332,10 @@ public sealed class MainActivity : Activity
             if (templates.Count > 0)
             {
                 List<string> labels = new List<string>();
-                labels.Add("Пустая форма");
-                labels.Add("Из шаблона…");
+                labels.Add(L10n.Get("button.blank_form"));
+                labels.Add(L10n.Get("button.from_template_ellipsis"));
                 new AlertDialog.Builder(this)
-                    .SetTitle("Добавить")
+                    .SetTitle(L10n.Get("button.add"))
                     .SetItems(labels.ToArray(), delegate(object sender, DialogClickEventArgs e)
                     {
                         if (e.Which == 1)
@@ -1343,7 +1343,7 @@ public sealed class MainActivity : Activity
                         else
                             AddRecordBlank();
                     })
-                    .SetNegativeButton("Отмена", delegate { })
+                    .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
                     .Show();
                 return;
             }
@@ -1367,7 +1367,7 @@ public sealed class MainActivity : Activity
             List<string> categories = ExpenseDataStore.LoadRepairCategories(DataDirectory);
             if (categories.Count == 0)
             {
-                ShowMessage("Сначала добавьте категорию ремонта.");
+                ShowMessage(L10n.Get("error.add_repair_category_first"));
                 ManageRepairCategories();
                 return;
             }
@@ -1383,7 +1383,7 @@ public sealed class MainActivity : Activity
             List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
             if (categories.Count == 0)
             {
-                ShowMessage("Сначала добавьте категорию прочих расходов.");
+                ShowMessage(L10n.Get("error.add_expense_category_first"));
                 ManageExpenseCategories();
                 return;
             }
@@ -1408,7 +1408,7 @@ public sealed class MainActivity : Activity
         List<RecordTemplate> templates = RecordTemplates.ListByType(DataDirectory, type);
         if (templates.Count == 0)
         {
-            ShowMessage("Нет шаблонов. Сохраните запись как шаблон из формы.");
+            ShowMessage(L10n.Get("msg.no_templates_save_from_form"));
             AddRecordBlank();
             return;
         }
@@ -1416,7 +1416,7 @@ public sealed class MainActivity : Activity
         for (int i = 0; i < templates.Count; i++)
             labels[i] = templates[i].Name;
         new AlertDialog.Builder(this)
-            .SetTitle("Из шаблона")
+            .SetTitle(L10n.Get("button.apply_template"))
             .SetItems(labels, delegate(object sender, DialogClickEventArgs e)
             {
                 if (e.Which < 0 || e.Which >= templates.Count)
@@ -1449,18 +1449,18 @@ public sealed class MainActivity : Activity
                 }
                 ShowRecordEditor(false, entity, -1);
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
     private void SaveTemplateFromValues(string type, string[] values)
     {
         EditText nameBox = new EditText(this);
-        nameBox.Hint = "Название шаблона";
+        nameBox.Hint = L10n.Get("label.template_name");
         new AlertDialog.Builder(this)
-            .SetTitle("Сохранить как шаблон")
+            .SetTitle(L10n.Get("button.save_template"))
             .SetView(nameBox)
-            .SetPositiveButton("Сохранить", delegate
+            .SetPositiveButton(L10n.Get("button.save"), delegate
             {
                 try
                 {
@@ -1469,14 +1469,14 @@ public sealed class MainActivity : Activity
                     item.Name = (nameBox.Text ?? "").Trim();
                     item.Payload = RecordTemplates.PayloadFromEntity(type, values);
                     RecordTemplates.Upsert(DataDirectory, item);
-                    ShowMessage("Шаблон сохранён: " + item.Name);
+                    ShowMessage((L10n.Get("msg.template_saved_colon") + " ") + item.Name);
                 }
                 catch (Exception ex)
                 {
                     ShowMessage(ex.Message);
                 }
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
@@ -1506,47 +1506,47 @@ public sealed class MainActivity : Activity
                 personal += distance;
             count++;
         }
-        ShowMessage("Отчёт поездок · " + currentCar +
-            "\nКоличество: " + count +
-            "\nЛичные: " + personal.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
-            "\nРабочие: " + work.ToString("0.##", CultureInfo.InvariantCulture) + " км" +
-            "\nВсего: " + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + " км");
+        ShowMessage((L10n.Get("trips.report_title_dot") + " ") + currentCar +
+            ("\n" + L10n.Get("label.quantity_colon") + " ") + count +
+            ("\n" + L10n.Get("report.personal_colon") + " ") + personal.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")) +
+            ("\n" + L10n.Get("report.work_colon") + " ") + work.ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")) +
+            ("\n" + L10n.Get("report.total_colon") + " ") + (personal + work).ToString("0.##", CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")));
     }
 
     private void ShowTripEntry()
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте или создайте данные.");
+            ShowMessage(L10n.Get("error.import_or_create_first"));
             return;
         }
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
         if (cars.Count == 0)
         {
-            ShowMessage("Нет автомобилей.");
+            ShowMessage(L10n.Get("error.no_cars"));
             return;
         }
         string car = ToSettings.ResolvePreferredCar(DataDirectory, cars, currentCar);
         List<EditorField> fields = new List<EditorField>();
-        fields.Add(EditorField.Date("Дата", DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), true));
-        fields.Add(EditorField.Option("Автомобиль", car, cars.ToArray(), true));
-        fields.Add(EditorField.Number("Начало пробега, км", "", true));
-        fields.Add(EditorField.Number("Конец пробега, км", "", true));
-        fields.Add(EditorField.Option("Назначение", "Личный", new string[] { "Личный", "Работа" }, false));
-        fields.Add(EditorField.Text("Водитель", "", false));
-        fields.Add(EditorField.Text("Комментарий", "", false));
+        fields.Add(EditorField.Date(L10n.Get("label.date"), DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), true));
+        fields.Add(EditorField.Option(L10n.Get("label.vehicle"), car, cars.ToArray(), true));
+        fields.Add(EditorField.Number(L10n.Get("label.odometer_start_km"), "", true));
+        fields.Add(EditorField.Number(L10n.Get("label.odometer_end_km"), "", true));
+        fields.Add(EditorField.Option(L10n.Get("label.purpose_alt"), "Личный", new string[] { "Личный", "Работа" }, false));
+        fields.Add(EditorField.Text(L10n.Get("label.driver"), "", false));
+        fields.Add(EditorField.Text(L10n.Get("label.comment"), "", false));
 
-        RenderEditor("Новая поездка", fields,
+        RenderEditor(L10n.Get("title.new_trip"), fields,
             delegate(string[] values)
             {
                 if (values == null || values.Length < 7)
-                    throw new InvalidOperationException("Заполните обязательные поля поездки.");
+                    throw new InvalidOperationException(L10n.Get("error.fill_trip_required"));
                 decimal startKm;
                 decimal endKm;
                 if (!TryNumber(values[2], out startKm) || startKm < 0 ||
                     !TryNumber(values[3], out endKm) || endKm < startKm)
                     throw new InvalidOperationException(
-                        "Конец пробега должен быть не меньше начала, пробег не меньше 0.");
+                        L10n.Get("error.trip_odometer_range"));
                 string[] trip = new string[]
                 {
                     values[0], values[1], values[2], values[3],
@@ -1555,8 +1555,8 @@ public sealed class MainActivity : Activity
                 ExpenseDataStore.AddRecord(DataDirectory, ExpenseDataCodec.TripsFile, trip);
                 SetCurrentCar(trip[1]);
                 RefreshRecords();
-                ShowMessage("Поездка сохранена: " + (endKm - startKm).ToString("0.##",
-                    CultureInfo.InvariantCulture) + " км");
+                ShowMessage((L10n.Get("msg.trip_saved") + " ") + (endKm - startKm).ToString("0.##",
+                    CultureInfo.InvariantCulture) + (" " + L10n.Get("unit.km")));
             }, false);
     }
 
@@ -1564,13 +1564,13 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте или создайте данные.");
+            ShowMessage(L10n.Get("error.import_or_create_first"));
             return;
         }
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
         if (cars.Count == 0)
         {
-            ShowMessage("Нет автомобилей. Добавьте авто.");
+            ShowMessage(L10n.Get("error.no_cars_add"));
             return;
         }
         string car = ToSettings.ResolvePreferredCar(DataDirectory, cars, currentCar);
@@ -1578,14 +1578,14 @@ public sealed class MainActivity : Activity
         string lastPrice = LastFuelPricePerLiter(car);
         bool lastFull = LastFuelFullTank(car);
         List<EditorField> fields = new List<EditorField>();
-        fields.Add(EditorField.Option("Автомобиль", car, cars.ToArray(), true));
+        fields.Add(EditorField.Option(L10n.Get("label.vehicle"), car, cars.ToArray(), true));
         fields.Add(EditorField.Number(
-            lastKm.Length > 0 ? "Пробег, км (последняя запись)" : "Пробег, км",
+            lastKm.Length > 0 ? L10n.Get("label.odometer_last_record") : L10n.Get("label.odometer_km"),
             lastKm, true));
-        fields.Add(EditorField.Number("Литры", "", true));
-        fields.Add(EditorField.Number("Стоимость, " + Cur(), "", true));
-        fields.Add(EditorField.Number("Цена за литр, " + Cur(), lastPrice, false));
-        fields.Add(EditorField.Check("Полный бак", lastFull));
+        fields.Add(EditorField.Number(L10n.Get("label.liters"), "", true));
+        fields.Add(EditorField.Number((L10n.Get("label.cost_comma") + " ") + Cur(), "", true));
+        fields.Add(EditorField.Number((L10n.Get("label.price_per_liter_comma") + " ") + Cur(), lastPrice, false));
+        fields.Add(EditorField.Check(L10n.Get("label.full_tank"), lastFull));
 
         Func<string[], string> mileageConfirm = delegate(string[] values)
         {
@@ -1598,11 +1598,11 @@ public sealed class MainActivity : Activity
             return MileageWarningForSave(fuelLike, "fuel.dat", -1);
         };
 
-        RenderEditor("Быстрая заправка", fields,
+        RenderEditor(L10n.Get("button.quick_fuel"), fields,
             delegate(string[] values)
             {
                 if (values == null || values.Length < 6)
-                    throw new InvalidOperationException("Заполните все обязательные поля.");
+                    throw new InvalidOperationException(L10n.Get("error.fill_all_required"));
                 decimal km;
                 decimal liters;
                 decimal cost;
@@ -1613,7 +1613,7 @@ public sealed class MainActivity : Activity
                     ((!String.IsNullOrEmpty(values[4])) &&
                         (!TryNumber(values[4], out price) || price <= 0)))
                     throw new InvalidOperationException(
-                        "Проверьте данные: пробег не меньше 0, литры и стоимость больше 0, цена больше 0.");
+                        L10n.Get("error.check_fuel_values"));
                 string[] fuel = BuildQuickFuelRow(values);
                 fuel = NormalizeFuelValues(fuel);
                 ExpenseDataStore.AddRecord(DataDirectory, "fuel.dat", fuel);
@@ -1690,30 +1690,30 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте или создайте данные.");
+            ShowMessage(L10n.Get("error.import_or_create_first"));
             return;
         }
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
         if (cars.Count == 0)
         {
-            ShowMessage("Нет автомобилей.");
+            ShowMessage(L10n.Get("error.no_cars"));
             return;
         }
         string current = ToSettings.GetDefaultCar(DataDirectory);
         List<string> labels = new List<string>();
-        labels.Add("(не задан)");
+        labels.Add(L10n.Get("common.not_set"));
         labels.AddRange(cars);
         int selected = 0;
         for (int i = 0; i < cars.Count; i++)
             if (String.Equals(cars[i], current, StringComparison.OrdinalIgnoreCase))
                 selected = i + 1;
         new AlertDialog.Builder(this)
-            .SetTitle("Авто по умолчанию")
+            .SetTitle(L10n.Get("label.default_car_full"))
             .SetSingleChoiceItems(labels.ToArray(), selected, delegate(object sender, DialogClickEventArgs e)
             {
                 selected = e.Which;
             })
-            .SetPositiveButton("Сохранить", delegate
+            .SetPositiveButton(L10n.Get("button.save"), delegate
             {
                 string name = selected <= 0 ? "" : cars[selected - 1];
                 ToSettings.SetDefaultCar(DataDirectory, name);
@@ -1723,10 +1723,10 @@ public sealed class MainActivity : Activity
                     RefreshRecords();
                 }
                 ShowMessage(name.Length == 0
-                    ? "Авто по умолчанию сброшен."
-                    : "Авто по умолчанию: " + name);
+                    ? L10n.Get("msg.default_car_cleared")
+                    : (L10n.Get("msg.default_car_set") + " ") + name);
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
@@ -1735,7 +1735,7 @@ public sealed class MainActivity : Activity
         int index = selectedRecordPosition;
         if (index < 0 || index >= visibleRows.Count)
         {
-            ShowMessage("Нажмите на запись в списке, чтобы выбрать её.");
+            ShowMessage(L10n.Get("hint.tap_record_to_select"));
             return;
         }
         ShowRecordEditor(true, visibleRows[index], visibleIndexes[index]);
@@ -1746,7 +1746,7 @@ public sealed class MainActivity : Activity
         int index = selectedRecordPosition;
         if (index < 0 || index >= visibleRows.Count)
         {
-            ShowMessage("Нажмите на запись в списке, чтобы выбрать её.");
+            ShowMessage(L10n.Get("hint.tap_record_to_select"));
             return;
         }
         ConfirmDelete(visibleRows[index], visibleIndexes[index]);
@@ -1766,67 +1766,67 @@ public sealed class MainActivity : Activity
         List<EditorField> fields = new List<EditorField>();
         if (selectedSection == Fuel)
         {
-            fields.Add(EditorField.Date("Дата", row[0], true));
-            fields.Add(EditorField.Option("Автомобиль", row[1],
+            fields.Add(EditorField.Date(L10n.Get("label.date"), row[0], true));
+            fields.Add(EditorField.Option(L10n.Get("label.vehicle"), row[1],
                 ExpenseDataStore.LoadCarNames(DataDirectory).ToArray(), true));
             fields.Add(EditorField.Number(
                 !editing && row[2].Length > 0
-                    ? "Пробег, км (последняя запись)"
-                    : "Пробег, км",
+                    ? L10n.Get("label.odometer_last_record")
+                    : L10n.Get("label.odometer_km"),
                 row[2], true));
-            fields.Add(EditorField.Number("Литры", row[3], true));
-            fields.Add(EditorField.Number("Стоимость, " + Cur(), row[4], true));
-            fields.Add(EditorField.Number("Цена за литр, " + Cur(), FieldAt(row, 5), false));
-            fields.Add(EditorField.Text("Комментарий", FieldAt(row, 6), false));
+            fields.Add(EditorField.Number(L10n.Get("label.liters"), row[3], true));
+            fields.Add(EditorField.Number((L10n.Get("label.cost_comma") + " ") + Cur(), row[4], true));
+            fields.Add(EditorField.Number((L10n.Get("label.price_per_liter_comma") + " ") + Cur(), FieldAt(row, 5), false));
+            fields.Add(EditorField.Text(L10n.Get("label.comment"), FieldAt(row, 6), false));
             string fullTank = FieldAt(row, 7);
             if (fullTank.Length == 0)
                 fullTank = "1";
-            fields.Add(EditorField.Check("Полный бак", fullTank != "0"));
+            fields.Add(EditorField.Check(L10n.Get("label.full_tank"), fullTank != "0"));
             string purpose = ExpenseDataCodec.GetPurpose(row);
-            fields.Add(EditorField.Option("Цель (Личный/Работа)", purpose,
+            fields.Add(EditorField.Option(L10n.Get("label.purpose_hint"), purpose,
                 PurposeFieldOptions(purpose), false));
             string station = ExpenseDataCodec.GetStation(row);
-            fields.Add(EditorField.Suggest("АЗС / бренд", station,
+            fields.Add(EditorField.Suggest(L10n.Get("label.station_brand"), station,
                 StationFieldOptions(station), false));
         }
         else if (selectedSection == Repairs)
         {
-            fields.Add(EditorField.Date("Дата", row[0], true));
-            fields.Add(EditorField.Option("Автомобиль", row[1],
+            fields.Add(EditorField.Date(L10n.Get("label.date"), row[0], true));
+            fields.Add(EditorField.Option(L10n.Get("label.vehicle"), row[1],
                 ExpenseDataStore.LoadCarNames(DataDirectory).ToArray(), true));
             fields.Add(EditorField.Number(
                 !editing && row[2].Length > 0
-                    ? "Пробег, км (последняя запись)"
-                    : "Пробег, км",
+                    ? L10n.Get("label.odometer_last_record")
+                    : L10n.Get("label.odometer_km"),
                 row[2], false));
             List<string> categories = ExpenseDataStore.LoadRepairCategories(DataDirectory);
-            fields.Add(EditorField.Option("Категория", row[3],
+            fields.Add(EditorField.Option(L10n.Get("label.category"), row[3],
                 categories.ToArray(), true));
-            fields.Add(EditorField.Text("Товар / деталь", row[4], true));
-            fields.Add(EditorField.Text("Наименование", row[5], false));
-            fields.Add(EditorField.Number("Количество", row[6], true));
-            fields.Add(EditorField.Number("Сумма, " + Cur(), row[7], true));
-            fields.Add(EditorField.Text("Комментарий", row[8], false, true));
+            fields.Add(EditorField.Text(L10n.Get("label.product_part"), row[4], true));
+            fields.Add(EditorField.Text(L10n.Get("label.item_name"), row[5], false));
+            fields.Add(EditorField.Number(L10n.Get("label.quantity"), row[6], true));
+            fields.Add(EditorField.Number((L10n.Get("label.amount_comma") + " ") + Cur(), row[7], true));
+            fields.Add(EditorField.Text(L10n.Get("label.comment"), row[8], false, true));
         }
         else if (selectedSection == Expenses)
         {
             string[] content = RecordIds.StripId(row);
-            fields.Add(EditorField.Date("Дата", FieldAt(content, 0), true));
-            fields.Add(EditorField.Option("Автомобиль", FieldAt(content, 1),
+            fields.Add(EditorField.Date(L10n.Get("label.date"), FieldAt(content, 0), true));
+            fields.Add(EditorField.Option(L10n.Get("label.vehicle"), FieldAt(content, 1),
                 ExpenseDataStore.LoadCarNames(DataDirectory).ToArray(), true));
             List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
-            fields.Add(EditorField.Option("Категория", FieldAt(content, 2),
+            fields.Add(EditorField.Option(L10n.Get("label.category"), FieldAt(content, 2),
                 categories.ToArray(), true));
-            fields.Add(EditorField.Text("Название", FieldAt(content, 3), true));
-            fields.Add(EditorField.Number("Сумма, " + Cur(), FieldAt(content, 4), true));
-            fields.Add(EditorField.Text("Комментарий", FieldAt(content, 5), false, true));
+            fields.Add(EditorField.Text(L10n.Get("label.name"), FieldAt(content, 3), true));
+            fields.Add(EditorField.Number((L10n.Get("label.amount_comma") + " ") + Cur(), FieldAt(content, 4), true));
+            fields.Add(EditorField.Text(L10n.Get("label.comment"), FieldAt(content, 5), false, true));
         }
         else
         {
-            fields.Add(EditorField.Month("Месяц", row[0], true));
+            fields.Add(EditorField.Month(L10n.Get("label.month"), row[0], true));
             for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length; i++)
                 fields.Add(EditorField.Number(
-                    ExpenseDataStore.UtilityLabels[i] + ", " + Cur(), row[i + 1], false));
+                    ExpenseDataStore.GetUtilityLabel(i) + ", " + Cur(), row[i + 1], false));
         }
 
         Func<string[], string> mileageConfirm = null;
@@ -1842,11 +1842,11 @@ public sealed class MainActivity : Activity
             : selectedSection == Repairs ? RecordTemplates.TypeRepair
             : selectedSection == Expenses ? RecordTemplates.TypeExpense
             : null;
-        RenderEditor(editing ? "Изменить запись" : "Новая запись", fields,
+        RenderEditor(editing ? L10n.Get("title.edit_record") : L10n.Get("title.new_record"), fields,
             delegate(string[] values)
             {
                 if (selectedSection == Utilities && !HasUtilityAmount(values))
-                    throw new InvalidOperationException("Введите хотя бы одну сумму.");
+                    throw new InvalidOperationException(L10n.Get("error.enter_at_least_one_amount"));
                 if (selectedSection == Fuel)
                     values = NormalizeFuelValues(values);
                 if (supportReceipt && !String.IsNullOrEmpty(receiptId))
@@ -2032,10 +2032,10 @@ public sealed class MainActivity : Activity
             return null;
         string x = lastKnown.ToString("0.##", CultureInfo.InvariantCulture);
         if (newKm < lastKnown)
-            return "Пробег меньше предыдущего (" + x + "). Сохранить всё равно?";
+            return L10n.Get("warn.odometer_lower_open") + x + L10n.Get("confirm.save_anyway_suffix");
         if (newKm - lastKnown > 5000m)
-            return "Пробег вырос более чем на 5000 км с предыдущего (" + x +
-                "). Сохранить всё равно?";
+            return L10n.Get("warn.odometer_jump_open") + x +
+                L10n.Get("confirm.save_anyway_suffix");
         return null;
     }
 
@@ -2043,11 +2043,11 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала загрузите или создайте данные.");
+            ShowMessage(L10n.Get("error.load_or_create_first"));
             return;
         }
         EditText queryBox = new EditText(this);
-        queryBox.Hint = "Комментарий, название, категория…";
+        queryBox.Hint = L10n.Get("hint.search_query");
         queryBox.SetSingleLine(true);
         LinearLayout layout = new LinearLayout(this);
         layout.Orientation = Orientation.Vertical;
@@ -2063,9 +2063,9 @@ public sealed class MainActivity : Activity
         resultsList.Adapter = adapter;
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-            .SetTitle("Поиск")
+            .SetTitle(L10n.Get("title.search"))
             .SetView(layout)
-            .SetNegativeButton("Закрыть", delegate { })
+            .SetNegativeButton(L10n.Get("button.close"), delegate { })
             .Create();
 
         Action runSearch = delegate
@@ -2108,7 +2108,7 @@ public sealed class MainActivity : Activity
     {
         string q = query.ToLowerInvariant();
         List<SearchHit> hits = new List<SearchHit>();
-        CollectSearchHits(hits, Fuel, "fuel.dat", "Заправка", q, delegate(string[] row)
+        CollectSearchHits(hits, Fuel, "fuel.dat", L10n.Get("label.fuel_entry"), q, delegate(string[] row)
         {
             return FieldAt(row, 6) + " " + ExpenseDataCodec.GetPurpose(row) + " " +
                 ExpenseDataCodec.GetStation(row) + " " + FieldAt(row, 1);
@@ -2128,7 +2128,7 @@ public sealed class MainActivity : Activity
         {
             StringBuilder sb = new StringBuilder(FieldAt(row, 0));
             for (int i = 0; i < ExpenseDataStore.UtilityLabels.Length && i + 1 < row.Length; i++)
-                sb.Append(' ').Append(ExpenseDataStore.UtilityLabels[i]).Append(' ').Append(row[i + 1]);
+                sb.Append(' ').Append(ExpenseDataStore.GetUtilityLabel(i)).Append(' ').Append(row[i + 1]);
             return sb.ToString();
         });
         return hits;
@@ -2174,24 +2174,24 @@ public sealed class MainActivity : Activity
             recordList.SetSelection(visiblePos);
             UpdateRecordActions();
             new AlertDialog.Builder(this)
-                .SetTitle("Запись")
+                .SetTitle(L10n.Get("label.record"))
                 .SetMessage(FormatDetails(visibleRow))
-                .SetPositiveButton("Закрыть", delegate { })
-                .SetNeutralButton("Изменить", delegate
+                .SetPositiveButton(L10n.Get("button.close"), delegate { })
+                .SetNeutralButton(L10n.Get("button.edit"), delegate
                 {
                     ShowRecordEditor(true, visibleRow, sourceIdx);
                 })
                 .Show();
             return;
         }
-        ShowMessage("Запись найдена, но скрыта фильтром. Сбросьте фильтр или смените авто.");
+        ShowMessage(L10n.Get("msg.record_hidden_by_filter"));
     }
 
     private void ShowDataIntegrity()
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала загрузите или создайте данные.");
+            ShowMessage(L10n.Get("error.load_or_create_first"));
             return;
         }
         DataIntegrity.Report report;
@@ -2201,28 +2201,28 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось проверить данные: " + ex.Message);
+            ShowMessage((L10n.Get("error.integrity_check_failed") + " ") + ex.Message);
             return;
         }
         string text = DataIntegrity.Format(report);
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
-            .SetTitle("Проверка данных")
+            .SetTitle(L10n.Get("button.data_integrity"))
             .SetMessage(text)
-            .SetNegativeButton("Закрыть", delegate { });
+            .SetNegativeButton(L10n.Get("button.close"), delegate { });
         if (report.CanSimpleFix)
         {
-            builder.SetPositiveButton("Исправить простое", (sender, args) =>
+            builder.SetPositiveButton(L10n.Get("button.fix_simple"), (sender, args) =>
             {
                 try
                 {
                     int n = DataIntegrity.ApplySimpleFixes(DataDirectory, report);
                     ShowMessage(n > 0
-                        ? "Добавлено категорий: " + n + "."
-                        : "Нечего исправлять.");
+                        ? (L10n.Get("msg.categories_added") + " ") + n + "."
+                        : L10n.Get("integrity.nothing_to_fix"));
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Не удалось исправить: " + ex.Message);
+                    ShowMessage((L10n.Get("error.fix_failed") + " ") + ex.Message);
                 }
             });
         }
@@ -2233,7 +2233,7 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала загрузите или создайте данные.");
+            ShowMessage(L10n.Get("error.load_or_create_first"));
             return;
         }
         List<DuplicateFinder.Group> groups;
@@ -2243,12 +2243,12 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось найти дубликаты: " + ex.Message);
+            ShowMessage((L10n.Get("error.find_duplicates_failed") + " ") + ex.Message);
             return;
         }
         if (groups.Count == 0)
         {
-            ShowMessage("Дубликатов не найдено.");
+            ShowMessage(L10n.Get("msg.no_duplicates"));
             return;
         }
 
@@ -2262,14 +2262,14 @@ public sealed class MainActivity : Activity
         }
 
         new AlertDialog.Builder(this)
-            .SetTitle("Дубликаты")
+            .SetTitle(L10n.Get("button.duplicates"))
             .SetItems(labels.ToArray(), (sender, args) =>
             {
                 if (args.Which < 0 || args.Which >= labelGroups.Count)
                     return;
                 ShowDuplicateGroup(labelGroups[args.Which]);
             })
-            .SetNegativeButton("Закрыть", delegate { })
+            .SetNegativeButton(L10n.Get("button.close"), delegate { })
             .Show();
     }
 
@@ -2283,9 +2283,9 @@ public sealed class MainActivity : Activity
             sb.Append(DuplicateFinder.FormatRow(group.Rows[i]));
         }
         new AlertDialog.Builder(this)
-            .SetTitle("Группа дубликатов")
+            .SetTitle(L10n.Get("title.duplicate_group"))
             .SetMessage(sb.ToString())
-            .SetPositiveButton("Удалить лишние", (sender, args) =>
+            .SetPositiveButton(L10n.Get("button.delete_extra"), (sender, args) =>
             {
                 try
                 {
@@ -2296,14 +2296,14 @@ public sealed class MainActivity : Activity
                     for (int i = toDelete.Count - 1; i >= 0; i--)
                         ExpenseDataStore.DeleteRecord(DataDirectory, group.FileName, toDelete[i]);
                     RefreshRecords();
-                    ShowMessage("Лишние записи удалены (оставлена первая).");
+                    ShowMessage(L10n.Get("msg.extra_records_deleted_keep_first"));
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Не удалось удалить: " + ex.Message);
+                    ShowMessage((L10n.Get("error.delete_failed") + " ") + ex.Message);
                 }
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
@@ -2311,7 +2311,7 @@ public sealed class MainActivity : Activity
     {
         if (syncActive)
         {
-            ShowMessage("Дождитесь окончания синхронизации.");
+            ShowMessage(L10n.Get("error.wait_sync_finish"));
             return;
         }
         if (!IsCompleteData(DataDirectory))
@@ -2322,8 +2322,8 @@ public sealed class MainActivity : Activity
         List<string> cars = ExpenseDataStore.LoadCarNames(DataDirectory);
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
             .SetTitle(L10n.Get("tab.vehicles"))
-            .SetPositiveButton("Закрыть", delegate { })
-            .SetNeutralButton("Добавить", delegate { AddCar(); });
+            .SetPositiveButton(L10n.Get("button.close"), delegate { })
+            .SetNeutralButton(L10n.Get("button.add"), delegate { AddCar(); });
         if (cars.Count > 0)
         {
             string[] names = cars.ToArray();
@@ -2339,7 +2339,7 @@ public sealed class MainActivity : Activity
     {
         new AlertDialog.Builder(this)
             .SetTitle(name)
-            .SetItems(new string[] { "Выбрать", "Свойства", "Избранный", "Лента", "Переименовать", "Удалить" },
+            .SetItems(new string[] { L10n.Get("button.choose"), L10n.Get("title.properties"), L10n.Get("label.favorite"), L10n.Get("label.timeline"), L10n.Get("button.rename"), L10n.Get("button.delete") },
                 delegate(object sender, DialogClickEventArgs e)
                 {
                     if (e.Which == 0)
@@ -2353,7 +2353,7 @@ public sealed class MainActivity : Activity
                     {
                         ToSettings.SetDefaultCar(DataDirectory, name);
                         SetCurrentCar(name);
-                        ShowMessage("Избранный автомобиль: " + name);
+                        ShowMessage((L10n.Get("label.favorite_car_colon") + " ") + name);
                         RefreshRecords();
                     }
                     else if (e.Which == 3)
@@ -2369,13 +2369,13 @@ public sealed class MainActivity : Activity
     private void EditCarPassport(string carName)
     {
         CarPassport meta = CarsMeta.Get(DataDirectory, carName);
-        RenderEditor("Свойства · " + carName, new List<EditorField>
+        RenderEditor((L10n.Get("title.properties_dot") + " ") + carName, new List<EditorField>
         {
-            EditorField.Text("Год", meta.Year, false),
-            EditorField.Text("Госномер", meta.Plate, false),
+            EditorField.Text(L10n.Get("label.year"), meta.Year, false),
+            EditorField.Text(L10n.Get("label.plate"), meta.Plate, false),
             EditorField.Text("VIN", meta.Vin, false),
-            EditorField.Number("Объём бака, л", meta.TankLiters, false),
-            EditorField.Text("Заметка", meta.Note, false, true)
+            EditorField.Number(L10n.Get("label.tank_capacity_l"), meta.TankLiters, false),
+            EditorField.Text(L10n.Get("label.note"), meta.Note, false, true)
         }, delegate(string[] values)
         {
             meta.CarName = carName;
@@ -2393,7 +2393,7 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте или создайте данные.");
+            ShowMessage(L10n.Get("error.import_or_create_first"));
             return;
         }
         try
@@ -2407,14 +2407,14 @@ public sealed class MainActivity : Activity
             body.SetPadding(Dp(12), Dp(8), Dp(12), Dp(8));
             scroll.AddView(body);
             new AlertDialog.Builder(this)
-                .SetTitle("Лента · " + carName)
+                .SetTitle((L10n.Get("title.timeline_dot") + " ") + carName)
                 .SetView(scroll)
-                .SetPositiveButton("Закрыть", delegate { })
+                .SetPositiveButton(L10n.Get("button.close"), delegate { })
                 .Show();
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось построить ленту: " + ex.Message);
+            ShowMessage((L10n.Get("error.build_timeline_failed") + " ") + ex.Message);
         }
     }
 
@@ -2422,7 +2422,7 @@ public sealed class MainActivity : Activity
     {
         if (syncActive)
         {
-            ShowMessage("Дождитесь окончания синхронизации.");
+            ShowMessage(L10n.Get("error.wait_sync_finish"));
             return;
         }
         if (!IsCompleteData(DataDirectory))
@@ -2432,9 +2432,9 @@ public sealed class MainActivity : Activity
         }
         List<EditorField> fields = new List<EditorField>
         {
-            EditorField.Text("Название автомобиля", "", true)
+            EditorField.Text(L10n.Get("label.car_name"), "", true)
         };
-        RenderEditor("Добавить автомобиль", fields,
+        RenderEditor(L10n.Get("title.add_car"), fields,
             delegate(string[] values)
             {
                 ExpenseDataStore.AddCar(DataDirectory, values[0]);
@@ -2445,9 +2445,9 @@ public sealed class MainActivity : Activity
 
     private void RenameCar(string oldName)
     {
-        RenderEditor("Переименовать автомобиль", new List<EditorField>
+        RenderEditor(L10n.Get("title.rename_car"), new List<EditorField>
         {
-            EditorField.Text("Новое название", oldName, true)
+            EditorField.Text(L10n.Get("label.new_name"), oldName, true)
         }, delegate(string[] values)
         {
             string newName = values[0].Trim();
@@ -2469,7 +2469,7 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось удалить автомобиль: " + ex.Message);
+            ShowMessage((L10n.Get("error.delete_car_failed") + " ") + ex.Message);
         }
     }
 
@@ -2477,19 +2477,19 @@ public sealed class MainActivity : Activity
     {
         if (syncActive)
         {
-            ShowMessage("Дождитесь окончания синхронизации.");
+            ShowMessage(L10n.Get("error.wait_sync_finish"));
             return;
         }
         if (IsCompleteData(DataDirectory))
         {
-            ShowMessage("Данные уже есть. Добавляйте записи через «Добавить».");
+            ShowMessage(L10n.Get("msg.data_exists_use_add"));
             return;
         }
         List<EditorField> fields = new List<EditorField>
         {
-            EditorField.Text("Название первого автомобиля", "", true)
+            EditorField.Text(L10n.Get("label.first_car_name"), "", true)
         };
-        RenderEditor("Начать с нуля", fields,
+        RenderEditor(L10n.Get("button.start_fresh"), fields,
             delegate(string[] values)
             {
                 string name = values[0].Trim();
@@ -2500,7 +2500,7 @@ public sealed class MainActivity : Activity
                     .Edit().PutString("selectedSection", selectedSection).Apply();
                 RefreshRecords();
                 Toast.MakeText(this,
-                    "Готово. Можно добавлять заправки и ремонт.",
+                    L10n.Get("msg.ready_add_fuel_repairs"),
                     ToastLength.Long).Show();
             });
     }
@@ -2532,14 +2532,14 @@ public sealed class MainActivity : Activity
             AddReceiptControls(form, receiptRecordId);
 
         LinearLayout buttons = NewRow();
-        Button saveButton = CreateButton("Сохранить", null);
-        Button cancelButton = CreateButton("Отмена", null);
+        Button saveButton = CreateButton(L10n.Get("button.save"), null);
+        Button cancelButton = CreateButton(L10n.Get("button.cancel"), null);
         buttons.AddView(saveButton, WeightedButton());
         buttons.AddView(cancelButton, WeightedButton());
         form.AddView(buttons, MatchWrap());
         if (!String.IsNullOrEmpty(templateType))
         {
-            Button templateButton = CreateButton("Сохранить как шаблон", null);
+            Button templateButton = CreateButton(L10n.Get("button.save_template"), null);
             templateButton.Click += delegate
             {
                 string validationError;
@@ -2581,17 +2581,17 @@ public sealed class MainActivity : Activity
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Не удалось сохранить: " + ex.Message);
+                    ShowMessage((L10n.Get("error.save_failed") + " ") + ex.Message);
                 }
             };
             string confirm = confirmMessage != null ? confirmMessage(values) : null;
             if (!String.IsNullOrEmpty(confirm))
             {
                 new AlertDialog.Builder(this)
-                    .SetTitle("Пробег")
+                    .SetTitle(L10n.Get("label.odometer"))
                     .SetMessage(confirm)
-                    .SetPositiveButton("Да", delegate { commit(); })
-                    .SetNegativeButton("Нет", delegate { })
+                    .SetPositiveButton(L10n.Get("button.yes"), delegate { commit(); })
+                    .SetNegativeButton(L10n.Get("button.no"), delegate { })
                     .Show();
                 return;
             }
@@ -2610,7 +2610,7 @@ public sealed class MainActivity : Activity
     {
         editorReceiptId = recordId;
         TextView label = new TextView(this);
-        label.Text = "Фото чека";
+        label.Text = L10n.Get("button.attach_receipt");
         label.SetTextColor(AndroidColor.Rgb(35, 51, 70));
         label.SetPadding(0, Dp(8), 0, Dp(4));
         form.AddView(label, MatchWrap());
@@ -2621,7 +2621,7 @@ public sealed class MainActivity : Activity
         LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(Dp(72), Dp(72));
         thumbParams.RightMargin = Dp(8);
         row.AddView(editorReceiptThumb, thumbParams);
-        Button photoButton = CreateButton("Фото", null);
+        Button photoButton = CreateButton(L10n.Get("button.photo"), null);
         photoButton.Click += delegate { ChooseReceiptSource(); };
         row.AddView(photoButton, WeightedButton());
         form.AddView(row, MatchWrap());
@@ -2632,12 +2632,12 @@ public sealed class MainActivity : Activity
     {
         if (String.IsNullOrEmpty(editorReceiptId))
         {
-            ShowMessage("Сначала откройте запись для фото.");
+            ShowMessage(L10n.Get("error.open_record_for_photo_first"));
             return;
         }
         new AlertDialog.Builder(this)
-            .SetTitle("Фото чека")
-            .SetItems(new string[] { "Камера", "Галерея", "Удалить фото" },
+            .SetTitle(L10n.Get("button.attach_receipt"))
+            .SetItems(new string[] { L10n.Get("button.camera"), L10n.Get("button.gallery"), L10n.Get("button.delete_receipt") },
                 delegate(object sender, DialogClickEventArgs e)
                 {
                     if (e.Which == 0)
@@ -2650,7 +2650,7 @@ public sealed class MainActivity : Activity
                         RefreshReceiptThumbnail();
                     }
                 })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
@@ -2666,7 +2666,7 @@ public sealed class MainActivity : Activity
                 {
                     RequestPermissions(new string[] { global::Android.Manifest.Permission.Camera }, 110);
                     Toast.MakeText(this,
-                        "Разрешите камеру и нажмите «Фото» снова.",
+                        L10n.Get("error.allow_camera_retry"),
                         ToastLength.Long).Show();
                     return;
                 }
@@ -2680,7 +2680,7 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Камера недоступна: " + ex.Message);
+            ShowMessage((L10n.Get("error.camera_unavailable") + " ") + ex.Message);
         }
     }
 
@@ -2689,7 +2689,7 @@ public sealed class MainActivity : Activity
         Intent intent = new Intent(Intent.ActionGetContent);
         intent.AddCategory(Intent.CategoryOpenable);
         intent.SetType("image/*");
-        StartActivityForResult(Intent.CreateChooser(intent, "Фото чека"), PhotoGalleryRequest);
+        StartActivityForResult(Intent.CreateChooser(intent, L10n.Get("button.attach_receipt")), PhotoGalleryRequest);
     }
 
     private void SaveReceiptFromUri(Uri uri)
@@ -2698,11 +2698,11 @@ public sealed class MainActivity : Activity
             return;
         Stream input = ContentResolver.OpenInputStream(uri);
         if (input == null)
-            throw new IOException("Не удалось открыть изображение.");
+            throw new IOException(L10n.Get("error.open_image_failed"));
         using (input)
             ReceiptStore.SaveJpegFromStream(DataDirectory, editorReceiptId, input);
         RefreshReceiptThumbnail();
-        Toast.MakeText(this, "Фото чека сохранено.", ToastLength.Short).Show();
+        Toast.MakeText(this, L10n.Get("msg.receipt_saved"), ToastLength.Short).Show();
     }
 
     private void SaveReceiptFromCamera(Intent data)
@@ -2716,7 +2716,7 @@ public sealed class MainActivity : Activity
             try { cameraCaptureFile.Delete(); } catch { }
             cameraCaptureFile = null;
             RefreshReceiptThumbnail();
-            Toast.MakeText(this, "Фото чека сохранено.", ToastLength.Short).Show();
+            Toast.MakeText(this, L10n.Get("msg.receipt_saved"), ToastLength.Short).Show();
             return;
         }
         if (data != null && data.Extras != null)
@@ -2727,7 +2727,7 @@ public sealed class MainActivity : Activity
             {
                 ReceiptStore.SaveJpegFromBitmap(DataDirectory, editorReceiptId, bitmap);
                 RefreshReceiptThumbnail();
-                Toast.MakeText(this, "Фото чека сохранено.", ToastLength.Short).Show();
+                Toast.MakeText(this, L10n.Get("msg.receipt_saved"), ToastLength.Short).Show();
             }
         }
     }
@@ -2837,7 +2837,7 @@ public sealed class MainActivity : Activity
             if (!field.Required)
             {
                 CheckBox enabled = new CheckBox(this);
-                enabled.Text = "Указать";
+                enabled.Text = L10n.Get("button.specify");
                 enabled.Checked = field.Value.Length > 0;
                 dateButton.Enabled = enabled.Checked;
                 enabled.Click += delegate { dateButton.Enabled = enabled.Checked; };
@@ -2915,7 +2915,7 @@ public sealed class MainActivity : Activity
 
             if (field.Required && values[i].Length == 0)
             {
-                error = field.Label + " — обязательное поле.";
+                error = field.Label + (" " + L10n.Get("error.required_field_suffix"));
                 return values;
             }
             if (values[i].Length == 0)
@@ -2926,7 +2926,7 @@ public sealed class MainActivity : Activity
                 decimal number;
                 if (!TryNumber(values[i], out number) || number < 0)
                 {
-                    error = field.Label + " — введите неотрицательное число.";
+                    error = field.Label + (" " + L10n.Get("error.enter_non_negative_suffix"));
                     return values;
                 }
                 values[i] = number.ToString(CultureInfo.InvariantCulture);
@@ -2935,14 +2935,14 @@ public sealed class MainActivity : Activity
                 !DateTime.TryParseExact(values[i], "yyyy-MM-dd", CultureInfo.InvariantCulture,
                     DateTimeStyles.None, out DateTime date))
             {
-                error = "Выберите корректную дату.";
+                error = L10n.Get("error.select_valid_date");
                 return values;
             }
             else if (field.Kind == "month" &&
                 !DateTime.TryParseExact(values[i] + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture,
                     DateTimeStyles.None, out DateTime month))
             {
-                error = "Выберите корректный месяц.";
+                error = L10n.Get("error.select_valid_month");
                 return values;
             }
         }
@@ -2960,17 +2960,17 @@ public sealed class MainActivity : Activity
     private void ConfirmDelete(string[] row, int sourceIndex)
     {
         string description = selectedSection == Fuel
-            ? row[0] + ", " + row[2] + " км, " + row[4] + " " + Cur()
+            ? row[0] + ", " + row[2] + (" " + L10n.Get("unit.km_comma") + " ") + row[4] + " " + Cur()
             : selectedSection == Repairs
                 ? row[0] + ", " + row[3] + ": " + ShortText(row[4], 30)
                 : selectedSection == Expenses
                     ? row[0] + ", " + FieldAt(row, 2) + ": " + ShortText(FieldAt(row, 3), 30)
-                    : "коммунальные платежи за " + row[0];
+                    : (L10n.Get("confirm.utility_month_delete_prefix") + " ") + row[0];
         new AlertDialog.Builder(this)
-            .SetTitle("Удалить запись?")
+            .SetTitle(L10n.Get("confirm.delete_record"))
             .SetMessage(description)
-            .SetNegativeButton("Отмена", delegate { })
-            .SetPositiveButton("Удалить", delegate
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
+            .SetPositiveButton(L10n.Get("button.delete"), delegate
             {
                 try
                 {
@@ -2979,7 +2979,7 @@ public sealed class MainActivity : Activity
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Не удалось удалить запись: " + ex.Message);
+                    ShowMessage((L10n.Get("error.delete_record_failed") + " ") + ex.Message);
                 }
             })
             .Show();
@@ -2991,17 +2991,17 @@ public sealed class MainActivity : Activity
         categories.AddRange(ExpenseDataStore.LoadRepairCategories(DataDirectory));
         List<EditorField> fields = new List<EditorField>
         {
-            EditorField.Option("Категория", filterCategory, categories.ToArray(), true),
-            EditorField.Date("Дата с", filterDateFrom, false),
-            EditorField.Date("Дата по", filterDateTo, false),
-            EditorField.Text("Название / товар", filterText, false)
+            EditorField.Option(L10n.Get("label.category"), filterCategory, categories.ToArray(), true),
+            EditorField.Date(L10n.Get("label.date_from"), filterDateFrom, false),
+            EditorField.Date(L10n.Get("label.date_to"), filterDateTo, false),
+            EditorField.Text(L10n.Get("label.name_or_item"), filterText, false)
         };
-        RenderEditor("Фильтр ремонта", fields,
+        RenderEditor(L10n.Get("title.repair_filter"), fields,
             delegate(string[] values)
             {
                 if (values[1].Length > 0 && values[2].Length > 0 &&
                     String.CompareOrdinal(values[1], values[2]) > 0)
-                    throw new InvalidOperationException("Начало периода не может быть позже его окончания.");
+                    throw new InvalidOperationException(L10n.Get("error.period_start_after_end"));
                 filterCategory = values[0];
                 filterDateFrom = values[1];
                 filterDateTo = values[2];
@@ -3021,20 +3021,20 @@ public sealed class MainActivity : Activity
         }
         List<EditorField> fields = new List<EditorField>
         {
-            EditorField.Date("Дата с", fuelFilterDateFrom, false),
-            EditorField.Date("Дата по", fuelFilterDateTo, false),
-            EditorField.Text("Пробег / литры / стоимость", fuelFilterText, false),
-            EditorField.Option("Цель", fuelFilterPurpose,
+            EditorField.Date(L10n.Get("label.date_from"), fuelFilterDateFrom, false),
+            EditorField.Date(L10n.Get("label.date_to"), fuelFilterDateTo, false),
+            EditorField.Text(L10n.Get("error.odometer_liters_cost"), fuelFilterText, false),
+            EditorField.Option(L10n.Get("label.purpose"), fuelFilterPurpose,
                 PurposeFieldOptions(fuelFilterPurpose), false),
-            EditorField.Option("АЗС / бренд", fuelFilterStation,
+            EditorField.Option(L10n.Get("label.station_brand"), fuelFilterStation,
                 stationFilterOptions.ToArray(), false)
         };
-        RenderEditor("Фильтр заправок", fields,
+        RenderEditor(L10n.Get("title.fuel_filter"), fields,
             delegate(string[] values)
             {
                 if (values[0].Length > 0 && values[1].Length > 0 &&
                     String.CompareOrdinal(values[0], values[1]) > 0)
-                    throw new InvalidOperationException("Начало периода не может быть позже его окончания.");
+                    throw new InvalidOperationException(L10n.Get("error.period_start_after_end"));
                 fuelFilterDateFrom = values[0];
                 fuelFilterDateTo = values[1];
                 fuelFilterText = values[2];
@@ -3056,14 +3056,14 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            ShowMessage(L10n.Get("error.import_kpk_first"));
             return;
         }
         List<string> categories = ExpenseDataStore.LoadRepairCategories(DataDirectory);
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
-            .SetTitle("Категории ремонта")
-            .SetPositiveButton("Закрыть", delegate { })
-            .SetNeutralButton("Добавить", delegate { AddRepairCategory(); });
+            .SetTitle(L10n.Get("title.repair_categories"))
+            .SetPositiveButton(L10n.Get("button.close"), delegate { })
+            .SetNeutralButton(L10n.Get("button.add"), delegate { AddRepairCategory(); });
         if (categories.Count > 0)
         {
             string[] names = categories.ToArray();
@@ -3079,7 +3079,7 @@ public sealed class MainActivity : Activity
     {
         new AlertDialog.Builder(this)
             .SetTitle(name)
-            .SetItems(new string[] { "Переименовать", "Удалить" },
+            .SetItems(new string[] { L10n.Get("button.rename"), L10n.Get("button.delete") },
                 delegate(object sender, DialogClickEventArgs e)
                 {
                     if (e.Which == 0)
@@ -3092,9 +3092,9 @@ public sealed class MainActivity : Activity
 
     private void AddRepairCategory()
     {
-        RenderEditor("Новая категория", new List<EditorField>
+        RenderEditor(L10n.Get("title.new_category"), new List<EditorField>
         {
-            EditorField.Text("Название", "", true)
+            EditorField.Text(L10n.Get("label.name"), "", true)
         }, delegate(string[] values)
         {
             ExpenseDataStore.AddRepairCategory(DataDirectory, values[0]);
@@ -3104,9 +3104,9 @@ public sealed class MainActivity : Activity
 
     private void RenameRepairCategory(string oldName)
     {
-        RenderEditor("Переименовать категорию", new List<EditorField>
+        RenderEditor(L10n.Get("title.rename_category"), new List<EditorField>
         {
-            EditorField.Text("Новое название", oldName, true)
+            EditorField.Text(L10n.Get("label.new_name"), oldName, true)
         }, delegate(string[] values)
         {
             ExpenseDataStore.RenameRepairCategory(DataDirectory, oldName, values[0]);
@@ -3119,10 +3119,10 @@ public sealed class MainActivity : Activity
     private void ConfirmDeleteRepairCategory(string name)
     {
         new AlertDialog.Builder(this)
-            .SetTitle("Удалить категорию?")
-            .SetMessage("Записи не удаляются. Сначала перенесите записи из категории в другую.")
-            .SetNegativeButton("Отмена", delegate { })
-            .SetPositiveButton("Удалить", delegate
+            .SetTitle(L10n.Get("confirm.delete_category"))
+            .SetMessage(L10n.Get("error.move_records_no_delete"))
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
+            .SetPositiveButton(L10n.Get("button.delete"), delegate
             {
                 try
                 {
@@ -3133,7 +3133,7 @@ public sealed class MainActivity : Activity
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Не удалось удалить категорию: " + ex.Message);
+                    ShowMessage((L10n.Get("error.delete_category_failed") + " ") + ex.Message);
                 }
             })
             .Show();
@@ -3229,7 +3229,7 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            ShowMessage(L10n.Get("error.import_kpk_first"));
             return;
         }
         try
@@ -3240,7 +3240,7 @@ public sealed class MainActivity : Activity
             content.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
 
             TextView chartTitle = new TextView(this);
-            chartTitle.Text = "График расходов (12 мес.)";
+            chartTitle.Text = L10n.Get("title.expense_chart_12m");
             chartTitle.SetTextColor(AndroidColor.Rgb(180, 40, 40));
             chartTitle.SetTypeface(null, AndroidTypefaceStyle.Bold);
             chartTitle.TextSize = 15;
@@ -3257,13 +3257,13 @@ public sealed class MainActivity : Activity
             chartParams.BottomMargin = Dp(8);
             content.AddView(chart, chartParams);
 
-            Button compareButton = CreateButton("Сравнить периоды", null);
+            Button compareButton = CreateButton(L10n.Get("button.compare_periods"), null);
             LinearLayout.LayoutParams compareParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
             compareParams.BottomMargin = Dp(8);
             content.AddView(compareButton, compareParams);
 
-            Button reportButton = CreateButton("Отчёт за период", null);
+            Button reportButton = CreateButton(L10n.Get("title.period_report"), null);
             LinearLayout.LayoutParams reportParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent);
             reportParams.BottomMargin = Dp(8);
@@ -3280,14 +3280,14 @@ public sealed class MainActivity : Activity
             compareButton.Click += delegate { ShowPeriodCompare(); };
             reportButton.Click += delegate { ShowPeriodReport(); };
             new AlertDialog.Builder(this)
-                .SetTitle("Сводка и ТО · " + currentCar + CarsMeta.HeaderSuffix(DataDirectory, currentCar))
+                .SetTitle((L10n.Get("title.summary_to_dot") + " ") + currentCar + CarsMeta.HeaderSuffix(DataDirectory, currentCar))
                 .SetView(scroll)
-                .SetPositiveButton("Поделиться", (sender, args) =>
+                .SetPositiveButton(L10n.Get("button.share"), (sender, args) =>
                 {
                     ShareSummaryText(summaryText);
                 })
-                .SetNeutralButton("Лента", delegate { ShowCarTimeline(currentCar); })
-                .SetNegativeButton("Экспорт", (sender, args) =>
+                .SetNeutralButton(L10n.Get("label.timeline"), delegate { ShowCarTimeline(currentCar); })
+                .SetNegativeButton(L10n.Get("button.export"), (sender, args) =>
                 {
                     ExportSummaryText(summaryText);
                 })
@@ -3295,7 +3295,7 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось построить сводку: " + ex.Message);
+            ShowMessage((L10n.Get("error.build_summary_failed") + " ") + ex.Message);
         }
     }
 
@@ -3303,17 +3303,17 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            ShowMessage(L10n.Get("error.import_kpk_first"));
             return;
         }
         string aFrom, aTo, bFrom, bTo;
         PeriodCompare.ThisVsPreviousMonth(out aFrom, out aTo, out bFrom, out bTo);
         new AlertDialog.Builder(this)
-            .SetTitle("Сравнить периоды · " + currentCar)
+            .SetTitle((L10n.Get("compare.periods_dot") + " ") + currentCar)
             .SetItems(new string[]
             {
-                "Этот месяц / прошлый месяц",
-                "Свои даты…"
+                L10n.Get("preset.this_month_last_month"),
+                L10n.Get("preset.custom_dates")
             }, (sender, args) =>
             {
                 if (args.Which == 0)
@@ -3321,23 +3321,23 @@ public sealed class MainActivity : Activity
                 else if (args.Which == 1)
                     PromptCustomPeriodCompare(aFrom, aTo, bFrom, bTo);
             })
-            .SetNegativeButton("Закрыть", delegate { })
+            .SetNegativeButton(L10n.Get("button.close"), delegate { })
             .Show();
     }
 
     private void PromptCustomPeriodCompare(string aFrom, string aTo, string bFrom, string bTo)
     {
-        RenderEditor("Периоды A и B", new List<EditorField>
+        RenderEditor(L10n.Get("title.periods_a_b"), new List<EditorField>
         {
-            EditorField.Date("A с", aFrom, true),
-            EditorField.Date("A по", aTo, true),
-            EditorField.Date("B с", bFrom, true),
-            EditorField.Date("B по", bTo, true)
+            EditorField.Date(L10n.Get("compare.a_from"), aFrom, true),
+            EditorField.Date(L10n.Get("compare.a_to"), aTo, true),
+            EditorField.Date(L10n.Get("compare.b_from"), bFrom, true),
+            EditorField.Date(L10n.Get("compare.b_to"), bTo, true)
         }, delegate(string[] raw)
         {
             if (String.CompareOrdinal(raw[0], raw[1]) > 0 ||
                 String.CompareOrdinal(raw[2], raw[3]) > 0)
-                throw new InvalidOperationException("В каждом периоде дата «с» не позже «по».");
+                throw new InvalidOperationException(L10n.Get("error.period_from_after_to"));
             ShowPeriodCompareResult(raw[0], raw[1], raw[2], raw[3]);
         }, false);
     }
@@ -3368,20 +3368,20 @@ public sealed class MainActivity : Activity
             body.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
             scroll.AddView(body);
             new AlertDialog.Builder(this)
-                .SetTitle("Сравнение · " + currentCar)
+                .SetTitle((L10n.Get("compare.short_dot") + " ") + currentCar)
                 .SetView(scroll)
-                .SetPositiveButton("ОК", delegate { })
+                .SetPositiveButton(L10n.Get("button.ok"), delegate { })
                 .Show();
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось сравнить периоды: " + ex.Message);
+            ShowMessage((L10n.Get("error.compare_periods_failed") + " ") + ex.Message);
         }
     }
 
     private void ShareSummaryText(string text)
     {
-        ShareSummaryText(text, "Alfa 156 · сводка · " + currentCar, "Поделиться сводкой");
+        ShareSummaryText(text, (L10n.Get("summary.file_prefix_dot") + " ") + currentCar, L10n.Get("title.share_summary"));
     }
 
     private void ShareSummaryText(string text, string subject, string chooserTitle)
@@ -3404,7 +3404,7 @@ public sealed class MainActivity : Activity
         share.PutExtra(Intent.ExtraSubject, subject);
         share.PutExtra(Intent.ExtraText, html);
         share.PutExtra(Intent.ExtraHtmlText, html);
-        StartActivity(Intent.CreateChooser(share, "Поделиться HTML"));
+        StartActivity(Intent.CreateChooser(share, L10n.Get("button.share_html")));
     }
 
     private void ExportSummaryText(string text)
@@ -3430,18 +3430,18 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            ShowMessage(L10n.Get("error.import_kpk_first"));
             return;
         }
         string from, to, prevFrom, prevTo;
         PeriodCompare.ThisVsPreviousMonth(out from, out to, out prevFrom, out prevTo);
         new AlertDialog.Builder(this)
-            .SetTitle("Отчёт за период · " + currentCar)
+            .SetTitle((L10n.Get("report.title_dot") + " ") + currentCar)
             .SetItems(new string[]
             {
-                "Этот месяц",
-                "Прошлый месяц",
-                "Свои даты…"
+                L10n.Get("preset.this_month"),
+                L10n.Get("preset.last_month"),
+                L10n.Get("preset.custom_dates")
             }, (sender, args) =>
             {
                 if (args.Which == 0)
@@ -3451,20 +3451,20 @@ public sealed class MainActivity : Activity
                 else if (args.Which == 2)
                     PromptCustomPeriodReport(from, to);
             })
-            .SetNegativeButton("Закрыть", delegate { })
+            .SetNegativeButton(L10n.Get("button.close"), delegate { })
             .Show();
     }
 
     private void PromptCustomPeriodReport(string from, string to)
     {
-        RenderEditor("Период отчёта", new List<EditorField>
+        RenderEditor(L10n.Get("title.report_period"), new List<EditorField>
         {
-            EditorField.Date("С", from, true),
-            EditorField.Date("По", to, true)
+            EditorField.Date(L10n.Get("label.from"), from, true),
+            EditorField.Date(L10n.Get("label.to"), to, true)
         }, delegate(string[] raw)
         {
             if (String.CompareOrdinal(raw[0], raw[1]) > 0)
-                throw new InvalidOperationException("Дата «с» не позже «по».");
+                throw new InvalidOperationException(L10n.Get("error.date_from_after_to"));
             ShowPeriodReportResult(raw[0], raw[1]);
         }, false);
     }
@@ -3488,7 +3488,7 @@ public sealed class MainActivity : Activity
             string html = PeriodReport.FormatHtml(
                 currentCar, from, to, totals, Cur(), Money);
             string range = PeriodCompare.FormatRangeLabel(from, to);
-            string subject = "Alfa 156 · отчёт · " + currentCar + " · " + range;
+            string subject = (L10n.Get("report.file_prefix_dot") + " ") + currentCar + " · " + range;
 
             ScrollView scroll = new ScrollView(this);
             TextView body = new TextView(this);
@@ -3499,20 +3499,20 @@ public sealed class MainActivity : Activity
             body.SetPadding(Dp(8), Dp(4), Dp(8), Dp(4));
             scroll.AddView(body);
             new AlertDialog.Builder(this)
-                .SetTitle("Отчёт · " + currentCar)
+                .SetTitle((L10n.Get("report.short_dot") + " ") + currentCar)
                 .SetView(scroll)
-                .SetPositiveButton("Поделиться", (sender, args) =>
+                .SetPositiveButton(L10n.Get("button.share"), (sender, args) =>
                 {
-                    ShareSummaryText(text, subject, "Поделиться отчётом");
+                    ShareSummaryText(text, subject, L10n.Get("title.share_report"));
                 })
                 .SetNeutralButton("HTML", (sender, args) =>
                 {
                     new AlertDialog.Builder(this)
-                        .SetTitle("HTML-отчёт")
+                        .SetTitle(L10n.Get("report.html_title"))
                         .SetItems(new string[]
                         {
-                            "Поделиться HTML",
-                            "Сохранить .html"
+                            L10n.Get("button.share_html"),
+                            L10n.Get("button.save_html")
                         }, (s2, a2) =>
                         {
                             if (a2.Which == 0)
@@ -3521,10 +3521,10 @@ public sealed class MainActivity : Activity
                                 ExportSummaryText(html,
                                     "Report_" + from + "_" + to + ".html", "text/html");
                         })
-                        .SetNegativeButton("Отмена", delegate { })
+                        .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
                         .Show();
                 })
-                .SetNegativeButton("Сохранить", (sender, args) =>
+                .SetNegativeButton(L10n.Get("button.save"), (sender, args) =>
                 {
                     ExportSummaryText(text,
                         "Report_" + from + "_" + to + ".txt", "text/plain");
@@ -3533,7 +3533,7 @@ public sealed class MainActivity : Activity
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось построить отчёт: " + ex.Message);
+            ShowMessage((L10n.Get("error.build_report_failed") + " ") + ex.Message);
         }
     }
 
@@ -3720,25 +3720,25 @@ public sealed class MainActivity : Activity
             {
                 if (passport.Vin.Length > 0)
                     result.Append(" · ");
-                result.Append("бак ").Append(passport.TankLiters).Append(" л");
+                result.Append((L10n.Get("label.tank_short") + " ")).Append(passport.TankLiters).Append((" " + L10n.Get("unit.liters_short")));
             }
             if (passport.Note.Length > 0)
                 result.Append("\n").Append(passport.Note);
         }
-        result.Append("\n\nЗаправки: ").Append(Money(fuelTotal)).Append(" " + Cur())
-            .Append("\nРемонт и ТО: ").Append(Money(repairTotal)).Append(" " + Cur())
-            .Append("\nПрочие расходы: ").Append(Money(expenseTotal)).Append(" " + Cur());
+        result.Append(("\n\n" + L10n.Get("summary.fuel_section_colon") + " ")).Append(Money(fuelTotal)).Append(" " + Cur())
+            .Append(("\n" + L10n.Get("summary.repairs_section_colon") + " ")).Append(Money(repairTotal)).Append(" " + Cur())
+            .Append(("\n" + L10n.Get("summary.expenses_section_colon") + " ")).Append(Money(expenseTotal)).Append(" " + Cur());
         if (anyPurpose)
         {
-            result.Append("\n\nЗаправки по цели:")
-                .Append("\nЛичный: ").Append(Money(purposePersonal)).Append(" " + Cur())
-                .Append("\nРабота: ").Append(Money(purposeWork)).Append(" " + Cur());
+            result.Append(("\n\n" + L10n.Get("report.fuel_by_purpose_colon")))
+                .Append(("\n" + L10n.Get("purpose.personal_colon") + " ")).Append(Money(purposePersonal)).Append(" " + Cur())
+                .Append(("\n" + L10n.Get("purpose.work_colon") + " ")).Append(Money(purposeWork)).Append(" " + Cur());
             if (purposeOther > 0)
-                result.Append("\nДругое: ").Append(Money(purposeOther)).Append(" " + Cur());
+                result.Append(("\n" + L10n.Get("report.other_colon") + " ")).Append(Money(purposeOther)).Append(" " + Cur());
         }
         if (stationStats.Count > 0)
         {
-            result.Append("\n\nАЗС / бренд:");
+            result.Append(("\n\n" + L10n.Get("label.station_colon")));
             List<string> stationNames = new List<string>(stationStats.Keys);
             stationNames.Sort(StringComparer.OrdinalIgnoreCase);
             for (int s = 0; s < stationNames.Count; s++)
@@ -3748,17 +3748,17 @@ public sealed class MainActivity : Activity
                 decimal avg = count > 0 ? bucket[1] / count : 0;
                 result.Append("\n").Append(stationNames[s])
                     .Append(": ").Append(count.ToString(CultureInfo.InvariantCulture))
-                    .Append(" · ср. ").Append(Money(avg)).Append(" " + Cur()).Append("/л");
+                    .Append((" " + L10n.Get("summary.dot_avg") + " ")).Append(Money(avg)).Append(" " + Cur()).Append(L10n.Get("unit.per_liter"));
             }
         }
-        result.Append("\nУчтённые расходы на км (примерно): ")
+        result.Append(("\n" + L10n.Get("summary.counted_cost_per_km") + " "))
             .Append(minimumMileage != Decimal.MaxValue && maximumMileage > minimumMileage
-                ? Money((fuelTotal + repairTotal + expenseTotal) / (maximumMileage - minimumMileage)) + " " + Cur() + "/км"
-                : "недостаточно данных о пробеге")
-            .Append("\n\nРемонт по категориям:");
+                ? Money((fuelTotal + repairTotal + expenseTotal) / (maximumMileage - minimumMileage)) + " " + Cur() + L10n.Get("unit.per_km")
+                : L10n.Get("forecast.insufficient_mileage"))
+            .Append(("\n\n" + L10n.Get("report.repairs_by_cat_colon")));
         foreach (KeyValuePair<string, decimal> pair in byCategory)
             result.Append("\n").Append(pair.Key).Append(": ").Append(Money(pair.Value)).Append(" " + Cur());
-        result.Append("\n\nКоммунальные за весь период: ").Append(Money(utilityTotal)).Append(" " + Cur());
+        result.Append(("\n\n" + L10n.Get("summary.utilities_all_time") + " ")).Append(Money(utilityTotal)).Append(" " + Cur());
         string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
         decimal monthFuel = 0, monthRepair = 0, monthExpense = 0, monthUtility = 0;
         decimal[] monthBucket;
@@ -3771,14 +3771,14 @@ public sealed class MainActivity : Activity
         }
         AppendBudgetBlock(result, "\n", monthKey,
             monthFuel + monthRepair + monthExpense, monthUtility);
-        result.Append("\n\nИтого за год ").Append(yearPrefix).Append(":")
-            .Append("\nТопливо: ").Append(Money(yearFuel)).Append(" " + Cur())
-            .Append("\nРемонт: ").Append(Money(yearRepair)).Append(" " + Cur())
-            .Append("\nПрочие: ").Append(Money(yearExpense)).Append(" " + Cur())
-            .Append("\nКоммунальные: ").Append(Money(yearUtility)).Append(" " + Cur())
-            .Append("\nВсего: ").Append(Money(yearFuel + yearRepair + yearExpense + yearUtility))
+        result.Append(("\n\n" + L10n.Get("summary.year_totals") + " ")).Append(yearPrefix).Append(":")
+            .Append(("\n" + L10n.Get("label.fuel_colon") + " ")).Append(Money(yearFuel)).Append(" " + Cur())
+            .Append(("\n" + L10n.Get("label.repairs_colon") + " ")).Append(Money(yearRepair)).Append(" " + Cur())
+            .Append(("\n" + L10n.Get("label.expenses_colon") + " ")).Append(Money(yearExpense)).Append(" " + Cur())
+            .Append(("\n" + L10n.Get("label.utilities_colon") + " ")).Append(Money(yearUtility)).Append(" " + Cur())
+            .Append(("\n" + L10n.Get("report.total_colon") + " ")).Append(Money(yearFuel + yearRepair + yearExpense + yearUtility))
             .Append(" " + Cur())
-            .Append("\n\nРасходы по месяцам (последние 12):");
+            .Append(("\n\n" + L10n.Get("summary.monthly_expenses_12")));
         List<string> months = new List<string>(monthlyTotals.Keys);
         months.Sort(StringComparer.Ordinal);
         int firstMonth = Math.Max(0, months.Count - 12);
@@ -3786,19 +3786,19 @@ public sealed class MainActivity : Activity
         {
             decimal[] totals = monthlyTotals[months[i]];
             result.Append("\n").Append(months[i])
-                .Append(": топливо ").Append(Money(totals[0]))
-                .Append(", ремонт ").Append(Money(totals[1]))
-                .Append(", коммунальные ").Append(Money(totals[2]))
-                .Append(", прочие ").Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" " + Cur());
+                .Append((L10n.Get("summary.colon_fuel") + " ")).Append(Money(totals[0]))
+                .Append((L10n.Get("summary.comma_repairs") + " ")).Append(Money(totals[1]))
+                .Append((L10n.Get("summary.comma_utilities") + " ")).Append(Money(totals[2]))
+                .Append((L10n.Get("summary.comma_expenses") + " ")).Append(Money(totals.Length > 3 ? totals[3] : 0)).Append(" " + Cur());
         }
         result.Append("\n\n").Append(CarCompare.FormatBlock(
             CarCompare.Build(cars, fuels, repairs, expenses), Cur(), Money));
         ToIntervals toIntervals = ToSettings.Load(DataDirectory);
         result
-            .Append("\n\nТекущий пробег: ").Append(Money(currentMileage)).Append(" км")
-            .Append("\n").Append(ServiceStatus("Замена масла", currentMileage,
+            .Append(("\n\n" + L10n.Get("forecast.current_odometer_colon") + " ")).Append(Money(currentMileage)).Append((" " + L10n.Get("unit.km")))
+            .Append("\n").Append(ServiceStatus(L10n.Get("service.oil_change"), currentMileage,
                 lastOilMileage, lastOilDate, toIntervals.OilInterval, toIntervals.OilWarn))
-            .Append("\n").Append(ServiceStatus("Ремень ГРМ", currentMileage,
+            .Append("\n").Append(ServiceStatus(L10n.Get("service.timing_belt"), currentMileage,
                 lastTimingMileage, lastTimingDate, toIntervals.BeltInterval, toIntervals.BeltWarn));
         result.Append(ForecastInsights.FormatBlock(
             currentCar, fuels, repairs, currentMileage,
@@ -3846,12 +3846,12 @@ public sealed class MainActivity : Activity
         try
         {
             string name = ExpenseDataStore.CreateBackup(DataDirectory);
-            ShowMessage("Резервная копия создана в приложении: " + name +
-                "\nДля защиты от потери телефона дополнительно используйте «Полный экспорт ZIP».");
+            ShowMessage((L10n.Get("msg.backup_created_in_app") + " ") + name +
+                ("\n" + L10n.Get("backup.phone_loss_tip")));
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось создать резервную копию: " + ex.Message);
+            ShowMessage((L10n.Get("error.create_backup_failed") + " ") + ex.Message);
         }
     }
 
@@ -3862,32 +3862,32 @@ public sealed class MainActivity : Activity
             List<string> backups = ExpenseDataStore.ListBackupNames(DataDirectory);
             if (backups.Count == 0)
             {
-                ShowMessage("На телефоне нет резервных копий.");
+                ShowMessage(L10n.Get("error.no_phone_backups"));
                 return;
             }
             string[] names = backups.ToArray();
             new AlertDialog.Builder(this)
-                .SetTitle("Выберите резервную копию")
+                .SetTitle(L10n.Get("prompt.select_backup"))
                 .SetItems(names, delegate(object sender, DialogClickEventArgs e)
                 {
                     ConfirmRestore(names[e.Which]);
                 })
-                .SetNegativeButton("Отмена", delegate { })
+                .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
                 .Show();
         }
         catch (Exception ex)
         {
-            ShowMessage("Не удалось прочитать резервные копии: " + ex.Message);
+            ShowMessage((L10n.Get("error.read_backups_failed") + " ") + ex.Message);
         }
     }
 
     private void ConfirmRestore(string name)
     {
         new AlertDialog.Builder(this)
-            .SetTitle("Восстановить копию?")
-            .SetMessage("Текущие данные сначала сохранятся отдельной копией. Заменить их копией " + name + "?")
-            .SetNegativeButton("Отмена", delegate { })
-            .SetPositiveButton("Восстановить", delegate
+            .SetTitle(L10n.Get("confirm.restore_backup"))
+            .SetMessage((L10n.Get("confirm.replace_with_backup_inline") + " ") + name + "?")
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
+            .SetPositiveButton(L10n.Get("button.restore"), delegate
             {
                 try
                 {
@@ -3896,11 +3896,11 @@ public sealed class MainActivity : Activity
                     if (cars.IndexOf(currentCar) < 0)
                         SetCurrentCar(cars[0]);
                     RefreshRecords();
-                    ShowMessage("Данные восстановлены.");
+                    ShowMessage(L10n.Get("msg.data_restored"));
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Не удалось восстановить копию: " + ex.Message);
+                    ShowMessage((L10n.Get("error.restore_backup_failed") + " ") + ex.Message);
                 }
             })
             .Show();
@@ -3919,7 +3919,7 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте резервную копию с КПК.");
+            ShowMessage(L10n.Get("error.import_kpk_first"));
             return;
         }
         Intent intent = new Intent(Intent.ActionCreateDocument);
@@ -3939,7 +3939,7 @@ public sealed class MainActivity : Activity
         else if (selection.Data != null)
             uris.Add(selection.Data);
         if (uris.Count == 0)
-            throw new InvalidDataException("Не выбраны файлы резервной копии.");
+            throw new InvalidDataException(L10n.Get("error.no_backup_files_selected"));
 
         string staging = Path.Combine(CacheDir.AbsolutePath, "import_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
@@ -3983,7 +3983,7 @@ public sealed class MainActivity : Activity
             receiptCount = Directory.GetFiles(receiptsDir).Length;
 
         StringBuilder summary = new StringBuilder();
-        summary.Append("Предпросмотр импорта\n\nАвтомобили (").Append(cars.Count).Append("): ");
+        summary.Append(L10n.Get("import.preview_header_cars")).Append(cars.Count).Append("): ");
         if (cars.Count == 0)
             summary.Append("—");
         else
@@ -3995,39 +3995,39 @@ public sealed class MainActivity : Activity
                 summary.Append(cars[i][0]);
             }
         }
-        summary.Append("\n\nЗаправки: ").Append(fuel.Count)
-            .Append("\nРемонт и ТО: ").Append(repairs.Count)
-            .Append("\nПрочие расходы: ").Append(expenses.Count)
-            .Append("\nКоммунальные: ").Append(utilities.Count)
-            .Append("\nКат. ремонта: ")
+        summary.Append(("\n\n" + L10n.Get("summary.fuel_section_colon") + " ")).Append(fuel.Count)
+            .Append(("\n" + L10n.Get("summary.repairs_section_colon") + " ")).Append(repairs.Count)
+            .Append(("\n" + L10n.Get("summary.expenses_section_colon") + " ")).Append(expenses.Count)
+            .Append(("\n" + L10n.Get("label.utilities_colon") + " ")).Append(utilities.Count)
+            .Append(("\n" + L10n.Get("label.repair_cat_colon") + " "))
             .Append(ExpenseDataStore.LoadRepairCategories(source).Count);
         if (templates.Count > 0)
-            summary.Append("\nШаблоны: ").Append(templates.Count);
+            summary.Append(("\n" + L10n.Get("label.templates_colon") + " ")).Append(templates.Count);
         if (reminders.Count > 0)
-            summary.Append("\nНапоминания: ").Append(reminders.Count);
+            summary.Append(("\n" + L10n.Get("summary.reminders_colon") + " ")).Append(reminders.Count);
         if (notes.Count > 0)
-            summary.Append("\nЗаметки: ").Append(notes.Count);
+            summary.Append(("\n" + L10n.Get("summary.notes_colon") + " ")).Append(notes.Count);
         if (receiptCount > 0)
-            summary.Append("\nФото чеков: ").Append(receiptCount);
+            summary.Append(("\n" + L10n.Get("label.receipt_photos_colon") + " ")).Append(receiptCount);
         summary.Append(IsCompleteData(DataDirectory)
-            ? "\n\nПеред заменой текущие данные сохранятся в Backups/Safety_…"
-            : "\n\nИмпорт запишет этот набор данных на телефон.");
+            ? ("\n\n" + L10n.Get("hint.safety_backup_before_replace"))
+            : ("\n\n" + L10n.Get("import.will_write_to_phone")));
 
         new AlertDialog.Builder(this)
-            .SetTitle("Импорт копии")
+            .SetTitle(L10n.Get("button.import_backup"))
             .SetMessage(summary.ToString())
-            .SetNegativeButton("Отмена", delegate { DeleteImportStaging(source); })
-            .SetPositiveButton("Заменить данные", delegate
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { DeleteImportStaging(source); })
+            .SetPositiveButton(L10n.Get("button.replace_data"), delegate
             {
                 try
                 {
                     InstallImportedData(source);
                     RefreshRecords();
-                    ShowMessage("Импорт завершён. Данные сохранены на телефоне.");
+                    ShowMessage(L10n.Get("msg.import_complete_phone"));
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage("Импорт не выполнен: " + ex.Message);
+                    ShowMessage((L10n.Get("error.import_failed_colon") + " ") + ex.Message);
                 }
                 finally
                 {
@@ -4048,7 +4048,7 @@ public sealed class MainActivity : Activity
     {
         Stream input = ContentResolver.OpenInputStream(uri);
         if (input == null)
-            throw new IOException("Не удалось открыть выбранный ZIP-файл.");
+            throw new IOException(L10n.Get("error.open_zip_failed"));
         using (input)
         using (ZipArchive archive = new ZipArchive(input, ZipArchiveMode.Read))
         {
@@ -4087,23 +4087,23 @@ public sealed class MainActivity : Activity
     private static void ValidateSnapshotJson(string json)
     {
         if (String.IsNullOrEmpty(json))
-            throw new InvalidDataException("Пустой snapshot.json.");
+            throw new InvalidDataException(L10n.Get("error.empty_snapshot"));
         if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
             json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
-            throw new InvalidDataException("Неподдерживаемая схема snapshot.");
+            throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_schema"));
         if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
             json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
-            throw new InvalidDataException("Неподдерживаемая версия snapshot.");
+            throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_version"));
         if (json.IndexOf("\"createdUtc\"", StringComparison.Ordinal) < 0 ||
             json.IndexOf("\"deviceToken\"", StringComparison.Ordinal) < 0)
-            throw new InvalidDataException("snapshot.json не содержит обязательные метаданные.");
+            throw new InvalidDataException(L10n.Get("error.snapshot_missing_meta"));
     }
 
     private void CopyUriToFile(Uri uri, string destination)
     {
         Stream input = ContentResolver.OpenInputStream(uri);
         if (input == null)
-            throw new IOException("Не удалось открыть выбранный файл.");
+            throw new IOException(L10n.Get("error.open_file_failed"));
         using (input)
         using (FileStream output = File.Create(destination))
             input.CopyTo(output);
@@ -4145,9 +4145,9 @@ public sealed class MainActivity : Activity
                 }
                 catch (Exception rollbackError)
                 {
-                    throw new IOException("Импорт не завершён: " + importError.Message +
-                        ". Возврат прежних данных не удался: " + rollbackError.Message +
-                        ". Копия: " + safetyBackup);
+                    throw new IOException((L10n.Get("error.import_incomplete_colon") + " ") + importError.Message +
+                        (L10n.Get("error.rollback_prev_data_failed") + " ") + rollbackError.Message +
+                        (L10n.Get("msg.dot_backup_colon") + " ") + safetyBackup);
                 }
             }
             else
@@ -4166,7 +4166,7 @@ public sealed class MainActivity : Activity
     private void ExportTo(Uri destination)
     {
         if (destination == null)
-            throw new InvalidDataException("Не выбрано место сохранения ZIP-файла.");
+            throw new InvalidDataException(L10n.Get("error.no_zip_save_location"));
         ExpenseDataStore.EnsureRepairCategories(DataDirectory);
         ToSettings.EnsureFile(DataDirectory);
         CarsMeta.EnsureFile(DataDirectory);
@@ -4177,7 +4177,7 @@ public sealed class MainActivity : Activity
         ExpenseDataCodec.ValidateDirectory(DataDirectory);
         Stream output = ContentResolver.OpenOutputStream(destination);
         if (output == null)
-            throw new IOException("Не удалось создать ZIP-файл.");
+            throw new IOException(L10n.Get("error.create_zip_failed"));
         using (output)
         using (ZipArchive archive = new ZipArchive(output, ZipArchiveMode.Create))
         {
@@ -4238,17 +4238,17 @@ public sealed class MainActivity : Activity
         decimal lastMileage, string lastDate, decimal interval, decimal warningDistance)
     {
         if (lastMileage == 0)
-            return name + ": замена не зафиксирована";
-        string lastService = "последняя запись " + lastDate + ", " +
-            Money(lastMileage) + " км; ";
+            return name + L10n.Get("forecast.no_replacement");
+        string lastService = (L10n.Get("summary.last_record") + " ") + lastDate + ", " +
+            Money(lastMileage) + (" " + L10n.Get("unit.km_semi") + " ");
         decimal since = currentMileage - lastMileage;
         if (since >= interval)
-            return name + ": " + lastService + "требуется замена";
+            return name + ": " + lastService + L10n.Get("forecast.replacement_needed");
         if (since >= interval - warningDistance)
-            return name + ": " + lastService + "скоро замена (" +
-                Money(interval - since) + " км)";
-        return name + ": " + lastService + "в норме (" +
-            Money(interval - since) + " км)";
+            return name + ": " + lastService + L10n.Get("forecast.due_soon_open") +
+                Money(interval - since) + (" " + L10n.Get("unit.km_close"));
+        return name + ": " + lastService + L10n.Get("forecast.ok_open") +
+            Money(interval - since) + (" " + L10n.Get("unit.km_close"));
     }
 
     private void EnsureNotificationChannel()
@@ -4261,9 +4261,9 @@ public sealed class MainActivity : Activity
             return;
         NotificationChannel channel = new NotificationChannel(
             ToReminderChannelId,
-            "Напоминания о ТО",
+            L10n.Get("title.service_reminders"),
             NotificationImportance.Default);
-        channel.Description = "Замена масла и ремня ГРМ";
+        channel.Description = L10n.Get("title.oil_and_belt");
         manager.CreateNotificationChannel(channel);
 #pragma warning restore CA1416
     }
@@ -4278,9 +4278,9 @@ public sealed class MainActivity : Activity
             return;
         NotificationChannel channel = new NotificationChannel(
             BudgetChannelId,
-            "Бюджет месяца",
+            L10n.Get("label.monthly_budget"),
             NotificationImportance.Default);
-        channel.Description = "Превышение месячного бюджета расходов";
+        channel.Description = L10n.Get("notif.budget_exceeded_body");
         manager.CreateNotificationChannel(channel);
 #pragma warning restore CA1416
     }
@@ -4295,9 +4295,9 @@ public sealed class MainActivity : Activity
             return;
         NotificationChannel channel = new NotificationChannel(
             DateReminderChannelId,
-            "Напоминания по дате",
+            L10n.Get("title.date_reminders"),
             NotificationImportance.Default);
-        channel.Description = "Страховка, техосмотр и другие сроки";
+        channel.Description = L10n.Get("hint.insurance_inspection_other");
         manager.CreateNotificationChannel(channel);
 #pragma warning restore CA1416
     }
@@ -4329,7 +4329,7 @@ public sealed class MainActivity : Activity
             text.Append(DateReminders.FormatLine(due[i], DateTime.Today));
         }
         if (due.Count > limit)
-            text.Append(" … ещё ").Append(due.Count - limit);
+            text.Append((" " + L10n.Get("summary.and_more") + " ")).Append(due.Count - limit);
 
         Intent intent = new Intent(this, typeof(MainActivity));
         intent.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ClearTop);
@@ -4342,7 +4342,7 @@ public sealed class MainActivity : Activity
         Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
             ? new Notification.Builder(this, DateReminderChannelId)
             : new Notification.Builder(this);
-        builder.SetContentTitle("Alfa 156 · Напоминания (" + due.Count + ")")
+        builder.SetContentTitle(L10n.Get("notif.reminders_title_open") + due.Count + ")")
             .SetContentText(text.ToString())
             .SetStyle(new Notification.BigTextStyle().BigText(text.ToString()))
             .SetSmallIcon(Resource.Drawable.icon)
@@ -4361,16 +4361,16 @@ public sealed class MainActivity : Activity
             return;
         decimal warnPct = ToSettings.GetBudgetWarnPct(DataDirectory);
         decimal pct = budget > 0 ? (spent * 100m) / budget : 0;
-        result.Append(nl).Append(nl).Append("Бюджет месяца ").Append(monthKey).Append(":")
-            .Append(nl).Append("Потрачено (топливо+ремонт+прочие): ")
+        result.Append(nl).Append(nl).Append((L10n.Get("label.monthly_budget") + " ")).Append(monthKey).Append(":")
+            .Append(nl).Append((L10n.Get("summary.spent_total_colon") + " "))
             .Append(Money(spent)).Append(" / ").Append(Money(budget)).Append(" ").Append(Cur())
             .Append(" (").Append(Money(pct)).Append("%)")
-            .Append(nl).Append("Коммунальные в этом месяце: ")
+            .Append(nl).Append((L10n.Get("summary.utilities_this_month") + " "))
             .Append(Money(utilitiesMonth)).Append(" ").Append(Cur());
         if (spent >= budget)
-            result.Append(nl).Append("⚠ Превышен бюджет");
+            result.Append(nl).Append(L10n.Get("summary.budget_exceeded_warn"));
         else if (pct >= warnPct)
-            result.Append(nl).Append("⚠ Предупреждение: ≥").Append(Money(warnPct)).Append("% бюджета");
+            result.Append(nl).Append(L10n.Get("summary.budget_warn_symbol")).Append(Money(warnPct)).Append(L10n.Get("summary.pct_of_budget"));
     }
 
     private void RefreshBudgetNotification()
@@ -4400,9 +4400,9 @@ public sealed class MainActivity : Activity
         }
 
         string monthKey = DateTime.Now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
-        string text = "Потрачено " + Money(spent) + " / " + Money(budget) + " " + Cur() +
-            " за " + monthKey +
-            " (коммунальные " + Money(utilitiesMonth) + " " + Cur() + " отдельно)";
+        string text = (L10n.Get("label.spent") + " ") + Money(spent) + " / " + Money(budget) + " " + Cur() +
+            (" " + L10n.Get("common.for_preposition") + " ") + monthKey +
+            (" " + L10n.Get("summary.utilities_paren_open") + " ") + Money(utilitiesMonth) + " " + Cur() + (" " + L10n.Get("summary.separately_close"));
 
         Intent intent = new Intent(this, typeof(MainActivity));
         intent.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ClearTop);
@@ -4415,7 +4415,7 @@ public sealed class MainActivity : Activity
         Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
             ? new Notification.Builder(this, BudgetChannelId)
             : new Notification.Builder(this);
-        builder.SetContentTitle("Alfa 156 · Бюджет превышен")
+        builder.SetContentTitle(L10n.Get("notif.budget_exceeded_title"))
             .SetContentText(text)
             .SetStyle(new Notification.BigTextStyle().BigText(text))
             .SetSmallIcon(Resource.Drawable.icon)
@@ -4487,9 +4487,9 @@ public sealed class MainActivity : Activity
                 out currentMileage, out lastOilMileage, out lastTimingMileage,
                 out lastOilDate, out lastTimingDate);
 
-            PostServiceNotification(manager, car, "ТО Масло", "Масло",
+            PostServiceNotification(manager, car, L10n.Get("service.oil_short"), L10n.Get("service.oil"),
                 currentMileage, lastOilMileage, intervals.OilInterval, intervals.OilWarn, 1000 + i * 10);
-            PostServiceNotification(manager, car, "ТО ГРМ", "Ремень ГРМ",
+            PostServiceNotification(manager, car, L10n.Get("service.belt_short"), L10n.Get("service.timing_belt"),
                 currentMileage, lastTimingMileage, intervals.BeltInterval, intervals.BeltWarn, 1001 + i * 10);
         }
     }
@@ -4572,10 +4572,10 @@ public sealed class MainActivity : Activity
         decimal since = currentMileage - lastMileage;
         string text;
         if (since >= interval)
-            text = "Alfa 156: пора заменить " + shortName + " — " + car;
+            text = (L10n.Get("notif.due_now_title") + " ") + shortName + " — " + car;
         else if (since >= interval - warningDistance)
-            text = "Alfa 156: скоро ТО " + shortName + " — осталось " +
-                Money(interval - since) + " км · " + car;
+            text = (L10n.Get("notif.due_soon_title") + " ") + shortName + (" " + L10n.Get("forecast.dash_remaining") + " ") +
+                Money(interval - since) + (" " + L10n.Get("unit.km_dot") + " ") + car;
         else
         {
             manager.Cancel(notificationId);
@@ -4620,18 +4620,18 @@ public sealed class MainActivity : Activity
         }
         catch { }
         new AlertDialog.Builder(this)
-            .SetTitle("О программе")
-            .SetMessage("Alfa 156\nВерсия " + version +
-                "\n\nУчёт заправок, ремонта, прочих расходов и коммуналки." +
-                "\nОценка пробега в сводке: средний км/день и срок до ТО масла/ремня." +
-                "\nПаспорт авто (cars-meta.dat), шаблоны (templates.dat), избранный авто (default_car)." +
-                "\nНапоминания по дате (reminders.dat): страховка / техосмотр / своё." +
-                "\nЗаметки по авто (notes.dat): свободный журнал date|car|text|id." +
-                "\nАЗС / бренд у заправок: автодополнение и средняя цена/л в сводке." +
-                "\nСводка: столбчатый график расходов за 12 месяцев." +
-                "\nФото чеков: Receipts/{id}.jpg (ZIP и Wi‑Fi: до 50 файлов ≤2 МБ)." +
-                "\nПолный бак: частичные заправки не входят в расчёт л/100 км.")
-            .SetPositiveButton("ОК", delegate { })
+            .SetTitle(L10n.Get("title.about"))
+            .SetMessage((L10n.Get("about.android_version_prefix") + " ") + version +
+                ("\n\n" + L10n.Get("about.tagline")) +
+                ("\n" + L10n.Get("onboarding.forecast_feature")) +
+                ("\n" + L10n.Get("onboarding.passport_templates_feature")) +
+                ("\n" + L10n.Get("onboarding.reminders_feature")) +
+                ("\n" + L10n.Get("onboarding.notes_feature")) +
+                ("\n" + L10n.Get("onboarding.station_feature")) +
+                ("\n" + L10n.Get("onboarding.chart_feature")) +
+                ("\n" + L10n.Get("onboarding.receipts_feature")) +
+                ("\n" + L10n.Get("onboarding.full_tank_feature")))
+            .SetPositiveButton(L10n.Get("button.ok"), delegate { })
             .Show();
     }
 
@@ -4639,22 +4639,22 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте данные.");
+            ShowMessage(L10n.Get("error.import_data_first"));
             return;
         }
         DateReminders.EnsureFile(DataDirectory);
         List<DateReminder> list = DateReminders.ListAll(DataDirectory);
         string message = DateReminders.FormatAllBlock(DataDirectory, DateTime.Today, "\n");
         new AlertDialog.Builder(this)
-            .SetTitle("Напоминания")
+            .SetTitle(L10n.Get("label.reminders"))
             .SetMessage(message)
-            .SetPositiveButton("Добавить", (sender, args) => { AddDateReminder(); })
-            .SetNeutralButton(list.Count > 0 ? "Удалить…" : "Закрыть", (sender, args) =>
+            .SetPositiveButton(L10n.Get("button.add"), (sender, args) => { AddDateReminder(); })
+            .SetNeutralButton(list.Count > 0 ? L10n.Get("button.delete_ellipsis") : L10n.Get("button.close"), (sender, args) =>
             {
                 if (list.Count > 0)
                     DeleteDateReminder(list);
             })
-            .SetNegativeButton("ОК", delegate { })
+            .SetNegativeButton(L10n.Get("button.ok"), delegate { })
             .Show();
     }
 
@@ -4662,7 +4662,7 @@ public sealed class MainActivity : Activity
     {
         if (!IsCompleteData(DataDirectory))
         {
-            ShowMessage("Сначала импортируйте данные.");
+            ShowMessage(L10n.Get("error.import_data_first"));
             return;
         }
         CarNotes.EnsureFile(DataDirectory);
@@ -4670,15 +4670,15 @@ public sealed class MainActivity : Activity
         List<CarNote> list = CarNotes.ListForCar(DataDirectory, car);
         string message = CarNotes.FormatAllBlock(DataDirectory, car, "\n");
         new AlertDialog.Builder(this)
-            .SetTitle(String.IsNullOrEmpty(car) ? "Заметки" : "Заметки · " + car)
+            .SetTitle(String.IsNullOrEmpty(car) ? L10n.Get("label.notes") : (L10n.Get("title.notes_dot") + " ") + car)
             .SetMessage(message)
-            .SetPositiveButton("Добавить", (sender, args) => { AddCarNote(); })
-            .SetNeutralButton(list.Count > 0 ? "Изменить…" : "Закрыть", (sender, args) =>
+            .SetPositiveButton(L10n.Get("button.add"), (sender, args) => { AddCarNote(); })
+            .SetNeutralButton(list.Count > 0 ? L10n.Get("button.edit_ellipsis") : L10n.Get("button.close"), (sender, args) =>
             {
                 if (list.Count > 0)
                     EditOrDeleteCarNote(list);
             })
-            .SetNegativeButton("ОК", delegate { })
+            .SetNegativeButton(L10n.Get("button.ok"), delegate { })
             .Show();
     }
 
@@ -4686,11 +4686,11 @@ public sealed class MainActivity : Activity
     {
         string car = String.IsNullOrEmpty(currentCar) ? "" : currentCar;
         string defaultDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        RenderEditor("Новая заметка", new List<EditorField>
+        RenderEditor(L10n.Get("title.new_note"), new List<EditorField>
         {
-            EditorField.Date("Дата", defaultDate, true),
-            EditorField.Text("Автомобиль", car, true),
-            EditorField.Text("Текст", "", true, true)
+            EditorField.Date(L10n.Get("label.date"), defaultDate, true),
+            EditorField.Text(L10n.Get("label.vehicle"), car, true),
+            EditorField.Text(L10n.Get("label.text"), "", true, true)
         }, delegate(string[] raw)
         {
             CarNote item = new CarNote();
@@ -4698,7 +4698,7 @@ public sealed class MainActivity : Activity
             item.Car = raw[1];
             item.Text = raw[2];
             CarNotes.Upsert(DataDirectory, item);
-            ShowMessage("Заметка сохранена.");
+            ShowMessage(L10n.Get("msg.note_saved"));
         }, false);
     }
 
@@ -4710,7 +4710,7 @@ public sealed class MainActivity : Activity
         for (int i = 0; i < list.Count; i++)
             labels[i] = CarNotes.FormatLine(list[i]);
         new AlertDialog.Builder(this)
-            .SetTitle("Выберите заметку")
+            .SetTitle(L10n.Get("prompt.select_note"))
             .SetItems(labels, (sender, args) =>
             {
                 if (args.Which < 0 || args.Which >= list.Count)
@@ -4719,17 +4719,17 @@ public sealed class MainActivity : Activity
                 new AlertDialog.Builder(this)
                     .SetTitle(CarNotes.FormatLine(item))
                     .SetMessage(item.Text ?? "")
-                    .SetPositiveButton("Изменить", (s2, a2) => { EditCarNote(item); })
-                    .SetNeutralButton("Удалить", (s2, a2) =>
+                    .SetPositiveButton(L10n.Get("button.edit"), (s2, a2) => { EditCarNote(item); })
+                    .SetNeutralButton(L10n.Get("button.delete"), (s2, a2) =>
                     {
                         if (!String.IsNullOrEmpty(item.Id))
                             CarNotes.DeleteById(DataDirectory, item.Id);
-                        ShowMessage("Удалено.");
+                        ShowMessage(L10n.Get("msg.deleted"));
                     })
-                    .SetNegativeButton("Отмена", delegate { })
+                    .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
                     .Show();
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
@@ -4737,18 +4737,18 @@ public sealed class MainActivity : Activity
     {
         if (item == null)
             return;
-        RenderEditor("Изменить заметку", new List<EditorField>
+        RenderEditor(L10n.Get("button.edit_note"), new List<EditorField>
         {
-            EditorField.Date("Дата", item.Date ?? "", true),
-            EditorField.Text("Автомобиль", item.Car ?? "", true),
-            EditorField.Text("Текст", item.Text ?? "", true, true)
+            EditorField.Date(L10n.Get("label.date"), item.Date ?? "", true),
+            EditorField.Text(L10n.Get("label.vehicle"), item.Car ?? "", true),
+            EditorField.Text(L10n.Get("label.text"), item.Text ?? "", true, true)
         }, delegate(string[] raw)
         {
             item.Date = raw[0];
             item.Car = raw[1];
             item.Text = raw[2];
             CarNotes.Upsert(DataDirectory, item);
-            ShowMessage("Заметка сохранена.");
+            ShowMessage(L10n.Get("msg.note_saved"));
         }, false);
     }
 
@@ -4756,13 +4756,13 @@ public sealed class MainActivity : Activity
     {
         string car = String.IsNullOrEmpty(currentCar) ? "" : currentCar;
         string defaultDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        RenderEditor("Новое напоминание", new List<EditorField>
+        RenderEditor(L10n.Get("title.new_reminder"), new List<EditorField>
         {
-            EditorField.Date("Дата", defaultDate, true),
-            EditorField.Text("Автомобиль", car, true),
-            EditorField.Text("Название", "", true),
-            EditorField.Option("Тип", DateReminders.TypeLabelRu(DateReminders.TypeInsurance),
-                new string[] { "Страховка", "Техосмотр", "Своё" }, true)
+            EditorField.Date(L10n.Get("label.date"), defaultDate, true),
+            EditorField.Text(L10n.Get("label.vehicle"), car, true),
+            EditorField.Text(L10n.Get("label.name"), "", true),
+            EditorField.Option(L10n.Get("label.type"), DateReminders.TypeLabelRu(DateReminders.TypeInsurance),
+                new string[] { L10n.Get("reminder.insurance"), L10n.Get("reminder.inspection"), L10n.Get("reminder.custom") }, true)
         }, delegate(string[] raw)
         {
             DateReminder item = new DateReminder();
@@ -4772,7 +4772,7 @@ public sealed class MainActivity : Activity
             item.Type = DateReminders.NormalizeType(raw[3]);
             DateReminders.Upsert(DataDirectory, item);
             RefreshDateReminderNotifications();
-            ShowMessage("Напоминание сохранено.");
+            ShowMessage(L10n.Get("msg.reminder_saved"));
         }, false);
     }
 
@@ -4784,7 +4784,7 @@ public sealed class MainActivity : Activity
         for (int i = 0; i < list.Count; i++)
             labels[i] = DateReminders.FormatLine(list[i], DateTime.Today);
         new AlertDialog.Builder(this)
-            .SetTitle("Удалить напоминание")
+            .SetTitle(L10n.Get("button.delete_reminder"))
             .SetItems(labels, (sender, args) =>
             {
                 if (args.Which < 0 || args.Which >= list.Count)
@@ -4793,27 +4793,27 @@ public sealed class MainActivity : Activity
                 if (!String.IsNullOrEmpty(item.Id))
                     DateReminders.DeleteById(DataDirectory, item.Id);
                 RefreshDateReminderNotifications();
-                ShowMessage("Удалено.");
+                ShowMessage(L10n.Get("msg.deleted"));
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
     private void EditReminderWarnDays()
     {
         int days = ToSettings.GetReminderWarnDays(DataDirectory);
-        RenderEditor("Срок напоминаний", new List<EditorField>
+        RenderEditor(L10n.Get("label.reminder_term"), new List<EditorField>
         {
-            EditorField.Number("Дней до срока (по умолч. 14)",
+            EditorField.Number(L10n.Get("label.days_until_due_default14"),
                 days.ToString(CultureInfo.InvariantCulture), true)
         }, delegate(string[] raw)
         {
             decimal value;
             if (!TryNumber(raw[0], out value) || value < 0 || value > 3650 || value != Math.Floor(value))
-                throw new InvalidOperationException("Срок: целое 0–3650.");
+                throw new InvalidOperationException(L10n.Get("error.term_0_3650"));
             ToSettings.SetReminderWarnDays(DataDirectory, (int)value);
             RefreshDateReminderNotifications();
-            ShowMessage("Предупреждать за " + ((int)value) + " дн. до даты.");
+            ShowMessage((L10n.Get("label.warn_before") + " ") + ((int)value) + (" " + L10n.Get("msg.days_before_date")));
         }, false);
     }
 
@@ -4824,6 +4824,11 @@ public sealed class MainActivity : Activity
             message.IndexOf("не выполнен", StringComparison.OrdinalIgnoreCase) >= 0 ||
             message.IndexOf("Ошибка", StringComparison.OrdinalIgnoreCase) >= 0 ||
             message.IndexOf("Сначала", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("failed", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("first", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("échec", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("fehler", StringComparison.OrdinalIgnoreCase) >= 0 ||
             message.IndexOf('\n') >= 0 ||
             message.Length > 120);
         if (!looksLikeError)
@@ -4834,7 +4839,7 @@ public sealed class MainActivity : Activity
         new AlertDialog.Builder(this)
             .SetTitle("Alfa 156")
             .SetMessage(message)
-            .SetPositiveButton("ОК", delegate { })
+            .SetPositiveButton(L10n.Get("button.ok"), delegate { })
             .Show();
     }
 
@@ -4906,14 +4911,14 @@ public sealed class MainActivity : Activity
     {
         List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
         List<string> labels = new List<string>();
-        labels.Add("Добавить категорию");
+        labels.Add(L10n.Get("title.add_category"));
         if (categories.Count > 0)
         {
-            labels.Add("Переименовать категорию");
-            labels.Add("Удалить категорию");
+            labels.Add(L10n.Get("title.rename_category"));
+            labels.Add(L10n.Get("title.delete_category"));
         }
         new AlertDialog.Builder(this)
-            .SetTitle("Категории прочих")
+            .SetTitle(L10n.Get("title.expense_categories"))
             .SetItems(labels.ToArray(), (sender, args) =>
             {
                 if (args.Which == 0)
@@ -4923,15 +4928,15 @@ public sealed class MainActivity : Activity
                 else if (args.Which == 2)
                     PromptDeleteExpenseCategory();
             })
-            .SetNegativeButton("Закрыть", delegate { })
+            .SetNegativeButton(L10n.Get("button.close"), delegate { })
             .Show();
     }
 
     private void PromptAddExpenseCategory()
     {
-        RenderEditor("Новая кат. прочих", new List<EditorField>
+        RenderEditor(L10n.Get("title.new_expense_category"), new List<EditorField>
         {
-            EditorField.Text("Название", "", true)
+            EditorField.Text(L10n.Get("label.name"), "", true)
         }, delegate(string[] values)
         {
             ExpenseDataStore.AddExpenseCategory(DataDirectory, values[0]);
@@ -4942,10 +4947,10 @@ public sealed class MainActivity : Activity
     private void PromptRenameExpenseCategory()
     {
         List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
-        RenderEditor("Переименовать кат. прочих", new List<EditorField>
+        RenderEditor(L10n.Get("title.rename_expense_category"), new List<EditorField>
         {
-            EditorField.Option("Категория", categories[0], categories.ToArray(), true),
-            EditorField.Text("Новое название", "", true)
+            EditorField.Option(L10n.Get("label.category"), categories[0], categories.ToArray(), true),
+            EditorField.Text(L10n.Get("label.new_name"), "", true)
         }, delegate(string[] values)
         {
             ExpenseDataStore.RenameExpenseCategory(DataDirectory, values[0], values[1]);
@@ -4956,15 +4961,15 @@ public sealed class MainActivity : Activity
     private void PromptDeleteExpenseCategory()
     {
         List<string> categories = ExpenseDataStore.LoadExpenseCategories(DataDirectory);
-        RenderEditor("Удалить кат. прочих", new List<EditorField>
+        RenderEditor(L10n.Get("title.delete_expense_category"), new List<EditorField>
         {
-            EditorField.Option("Категория", categories[0], categories.ToArray(), true)
+            EditorField.Option(L10n.Get("label.category"), categories[0], categories.ToArray(), true)
         }, delegate(string[] values)
         {
             new AlertDialog.Builder(this)
-                .SetTitle("Удалить категорию?")
-                .SetMessage("Записи не удаляются. Сначала перенесите записи из категории в другую.")
-                .SetPositiveButton("Удалить", delegate
+                .SetTitle(L10n.Get("confirm.delete_category"))
+                .SetMessage(L10n.Get("error.move_records_no_delete"))
+                .SetPositiveButton(L10n.Get("button.delete"), delegate
                 {
                     try
                     {
@@ -4973,10 +4978,10 @@ public sealed class MainActivity : Activity
                     }
                     catch (Exception ex)
                     {
-                        ShowMessage("Не удалось удалить категорию: " + ex.Message);
+                        ShowMessage((L10n.Get("error.delete_category_failed") + " ") + ex.Message);
                     }
                 })
-                .SetNegativeButton("Отмена", delegate { })
+                .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
                 .Show();
         }, false);
     }
@@ -4984,15 +4989,15 @@ public sealed class MainActivity : Activity
     private void EditToIntervals()
     {
         ToIntervals values = ToSettings.Load(DataDirectory);
-        RenderEditor("Интервалы ТО", new List<EditorField>
+        RenderEditor(L10n.Get("label.service_intervals"), new List<EditorField>
         {
-            EditorField.Number("Интервал масла, км",
+            EditorField.Number(L10n.Get("label.oil_interval_km"),
                 values.OilInterval.ToString(CultureInfo.InvariantCulture), true),
-            EditorField.Number("Предупр. масла, км",
+            EditorField.Number(L10n.Get("label.oil_warn_km"),
                 values.OilWarn.ToString(CultureInfo.InvariantCulture), true),
-            EditorField.Number("Интервал ремня, км",
+            EditorField.Number(L10n.Get("label.belt_interval_km"),
                 values.BeltInterval.ToString(CultureInfo.InvariantCulture), true),
-            EditorField.Number("Предупр. ремня, км",
+            EditorField.Number(L10n.Get("label.belt_warn_km"),
                 values.BeltWarn.ToString(CultureInfo.InvariantCulture), true)
         }, delegate(string[] raw)
         {
@@ -5001,30 +5006,30 @@ public sealed class MainActivity : Activity
                 !TryNumber(raw[1], out oilWarn) || oilWarn <= 0 ||
                 !TryNumber(raw[2], out beltInterval) || beltInterval <= 0 ||
                 !TryNumber(raw[3], out beltWarn) || beltWarn <= 0)
-                throw new InvalidOperationException("Введите положительные числа.");
+                throw new InvalidOperationException(L10n.Get("error.enter_positive_numbers"));
             values.OilInterval = oilInterval;
             values.OilWarn = oilWarn;
             values.BeltInterval = beltInterval;
             values.BeltWarn = beltWarn;
             ToSettings.Save(DataDirectory, values);
             RefreshServiceNotifications();
-            ShowMessage("Интервалы ТО сохранены.");
+            ShowMessage(L10n.Get("msg.intervals_saved"));
         }, false);
     }
 
     private void EditCurrency()
     {
         string current = ToSettings.GetCurrency(DataDirectory);
-        RenderEditor("Валюта", new List<EditorField>
+        RenderEditor(L10n.Get("label.currency"), new List<EditorField>
         {
-            EditorField.Text("Код валюты (BYN/RUB/USD/EUR)", current, true)
+            EditorField.Text(L10n.Get("label.currency_examples"), current, true)
         }, delegate(string[] raw)
         {
             ToSettings.SetCurrency(DataDirectory, raw[0]);
             RefreshRecords();
             RefreshServiceNotifications();
-            ShowMessage("Валюта: " + ToSettings.GetCurrency(DataDirectory) +
-                ". Суммы не пересчитываются — меняется только подпись.");
+            ShowMessage((L10n.Get("msg.currency_colon") + " ") + ToSettings.GetCurrency(DataDirectory) +
+                L10n.Get("msg.currency_no_recalc"));
         }, false);
     }
 
@@ -5035,17 +5040,20 @@ public sealed class MainActivity : Activity
         int currentIndex = languages.IndexOf(current);
         if (currentIndex < 0) currentIndex = 0;
 
+        string[] displayNames = new string[languages.Count];
+        for (int i = 0; i < languages.Count; i++)
+            displayNames[i] = L10n.GetLanguageDisplayName(languages[i]) + " (" + languages[i] + ")";
         new AlertDialog.Builder(this)
             .SetTitle(L10n.Get("dialog.language"))
-            .SetSingleChoiceItems(languages.ToArray(), currentIndex, (sender, args) =>
+            .SetSingleChoiceItems(displayNames, currentIndex, (sender, args) =>
             {
                 string selected = languages[args.Which];
                 ToSettings.SetLanguage(DataDirectory, selected);
                 LocalizationManager.SetLanguage(selected);
-                ShowMessage("Язык: " + selected + "\nПожалуйста, перезагрузите приложение.");
                 ((AlertDialog)sender).Dismiss();
+                Recreate();
             })
-            .SetNegativeButton("Отмена", delegate { })
+            .SetNegativeButton(L10n.Get("button.cancel"), delegate { })
             .Show();
     }
 
@@ -5053,46 +5061,46 @@ public sealed class MainActivity : Activity
     {
         decimal budget = ToSettings.GetBudgetMonth(DataDirectory);
         decimal warnPct = ToSettings.GetBudgetWarnPct(DataDirectory);
-        RenderEditor("Бюджет месяца", new List<EditorField>
+        RenderEditor(L10n.Get("label.monthly_budget"), new List<EditorField>
         {
-            EditorField.Number("Лимит (0 = выкл.)",
+            EditorField.Number(L10n.Get("label.limit_0_off"),
                 budget.ToString(CultureInfo.InvariantCulture), true),
-            EditorField.Number("Предупр. %",
+            EditorField.Number(L10n.Get("label.warn_pct"),
                 warnPct.ToString(CultureInfo.InvariantCulture), true)
         }, delegate(string[] raw)
         {
             decimal monthLimit, pct;
             if (!TryNumber(raw[0], out monthLimit) || monthLimit < 0)
-                throw new InvalidOperationException("Лимит: 0 (выкл.) или положительное число.");
+                throw new InvalidOperationException(L10n.Get("error.limit_invalid"));
             if (!TryNumber(raw[1], out pct) || pct <= 0 || pct > 100)
-                throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+                throw new InvalidOperationException(L10n.Get("error.warn_pct_range"));
             ToSettings.SetBudget(DataDirectory, monthLimit, pct);
             RefreshBudgetNotification();
             if (monthLimit <= 0)
-                ShowMessage("Месячный бюджет выключен.");
+                ShowMessage(L10n.Get("msg.budget_disabled"));
             else
-                ShowMessage("Бюджет месяца: " + Money(monthLimit) + " " + Cur() +
-                    ", предупреждение с " + Money(pct) + "%.");
+                ShowMessage((L10n.Get("summary.monthly_budget_colon") + " ") + Money(monthLimit) + " " + Cur() +
+                    (L10n.Get("summary.warn_from") + " ") + Money(pct) + "%.");
         }, false);
     }
 
     private void EditBackupReminder()
     {
         int days = ToSettings.GetBackupRemindDays(DataDirectory);
-        RenderEditor("Напоминание о копии", new List<EditorField>
+        RenderEditor(L10n.Get("title.backup_reminder"), new List<EditorField>
         {
-            EditorField.Number("Дней (0 = выкл., по умолч. 7)",
+            EditorField.Number(L10n.Get("label.days_off_default7"),
                 days.ToString(CultureInfo.InvariantCulture), true)
         }, delegate(string[] raw)
         {
             decimal value;
             if (!TryNumber(raw[0], out value) || value < 0 || value > 3650 || value != Math.Floor(value))
-                throw new InvalidOperationException("Интервал: 0 (выкл.) или целое 1–3650.");
+                throw new InvalidOperationException(L10n.Get("error.interval_0_3650"));
             ToSettings.SetBackupRemindDays(DataDirectory, (int)value);
             if (value <= 0)
-                ShowMessage("Напоминание о резервной копии выключено.");
+                ShowMessage(L10n.Get("msg.backup_reminder_off"));
             else
-                ShowMessage("Напоминание: если копии нет " + ((int)value) + " дн. и дольше.");
+                ShowMessage((L10n.Get("label.backup_remind_if_none") + " ") + ((int)value) + (" " + L10n.Get("reminder.days_and_longer_dot")));
         }, false);
     }
 
@@ -5131,13 +5139,13 @@ public sealed class MainActivity : Activity
                 return;
             ToSettings.MarkBackupNagShown(DataDirectory);
             int days = ToSettings.DaysSinceLastBackup(DataDirectory);
-            string age = days < 0 ? "копии ещё не было" : ("прошло " + days + " дн.");
+            string age = days < 0 ? L10n.Get("summary.no_backup_yet") : ((L10n.Get("forecast.elapsed") + " ") + days + (" " + L10n.Get("unit.days_short")));
             new AlertDialog.Builder(this)
-                .SetTitle("Резервная копия")
-                .SetMessage("Давно не было резервной копии (" + age + ").\n" +
-                    "Рекомендуем «Полный экспорт ZIP» (.dat + Receipts/ + settings) или «Копия на телефоне».")
-                .SetPositiveButton("Экспорт ZIP", (sender, args) => { ChooseExportFile(); })
-                .SetNeutralButton("Позже", delegate { })
+                .SetTitle(L10n.Get("title.backup"))
+                .SetMessage(L10n.Get("reminder.backup_overdue_open") + age + ").\n" +
+                    L10n.Get("hint.recommend_full_zip_or_phone"))
+                .SetPositiveButton(L10n.Get("button.export_zip_short"), (sender, args) => { ChooseExportFile(); })
+                .SetNeutralButton(L10n.Get("button.later"), delegate { })
                 .Show();
         }
         catch

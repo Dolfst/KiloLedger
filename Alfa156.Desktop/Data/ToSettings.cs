@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop.Data
 {
     internal sealed class ToIntervals
@@ -127,7 +128,7 @@ namespace Alfa156.Desktop.Data
             string normalized = NormalizeCurrency(code);
             if (normalized == null)
                 throw new InvalidOperationException(
-                    "Код валюты: 1–8 символов (латиница/цифры), например BYN, RUB, USD, EUR.");
+                    L10n.Get("error.currency_format"));
             Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             ApplyRows(map, existing);
             ApplyDefaults(map);
@@ -207,9 +208,9 @@ namespace Alfa156.Desktop.Data
         internal static List<string[]> SetBudget(List<string[]> existing, decimal monthLimit, decimal warnPct)
         {
             if (monthLimit < 0)
-                throw new InvalidOperationException("Бюджет месяца: 0 (выкл.) или положительное число.");
+                throw new InvalidOperationException(L10n.Get("error.budget_invalid"));
             if (warnPct <= 0 || warnPct > 100)
-                throw new InvalidOperationException("Порог предупреждения: от 1 до 100 %.");
+                throw new InvalidOperationException(L10n.Get("error.warn_pct_range"));
             Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             ApplyRows(map, existing);
             ApplyDefaults(map);
@@ -236,7 +237,7 @@ namespace Alfa156.Desktop.Data
         internal static List<string[]> SetReminderWarnDays(List<string[]> existing, int days)
         {
             if (days < 0 || days > 3650)
-                throw new InvalidOperationException("Предупреждение: 0–3650 дней.");
+                throw new InvalidOperationException(L10n.Get("error.warn_days_range"));
             Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             ApplyRows(map, existing);
             ApplyDefaults(map);
@@ -302,7 +303,7 @@ namespace Alfa156.Desktop.Data
         internal static List<string[]> SetBackupRemindDays(List<string[]> existing, int days)
         {
             if (days < 0 || days > 3650)
-                throw new InvalidOperationException("Интервал напоминания: 0 (выкл.) или 1–3650 дней.");
+                throw new InvalidOperationException(L10n.Get("error.reminder_interval_range"));
             Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             ApplyRows(map, existing);
             ApplyDefaults(map);

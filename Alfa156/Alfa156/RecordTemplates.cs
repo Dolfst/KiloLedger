@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -201,11 +202,11 @@ namespace CarExpenses
             item.Type = NormalizeType(item.Type);
             item.Name = (item.Name ?? "").Trim();
             if (!IsValidType(item.Type))
-                throw new InvalidOperationException("Тип шаблона: fuel, repair или expense.");
+                throw new InvalidOperationException(L10n.Get("error.template_type_invalid"));
             if (item.Name.Length == 0)
-                throw new InvalidOperationException("Введите название шаблона.");
+                throw new InvalidOperationException(L10n.Get("error.enter_template_name"));
             if (item.Name.Length > 64)
-                throw new InvalidOperationException("Название шаблона: не более 64 символов.");
+                throw new InvalidOperationException(L10n.Get("error.template_name_len"));
 
             List<string[]> rows = LoadRowsFrom(directory);
             bool found = false;

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Alfa156.Desktop.Data;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop
 {
     internal sealed class SyncOptionsForm : Form
@@ -23,7 +24,7 @@ namespace Alfa156.Desktop
             this.remote = remote;
             this.safetyPath = safetyPath;
             Plan = new SyncPlan();
-            Text = "Предпросмотр синхронизации с Google";
+            Text = L10n.Get("title.google_sync_preview");
             Width = 680;
             Height = 520;
             StartPosition = FormStartPosition.CenterParent;
@@ -41,14 +42,14 @@ namespace Alfa156.Desktop
             summary.Width = 640;
             summary.Height = 260;
 
-            addBox.Text = "Добавить записи, которые есть только в Google";
+            addBox.Text = L10n.Get("sync.add_google_only");
             addBox.Checked = true;
             addBox.Left = 12;
             addBox.Top = 286;
             addBox.Width = 640;
             addBox.CheckedChanged += RefreshPreview;
 
-            removeBox.Text = "Удалить локальные записи, которых нет в Google";
+            removeBox.Text = L10n.Get("sync.delete_local_missing_google");
             removeBox.Checked = false;
             removeBox.Left = 12;
             removeBox.Top = 316;
@@ -57,7 +58,7 @@ namespace Alfa156.Desktop
 
             Label conflictLabel = new Label
             {
-                Text = "Если одна и та же запись отличается:",
+                Text = L10n.Get("sync.if_same_differs"),
                 Left = 12,
                 Top = 350,
                 Width = 280
@@ -68,16 +69,16 @@ namespace Alfa156.Desktop
             conflictBox.DropDownStyle = ComboBoxStyle.DropDownList;
             conflictBox.Items.AddRange(new object[]
             {
-                "Оставить локальную версию",
-                "Взять версию из Google",
-                "Склеить поля (пустые дополнить)"
+                L10n.Get("sync.keep_local_version"),
+                L10n.Get("sync.take_google_version"),
+                L10n.Get("sync.merge_fields_fill_empty")
             });
             conflictBox.SelectedIndex = 0;
             conflictBox.SelectedIndexChanged += RefreshPreview;
 
             Button ok = new Button
             {
-                Text = "Применить",
+                Text = L10n.Get("button.apply"),
                 Left = 400,
                 Top = 430,
                 Width = 140,
@@ -88,7 +89,7 @@ namespace Alfa156.Desktop
             };
             Button cancel = new Button
             {
-                Text = "Отмена",
+                Text = L10n.Get("button.cancel"),
                 Left = 550,
                 Top = 430,
                 Width = 100,
@@ -114,7 +115,7 @@ namespace Alfa156.Desktop
             SyncJournal preview = SyncMerge.BuildPreview(local, remote, draft);
             preview.SafetyPath = safetyPath;
             summary.Text = SyncMerge.FormatSummary(diffs) + "\r\n\r\n" + preview.FormatPreview() +
-                "\r\n\r\n(предпросмотр учитывает выбранные опции выше)";
+                ("\r\n\r\n" + L10n.Get("sync.preview_uses_options"));
         }
 
         private SyncPlan ReadDraftPlan()

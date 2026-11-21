@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -23,18 +24,18 @@ namespace CarExpenses
                 currency = "RUB";
 
             const string nl = "\r\n";
-            string title = "Alfa 156 · отчёт за период";
+            string title = L10n.Get("report.header");
             string range = PeriodCompare.FormatRangeLabel(from, to);
             string costKm = totals.HasCostPerKm
-                ? Money(totals.CostPerKm) + " " + currency + "/км"
-                : "н/д";
+                ? Money(totals.CostPerKm) + " " + currency + L10n.Get("unit.per_km")
+                : L10n.Get("common.na");
             string kmRange = totals.HasCostPerKm
                 ? Money(totals.MinKm) + "…" + Money(totals.MaxKm) +
-                  " км (Δ " + Money(totals.MaxKm - totals.MinKm) + " км)"
-                : "н/д";
+                  (" " + L10n.Get("report.km_delta_open") + " ") + Money(totals.MaxKm - totals.MinKm) + (" " + L10n.Get("unit.km_close"))
+                : L10n.Get("common.na");
             string consumption = totals.HasConsumption
-                ? Money(totals.LitersPer100Km) + " л/100 км"
-                : "н/д";
+                ? Money(totals.LitersPer100Km) + (" " + L10n.Get("unit.l_per_100km"))
+                : L10n.Get("common.na");
             string budget = "";
             if (totals.PeriodBudget > 0)
             {
@@ -42,37 +43,37 @@ namespace CarExpenses
                 budget = Money(spent) + " / " + Money(totals.PeriodBudget) + " " + currency +
                     " (" + Money(spent * 100m / totals.PeriodBudget) + "%)";
                 if (spent >= totals.PeriodBudget)
-                    budget += " — превышен";
+                    budget += (" " + L10n.Get("report.budget_exceeded"));
             }
 
             StringBuilder sb = new StringBuilder();
             sb.Append(title);
-            sb.Append(nl).Append("Авто: ").Append(car ?? "");
-            sb.Append(nl).Append("Период: ").Append(range);
+            sb.Append(nl).Append((L10n.Get("label.car_colon") + " ")).Append(car ?? "");
+            sb.Append(nl).Append((L10n.Get("report.period_colon") + " ")).Append(range);
             sb.Append(nl);
-            sb.Append(nl).Append("Топливо: ").Append(Money(totals.Fuel)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Ремонт: ").Append(Money(totals.Repair)).Append(' ').Append(currency);
+            sb.Append(nl).Append((L10n.Get("label.fuel_colon") + " ")).Append(Money(totals.Fuel)).Append(' ').Append(currency);
+            sb.Append(nl).Append((L10n.Get("label.repairs_colon") + " ")).Append(Money(totals.Repair)).Append(' ').Append(currency);
             if (totals.TopRepairLabel.Length > 0)
-                sb.Append(nl).Append("  Топ ремонта: ").Append(totals.TopRepairLabel).Append(" — ")
+                sb.Append(nl).Append(("  " + L10n.Get("report.top_repairs_colon") + " ")).Append(totals.TopRepairLabel).Append(" — ")
                     .Append(Money(totals.TopRepairAmount)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Прочие: ").Append(Money(totals.Expense)).Append(' ').Append(currency);
+            sb.Append(nl).Append((L10n.Get("label.expenses_colon") + " ")).Append(Money(totals.Expense)).Append(' ').Append(currency);
             if (totals.TopExpenseLabel.Length > 0)
-                sb.Append(nl).Append("  Топ прочих: ").Append(totals.TopExpenseLabel).Append(" — ")
+                sb.Append(nl).Append(("  " + L10n.Get("report.top_expenses_colon") + " ")).Append(totals.TopExpenseLabel).Append(" — ")
                     .Append(Money(totals.TopExpenseAmount)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Коммунальные: ").Append(Money(totals.Utility)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Всего (без коммун.): ").Append(Money(totals.CostBase)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Всего (с коммунальными): ").Append(Money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Стоимость/км: ").Append(costKm);
-            sb.Append(nl).Append("Пробег: ").Append(kmRange);
-            sb.Append(nl).Append("Заправлено: ").Append(Money(totals.Liters)).Append(" л");
-            sb.Append(nl).Append("Расход: ").Append(consumption);
+            sb.Append(nl).Append((L10n.Get("label.utilities_colon") + " ")).Append(Money(totals.Utility)).Append(' ').Append(currency);
+            sb.Append(nl).Append((L10n.Get("report.total_excl_util_colon") + " ")).Append(Money(totals.CostBase)).Append(' ').Append(currency);
+            sb.Append(nl).Append((L10n.Get("report.total_incl_util_colon") + " ")).Append(Money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
+            sb.Append(nl).Append((L10n.Get("report.cost_per_km_colon") + " ")).Append(costKm);
+            sb.Append(nl).Append((L10n.Get("label.odometer_colon") + " ")).Append(kmRange);
+            sb.Append(nl).Append((L10n.Get("report.fueled_colon") + " ")).Append(Money(totals.Liters)).Append((" " + L10n.Get("unit.liters_short")));
+            sb.Append(nl).Append((L10n.Get("report.consumption_colon") + " ")).Append(consumption);
             if (budget.Length > 0)
-                sb.Append(nl).Append("Бюджет: ").Append(budget);
+                sb.Append(nl).Append((L10n.Get("report.budget_colon") + " ")).Append(budget);
             if (totals.TopStationLabel.Length > 0)
-                sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
+                sb.Append(nl).Append((L10n.Get("report.top_station_colon") + " ")).Append(totals.TopStationLabel).Append(" — ")
                     .Append(Money(totals.TopStationAmount)).Append(' ').Append(currency);
-            sb.Append(nl).Append("Поездки личные: ").Append(Money(totals.PersonalTripKm)).Append(" км");
-            sb.Append(nl).Append("Поездки рабочие: ").Append(Money(totals.WorkTripKm)).Append(" км");
+            sb.Append(nl).Append((L10n.Get("report.trips_personal_colon") + " ")).Append(Money(totals.PersonalTripKm)).Append((" " + L10n.Get("unit.km")));
+            sb.Append(nl).Append((L10n.Get("report.trips_work_colon") + " ")).Append(Money(totals.WorkTripKm)).Append((" " + L10n.Get("unit.km")));
             return sb.ToString();
         }
 

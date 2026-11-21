@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Alfa156.Desktop.Data;
 using Alfa156.Desktop.Exchange;
 
+using Alfa156.Localization;
 namespace Alfa156.Desktop
 {
     /// <summary>
@@ -31,7 +32,7 @@ namespace Alfa156.Desktop
         internal GoogleSyncWizardForm(GoogleSyncSettings existing)
         {
             settings = existing ?? new GoogleSyncSettings();
-            Text = "Мастер настройки Google Sync";
+            Text = L10n.Get("title.google_sync_wizard");
             Width = 680;
             Height = 420;
             StartPosition = FormStartPosition.CenterParent;
@@ -63,7 +64,7 @@ namespace Alfa156.Desktop
 
             backButton = new Button
             {
-                Text = "Назад",
+                Text = L10n.Get("button.back"),
                 Left = 280,
                 Top = 340,
                 Width = 100,
@@ -71,7 +72,7 @@ namespace Alfa156.Desktop
             };
             nextButton = new Button
             {
-                Text = "Далее",
+                Text = L10n.Get("button.next"),
                 Left = 390,
                 Top = 340,
                 Width = 110,
@@ -79,7 +80,7 @@ namespace Alfa156.Desktop
             };
             cancelButton = new Button
             {
-                Text = "Отмена",
+                Text = L10n.Get("button.cancel"),
                 Left = 510,
                 Top = 340,
                 Width = 100,
@@ -118,8 +119,8 @@ namespace Alfa156.Desktop
 
         private void BuildStep1()
         {
-            stepLabel.Text = "Шаг 1 из 3 — подготовка Apps Script";
-            nextButton.Text = "Далее";
+            stepLabel.Text = L10n.Get("wizard.gs_step1_title");
+            nextButton.Text = L10n.Get("button.next");
 
             Label body = new Label
             {
@@ -128,13 +129,13 @@ namespace Alfa156.Desktop
                 Width = 600,
                 Height = 180,
                 Text =
-                    "Google Sync связывает ПК и Android с таблицей через Apps Script.\r\n\r\n" +
-                    "1. Откройте таблицу «Деньги» в Google Sheets.\r\n" +
-                    "2. Расширения → Apps Script — вставьте код из google-sync/Alfa156Sync.gs.\r\n" +
-                    "3. Project Settings → Script properties: ключ SYNC_TOKEN (секрет).\r\n" +
+                    (L10n.Get("wizard.gs_intro") + "\r\n\r\n") +
+                    (L10n.Get("wizard.gs_open_sheet_alt") + "\r\n") +
+                    (L10n.Get("wizard.gs_step2_paste") + "\r\n") +
+                    (L10n.Get("wizard.gs_step3_token") + "\r\n") +
                     "4. Deploy → New deployment → Web app (Execute as: Me, Anyone).\r\n" +
-                    "5. Скопируйте URL веб-приложения — он понадобится на следующем шаге.\r\n\r\n" +
-                    "Подробная инструкция — в README репозитория."
+                    (L10n.Get("wizard.gs_step5_copy_url") + "\r\n\r\n") +
+                    L10n.Get("hint.detailed_readme")
             };
 
             LinkLabel link = new LinkLabel
@@ -143,7 +144,7 @@ namespace Alfa156.Desktop
                 Top = 210,
                 Width = 600,
                 Height = 24,
-                Text = "Открыть google-sync/README.md на GitHub"
+                Text = L10n.Get("button.open_google_sync_readme")
             };
             link.LinkClicked += delegate
             {
@@ -157,7 +158,7 @@ namespace Alfa156.Desktop
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "Не удалось открыть ссылку: " + ex.Message,
+                    MessageBox.Show(this, (L10n.Get("error.open_link_failed") + " ") + ex.Message,
                         "Google Sync", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             };
@@ -168,15 +169,15 @@ namespace Alfa156.Desktop
 
         private void BuildStep2()
         {
-            stepLabel.Text = "Шаг 2 из 3 — URL и токен";
-            nextButton.Text = "Далее";
+            stepLabel.Text = L10n.Get("wizard.gs_step2_title");
+            nextButton.Text = L10n.Get("button.next");
 
             Label urlLabel = new Label
             {
                 Left = 12,
                 Top = 16,
                 Width = 600,
-                Text = "URL веб-приложения Apps Script"
+                Text = L10n.Get("google.script_url_label")
             };
             urlBox = new TextBox
             {
@@ -191,7 +192,7 @@ namespace Alfa156.Desktop
                 Left = 12,
                 Top = 80,
                 Width = 600,
-                Text = "SYNC_TOKEN (как в Script properties)"
+                Text = L10n.Get("google.sync_token_hint")
             };
             tokenBox = new TextBox
             {
@@ -206,7 +207,7 @@ namespace Alfa156.Desktop
                 Left = 12,
                 Top = 144,
                 Width = 600,
-                Text = "Ссылка на таблицу (необязательно, для импорта CSV)"
+                Text = L10n.Get("label.sheet_url_csv_opt")
             };
             sheetBox = new TextBox
             {
@@ -223,8 +224,8 @@ namespace Alfa156.Desktop
                 Width = 600,
                 Height = 40,
                 ForeColor = Color.FromArgb(70, 90, 110),
-                Text = "Значения сохраняются в %AppData%\\Alfa156\\google-sync.json. " +
-                    "Расширенную настройку по-прежнему можно открыть кнопкой «Google: настройка»."
+                Text = (L10n.Get("hint.google_sync_json_path_2") + " ") +
+                    L10n.Get("wizard.advanced_settings_hint")
             };
 
             stepHost.Controls.Add(urlLabel);
@@ -241,8 +242,8 @@ namespace Alfa156.Desktop
             urlBox = null;
             tokenBox = null;
             sheetBox = null;
-            stepLabel.Text = "Шаг 3 из 3 — проверка связи";
-            nextButton.Text = "Готово";
+            stepLabel.Text = L10n.Get("wizard.gs_step3_title");
+            nextButton.Text = L10n.Get("button.done");
 
             Label body = new Label
             {
@@ -250,8 +251,8 @@ namespace Alfa156.Desktop
                 Top = 16,
                 Width = 600,
                 Height = 60,
-                Text = "Нажмите «Проверить соединение», чтобы выполнить pull из Apps Script. " +
-                    "Если всё настроено, появятся числа строк из таблицы."
+                Text = (L10n.Get("wizard.click_test_conn") + " ") +
+                    L10n.Get("wizard.test_conn_hint")
             };
 
             Button testButton = new Button
@@ -260,7 +261,7 @@ namespace Alfa156.Desktop
                 Top = 90,
                 Width = 180,
                 Height = 32,
-                Text = "Проверить соединение"
+                Text = L10n.Get("button.test_connection")
             };
             testButton.Click += TestConnectionClicked;
 
@@ -270,7 +271,7 @@ namespace Alfa156.Desktop
                 Top = 140,
                 Width = 600,
                 Height = 100,
-                Text = "Результат проверки появится здесь."
+                Text = L10n.Get("wizard.test_result_placeholder")
             };
 
             stepHost.Controls.Add(body);
@@ -294,7 +295,7 @@ namespace Alfa156.Desktop
             }
             if (String.IsNullOrEmpty(settings.ScriptUrl) || String.IsNullOrEmpty(settings.Token))
             {
-                MessageBox.Show(this, "Сначала заполните URL и SYNC_TOKEN на шаге 2.",
+                MessageBox.Show(this, L10n.Get("wizard.fill_url_token_step2"),
                     "Google Sync", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 GoTo(1);
                 return;
@@ -311,13 +312,13 @@ namespace Alfa156.Desktop
             string sheet = sheetBox == null ? (settings.SpreadsheetUrl ?? "") : sheetBox.Text.Trim();
             if (String.IsNullOrEmpty(url))
             {
-                MessageBox.Show(this, "Укажите URL веб-приложения Apps Script.",
+                MessageBox.Show(this, L10n.Get("error.specify_apps_script_url"),
                     "Google Sync", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
             if (String.IsNullOrEmpty(token))
             {
-                MessageBox.Show(this, "Укажите SYNC_TOKEN.",
+                MessageBox.Show(this, L10n.Get("error.specify_sync_token"),
                     "Google Sync", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
@@ -332,7 +333,7 @@ namespace Alfa156.Desktop
         {
             if (String.IsNullOrEmpty(settings.ScriptUrl) || String.IsNullOrEmpty(settings.Token))
             {
-                MessageBox.Show(this, "Сначала заполните URL и SYNC_TOKEN на шаге 2.",
+                MessageBox.Show(this, L10n.Get("wizard.fill_url_token_step2"),
                     "Google Sync", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 GoTo(1);
                 return;
@@ -347,7 +348,7 @@ namespace Alfa156.Desktop
             catch (Exception ex)
             {
                 testResultLabel.ForeColor = Color.FromArgb(150, 30, 30);
-                testResultLabel.Text = "Ошибка: " + ex.Message;
+                testResultLabel.Text = (L10n.Get("label.error_colon") + " ") + ex.Message;
             }
             finally
             {

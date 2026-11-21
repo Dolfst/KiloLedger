@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     /// <summary>
@@ -116,10 +117,10 @@ namespace CarExpenses
         internal static string FormatBlock(List<Stats> stats, string currency)
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Сравнение автомобилей:");
+            sb.Append(L10n.Get("summary.car_compare_colon"));
             if (stats == null || stats.Count == 0)
             {
-                sb.Append("\r\nнет автомобилей");
+                sb.Append(("\r\n" + L10n.Get("summary.no_cars")));
                 return sb.ToString();
             }
             for (int i = 0; i < stats.Count; i++)
@@ -127,22 +128,22 @@ namespace CarExpenses
                 Stats s = stats[i];
                 decimal total = s.FuelTotal + s.RepairTotal + s.ExpenseTotal;
                 sb.Append("\r\n").Append(s.Name).Append(':');
-                sb.Append("\r\n  топливо ").Append(Money(s.FuelTotal)).Append(' ').Append(currency);
-                sb.Append("\r\n  ремонт ").Append(Money(s.RepairTotal)).Append(' ').Append(currency);
-                sb.Append("\r\n  прочие ").Append(Money(s.ExpenseTotal)).Append(' ').Append(currency);
-                sb.Append("\r\n  всего ").Append(Money(total)).Append(' ').Append(currency);
-                sb.Append("\r\n  стоимость/км ");
+                sb.Append(("\r\n  " + L10n.Get("compare.fuel") + " ")).Append(Money(s.FuelTotal)).Append(' ').Append(currency);
+                sb.Append(("\r\n  " + L10n.Get("compare.repairs") + " ")).Append(Money(s.RepairTotal)).Append(' ').Append(currency);
+                sb.Append(("\r\n  " + L10n.Get("compare.expenses") + " ")).Append(Money(s.ExpenseTotal)).Append(' ').Append(currency);
+                sb.Append(("\r\n  " + L10n.Get("compare.total") + " ")).Append(Money(total)).Append(' ').Append(currency);
+                sb.Append(("\r\n  " + L10n.Get("compare.cost_per_km") + " "));
                 if (s.MinKm != Decimal.MaxValue && s.MaxKm > s.MinKm)
-                    sb.Append(Money(total / (s.MaxKm - s.MinKm))).Append(' ').Append(currency).Append("/км");
+                    sb.Append(Money(total / (s.MaxKm - s.MinKm))).Append(' ').Append(currency).Append(L10n.Get("unit.per_km"));
                 else
-                    sb.Append("н/д");
-                sb.Append("\r\n  ср. л/100км ");
+                    sb.Append(L10n.Get("common.na"));
+                sb.Append(("\r\n  " + L10n.Get("compare.avg_l100") + " "));
                 if (s.FullTankDistance > 0)
                     sb.Append((s.FullTankLiters * 100m / s.FullTankDistance)
                         .ToString("0.0", CultureInfo.InvariantCulture));
                 else
-                    sb.Append("н/д");
-                sb.Append("\r\n  пробег ").Append(Money(s.CurrentKm)).Append(" км");
+                    sb.Append(L10n.Get("common.na"));
+                sb.Append(("\r\n  " + L10n.Get("integrity.field_odometer") + " ")).Append(Money(s.CurrentKm)).Append((" " + L10n.Get("unit.km")));
             }
             return sb.ToString();
         }

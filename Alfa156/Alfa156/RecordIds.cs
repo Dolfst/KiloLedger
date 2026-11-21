@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using Alfa156.Localization;
 namespace CarExpenses
 {
     internal static class RecordIds
@@ -338,25 +339,25 @@ namespace CarExpenses
         public string FormatSummary()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Итог синхронизации:\r\n");
-            sb.Append("  добавлено: ");
+            sb.Append((L10n.Get("sync.result_colon") + "\r\n"));
+            sb.Append(("  " + L10n.Get("sync.added_colon") + " "));
             sb.Append(Added.ToString());
-            sb.Append("\r\n  удалено (tombstone): ");
+            sb.Append(("\r\n  " + L10n.Get("sync.deleted_tombstone_colon") + " "));
             sb.Append(Removed.ToString());
-            sb.Append("\r\n  конфликтов: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.conflicts_colon") + " "));
             sb.Append(Conflicts.ToString());
-            sb.Append("\r\n  конфликтов, оставлено локальное: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.conflicts_kept_local_colon") + " "));
             sb.Append(ConflictKeptLocal.ToString());
-            sb.Append("\r\n  конфликтов, принято удалённое: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.conflicts_took_remote_colon") + " "));
             sb.Append(ConflictKeptIncoming.ToString());
-            sb.Append("\r\n  конфликтов, объединено: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.conflicts_merged_colon") + " "));
             sb.Append(ConflictMerged.ToString());
-            sb.Append("\r\n  только локально: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.local_only_colon") + " "));
             sb.Append(KeptLocalOnly.ToString());
             AppendExamples(sb, "\r\n");
             if (RollbackReason != null && RollbackReason.Length > 0)
             {
-                sb.Append("\r\nПричина отката: ");
+                sb.Append(("\r\n" + L10n.Get("error.rollback_reason_colon") + " "));
                 sb.Append(RollbackReason);
             }
             return sb.ToString();
@@ -365,25 +366,25 @@ namespace CarExpenses
         public string FormatPreview()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Предпросмотр слияния:\r\n");
-            sb.Append("  только локально: ");
+            sb.Append((L10n.Get("sync.merge_preview_colon") + "\r\n"));
+            sb.Append(("  " + L10n.Get("sync.local_only_colon") + " "));
             sb.Append(KeptLocalOnly.ToString());
-            sb.Append("\r\n  только удалённо: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.remote_only_colon") + " "));
             sb.Append(Added.ToString());
-            sb.Append("\r\n  обновления/конфликты: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.updates_conflicts_colon") + " "));
             sb.Append(Conflicts.ToString());
-            sb.Append("\r\n  оставить локальное: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.keep_local_colon") + " "));
             sb.Append(ConflictKeptLocal.ToString());
-            sb.Append("\r\n  принять удалённое: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.take_remote_colon") + " "));
             sb.Append(ConflictKeptIncoming.ToString());
-            sb.Append("\r\n  объединить поля: ");
+            sb.Append(("\r\n  " + L10n.Get("sync.merge_fields_colon") + " "));
             sb.Append(ConflictMerged.ToString());
-            sb.Append("\r\n  удаления (tombstone): ");
+            sb.Append(("\r\n  " + L10n.Get("sync.deletions_tombstone_colon") + " "));
             sb.Append(Removed.ToString());
             AppendExamples(sb, "\r\n");
             if (SafetyPath != null && SafetyPath.Length > 0)
             {
-                sb.Append("\r\n\r\nПеред применением: ");
+                sb.Append(("\r\n\r\n" + L10n.Get("import.before_apply_colon") + " "));
                 sb.Append(SafetyPath);
             }
             return sb.ToString();
@@ -395,7 +396,7 @@ namespace CarExpenses
                 return;
             sb.Append(nl);
             sb.Append(nl);
-            sb.Append("Примеры:");
+            sb.Append(L10n.Get("label.examples_colon"));
             for (int i = 0; i < Examples.Count; i++)
             {
                 sb.Append(nl);
