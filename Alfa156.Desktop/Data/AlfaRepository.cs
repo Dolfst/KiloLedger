@@ -9,7 +9,7 @@ namespace Alfa156.Desktop.Data
 {
     internal sealed class AlfaRepository
     {
-        private const string AppVersion = "1.36.0";
+        private const string AppVersion = "1.37.0";
         public string DirectoryPath { get; private set; }
         public List<string[]> Cars { get; private set; }
         public List<string[]> Fuel { get; private set; }
