@@ -122,13 +122,13 @@ namespace Alfa156.Desktop
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             FlowLayoutPanel toolbar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                WrapContents = false,
-                AutoSize = false
+                WrapContents = true,
+                AutoSize = true
             };
             pathBox.Width = 420;
             pathBox.ReadOnly = true;
