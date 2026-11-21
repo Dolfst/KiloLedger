@@ -143,6 +143,7 @@ namespace CarExpenses
             actionsHome.MenuItems.Add(CreateMenuItem("Проверка данных", new EventHandler(ShowDataIntegrityFromMenu)));
             actionsHome.MenuItems.Add(CreateMenuItem("Интервалы ТО", new EventHandler(EditToIntervals)));
             actionsHome.MenuItems.Add(CreateMenuItem("Валюта", new EventHandler(EditCurrency)));
+            actionsHome.MenuItems.Add(CreateMenuItem("Язык", new EventHandler(EditLanguage)));
             actionsHome.MenuItems.Add(CreateMenuItem("Бюджет месяца", new EventHandler(EditBudget)));
             actionsHome.MenuItems.Add(CreateMenuItem("Авто по умолчанию", new EventHandler(EditDefaultCar)));
             actionsHome.MenuItems.Add(CreateMenuItem("Быстрая заправка", new EventHandler(QuickFuelFromMenu)));
@@ -3299,6 +3300,33 @@ namespace CarExpenses
                     ". Суммы не пересчитываются — меняется только подпись.", "Валюта");
                 if (summaryBox != null)
                     summaryBox.Text = BuildSummary();
+            }
+        }
+
+        private void EditLanguage(object sender, EventArgs e)
+        {
+            string current = ToSettings.GetLanguage();
+            List<string> languages = new List<string>(L10n.GetAvailableLanguages());
+            int currentIndex = languages.IndexOf(current);
+            if (currentIndex < 0) currentIndex = 0;
+
+            using (ChoiceForm choice = new ChoiceForm("Выбор языка", "Язык:", languages))
+            {
+                choice.SelectedIndex = currentIndex;
+                if (choice.ShowDialog() != DialogResult.OK)
+                    return;
+                string selected = languages[choice.SelectedIndex];
+                try
+                {
+                    if (!TrySave(delegate { ToSettings.SetLanguage(selected); }))
+                        return;
+                    LocalizationManager.SetLanguage(selected);
+                    MessageBox.Show("Язык: " + selected + "\nПожалуйста, перезагрузите приложение.", "Язык");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Язык");
+                }
             }
         }
 

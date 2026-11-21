@@ -382,6 +382,8 @@ public sealed class MainActivity : Activity
                 actions.Add(delegate { EditToIntervals(); });
                 labels.Add("Валюта");
                 actions.Add(delegate { EditCurrency(); });
+                labels.Add("Язык");
+                actions.Add(delegate { EditLanguage(); });
                 labels.Add("Бюджет месяца");
                 actions.Add(delegate { EditBudget(); });
                 labels.Add("Авто по умолчанию");
@@ -5024,6 +5026,27 @@ public sealed class MainActivity : Activity
             ShowMessage("Валюта: " + ToSettings.GetCurrency(DataDirectory) +
                 ". Суммы не пересчитываются — меняется только подпись.");
         }, false);
+    }
+
+    private void EditLanguage()
+    {
+        string current = ToSettings.GetLanguage(DataDirectory);
+        List<string> languages = new List<string>(L10n.GetAvailableLanguages());
+        int currentIndex = languages.IndexOf(current);
+        if (currentIndex < 0) currentIndex = 0;
+
+        new AlertDialog.Builder(this)
+            .SetTitle(L10n.Get("dialog.language"))
+            .SetSingleChoiceItems(languages.ToArray(), currentIndex, (sender, args) =>
+            {
+                string selected = languages[args.Which];
+                ToSettings.SetLanguage(DataDirectory, selected);
+                LocalizationManager.SetLanguage(selected);
+                ShowMessage("Язык: " + selected + "\nПожалуйста, перезагрузите приложение.");
+                ((AlertDialog)sender).Dismiss();
+            })
+            .SetNegativeButton("Отмена", delegate { })
+            .Show();
     }
 
     private void EditBudget()
