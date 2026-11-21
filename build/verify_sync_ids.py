@@ -240,4 +240,17 @@ if __name__ == "__main__":
         if "повторяющийся id" not in text:
             raise AssertionError(f"{rel}: duplicate ID report is missing")
 
+    for rel in (
+        "Alfa156/Alfa156/RecordIds.cs",
+        "Alfa156.Android/RecordIds.cs",
+        "Alfa156.Desktop/Data/RecordIds.cs",
+    ):
+        text = (Path(__file__).resolve().parents[1] / rel).read_text()
+        for needle in (
+            '"cars.dat"', '"fuel.dat"', '"repairs.dat"', '"utilities.dat"',
+            'TypeCarMeta', 'TypeTemplate', 'TypeReminder', 'TypeNote',
+        ):
+            if needle not in text:
+                raise AssertionError(f"{rel}: missing sync mapping {needle}")
+
     print("verify_sync_ids: OK")
