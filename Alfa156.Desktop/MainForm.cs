@@ -156,24 +156,24 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(globalSearchBox);
             toolbar.Controls.Add(MakeButton(L10n.Get("button.search"), OpenGlobalSearch));
             toolbar.Controls.Add(MakeButton(L10n.Get("button.duplicates"), OpenDuplicates));
-            toolbar.Controls.Add(MakeButton("Проверка данных", OpenDataIntegrity));
-            toolbar.Controls.Add(MakeButton("Быстрая заправка", OpenQuickFuelEntry));
-            toolbar.Controls.Add(MakeButton("Поездка", OpenTripEntry));
-            toolbar.Controls.Add(MakeButton("Отчёт поездок", ShowTripReport));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.data_integrity"), OpenDataIntegrity));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.quick_fuel"), OpenQuickFuelEntry));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.trip"), OpenTripEntry));
+            toolbar.Controls.Add(MakeButton(L10n.Get("button.trip_report"), ShowTripReport));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 WrapContents = true
             };
-            exchange.Controls.Add(MakeButton("Импорт…", OpenImportWizard));
-            exchange.Controls.Add(MakeButton("Экспорт Excel", ExportExcel));
-            exchange.Controls.Add(MakeButton("Импорт Excel", ImportExcel));
-            exchange.Controls.Add(MakeButton("Экспорт CSV (Google)", ExportCsv));
-            exchange.Controls.Add(MakeButton("Импорт CSV-папки", ImportCsvFolder));
-            exchange.Controls.Add(MakeButton("Шаблоны CSV", ExportCsvTemplates));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.import"), OpenImportWizard));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.export_excel"), ExportExcel));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.import_excel"), ImportExcel));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.export_csv"), ExportCsv));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.import_csv_folder"), ImportCsvFolder));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.csv_templates"), ExportCsvTemplates));
             googleUrlBox.Width = 280;
-            googleUrlBox.Text = "ссылка Google Sheets…";
+            googleUrlBox.Text = L10n.Get("message.google_sheet_url");
             googleUrlBox.ForeColor = Color.Gray;
             googleUrlBox.GotFocus += delegate
             {
@@ -184,19 +184,19 @@ namespace Alfa156.Desktop
                 }
             };
             exchange.Controls.Add(googleUrlBox);
-            exchange.Controls.Add(MakeButton("Импорт Google", ImportGoogle));
-            exchange.Controls.Add(MakeButton("Google: мастер", OpenGoogleSyncWizard));
-            exchange.Controls.Add(MakeButton("Google: настройка", ConfigureGoogleSync));
-            exchange.Controls.Add(MakeButton("Синхронизация Google", SyncGoogle));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.import_google"), ImportGoogle));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.google_wizard"), OpenGoogleSyncWizard));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.google_settings"), ConfigureGoogleSync));
+            exchange.Controls.Add(MakeButton(L10n.Get("button.google_sync"), SyncGoogle));
 
             tabs.Dock = DockStyle.Fill;
-            tabs.TabPages.Add(WrapGrid("Автомобили", carsGrid));
-            tabs.TabPages.Add(WrapFilteredGrid("Заправки", fuelGrid, BuildFuelFilterBar()));
-            tabs.TabPages.Add(WrapFilteredGrid("Ремонт", repairsGrid, BuildRepairFilterBar()));
-            tabs.TabPages.Add(WrapFilteredGrid("Прочие", expensesGrid, BuildExpenseFilterBar()));
-            tabs.TabPages.Add(WrapGrid("Кат. прочих", expenseCategoriesGrid));
-            tabs.TabPages.Add(WrapFilteredGrid("Коммуналка", utilitiesGrid, BuildUtilityFilterBar()));
-            tabs.TabPages.Add(WrapGrid("Категории", categoriesGrid));
+            tabs.TabPages.Add(WrapGrid(L10n.Get("tab.vehicles"), carsGrid));
+            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.fuel"), fuelGrid, BuildFuelFilterBar()));
+            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.repairs"), repairsGrid, BuildRepairFilterBar()));
+            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.expenses"), expensesGrid, BuildExpenseFilterBar()));
+            tabs.TabPages.Add(WrapGrid(L10n.Get("tab.expense_categories"), expenseCategoriesGrid));
+            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.utilities"), utilitiesGrid, BuildUtilityFilterBar()));
+            tabs.TabPages.Add(WrapGrid(L10n.Get("tab.categories"), categoriesGrid));
 
             summaryBox.Multiline = true;
             summaryBox.ReadOnly = true;
@@ -206,7 +206,7 @@ namespace Alfa156.Desktop
             summaryBox.BackColor = Color.White;
             summaryBox.ForeColor = Color.FromArgb(35, 51, 70);
             summaryBox.BorderStyle = BorderStyle.None;
-            summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
+            summaryBox.Text = L10n.Get("message.select_folder");
             TableLayoutPanel summaryLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -218,25 +218,25 @@ namespace Alfa156.Desktop
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             FlowLayoutPanel intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
-            intervalRow.Controls.Add(new Label { Text = "Масло интервал", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.oil_interval"), AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
             oilIntervalBox.Width = 70;
             intervalRow.Controls.Add(oilIntervalBox);
             intervalRow.Controls.Add(new Label { Text = "предупр.", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             oilWarnBox.Width = 60;
             intervalRow.Controls.Add(oilWarnBox);
-            intervalRow.Controls.Add(new Label { Text = "Ремень интервал", AutoSize = true, Padding = new Padding(12, 8, 0, 0) });
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.belt_interval"), AutoSize = true, Padding = new Padding(12, 8, 0, 0) });
             beltIntervalBox.Width = 70;
             intervalRow.Controls.Add(beltIntervalBox);
             intervalRow.Controls.Add(new Label { Text = "предупр.", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             beltWarnBox.Width = 60;
             intervalRow.Controls.Add(beltWarnBox);
-            intervalRow.Controls.Add(MakeButton("Сохранить интервалы ТО", SaveToIntervals));
-            intervalRow.Controls.Add(new Label { Text = "Валюта", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_intervals"), SaveToIntervals));
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.currency"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             currencyBox.Width = 60;
             currencyBox.Text = "BYN";
             intervalRow.Controls.Add(currencyBox);
-            intervalRow.Controls.Add(MakeButton("Сохранить валюту", SaveCurrency));
-            intervalRow.Controls.Add(new Label { Text = "Бюджет/мес", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_currency"), SaveCurrency));
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.budget_month"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             budgetBox.Width = 70;
             budgetBox.Text = "0";
             intervalRow.Controls.Add(budgetBox);
@@ -244,33 +244,33 @@ namespace Alfa156.Desktop
             budgetWarnBox.Width = 40;
             budgetWarnBox.Text = "80";
             intervalRow.Controls.Add(budgetWarnBox);
-            intervalRow.Controls.Add(MakeButton("Сохранить бюджет", SaveBudget));
-            intervalRow.Controls.Add(new Label { Text = "Напом. копии (дн.)", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_budget"), SaveBudget));
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.backup_remind"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             backupRemindBox.Width = 40;
             backupRemindBox.Text = "7";
             intervalRow.Controls.Add(backupRemindBox);
-            intervalRow.Controls.Add(MakeButton("Сохранить напом.", SaveBackupRemind));
-            intervalRow.Controls.Add(new Label { Text = "Напом. даты (дн.)", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_backup_remind"), SaveBackupRemind));
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.reminder_days"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             reminderWarnBox.Width = 40;
             reminderWarnBox.Text = "14";
             intervalRow.Controls.Add(reminderWarnBox);
-            intervalRow.Controls.Add(MakeButton("Сохранить срок", SaveReminderWarnDays));
-            intervalRow.Controls.Add(new Label { Text = "Авто по умолч.", AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_reminder_days"), SaveReminderWarnDays));
+            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.default_car"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             defaultCarBox.Width = 140;
             intervalRow.Controls.Add(defaultCarBox);
-            intervalRow.Controls.Add(MakeButton("Сохранить авто", SaveDefaultCar));
-            intervalRow.Controls.Add(MakeButton("Добавить напоминание", AddDateReminder));
-            intervalRow.Controls.Add(MakeButton("Удалить напоминание", DeleteDateReminder));
-            intervalRow.Controls.Add(MakeButton("Добавить заметку", AddCarNote));
-            intervalRow.Controls.Add(MakeButton("Изменить заметку", EditCarNote));
-            intervalRow.Controls.Add(MakeButton("Удалить заметку", DeleteCarNote));
-            intervalRow.Controls.Add(MakeButton("Сохранить сводку…", SaveSummaryText));
-            intervalRow.Controls.Add(MakeButton("Сравнить периоды", ShowPeriodCompare));
-            intervalRow.Controls.Add(MakeButton("Отчёт за период…", ShowPeriodReport));
-            intervalRow.Controls.Add(MakeButton("Лента авто", ShowCarTimeline));
-            intervalRow.Controls.Add(MakeButton("Из шаблона", ApplyTemplateToActiveGrid));
-            intervalRow.Controls.Add(MakeButton("Сохранить как шаблон", SaveActiveRowAsTemplate));
-            intervalRow.Controls.Add(MakeButton("График: /км", ToggleCostPerKmChart));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_car"), SaveDefaultCar));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_reminder"), AddDateReminder));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.delete_reminder"), DeleteDateReminder));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_note"), AddCarNote));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.edit_note"), EditCarNote));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.delete_note"), DeleteCarNote));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_summary"), SaveSummaryText));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.compare_periods"), ShowPeriodCompare));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.period_report"), ShowPeriodReport));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.timeline"), ShowCarTimeline));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.apply_template"), ApplyTemplateToActiveGrid));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_template"), SaveActiveRowAsTemplate));
+            intervalRow.Controls.Add(MakeButton(L10n.Get("button.chart_cost_per_km"), ToggleCostPerKmChart));
             summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
             summaryLayout.Controls.Add(summaryChart, 0, 1);
@@ -1682,11 +1682,11 @@ namespace Alfa156.Desktop
             if (tabs.SelectedTab == null)
                 return null;
             string title = tabs.SelectedTab.Text ?? "";
-            if (title.StartsWith("Заправки"))
+            if (title.StartsWith(L10n.Get("tab.fuel")))
                 return RecordTemplates.TypeFuel;
-            if (title.StartsWith("Ремонт"))
+            if (title.StartsWith(L10n.Get("tab.repairs")))
                 return RecordTemplates.TypeRepair;
-            if (title.StartsWith("Прочие"))
+            if (title.StartsWith(L10n.Get("tab.expenses")))
                 return RecordTemplates.TypeExpense;
             return null;
         }
@@ -2646,7 +2646,7 @@ namespace Alfa156.Desktop
                 repository.Repairs.Count == 0 && repository.Utilities.Count == 0 &&
                 repository.Expenses.Count == 0)
             {
-                summaryBox.Text = "Откройте папку данных, чтобы увидеть сводку и напоминания о ТО.";
+                summaryBox.Text = L10n.Get("message.select_folder");
                 chartShowsCostPerKm = false;
                 summaryChart.SetData(new List<string>(), new List<decimal[]>());
                 return;
@@ -3252,11 +3252,11 @@ namespace Alfa156.Desktop
             DataGridView grid = null;
             if (tabs.SelectedTab != null)
             {
-                if (tabs.SelectedTab.Text == "Заправки")
+                if (tabs.SelectedTab.Text == L10n.Get("tab.fuel"))
                     grid = fuelGrid;
-                else if (tabs.SelectedTab.Text == "Ремонт")
+                else if (tabs.SelectedTab.Text == L10n.Get("tab.repairs"))
                     grid = repairsGrid;
-                else if (tabs.SelectedTab.Text == "Прочие")
+                else if (tabs.SelectedTab.Text == L10n.Get("tab.expenses"))
                     grid = expensesGrid;
             }
             if (grid == null || grid.CurrentRow == null || grid.CurrentRow.IsNewRow)
@@ -4005,7 +4005,7 @@ namespace Alfa156.Desktop
                 string warning = FormatMileageWarning(newKm, lastExcluding);
                 if (warning == null)
                     continue;
-                string context = fileName == "fuel.dat" ? "Заправка" : "Ремонт";
+                string context = fileName == "fuel.dat" ? "Заправка" : L10n.Get("tab.repairs");
                 string message = context + " " + CellText(row, 0) + " / " + car + ":\r\n" + warning;
                 if (MessageBox.Show(this, message, "Пробег", MessageBoxButtons.YesNo,
                         MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
@@ -4386,21 +4386,21 @@ namespace Alfa156.Desktop
         {
             string q = query.ToLowerInvariant();
             List<DesktopSearchHit> hits = new List<DesktopSearchHit>();
-            CollectDesktopHits(hits, "Заправки", fuelGrid, q, delegate(DataGridViewRow row)
+            CollectDesktopHits(hits, L10n.Get("tab.fuel"), fuelGrid, q, delegate(DataGridViewRow row)
             {
                 return CellText(row, 6) + " " + CellText(row, 8) + " " + CellText(row, 1);
             });
-            CollectDesktopHits(hits, "Ремонт", repairsGrid, q, delegate(DataGridViewRow row)
+            CollectDesktopHits(hits, L10n.Get("tab.repairs"), repairsGrid, q, delegate(DataGridViewRow row)
             {
                 return CellText(row, 3) + " " + CellText(row, 4) + " " + CellText(row, 5) + " " +
                     CellText(row, 8) + " " + CellText(row, 1);
             });
-            CollectDesktopHits(hits, "Прочие", expensesGrid, q, delegate(DataGridViewRow row)
+            CollectDesktopHits(hits, L10n.Get("tab.expenses"), expensesGrid, q, delegate(DataGridViewRow row)
             {
                 return CellText(row, 2) + " " + CellText(row, 3) + " " + CellText(row, 5) + " " +
                     CellText(row, 1);
             });
-            CollectDesktopHits(hits, "Коммуналка", utilitiesGrid, q, delegate(DataGridViewRow row)
+            CollectDesktopHits(hits, L10n.Get("tab.utilities"), utilitiesGrid, q, delegate(DataGridViewRow row)
             {
                 StringBuilder sb = new StringBuilder(CellText(row, 0));
                 for (int c = 1; c < row.Cells.Count; c++)
@@ -4424,7 +4424,7 @@ namespace Alfa156.Desktop
                 DesktopSearchHit hit = new DesktopSearchHit();
                 hit.Tab = tab;
                 hit.RowIndex = i;
-                hit.Car = tab == "Коммуналка" ? "" : CellText(row, 1);
+                hit.Car = tab == L10n.Get("tab.utilities") ? "" : CellText(row, 1);
                 string date = CellText(row, 0);
                 string detail = text.Trim();
                 if (detail.Length > 48)
@@ -4444,10 +4444,10 @@ namespace Alfa156.Desktop
                 tabs.SelectedIndex = i;
                 break;
             }
-            DataGridView grid = hit.Tab == "Заправки" ? fuelGrid
-                : hit.Tab == "Ремонт" ? repairsGrid
-                : hit.Tab == "Прочие" ? expensesGrid
-                : hit.Tab == "Коммуналка" ? utilitiesGrid
+            DataGridView grid = hit.Tab == L10n.Get("tab.fuel") ? fuelGrid
+                : hit.Tab == L10n.Get("tab.repairs") ? repairsGrid
+                : hit.Tab == L10n.Get("tab.expenses") ? expensesGrid
+                : hit.Tab == L10n.Get("tab.utilities") ? utilitiesGrid
                 : null;
             if (grid == null || hit.RowIndex < 0 || hit.RowIndex >= grid.Rows.Count)
                 return;
