@@ -68,7 +68,13 @@ namespace Alfa156.Desktop.Data
                 sb.Append(nl);
                 sb.Append(nl).Append("Топливо: ").Append(money(totals.Fuel)).Append(' ').Append(currency);
                 sb.Append(nl).Append("Ремонт: ").Append(money(totals.Repair)).Append(' ').Append(currency);
+                if (totals.TopRepairLabel.Length > 0)
+                    sb.Append(nl).Append("  Топ ремонта: ").Append(totals.TopRepairLabel).Append(" — ")
+                        .Append(money(totals.TopRepairAmount)).Append(' ').Append(currency);
                 sb.Append(nl).Append("Прочие: ").Append(money(totals.Expense)).Append(' ').Append(currency);
+                if (totals.TopExpenseLabel.Length > 0)
+                    sb.Append(nl).Append("  Топ прочих: ").Append(totals.TopExpenseLabel).Append(" — ")
+                        .Append(money(totals.TopExpenseAmount)).Append(' ').Append(currency);
                 sb.Append(nl).Append("Коммунальные: ").Append(money(totals.Utility)).Append(' ').Append(currency);
                 sb.Append(nl).Append("Всего (без коммун.): ").Append(money(totals.CostBase)).Append(' ').Append(currency);
                 sb.Append(nl).Append("Всего (с коммунальными): ").Append(money(totals.CostBase + totals.Utility)).Append(' ').Append(currency);
@@ -90,7 +96,13 @@ namespace Alfa156.Desktop.Data
             h.Append("<table>");
             AppendRow(h, "Топливо", money(totals.Fuel) + " " + currency);
             AppendRow(h, "Ремонт", money(totals.Repair) + " " + currency);
+            if (totals.TopRepairLabel.Length > 0)
+                AppendRow(h, "Топ ремонта", totals.TopRepairLabel + " — " +
+                    money(totals.TopRepairAmount) + " " + currency);
             AppendRow(h, "Прочие", money(totals.Expense) + " " + currency);
+            if (totals.TopExpenseLabel.Length > 0)
+                AppendRow(h, "Топ прочих", totals.TopExpenseLabel + " — " +
+                    money(totals.TopExpenseAmount) + " " + currency);
             AppendRow(h, "Коммунальные", money(totals.Utility) + " " + currency);
             AppendRow(h, "Всего (без коммун.)", money(totals.CostBase) + " " + currency);
             AppendRow(h, "Всего (с коммунальными)", money(totals.CostBase + totals.Utility) + " " + currency);

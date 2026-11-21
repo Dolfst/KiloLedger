@@ -21,6 +21,21 @@ def main() -> int:
         errors.append(f"VERSION expected >= 1.33.0, got {version!r}")
 
     for rel in (
+        "Alfa156/Alfa156/PeriodCompare.cs",
+        "Alfa156.Android/PeriodCompare.cs",
+        "Alfa156.Desktop/Data/PeriodCompare.cs",
+    ):
+        text = (ROOT / rel).read_text()
+        for needle in (
+            "TopRepairLabel",
+            "TopExpenseLabel",
+            "AddCategoryAmount",
+            "TopCategory",
+        ):
+            if needle not in text:
+                errors.append(f"{rel}: missing {needle!r}")
+
+    for rel in (
         "Alfa156.Android/PeriodReport.cs",
         "Alfa156.Desktop/Data/PeriodReport.cs",
         "Alfa156/Alfa156/PeriodReport.cs",
@@ -36,6 +51,8 @@ def main() -> int:
             "Коммунальные",
             "Всего (с коммунальными)",
             "Стоимость/км",
+            "Топ ремонта",
+            "Топ прочих",
         ):
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
