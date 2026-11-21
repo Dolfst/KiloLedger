@@ -3085,6 +3085,7 @@ namespace Alfa156.Desktop
                         car, repository.Fuel, repository.Repairs, repository.Expenses,
                         repository.Utilities, f, t);
                     PeriodCompare.AddTripKm(totals, car, repository.TripsRows, f, t);
+                    PeriodCompare.ApplyBudget(totals, ToSettings.GetBudgetMonth(repository.Settings), f, t);
                     string text = PeriodReport.FormatText(car, f, t, totals, Cur(), Money);
                     string html = PeriodReport.FormatHtml(car, f, t, totals, Cur(), Money);
                     ShowPeriodReportResult(car, f, t, text, html);

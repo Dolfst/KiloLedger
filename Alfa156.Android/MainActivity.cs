@@ -3478,6 +3478,7 @@ public sealed class MainActivity : Activity
             List<string[]> trips = ExpenseDataStore.LoadOptional(
                 DataDirectory, ExpenseDataCodec.TripsFile);
             PeriodCompare.AddTripKm(totals, currentCar, trips, from, to);
+            PeriodCompare.ApplyBudget(totals, ToSettings.GetBudgetMonth(DataDirectory), from, to);
             string text = PeriodReport.FormatText(
                 currentCar, from, to, totals, Cur(), Money, "\n");
             string html = PeriodReport.FormatHtml(

@@ -27,6 +27,8 @@ internal static class PeriodCompare
         public decimal PersonalTripKm;
         public decimal WorkTripKm;
 
+        public decimal MonthlyBudget;
+        public int BudgetMonths;
         public decimal Liters;
         public decimal ConsumptionKm;
         public decimal ConsumptionLiters;
@@ -34,6 +36,11 @@ internal static class PeriodCompare
         public bool HasConsumption
         {
             get { return ConsumptionKm > 0 && ConsumptionLiters > 0; }
+        }
+
+        public decimal PeriodBudget
+        {
+            get { return MonthlyBudget > 0 && BudgetMonths > 0 ? MonthlyBudget * BudgetMonths : 0; }
         }
 
         public decimal LitersPer100Km
@@ -104,6 +111,20 @@ internal static class PeriodCompare
             else
                 totals.PersonalTripKm += endKm - startKm;
         }
+    }
+
+    internal static void ApplyBudget(Totals totals, decimal monthlyBudget, string from, string to)
+    {
+        from = NormalizeDay(from);
+        to = NormalizeDay(to);
+        if (totals == null || monthlyBudget <= 0 || from.Length < 7 || to.Length < 7)
+            return;
+        int months = (int.Parse(to.Substring(0, 4)) - int.Parse(from.Substring(0, 4))) * 12 +
+            int.Parse(to.Substring(5, 2)) - int.Parse(from.Substring(5, 2)) + 1;
+        if (months < 1)
+            return;
+        totals.MonthlyBudget = monthlyBudget;
+        totals.BudgetMonths = months;
     }
 
     internal static Totals Build(

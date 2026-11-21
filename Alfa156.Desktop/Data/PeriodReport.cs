@@ -61,6 +61,15 @@ namespace Alfa156.Desktop.Data
             string consumption = totals.HasConsumption
                 ? DefaultMoney(totals.LitersPer100Km) + " л/100 км"
                 : "н/д";
+            string budget = "";
+            if (totals.PeriodBudget > 0)
+            {
+                decimal spent = totals.CostBase;
+                budget = money(spent) + " / " + money(totals.PeriodBudget) + " " + currency +
+                    " (" + DefaultMoney(spent * 100m / totals.PeriodBudget) + "%)";
+                if (spent >= totals.PeriodBudget)
+                    budget += " — превышен";
+            }
 
             if (!html)
             {
@@ -85,6 +94,8 @@ namespace Alfa156.Desktop.Data
                 sb.Append(nl).Append("Пробег: ").Append(kmRange);
                 sb.Append(nl).Append("Заправлено: ").Append(DefaultMoney(totals.Liters)).Append(" л");
                 sb.Append(nl).Append("Расход: ").Append(consumption);
+                if (budget.Length > 0)
+                    sb.Append(nl).Append("Бюджет: ").Append(budget);
                 if (totals.TopStationLabel.Length > 0)
                     sb.Append(nl).Append("Топ АЗС/бренд: ").Append(totals.TopStationLabel).Append(" — ")
                         .Append(money(totals.TopStationAmount)).Append(' ').Append(currency);
@@ -120,6 +131,8 @@ namespace Alfa156.Desktop.Data
             AppendRow(h, "Пробег", kmRange);
             AppendRow(h, "Заправлено", DefaultMoney(totals.Liters) + " л");
             AppendRow(h, "Расход", consumption);
+            if (budget.Length > 0)
+                AppendRow(h, "Бюджет", budget);
             if (totals.TopStationLabel.Length > 0)
                 AppendRow(h, "Топ АЗС/бренд", totals.TopStationLabel + " — " +
                     money(totals.TopStationAmount) + " " + currency);

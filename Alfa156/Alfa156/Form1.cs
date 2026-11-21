@@ -2144,6 +2144,7 @@ namespace CarExpenses
                 PeriodCompare.Totals totals = PeriodCompare.Build(
                     currentCar, fuels, repairs, expenses, utilities, from, to);
                 PeriodCompare.AddTripKm(totals, currentCar, DataStore.LoadTrips(), from, to);
+                PeriodCompare.ApplyBudget(totals, ToSettings.GetBudgetMonth(), from, to);
                 string text = PeriodReport.FormatText(currentCar, from, to, totals, Cur());
 
                 string fileName = "Report_" + from + "_" + to + ".txt";
