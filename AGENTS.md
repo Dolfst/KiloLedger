@@ -10,6 +10,7 @@
 ## Working rules
 
 - Inspect `git status` first. Preserve unrelated user changes and do not rewrite shared history.
+- Commit messages must be bilingual: include Russian and English text, for example `Исправить проверку импорта / Fix import validation`.
 - Make small, focused changes. Read and follow existing platform-specific patterns.
 - For behavior or data-format changes, update every affected client and add a focused regression check.
 - Preserve compatibility with Compact Framework 3.5 in `Alfa156/Alfa156`; the `verify_cf_apis.py` check guards supported APIs.

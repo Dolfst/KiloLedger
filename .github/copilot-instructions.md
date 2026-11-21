@@ -4,6 +4,8 @@ Follow the repository-wide rules in [`AGENTS.md`](../AGENTS.md). Use the matchin
 
 Before editing, inspect the worktree and the relevant implementation on every affected platform. Preserve unrelated changes, keep the .NET Compact Framework 3.5 client compatible, run focused verification, and state any remaining limitation explicitly.
 
+Commit messages must be bilingual: include Russian and English text, for example `Исправить проверку импорта / Fix import validation`.
+
 ## Autonomous improvement and release cycle
 
 For a repository improvement requested by the user, proceed without routine confirmation:
