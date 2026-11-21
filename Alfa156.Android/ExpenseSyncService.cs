@@ -328,6 +328,9 @@ internal static class ExpenseSyncService
         MergeRows(ExpenseDataCodec.NotesFile, localDirectory, remoteDirectory, null,
             new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan, null, tombs,
             journal, false);
+        MergeRows(ExpenseDataCodec.TripsFile, localDirectory, remoteDirectory, null,
+            new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false }, plan, null, tombs,
+            journal, false);
         return journal;
     }
 
@@ -416,6 +419,13 @@ internal static class ExpenseSyncService
             File.Exists(remoteNotes) ? ExpenseDataCodec.ReadRows(remoteNotes) : new List<string[]>(),
             new int[] { 0, 1, 2 }, new bool[] { false, true, false },
             RecordIds.IdsForType(tombs, RecordIds.TypeNote)));
+        string localTrips = Path.Combine(localDirectory, ExpenseDataCodec.TripsFile);
+        string remoteTrips = Path.Combine(remoteDirectory, ExpenseDataCodec.TripsFile);
+        diffs.Add(AnalyzeTable("Поездки",
+            File.Exists(localTrips) ? ExpenseDataCodec.ReadRows(localTrips) : new List<string[]>(),
+            File.Exists(remoteTrips) ? ExpenseDataCodec.ReadRows(remoteTrips) : new List<string[]>(),
+            new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false },
+            RecordIds.IdsForType(tombs, RecordIds.TypeTrip)));
         return diffs;
     }
 
@@ -544,6 +554,9 @@ internal static class ExpenseSyncService
             MergeRows(ExpenseDataCodec.NotesFile, dataDirectory, incomingDirectory, mergedDirectory,
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
                 resolveConflict, mergedTombs, journal, true);
+            MergeRows(ExpenseDataCodec.TripsFile, dataDirectory, incomingDirectory, mergedDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false }, plan,
+                resolveConflict, mergedTombs, journal, true);
             ToSettings.MergeFiles(dataDirectory, incomingDirectory, mergedDirectory,
                 plan.ConflictPolicy == SyncConflictPolicy.PreferIncoming);
         }
@@ -616,6 +629,8 @@ internal static class ExpenseSyncService
             RecordIds.TypeReminder, tombs, journal);
         FilterFileByTombstones(directory, ExpenseDataCodec.NotesFile,
             RecordIds.TypeNote, tombs, journal);
+        FilterFileByTombstones(directory, ExpenseDataCodec.TripsFile,
+            RecordIds.TypeTrip, tombs, journal);
     }
 
     private static void FilterFileByTombstones(
@@ -655,6 +670,7 @@ internal static class ExpenseSyncService
         EnsureIdsFile(directory, ExpenseDataCodec.TemplatesFile);
         EnsureIdsFile(directory, ExpenseDataCodec.RemindersFile);
         EnsureIdsFile(directory, ExpenseDataCodec.NotesFile);
+        EnsureIdsFile(directory, ExpenseDataCodec.TripsFile);
         RecordIds.EnsureDeletedFile(directory);
         ToSettings.EnsureFile(directory);
         CarsMeta.EnsureFile(directory);

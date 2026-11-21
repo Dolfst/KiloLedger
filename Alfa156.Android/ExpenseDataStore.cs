@@ -314,6 +314,9 @@ internal static class ExpenseDataStore
         RecordTemplates.EnsureFile(directory);
         DateReminders.EnsureFile(directory);
         CarNotes.EnsureFile(directory);
+        if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.TripsFile)))
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.TripsFile),
+                new List<string[]>());
     }
 
     internal static void AddCar(string directory, string name)
@@ -737,6 +740,7 @@ internal static class ExpenseDataStore
         CopyOptionalFile(source, destination, ExpenseDataCodec.TemplatesFile, true);
         CopyOptionalFile(source, destination, ExpenseDataCodec.RemindersFile, true);
         CopyOptionalFile(source, destination, ExpenseDataCodec.NotesFile, true);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.TripsFile, true);
         string deletedSource = Path.Combine(source, RecordIds.DeletedFile);
         string deletedDestination = Path.Combine(destination, RecordIds.DeletedFile);
         if (File.Exists(deletedSource))

@@ -25,6 +25,7 @@ namespace CarExpenses
         private const string TemplatesFile = RecordTemplates.FileName;
         private const string RemindersFile = DateReminders.FileName;
         private const string NotesFile = CarNotes.FileName;
+        private const string TripsFile = "trips.dat";
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
         private const string StartMenuShortcut = "Alfa 156.lnk";
@@ -36,7 +37,7 @@ namespace CarExpenses
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile, RepairCategoriesFile,
             ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-            RemindersFile, NotesFile, DeletedFile
+            RemindersFile, NotesFile, TripsFile, DeletedFile
         };
 
         private static readonly string[] DefaultRepairCategories = new string[]
@@ -71,6 +72,7 @@ namespace CarExpenses
             RecordTemplates.EnsureFile();
             DateReminders.EnsureFile();
             CarNotes.EnsureFile();
+            EnsureTripsFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
         }
@@ -94,6 +96,7 @@ namespace CarExpenses
             RecordTemplates.EnsureFile();
             DateReminders.EnsureFile();
             CarNotes.EnsureFile();
+            EnsureTripsFile();
             EnsureDeletedFile();
             Directory.CreateDirectory(backupRoot);
 
@@ -284,6 +287,7 @@ namespace CarExpenses
             RecordTemplates.EnsureFile();
             DateReminders.EnsureFile();
             CarNotes.EnsureFile();
+            EnsureTripsFile();
             EnsureDeletedFile();
             EnsureRecordIdsOnDisk();
             using (SyncCrypto crypto = new SyncCrypto(pairingCode))
@@ -633,7 +637,31 @@ namespace CarExpenses
                 return length == 4 || length == 5;
             if (fileName == NotesFile)
                 return length == 3 || length == 4;
+            if (fileName == TripsFile)
+                return length == 7 || length == 8;
             return false;
+        }
+
+        private static bool IsValidTripRow(string[] row)
+        {
+            if (row == null)
+                return false;
+            string[] content = RecordIds.StripId(row);
+            if (content.Length != 7)
+                return false;
+            if ((content[0] ?? "").Trim().Length != 10 ||
+                (content[1] ?? "").Trim().Length == 0)
+                return false;
+            decimal startKm;
+            decimal endKm;
+            if (!TryNumber(content[2], out startKm) ||
+                !TryNumber(content[3], out endKm))
+                return false;
+            if (startKm < 0 || endKm < startKm)
+                return false;
+            if (RecordIds.HasId(row) && !RecordIds.LooksLikeId(RecordIds.GetId(row)))
+                return false;
+            return true;
         }
 
         private static void ValidateSyncDirectory(string directory)
@@ -724,6 +752,15 @@ namespace CarExpenses
                     if (!CarNotes.IsValidRow(notes[i]))
                         throw new InvalidDataException("Неверный формат notes.dat.");
             }
+
+            string tripsPath = Path.Combine(directory, TripsFile);
+            if (File.Exists(tripsPath))
+            {
+                List<string[]> trips = ReadRowsFromPath(tripsPath);
+                for (int i = 0; i < trips.Count; i++)
+                    if (!IsValidTripRow(trips[i]))
+                        throw new InvalidDataException("Неверный формат trips.dat.");
+            }
         }
 
         private static void EnsureDeletedFile()
@@ -750,6 +787,7 @@ namespace CarExpenses
             EnsureIdsInFile(TemplatesFile);
             EnsureIdsInFile(RemindersFile);
             EnsureIdsInFile(NotesFile);
+            EnsureIdsInFile(TripsFile);
         }
 
         private static void EnsureIdsInFile(string fileName)
@@ -1030,6 +1068,11 @@ namespace CarExpenses
                 File.Copy(notesSource, GetPath(NotesFile), true);
             else
                 CarNotes.EnsureFile();
+            string tripsSource = Path.Combine(backupPath, TripsFile);
+            if (File.Exists(tripsSource))
+                File.Copy(tripsSource, GetPath(TripsFile), true);
+            else
+                SaveRows(TripsFile, new List<string[]>());
             string deletedSource = Path.Combine(backupPath, DeletedFile);
             if (File.Exists(deletedSource))
                 File.Copy(deletedSource, GetPath(DeletedFile), true);
@@ -1276,6 +1319,13 @@ namespace CarExpenses
                 RecordIds.AddTombstone(DataDirectory, RepairCategoriesFile, deletedId);
         }
 
+
+        private static void EnsureTripsFile()
+        {
+            string path = GetPath(TripsFile);
+            if (!File.Exists(path))
+                SaveRows(TripsFile, new List<string[]>());
+        }
 
         private static void EnsureExpenseFile()
         {

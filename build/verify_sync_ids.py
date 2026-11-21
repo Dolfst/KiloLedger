@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 # Prefixes: cars/fuel/repairs/utilities/cars-meta/expenses/… + templates(t_)/reminders(n_)/notes(j_)
-ID_RE = re.compile(r"^[cfrukepxmntj]_[0-9a-fA-F]{8,}$")
+ID_RE = re.compile(r"^[cfrukepxmntjg]_[0-9a-fA-F]{8,}$")
 
 
 def looks_like_id(value: str) -> bool:
@@ -112,6 +112,15 @@ def merge(local, remote, deleted: set[str], keys: list[int]):
     return merged, removed
 
 
+def test_trip_id_and_odometer_range():
+    trip = ["2026-11-21", "Alfa", "120000", "120125", "Работа", "Иван", "Встреча"]
+    out = ensure_id(trip, "g_")
+    assert has_id(out)
+    assert strip_id(out) == trip
+    assert get_id(out).startswith("g_")
+    assert float(out[3]) - float(out[2]) == 125.0
+
+
 def test_old_fuel_gets_id():
     row = ["2024-01-01", "Alfa", "100000", "40", "100"]
     assert not has_id(row)
@@ -191,6 +200,7 @@ def test_tombstone_round_trip_multi_type():
     assert looks_like_id("t_abcd1234")
     assert looks_like_id("k_abcd1234")
     assert looks_like_id("e_abcd1234")
+    assert looks_like_id("g_abcd1234")
     assert not looks_like_id("insurance")
     assert not looks_like_id("Личный")
 
@@ -237,6 +247,7 @@ def test_duplicate_ids_are_detectable():
 
 
 if __name__ == "__main__":
+    test_trip_id_and_odometer_range()
     test_old_fuel_gets_id()
     test_delete_propagates()
     test_natural_key_fallback()
@@ -264,7 +275,7 @@ if __name__ == "__main__":
         text = (Path(__file__).resolve().parents[1] / rel).read_text()
         for needle in (
             '"cars.dat"', '"fuel.dat"', '"repairs.dat"', '"utilities.dat"',
-            'TypeCarMeta', 'TypeTemplate', 'TypeReminder', 'TypeNote',
+            'TypeCarMeta', 'TypeTemplate', 'TypeReminder', 'TypeNote', 'TypeTrip',
         ):
             if needle not in text:
                 raise AssertionError(f"{rel}: missing sync mapping {needle}")

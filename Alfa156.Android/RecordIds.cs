@@ -22,6 +22,7 @@ internal static class RecordIds
     internal const string TypeTemplate = "template";
     internal const string TypeReminder = "reminder";
     internal const string TypeNote = "note";
+    internal const string TypeTrip = "trip";
 
     internal static string PrefixForFile(string fileName)
     {
@@ -36,6 +37,7 @@ internal static class RecordIds
         if (fileName == ExpenseDataCodec.TemplatesFile) return "t_";
         if (fileName == ExpenseDataCodec.RemindersFile) return "n_";
         if (fileName == ExpenseDataCodec.NotesFile) return "j_";
+        if (fileName == ExpenseDataCodec.TripsFile) return "g_";
         return "x_";
     }
 
@@ -52,6 +54,7 @@ internal static class RecordIds
         if (fileName == ExpenseDataCodec.TemplatesFile) return TypeTemplate;
         if (fileName == ExpenseDataCodec.RemindersFile) return TypeReminder;
         if (fileName == ExpenseDataCodec.NotesFile) return TypeNote;
+        if (fileName == ExpenseDataCodec.TripsFile) return TypeTrip;
         return "unknown";
     }
 
@@ -62,7 +65,7 @@ internal static class RecordIds
         char prefix = value[0];
         if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
              prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
-             prefix != 'j' && prefix != 'x') ||
+             prefix != 'j' && prefix != 'g' && prefix != 'x') ||
             value[1] != '_')
             return false;
         for (int i = 2; i < value.Length; i++)

@@ -21,12 +21,13 @@ namespace Alfa156.Desktop.Data
         internal const string TemplatesFile = RecordTemplates.FileName;
         internal const string RemindersFile = DateReminders.FileName;
         internal const string NotesFile = CarNotes.FileName;
+        internal const string TripsFile = "trips.dat";
 
         internal static readonly string[] DataFiles = new string[]
         {
             "cars.dat", "fuel.dat", "repairs.dat", "utilities.dat", RepairCategoriesFile,
             ExpensesFile, ExpenseCategoriesFile, SettingsFile, CarsMetaFile, TemplatesFile,
-            RemindersFile, NotesFile, RecordIds.DeletedFile
+            RemindersFile, NotesFile, TripsFile, RecordIds.DeletedFile
         };
 
         internal static readonly string[] UtilityLabels = new string[]
@@ -242,6 +243,15 @@ namespace Alfa156.Desktop.Data
                     if (!CarNotes.IsValidRow(notes[j]))
                         throw new InvalidDataException("Неверный формат записи в " + NotesFile + ".");
             }
+
+            string tripsPath = Path.Combine(directory, TripsFile);
+            if (File.Exists(tripsPath))
+            {
+                List<string[]> trips = ReadRows(tripsPath);
+                for (int j = 0; j < trips.Count; j++)
+                    if (!IsValidTripRow(trips[j]))
+                        throw new InvalidDataException("Неверный формат записи в " + TripsFile + ".");
+            }
         }
 
         internal static bool IsValidColumnCount(string fileName, int length)
@@ -266,7 +276,36 @@ namespace Alfa156.Desktop.Data
                 return length == 4 || length == 5;
             if (fileName == NotesFile)
                 return length == 3 || length == 4;
+            if (fileName == TripsFile)
+                return length == 7 || length == 8;
             return false;
+        }
+
+        internal static bool IsValidTripRow(string[] row)
+        {
+            if (row == null)
+                return false;
+            string[] content = RecordIds.StripId(row);
+            if (content.Length != 7)
+                return false;
+            DateTime ignored;
+            if (!DateTime.TryParseExact(content[0], "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out ignored))
+                return false;
+            if (String.IsNullOrEmpty((content[1] ?? "").Trim()))
+                return false;
+            decimal startKm;
+            decimal endKm;
+            if (!Decimal.TryParse((content[2] ?? "").Trim(), NumberStyles.Number,
+                CultureInfo.InvariantCulture, out startKm) ||
+                !Decimal.TryParse((content[3] ?? "").Trim(), NumberStyles.Number,
+                CultureInfo.InvariantCulture, out endKm))
+                return false;
+            if (startKm < 0 || endKm < startKm)
+                return false;
+            if (RecordIds.HasId(row) && !RecordIds.LooksLikeId(RecordIds.GetId(row)))
+                return false;
+            return true;
         }
 
         internal static bool IsValidCategoryRow(string[] row)

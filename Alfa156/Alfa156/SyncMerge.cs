@@ -113,6 +113,11 @@ namespace CarExpenses
                 DataStore.ReadSyncTable(remoteDirectory, "notes.dat"),
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false },
                 RecordIds.IdsForType(tombs, RecordIds.TypeNote)));
+            diffs.Add(AnalyzeTable("Поездки",
+                DataStore.ReadSyncTable(localDirectory, "trips.dat"),
+                DataStore.ReadSyncTable(remoteDirectory, "trips.dat"),
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false },
+                RecordIds.IdsForType(tombs, RecordIds.TypeTrip)));
             return diffs;
         }
 
@@ -218,6 +223,9 @@ namespace CarExpenses
                 resolveConflict, tombs, journal, writeOutput);
             MergeFile("notes.dat", localDirectory, remoteDirectory, destinationDirectory,
                 new int[] { 0, 1, 2 }, new bool[] { false, true, false }, plan,
+                resolveConflict, tombs, journal, writeOutput);
+            MergeFile("trips.dat", localDirectory, remoteDirectory, destinationDirectory,
+                new int[] { 0, 1, 2, 3 }, new bool[] { false, true, false, false }, plan,
                 resolveConflict, tombs, journal, writeOutput);
             if (writeOutput && destinationDirectory != null)
             {

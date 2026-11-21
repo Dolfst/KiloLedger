@@ -22,6 +22,7 @@ namespace Alfa156.Desktop.Data
         internal const string TypeTemplate = "template";
         internal const string TypeReminder = "reminder";
         internal const string TypeNote = "note";
+        internal const string TypeTrip = "trip";
 
         internal static string PrefixForFile(string fileName)
         {
@@ -36,6 +37,7 @@ namespace Alfa156.Desktop.Data
             if (fileName == AlfaCodec.TemplatesFile) return "t_";
             if (fileName == AlfaCodec.RemindersFile) return "n_";
             if (fileName == AlfaCodec.NotesFile) return "j_";
+            if (fileName == AlfaCodec.TripsFile) return "g_";
             return "x_";
         }
 
@@ -52,6 +54,7 @@ namespace Alfa156.Desktop.Data
             if (fileName == AlfaCodec.TemplatesFile) return TypeTemplate;
             if (fileName == AlfaCodec.RemindersFile) return TypeReminder;
             if (fileName == AlfaCodec.NotesFile) return TypeNote;
+            if (fileName == AlfaCodec.TripsFile) return TypeTrip;
             return "unknown";
         }
 
@@ -62,7 +65,7 @@ namespace Alfa156.Desktop.Data
             char prefix = value[0];
             if ((prefix != 'c' && prefix != 'f' && prefix != 'r' && prefix != 'u' && prefix != 'k' &&
                  prefix != 'e' && prefix != 'p' && prefix != 'm' && prefix != 't' && prefix != 'n' &&
-                 prefix != 'j' && prefix != 'x') ||
+                 prefix != 'j' && prefix != 'g' && prefix != 'x') ||
                 value[1] != '_')
                 return false;
             for (int i = 2; i < value.Length; i++)
