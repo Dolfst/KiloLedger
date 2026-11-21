@@ -99,7 +99,10 @@ jobs:
           for ($i = 1; $i -le 5; $i++) {
             git fetch origin main
             git merge --no-edit origin/main *> $null
-            if ($LASTEXITCODE -ne 0) { git merge --abort *> $null }
+            if ($LASTEXITCODE -ne 0) {
+              git rev-parse -q --verify MERGE_HEAD *> $null
+              if ($LASTEXITCODE -eq 0) { git merge --abort *> $null }
+            }
             git push origin HEAD:main
             if ($LASTEXITCODE -eq 0) { break }
             Write-Host "push retry $i"

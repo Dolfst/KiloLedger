@@ -147,7 +147,10 @@ jobs:
           git commit -m "Update $apk_name in dist/download (build #${{ github.run_number }})."
           for i in 1 2 3 4 5; do
             git fetch origin main
-            git merge --no-edit origin/main >/dev/null 2>&1 || git merge --abort
+            git merge --no-edit origin/main >/dev/null 2>&1 || true
+            if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+              git merge --abort
+            fi
             git push origin HEAD:main && break
             echo "push retry $i"
             sleep $((3 * i))
