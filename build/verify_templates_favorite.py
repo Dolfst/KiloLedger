@@ -37,6 +37,8 @@ def main() -> int:
         ):
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
+        if "не более 64 символов" not in text:
+            errors.append(f"{rel}: template names must not be silently truncated")
 
     for rel in (
         "Alfa156/Alfa156/ToSettings.cs",

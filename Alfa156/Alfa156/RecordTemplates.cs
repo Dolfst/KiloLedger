@@ -205,7 +205,7 @@ namespace CarExpenses
             if (item.Name.Length == 0)
                 throw new InvalidOperationException("Введите название шаблона.");
             if (item.Name.Length > 64)
-                item.Name = item.Name.Substring(0, 64).Trim();
+                throw new InvalidOperationException("Название шаблона: не более 64 символов.");
 
             List<string[]> rows = LoadRowsFrom(directory);
             bool found = false;
