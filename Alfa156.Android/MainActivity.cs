@@ -5158,8 +5158,7 @@ public sealed class MainActivity : Activity
     {
         try
         {
-            var settings = GetSharedPreferences("settings", FileCreationMode.Private);
-            string language = settings.GetString("language", "ru");
+            string language = ToSettings.GetLanguage(DataDirectory);
             LocalizationManager.SetLanguage(language);
         }
         catch

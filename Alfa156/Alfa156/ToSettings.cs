@@ -80,13 +80,13 @@ namespace CarExpenses
 
         internal static string GetLanguage()
         {
-            return GetLanguage(LoadRows());
+            return GetLanguageFromDirectory(DataDirectory);
         }
 
-        internal static string GetLanguage(List<string[]> rows)
+        internal static string GetLanguageFromDirectory(string directory)
         {
-            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            ApplyRows(map, rows);
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
             string lang;
             if (map.TryGetValue(LanguageKey, out lang) && lang != null)
             {
@@ -99,12 +99,19 @@ namespace CarExpenses
 
         internal static void SetLanguage(string language)
         {
-            Dictionary<string, string> map = LoadMap();
+            SetLanguageInDirectory(DataDirectory, language);
+        }
+
+        internal static void SetLanguageInDirectory(string directory, string language)
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            LoadInto(map, directory);
+            ApplyDefaults(map);
             string normalized = (language ?? "").Trim().ToLower(CultureInfo.InvariantCulture);
             if (normalized.Length == 0)
                 normalized = DefaultLanguage;
             map[LanguageKey] = normalized;
-            SaveMap(map);
+            WriteMap(directory, map);
         }
 
         internal static string GetCurrency()

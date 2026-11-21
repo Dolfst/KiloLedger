@@ -392,7 +392,8 @@ internal static class ToSettings
 
     internal static string GetLanguage(string directory)
     {
-        Dictionary<string, string> map = LoadMap(directory);
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
         string lang;
         if (map.TryGetValue(LanguageKey, out lang) && !String.IsNullOrEmpty(lang))
             return lang.Trim().ToLowerInvariant();
@@ -401,7 +402,9 @@ internal static class ToSettings
 
     internal static void SetLanguage(string directory, string language)
     {
-        Dictionary<string, string> map = LoadMap(directory);
+        Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        LoadInto(map, directory);
+        ApplyDefaults(map);
         string normalized = String.IsNullOrEmpty(language) ? DefaultLanguage : language.Trim().ToLowerInvariant();
         if (normalized.Length == 0) normalized = DefaultLanguage;
         map[LanguageKey] = normalized;

@@ -3317,19 +3317,30 @@ namespace CarExpenses
         private void EditLanguage(object sender, EventArgs e)
         {
             string current = ToSettings.GetLanguage();
-            List<string> languages = new List<string>(L10n.GetAvailableLanguages());
-            int currentIndex = languages.IndexOf(current);
-            if (currentIndex < 0) currentIndex = 0;
-
+            string[] languages = L10n.GetAvailableLanguages();
             List<string> labels = new List<string>();
-            for (int i = 0; i < languages.Count; i++)
-                labels.Add(L10n.GetLanguageDisplayName(languages[i]) + " (" + languages[i] + ")");
-            using (ChoiceForm choice = new ChoiceForm(L10n.Get("title.language_selection"), L10n.Get("label.language_colon"), labels))
+            string currentLabel = "";
+            for (int i = 0; i < languages.Length; i++)
             {
-                choice.SelectedIndex = currentIndex;
-                if (choice.ShowDialog() != DialogResult.OK)
+                string item = L10n.GetLanguageDisplayName(languages[i]) + " (" + languages[i] + ")";
+                labels.Add(item);
+                if (languages[i] == current)
+                    currentLabel = item;
+            }
+            if (currentLabel.Length == 0 && labels.Count > 0)
+                currentLabel = labels[0];
+
+            EntryField[] fields = new EntryField[]
+            {
+                new EntryField(L10n.Get("label.language_colon"), currentLabel, labels.ToArray(), true)
+            };
+            using (EntryEditorForm editor = new EntryEditorForm(L10n.Get("title.language_selection"), fields))
+            {
+                if (editor.ShowDialog() != DialogResult.OK)
                     return;
-                string selected = languages[choice.SelectedIndex];
+                int selectedIndex = labels.IndexOf(editor.Values[0]);
+                if (selectedIndex < 0) selectedIndex = 0;
+                string selected = languages[selectedIndex];
                 try
                 {
                     if (!TrySave(delegate { ToSettings.SetLanguage(selected); }))
@@ -3962,7 +3973,7 @@ namespace CarExpenses
         {
             try
             {
-                string language = ToSettings.GetLanguage(DataStore.LoadSettings());
+                string language = ToSettings.GetLanguage();
                 LocalizationManager.SetLanguage(language);
             }
             catch
