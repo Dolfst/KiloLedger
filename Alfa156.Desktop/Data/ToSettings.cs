@@ -32,6 +32,7 @@ namespace Alfa156.Desktop.Data
         internal const string DefaultCarKey = "default_car";
         internal const string ReminderWarnDaysKey = "reminder_warn_days";
         internal const int DefaultReminderWarnDays = 14;
+        internal const string SnapshotDeviceTokenKey = "snapshot_device_token";
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
 
@@ -360,6 +361,22 @@ namespace Alfa156.Desktop.Data
             List<string[]> existing = LoadRows(directory);
             AlfaCodec.SaveRows(Path.Combine(directory, AlfaCodec.SettingsFile),
                 ApplyIntervals(existing, values));
+        }
+
+        internal static string GetOrCreateSnapshotDeviceToken(string directory)
+        {
+            List<string[]> rows = LoadRows(directory);
+            Dictionary<string, string> map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyRows(map, rows);
+            string token;
+            if (map.TryGetValue(SnapshotDeviceTokenKey, out token) &&
+                token != null && token.Trim().Length >= 16)
+                return token.Trim();
+            token = Guid.NewGuid().ToString("N");
+            map[SnapshotDeviceTokenKey] = token;
+            AlfaCodec.SaveRows(Path.Combine(directory, AlfaCodec.SettingsFile),
+                Normalize(MapToRows(map)));
+            return token;
         }
 
         internal static void EnsureFile(string directory)

@@ -87,6 +87,24 @@ def main() -> int:
         errors.append("KPK DataStore: missing CountBackupFiles")
     if "ToSettings.MarkBackupDone()" not in kpk_store:
         errors.append("KPK DataStore: MarkBackupDone not called after backup")
+    for rel in (
+        "Alfa156.Android/MainActivity.cs",
+        "Alfa156.Desktop/Data/AlfaRepository.cs",
+        "Alfa156/Alfa156/DataStore.cs",
+    ):
+        text = (ROOT / rel).read_text()
+        for needle in ("snapshot.json", "alfa156.snapshot", "schemaVersion",
+                       "deviceToken", "createdUtc"):
+            if needle not in text:
+                errors.append(f"{rel}: missing snapshot metadata {needle}")
+    for rel in (
+        "Alfa156.Android/ToSettings.cs",
+        "Alfa156.Desktop/Data/ToSettings.cs",
+        "Alfa156/Alfa156/ToSettings.cs",
+    ):
+        text = (ROOT / rel).read_text()
+        if "SnapshotDeviceTokenKey" not in text:
+            errors.append(f"{rel}: missing snapshot device token key")
 
     readme = (ROOT / "README.md").read_text()
     if f"## Что нового в {version}" not in readme and "## Что нового в 1.23.0" not in readme:

@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
 
 namespace Alfa156.Desktop.Data
 {
     internal sealed class AlfaRepository
     {
+        private const string AppVersion = "1.36.0";
         public string DirectoryPath { get; private set; }
         public List<string[]> Cars { get; private set; }
         public List<string[]> Fuel { get; private set; }
@@ -153,6 +155,24 @@ namespace Alfa156.Desktop.Data
             AlfaCodec.ValidateDirectory(DirectoryPath);
         }
 
+        private string BuildSnapshotJson()
+        {
+            string token = ToSettings.GetOrCreateSnapshotDeviceToken(DirectoryPath);
+            string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
+                CultureInfo.InvariantCulture);
+            return "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
+                QuoteSnapshotJson(AppVersion) + ",\"createdUtc\":" + QuoteSnapshotJson(created) +
+                ",\"deviceToken\":" + QuoteSnapshotJson(token) + "}";
+        }
+
+        private static string QuoteSnapshotJson(string value)
+        {
+            if (value == null)
+                value = "";
+            return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+                .Replace("\r", "\\r").Replace("\n", "\\n") + "\"";
+        }
+
         /// <summary>
         /// Allocates Safety_yyyyMMdd_HHmmss next to the data folder (does not create it).
         /// </summary>
@@ -225,6 +245,10 @@ namespace Alfa156.Desktop.Data
                         archive.CreateEntryFromFile(path, fileName, CompressionLevel.Optimal);
                 }
                 ReceiptStore.AddFolderToZip(archive, DirectoryPath);
+                string snapshot = BuildSnapshotJson();
+                ZipArchiveEntry entry = archive.CreateEntry("snapshot.json", CompressionLevel.Optimal);
+                using (StreamWriter writer = new StreamWriter(entry.Open(), new UTF8Encoding(false)))
+                    writer.Write(snapshot);
             }
             NoteSuccessfulBackup();
         }

@@ -4159,6 +4159,10 @@ public sealed class MainActivity : Activity
                     input.CopyTo(entryStream);
             }
             ReceiptStore.AddFolderToZip(archive, DataDirectory);
+            string snapshot = BuildSnapshotJson();
+            ZipArchiveEntry snapshotEntry = archive.CreateEntry("snapshot.json", CompressionLevel.Optimal);
+            using (StreamWriter writer = new StreamWriter(snapshotEntry.Open(), new UTF8Encoding(false)))
+                writer.Write(snapshot);
         }
         try { ToSettings.MarkBackupDone(DataDirectory); }
         catch { /* reminder stamp must not fail ZIP export */ }
@@ -4574,7 +4578,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.35.0";
+        string version = "1.36.0";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -5036,6 +5040,31 @@ public sealed class MainActivity : Activity
             else
                 ShowMessage("Напоминание: если копии нет " + ((int)value) + " дн. и дольше.");
         }, false);
+    }
+
+    private string BuildSnapshotJson()
+    {
+        string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
+        string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
+            CultureInfo.InvariantCulture);
+        string version = "1.36.0";
+        try
+        {
+            var info = PackageManager.GetPackageInfo(PackageName, 0);
+            if (info != null && !String.IsNullOrEmpty(info.VersionName))
+                version = info.VersionName;
+        }
+        catch { }
+        return "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
+            QuoteSnapshotJson(version) + ",\"createdUtc\":" + QuoteSnapshotJson(created) +
+            ",\"deviceToken\":" + QuoteSnapshotJson(token) + "}";
+    }
+
+    private static string QuoteSnapshotJson(string value)
+    {
+        if (value == null) value = "";
+        return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+            .Replace("\r", "\\r").Replace("\n", "\\n") + "\"";
     }
 
     private void MaybeShowBackupReminder()

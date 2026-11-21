@@ -113,6 +113,7 @@ namespace CarExpenses
             for (int i = 0; i < DataFiles.Length; i++)
                 File.Copy(GetPath(DataFiles[i]), Path.Combine(backupPath, DataFiles[i]), false);
             CopyReceiptsFolder(DataDirectory, backupPath);
+            WriteSnapshotMetadata(backupPath);
             try { ToSettings.MarkBackupDone(); }
             catch { /* reminder stamp must not fail backup */ }
             return backupPath;
@@ -421,6 +422,18 @@ namespace CarExpenses
                 TryDeleteDirectory(staging);
                 TryDeleteDirectory(merged);
             }
+        }
+
+        private static void WriteSnapshotMetadata(string backupPath)
+        {
+            string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
+            string created = DateTime.UtcNow.ToString(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+            string json = "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":\"1.36.0\"," +
+                "\"createdUtc\":\"" + created + "\",\"deviceToken\":\"" + token + "\"}";
+            using (StreamWriter writer = new StreamWriter(
+                Path.Combine(backupPath, "snapshot.json"), false, Encoding.UTF8))
+                writer.Write(json);
         }
 
         private static void TryDeleteDirectory(string path)
