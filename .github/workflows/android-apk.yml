@@ -31,7 +31,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -42,7 +42,7 @@ jobs:
           java-version: 17
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: platform-tools platforms;android-36 build-tools;36.0.0
 
@@ -107,16 +107,18 @@ jobs:
           fi
           cp "$signed" "$apk_path"
 
-          # Recreate the release: upload --clobber does not refresh published_at,
-          # so the Releases page would keep showing the old "N days ago" date.
           if gh release view android-latest >/dev/null 2>&1; then
-            gh release delete android-latest --yes --cleanup-tag
+            gh release edit android-latest \
+              --title "Alfa 156 ${version} — Android" \
+              --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})."
+            gh release upload android-latest "$apk_path" --clobber
+          else
+            gh release create android-latest "$apk_path" \
+              --title "Alfa 156 ${version} — Android" \
+              --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})." \
+              --target "$GITHUB_SHA" \
+              --latest=false
           fi
-          gh release create android-latest "$apk_path" \
-            --title "Alfa 156 ${version} — Android" \
-            --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})." \
-            --target "$GITHUB_SHA" \
-            --latest=false
 
       - name: Commit APK to dist/download
         env:

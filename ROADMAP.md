@@ -23,6 +23,7 @@
 
 - ✅ Добавлена сборка КПК через Mono в общий smoke workflow.
 - ✅ GitHub Actions checkout/Python/MSBuild обновлены для Node.js 24; устранены предупреждения о Node.js 20.
+- ✅ Android APK публикуется без предварительного удаления rolling release; Android actions обновлены на Node.js 24.
 - Убедиться, что все version fields берутся из `VERSION`, а не заданы вручную.
 - Проверить наличие артефактов и соответствие имён релиза.
 
