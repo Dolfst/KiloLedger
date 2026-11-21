@@ -74,9 +74,15 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SyncOptionsForm.cs" />
+    <Compile Include="Localization.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Alfa156.ico" />
+    <Content Include="resources\strings.ru.json" />
+    <Content Include="resources\strings.en.json" />
+    <Content Include="resources\strings.es.json" />
+    <Content Include="resources\strings.fr.json" />
+    <Content Include="resources\strings.de.json" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

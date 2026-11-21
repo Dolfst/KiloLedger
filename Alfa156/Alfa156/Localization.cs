@@ -80,7 +80,7 @@ namespace Alfa156.Localization
         {
             _strings = new Dictionary<string, string>();
 
-            string filePath = Path.Combine(_resourcePath, $"strings.{language}.json");
+            string filePath = Path.Combine(_resourcePath, "strings." + language + ".json");
             if (!File.Exists(filePath))
             {
                 // Fallback на русский
@@ -97,7 +97,7 @@ namespace Alfa156.Localization
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading language file: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("Error loading language file: " + ex.Message);
             }
         }
 
