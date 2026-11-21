@@ -67,6 +67,7 @@ namespace CarExpenses
             EnsureRepairCategories();
             EnsureExpenseCategoriesFile();
             EnsureExpenseCategories();
+            EnsureExpenseFile();
             ToSettings.EnsureFile();
             CarsMeta.EnsureFile();
             RecordTemplates.EnsureFile();
@@ -2005,7 +2006,8 @@ namespace CarExpenses
             string backupPath = path + ".bak";
             string temporaryPath = path + ".tmp";
 
-            File.Copy(path, backupPath, true);
+            if (File.Exists(path))
+                File.Copy(path, backupPath, true);
             try
             {
                 using (StreamWriter writer = new StreamWriter(temporaryPath, false))
@@ -2021,7 +2023,8 @@ namespace CarExpenses
 
             try
             {
-                File.Delete(path);
+                if (File.Exists(path))
+                    File.Delete(path);
                 File.Move(temporaryPath, path);
             }
             catch
