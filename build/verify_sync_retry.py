@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Check sync staging and rollback boundaries used for safe retries."""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def method(text: str, start: str, end: str, path: str) -> str:
+    start_index = text.find(start)
+    if start_index < 0:
+        raise AssertionError(f"{path}: missing method {start!r}")
+    end_index = text.find(end, start_index + len(start))
+    if end_index < 0:
+        raise AssertionError(f"{path}: missing next-method marker {end!r}")
+    return text[start_index:end_index]
+
+
+def require_order(text: str, labels: list[tuple[str, str]], path: str) -> None:
+    previous = -1
+    for label, token in labels:
+        position = text.find(token)
+        if position < 0:
+            raise AssertionError(f"{path}: missing {label}: {token}")
+        if position <= previous:
+            raise AssertionError(f"{path}: {label} is out of transaction order")
+        previous = position
+
+
+def main() -> int:
+    android_path = "Alfa156.Android/ExpenseSyncService.cs"
+    android = (ROOT / android_path).read_text(encoding="utf-8")
+    serve_client = method(
+        android,
+        "private static string ServeClient(",
+        "internal static List<string> GetLocalIpv4Addresses()",
+        android_path,
+    )
+    require_order(
+        serve_client,
+        [
+            ("receive snapshot", "ReceiveSnapshot(stream, incomingDirectory, crypto)"),
+            ("receive receipts", "ReceiveReceipts(stream, incomingDirectory, crypto)"),
+            ("validate incoming staging", "ExpenseDataCodec.ValidateDirectory(incomingDirectory)"),
+            ("install merged data", "MergeAndInstall(dataDirectory, incomingDirectory"),
+            ("start final response", "finalResponseStarted = true"),
+            ("send final snapshot", "SendSnapshot(stream, dataDirectory, crypto)"),
+        ],
+        android_path,
+    )
+
+    android_install = method(
+        android,
+        "private static void MergeAndInstall(",
+        "private static void ApplyTombstonesToCopied(",
+        android_path,
+    )
+    require_order(
+        android_install,
+        [
+            ("validate merged staging", "ExpenseDataCodec.ValidateDirectory(mergedDirectory)"),
+            ("create safety backup", "CreateSafetyBackup(dataDirectory, safetyPath)"),
+            ("install merged data", "CopyDataFiles(mergedDirectory, dataDirectory)"),
+            ("rollback on failed install", "CopyDataFiles(safetyBackup, dataDirectory)"),
+        ],
+        android_path,
+    )
+
+    kpk_path = "Alfa156/Alfa156/DataStore.cs"
+    kpk = (ROOT / kpk_path).read_text(encoding="utf-8-sig")
+    kpk_sync = method(
+        kpk,
+        "internal static void MergeSyncSnapshot(",
+        "internal static int ReadSyncInt32(",
+        kpk_path,
+    )
+    require_order(
+        kpk_sync,
+        [
+            ("receive file payload", "ReadSyncBytes(stream, length)"),
+            ("receive receipts", "ReadSyncReceipts(stream, staging, crypto)"),
+            ("validate incoming staging", "ValidateSyncDirectory(staging)"),
+            ("build merged staging", "SyncMerge.ApplyPlan(DataDirectory, staging, merged"),
+            ("create safety backup", "Directory.CreateDirectory(safety)"),
+            ("install merged data", "CopyBackupFiles(merged)"),
+            ("rollback on failed install", "CopyBackupFiles(safety)"),
+            ("clean staging", "TryDeleteDirectory(staging)"),
+        ],
+        kpk_path,
+    )
+
+    print("verify_sync_retry: OK")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except AssertionError as error:
+        print(f"FAIL verify_sync_retry: {error}", file=sys.stderr)
+        sys.exit(1)

@@ -206,6 +206,21 @@ def test_both_sides_delete_idempotent():
     assert merged2 == [] and removed2 == 1
 
 
+def test_reapplying_same_snapshot_does_not_duplicate_records():
+    record = with_id(
+        ["2026-11-20", "Alfa", "120000", "35", "50"],
+        "f_abcdef12",
+    )
+    local = [record]
+    remote = [list(record)]
+    first, first_removed = merge(local, remote, set(), [0, 1, 2])
+    second, second_removed = merge(first, remote, set(), [0, 1, 2])
+
+    assert first_removed == second_removed == 0
+    assert first == second
+    assert len(second) == 1
+
+
 def test_duplicate_ids_are_detectable():
     rows = [
         with_id(["2024-01-01", "Alfa", "1", "1", "1"], "f_deadbeef"),
@@ -228,6 +243,7 @@ if __name__ == "__main__":
     test_fuel_optional_fields_not_confused_with_id()
     test_tombstone_round_trip_multi_type()
     test_both_sides_delete_idempotent()
+    test_reapplying_same_snapshot_does_not_duplicate_records()
     test_duplicate_ids_are_detectable()
 
     for rel in (
