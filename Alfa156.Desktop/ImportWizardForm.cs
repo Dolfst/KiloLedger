@@ -426,15 +426,8 @@ namespace Alfa156.Desktop
                 throw new InvalidOperationException("Не выбрана папка данных.");
 
             safetyPath = null;
-            try
-            {
-                if (File.Exists(Path.Combine(repository.DirectoryPath, "cars.dat")))
-                    safetyPath = repository.CreateSafetyBackup(null);
-            }
-            catch
-            {
-                safetyPath = null;
-            }
+            if (File.Exists(Path.Combine(repository.DirectoryPath, "cars.dat")))
+                safetyPath = repository.CreateSafetyBackup(null);
 
             if (kind == SourceKind.Zip || kind == SourceKind.DatFolder)
             {

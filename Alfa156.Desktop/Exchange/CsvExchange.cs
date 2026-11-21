@@ -74,7 +74,7 @@ namespace Alfa156.Desktop.Exchange
         internal static void ImportFolder(AlfaRepository repo, string folder)
         {
             List<string[]> cars = ReadCsv(Path.Combine(folder, "cars.csv"), 1, true);
-            List<string[]> fuel = ReadCsvFlexible(Path.Combine(folder, "fuel.csv"), 7, 9);
+            List<string[]> fuel = ReadCsvFlexible(Path.Combine(folder, "fuel.csv"), 7, 10);
             List<string[]> repairs = ReadCsv(Path.Combine(folder, "repairs.csv"), 9, true);
             List<string[]> utilities = ReadCsv(Path.Combine(folder, "utilities.csv"), 8, true);
             string categoriesPath = Path.Combine(folder, "repair-categories.csv");
@@ -256,9 +256,10 @@ namespace Alfa156.Desktop.Exchange
             int start = raw.Count > 0 ? 1 : 0;
             for (int i = start; i < raw.Count; i++)
             {
-                int columns = Math.Max(minColumns, Math.Min(maxColumns, raw[i].Length));
-                if (columns < minColumns)
-                    columns = minColumns;
+                if (raw[i].Length > maxColumns)
+                    throw new InvalidDataException(
+                        "Слишком много столбцов в CSV (строка " + (i + 1) + ").");
+                int columns = Math.Max(minColumns, raw[i].Length);
                 string[] row = Pad(raw[i], columns);
                 bool empty = true;
                 for (int c = 0; c < row.Length; c++)
@@ -280,16 +281,25 @@ namespace Alfa156.Desktop.Exchange
             if (!File.Exists(path))
                 throw new FileNotFoundException("Не найден файл: " + path, path);
             string text = File.ReadAllText(path, Encoding.UTF8);
-            return ParseCsv(text, columns, hasHeader);
+            return ParseCsvCore(text, columns, hasHeader, true);
         }
 
         internal static List<string[]> ParseCsv(string text, int columns, bool hasHeader)
+        {
+            return ParseCsvCore(text, columns, hasHeader, false);
+        }
+
+        private static List<string[]> ParseCsvCore(
+            string text, int columns, bool hasHeader, bool rejectExtraColumns)
         {
             List<string[]> raw = ParseCsvRecords(text);
             List<string[]> rows = new List<string[]>();
             int start = hasHeader && raw.Count > 0 ? 1 : 0;
             for (int i = start; i < raw.Count; i++)
             {
+                if (rejectExtraColumns && raw[i].Length > columns)
+                    throw new InvalidDataException(
+                        "Слишком много столбцов CSV (строка " + (i + 1) + ").");
                 string[] row = Pad(raw[i], columns);
                 bool empty = true;
                 for (int c = 0; c < row.Length; c++)
@@ -359,6 +369,8 @@ namespace Alfa156.Desktop.Exchange
                 fields.Add(field.ToString());
                 rows.Add(fields.ToArray());
             }
+            if (inQuotes)
+                throw new InvalidDataException("CSV содержит незакрытую кавычку.");
             return rows;
         }
 
