@@ -84,6 +84,8 @@ def main() -> int:
         text = (ROOT / rel).read_text()
         if 'lower == "osago"' not in text or 'lower == "осago"' not in text:
             errors.append(f"{rel}: missing cross-platform OSAGO aliases")
+        if 'lower == "inspection"' not in text:
+            errors.append(f"{rel}: missing English inspection alias")
 
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (

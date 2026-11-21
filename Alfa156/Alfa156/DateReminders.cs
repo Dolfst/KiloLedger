@@ -74,7 +74,8 @@ namespace CarExpenses
             if (lower == TypeInsurance || lower == "страховка" || lower == "osago" ||
                 lower == "осago" || lower == "осаго")
                 return TypeInsurance;
-            if (lower == TypeInspection || lower == "техосмотр" || lower == "то")
+            if (lower == TypeInspection || lower == "техосмотр" || lower == "то" ||
+                lower == "inspection")
                 return TypeInspection;
             if (lower == TypeCustom || lower == "своё" || lower == "свое" || lower == "другое" ||
                 lower == "произвольное" || lower == "custom")
