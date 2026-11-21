@@ -306,9 +306,25 @@ namespace CarExpenses
             for (int i = 0; i < files.Length; i++)
             {
                 string name = Path.GetFileNameWithoutExtension(files[i]);
-                if (!RecordIds.LooksLikeId(name) || !ids.ContainsKey(name))
-                    report.Findings.Add(new Finding("чеки", "info",
+                if (!RecordIds.LooksLikeId(name))
+                {
+                    report.Findings.Add(new Finding("чеки", "warn",
+                        "чек с некорректным именем: " + Path.GetFileName(files[i])));
+                    continue;
+                }
+                if (!ids.ContainsKey(name))
+                {
+                    report.Findings.Add(new Finding("чеки", "warn",
                         "файл чека без записи: " + Path.GetFileName(files[i])));
+                    continue;
+                }
+                try
+                {
+                    if (new FileInfo(files[i]).Length <= 0)
+                        report.Findings.Add(new Finding("чеки", "warn",
+                            "пустой файл чека: " + Path.GetFileName(files[i])));
+                }
+                catch { }
             }
         }
 

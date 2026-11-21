@@ -117,6 +117,22 @@ def main() -> int:
         if needle not in android_restore:
             errors.append(f"Android restore: missing safety/rollback step {needle}")
 
+    integrity_paths = (
+        "Alfa156.Android/DataIntegrity.cs",
+        "Alfa156.Desktop/Data/DataIntegrity.cs",
+        "Alfa156/Alfa156/DataIntegrity.cs",
+    )
+    for rel in integrity_paths:
+        source = (ROOT / rel).read_text(encoding="utf-8-sig")
+        for needle in (
+            "чек с некорректным именем",
+            "файл чека без записи",
+            "пустой файл чека",
+            '"warn"',
+        ):
+            if needle not in source:
+                errors.append(f"{rel}: missing receipt integrity check {needle}")
+
     if errors:
         print("FAIL verify_backup_restore:")
         for error in errors:
