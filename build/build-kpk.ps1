@@ -83,6 +83,7 @@ $sources = @(
     (Join-Path $projDir "SyncMerge.cs"),
     (Join-Path $projDir "SyncOptionsForm.cs"),
     (Join-Path $projDir "Program.cs"),
+    (Join-Path $projDir "Localization.cs"),
     (Join-Path $projDir "Properties\AssemblyInfo.cs"),
     (Join-Path $projDir "Properties\Resources.Designer.cs")
 )
@@ -115,6 +116,11 @@ $lines.Add((QRes $propResources "Alfa156.Properties.Resources.resources"))
 $lines.Add((QRes (Join-Path $projDir "SeedData\Repairs.seed") "Alfa156.SeedData.Repairs.seed"))
 $lines.Add((QRes (Join-Path $projDir "SeedData\Utilities.seed") "Alfa156.SeedData.Utilities.seed"))
 $lines.Add((QRes (Join-Path $projDir "SeedData\Vehicles.seed") "Alfa156.SeedData.Vehicles.seed"))
+$lines.Add((QRes (Join-Path $projDir "resources\strings.ru.json") "strings.ru.json"))
+$lines.Add((QRes (Join-Path $projDir "resources\strings.en.json") "strings.en.json"))
+$lines.Add((QRes (Join-Path $projDir "resources\strings.es.json") "strings.es.json"))
+$lines.Add((QRes (Join-Path $projDir "resources\strings.fr.json") "strings.fr.json"))
+$lines.Add((QRes (Join-Path $projDir "resources\strings.de.json") "strings.de.json"))
 foreach ($r in $refs) { $lines.Add("/r:" + (Q $r)) }
 foreach ($s in $sources) { $lines.Add((Q $s)) }
 [System.IO.File]::WriteAllLines($rsp, $lines)

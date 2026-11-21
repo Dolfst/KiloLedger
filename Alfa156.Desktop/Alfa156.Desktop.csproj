@@ -78,11 +78,21 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Alfa156.ico" />
-    <Content Include="resources\strings.ru.json" />
-    <Content Include="resources\strings.en.json" />
-    <Content Include="resources\strings.es.json" />
-    <Content Include="resources\strings.fr.json" />
-    <Content Include="resources\strings.de.json" />
+    <Content Include="resources\strings.ru.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="resources\strings.en.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="resources\strings.es.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="resources\strings.fr.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="resources\strings.de.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

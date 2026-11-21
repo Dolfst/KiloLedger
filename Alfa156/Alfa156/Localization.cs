@@ -1,21 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace Alfa156.Localization
 {
-    /// <summary>Система локализации для Alfa 156 (i18n)</summary>
+    /// <summary>Система локализации для Alfa 156 (i18n). Строки встроены как ресурсы exe.</summary>
     public class LocalizationManager
     {
         private static LocalizationManager _instance;
         private Dictionary<string, string> _strings;
         private string _currentLanguage = "ru";
-        private string _resourcePath;
 
-        private LocalizationManager(string resourcePath)
+        private LocalizationManager()
         {
-            _resourcePath = resourcePath;
             LoadLanguage(_currentLanguage);
         }
 
@@ -25,16 +24,12 @@ namespace Alfa156.Localization
             get
             {
                 if (_instance == null)
-                {
-                    string basePath = AppDomain.CurrentDomain.BaseDirectory;
-                    string resourcePath = Path.Combine(basePath, "localization", "resources");
-                    _instance = new LocalizationManager(resourcePath);
-                }
+                    _instance = new LocalizationManager();
                 return _instance;
             }
         }
 
-        /// <summary>Текущий язык (ru, en)</summary>
+        /// <summary>Текущий язык (ru, en, es, fr, de)</summary>
         public string CurrentLanguage
         {
             get { return _currentLanguage; }
@@ -48,56 +43,84 @@ namespace Alfa156.Localization
             }
         }
 
+        /// <summary>Удобный статический доступ для смены языка из UI кода</summary>
+        public static void SetLanguage(string language)
+        {
+            Instance.CurrentLanguage = language;
+        }
+
+        /// <summary>Удобный статический доступ к текущему языку</summary>
+        public static string GetCurrentLanguage()
+        {
+            return Instance.CurrentLanguage;
+        }
+
         /// <summary>Получить переведенную строку по ключу</summary>
-        public string GetString(string key, string defaultValue = "")
+        public string GetString(string key, string defaultValue)
         {
             if (_strings == null || !_strings.ContainsKey(key))
             {
-                return string.IsNullOrEmpty(defaultValue) ? key : defaultValue;
+                return defaultValue.Length == 0 ? key : defaultValue;
             }
             return _strings[key];
         }
 
-        /// <summary>Получить все доступные языки</summary>
+        /// <summary>Получить все доступные языки (встроенные ресурсы exe)</summary>
         public string[] GetAvailableLanguages()
         {
             List<string> languages = new List<string>();
-            if (!Directory.Exists(_resourcePath))
-                return languages.ToArray();
-
-            foreach (string file in Directory.GetFiles(_resourcePath, "strings.*.json"))
+            string[] names = Assembly.GetExecutingAssembly().GetManifestResourceNames();
+            for (int i = 0; i < names.Length; i++)
             {
-                string filename = Path.GetFileNameWithoutExtension(file);
-                string lang = filename.Substring(8); // Убрать "strings."
-                languages.Add(lang);
+                string name = names[i];
+                if (name.StartsWith("strings.") && name.EndsWith(".json"))
+                {
+                    string lang = name.Substring(8, name.Length - 8 - 5); // убрать "strings." и ".json"
+                    languages.Add(lang);
+                }
             }
-
             return languages.ToArray();
         }
 
-        /// <summary>Загрузить языковой пакет из JSON файла</summary>
+        /// <summary>Загрузить языковой пакет из встроенного ресурса exe</summary>
         private void LoadLanguage(string language)
         {
             _strings = new Dictionary<string, string>();
 
-            string filePath = Path.Combine(_resourcePath, "strings." + language + ".json");
-            if (!File.Exists(filePath))
-            {
-                // Fallback на русский
-                filePath = Path.Combine(_resourcePath, "strings.ru.json");
-            }
+            string json = ReadResource("strings." + language + ".json");
+            if (json == null)
+                json = ReadResource("strings.ru.json"); // Fallback на русский
 
-            if (!File.Exists(filePath))
+            if (json == null)
                 return;
 
             try
             {
-                string json = File.ReadAllText(filePath, Encoding.UTF8);
                 ParseJsonStrings(json);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Diagnostics.Debug.WriteLine("Error loading language file: " + ex.Message);
+                // не ломаем запуск приложения при повреждённых переводах
+            }
+        }
+
+        private static string ReadResource(string resourceName)
+        {
+            try
+            {
+                using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
+                {
+                    if (stream == null)
+                        return null;
+                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
 
@@ -160,7 +183,12 @@ namespace Alfa156.Localization
     /// <summary>Удобные методы доступа к строкам локализации</summary>
     public static class L10n
     {
-        public static string Get(string key, string defaultValue = "")
+        public static string Get(string key)
+        {
+            return LocalizationManager.Instance.GetString(key, "");
+        }
+
+        public static string Get(string key, string defaultValue)
         {
             return LocalizationManager.Instance.GetString(key, defaultValue);
         }

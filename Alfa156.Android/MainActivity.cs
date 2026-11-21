@@ -5144,7 +5144,8 @@ public sealed class MainActivity : Activity
         {
             // soft reminder must not break resume
         }
-    
+    }
+
     private void InitializeLanguage()
     {
         try

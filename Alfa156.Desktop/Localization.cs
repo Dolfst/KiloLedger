@@ -27,7 +27,7 @@ namespace Alfa156.Localization
                 if (_instance == null)
                 {
                     string basePath = AppDomain.CurrentDomain.BaseDirectory;
-                    string resourcePath = Path.Combine(basePath, "localization", "resources");
+                    string resourcePath = Path.Combine(basePath, "resources");
                     _instance = new LocalizationManager(resourcePath);
                 }
                 return _instance;
@@ -46,6 +46,18 @@ namespace Alfa156.Localization
                     LoadLanguage(_currentLanguage);
                 }
             }
+        }
+
+        /// <summary>Удобный статический доступ для смены языка из UI кода</summary>
+        public static void SetLanguage(string language)
+        {
+            Instance.CurrentLanguage = language;
+        }
+
+        /// <summary>Удобный статический доступ к текущему языку</summary>
+        public static string GetCurrentLanguage()
+        {
+            return Instance.CurrentLanguage;
         }
 
         /// <summary>Получить переведенную строку по ключу</summary>

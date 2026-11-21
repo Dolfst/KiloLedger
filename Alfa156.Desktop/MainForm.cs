@@ -265,7 +265,7 @@ namespace Alfa156.Desktop
             languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
             foreach (var lang in L10n.GetAvailableLanguages())
                 languageBox.Items.Add(lang);
-            languageBox.Text = LocalizationManager.CurrentLanguage;
+            languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
             intervalRow.Controls.Add(languageBox);
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_language"), SaveLanguage));
             intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_reminder"), AddDateReminder));
@@ -726,8 +726,9 @@ namespace Alfa156.Desktop
 
                     decimal startKm;
                     decimal endKm;
+                    DateTime parsedTripDate;
                     if (!DateTime.TryParseExact(dateBox.Text.Trim(), "yyyy-MM-dd",
-                        CultureInfo.InvariantCulture, DateTimeStyles.None, out _) ||
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedTripDate) ||
                         carBox.SelectedItem == null ||
                         !AlfaCodec.TryNumber(startBox.Text, out startKm) || startKm < 0 ||
                         !AlfaCodec.TryNumber(endBox.Text, out endKm) || endKm < startKm)
@@ -2377,6 +2378,9 @@ namespace Alfa156.Desktop
                 beltIntervalBox.Text = intervals.BeltInterval.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 beltWarnBox.Text = intervals.BeltWarn.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 currencyBox.Text = ToSettings.GetCurrency(repository.Settings);
+                string storedLanguage = ToSettings.GetLanguage(repository.Settings);
+                languageBox.Text = storedLanguage;
+                LocalizationManager.Instance.CurrentLanguage = storedLanguage;
                 budgetBox.Text = ToSettings.GetBudgetMonth(repository.Settings)
                     .ToString(CultureInfo.InvariantCulture);
                 budgetWarnBox.Text = ToSettings.GetBudgetWarnPct(repository.Settings)
