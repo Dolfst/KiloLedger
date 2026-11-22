@@ -9,6 +9,8 @@
 
 - Полная локализация на 5 языков (`ru`, `en`, `es`, `fr`, `de`) для Windows Desktop, Android и Windows Mobile (КПК) с переключением языка в настройках без потери форматов данных `.dat`, CSV, XLSX и Google Sheets.
 - Встроенные словари переводов внутри EXE и Android Assets для автономного запуска.
+- КПК (Windows Mobile): исправлена иконка приложения в меню «Пуск» (добавлены 4/8/24-битные кадры в `Alfa156.ico`) и добавлена автоматическая прокрутка формы при появлении экранной клавиатуры.
+- Публичный чистый старт: удалены личные записи, жёстко заданные ID таблиц и привязка справки к конкретному названию Google Таблицы.
 
 ## Что нового в 1.37.1
 
@@ -227,9 +229,9 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 Текущая версия: **1.38.0** (файл [`VERSION`](VERSION)).
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.36.0.apk` (Android), `Alfa156-1.36.0-Desktop.exe` (ПК), `Alfa156-1.36.0-KPK.exe` / `Alfa156-1.36.0-KPK.zip` (КПК).
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.38.0.apk` (Android), `Alfa156-1.38.0-Desktop.exe` (ПК), `Alfa156-1.38.0-KPK.exe` / `Alfa156-1.38.0-KPK.zip` (КПК).
 
-См. **История версий** выше (1.9.0 → 1.36.0). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
+См. **История версий** выше (1.9.0 → 1.38.0). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
 
 **Обновление КПК:** скопируйте свежий `Alfa156-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «Alfa 156» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
 
