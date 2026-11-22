@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.38.1";
+        private const string AppVersion = "1.38.2";
         private bool chartShowsCostPerKm;
 
         private string Cur()
@@ -121,8 +121,8 @@ namespace Alfa156.Desktop
                 Padding = new Padding(8),
                 BackColor = Color.FromArgb(245, 247, 250)
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -165,7 +165,8 @@ namespace Alfa156.Desktop
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                WrapContents = true
+                WrapContents = true,
+                AutoSize = true
             };
             exchange.Controls.Add(MakeButton(L10n.Get("button.import"), OpenImportWizard));
             exchange.Controls.Add(MakeButton(L10n.Get("button.export_excel"), ExportExcel));

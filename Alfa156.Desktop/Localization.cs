@@ -140,14 +140,27 @@ namespace Alfa156.Localization
             try
             {
                 Assembly asm = Assembly.GetExecutingAssembly();
-                using (Stream stream = asm.GetManifestResourceStream(resourceName))
+                // Try the exact name first, then with the assembly namespace prefix
+                // (MSBuild may embed resources with or without the default namespace prefix).
+                string[] names = new[]
                 {
-                    if (stream == null) return null;
-                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    resourceName,
+                    asm.GetName().Name + "." + resourceName
+                };
+                foreach (string name in names)
+                {
+                    using (Stream stream = asm.GetManifestResourceStream(name))
                     {
-                        return reader.ReadToEnd();
+                        if (stream != null)
+                        {
+                            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                            {
+                                return reader.ReadToEnd();
+                            }
+                        }
                     }
                 }
+                return null;
             }
             catch (Exception ex)
             {
