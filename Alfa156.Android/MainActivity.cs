@@ -804,7 +804,7 @@ public sealed class MainActivity : Activity
             .SetMessage(
                 (L10n.Get("wizard.gs_step1_open") + "\n") +
                 (L10n.Get("wizard.gs_step2_code") + "\n") +
-                "3. Script properties: SYNC_TOKEN.\n" +
+                (L10n.Get("wizard.gs_step3_token") + "\n") +
                 (L10n.Get("wizard.gs_step4_deploy") + "\n\n") +
                 (L10n.Get("hint.desktop_google_wizard_btn") + "\n") +
                 L10n.Get("hint.github_google_sync_readme"))

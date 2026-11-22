@@ -67,10 +67,14 @@ namespace CarExpenses
         internal static void Initialize()
         {
             Directory.CreateDirectory(DataDirectory);
-            EnsureFile(CarsFile, "Alfa156.SeedData.Vehicles.seed");
+            if (!File.Exists(GetPath(CarsFile)))
+            {
+                using (StreamWriter writer = new StreamWriter(GetPath(CarsFile), false))
+                    writer.WriteLine(L10n.Get("label.default_car_name"));
+            }
             EnsureFile(FuelFile, null);
-            EnsureFile(RepairsFile, "Alfa156.SeedData.Repairs.seed");
-            EnsureFile(UtilitiesFile, "Alfa156.SeedData.Utilities.seed");
+            EnsureFile(RepairsFile, null);
+            EnsureFile(UtilitiesFile, null);
             EnsureRepairCategoriesFile();
             EnsureRepairCategories();
             EnsureExpenseCategoriesFile();

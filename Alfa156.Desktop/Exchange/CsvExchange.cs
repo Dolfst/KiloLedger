@@ -136,8 +136,7 @@ namespace Alfa156.Desktop.Exchange
             // Канонический формат Alfa156 Desktop
             List<string[]> canonicalCars = DownloadSheetOptional(id, new string[] { "Автомобили", "cars" }, 1, true);
             if (DengiFormat.LooksLikeMonthList(canonicalCars))
-                throw new InvalidDataException(
-                    "Похоже, импортировался лист с месяцами вместо автомобилей. Для таблицы «Деньги» нужны листы «Заправки …», «Ремонт …», «Коммунальные», «Справочник» и доступ по ссылке.");
+                throw new InvalidDataException(L10n.Get("error.dengi_sheets_expected"));
 
             List<string[]> canonicalFuel = DownloadSheetOptional(id, new string[] { "Заправки", "fuel" }, 8, true);
             List<string[]> canonicalRepairs = DownloadSheetOptional(id, new string[] { "Ремонт", "repairs" }, 9, true);

@@ -118,7 +118,7 @@ internal static class GoogleSyncService
             normalized.Add(row);
         }
         if (fileName == "cars.dat" && normalized.Count == 0)
-            normalized.Add(new string[] { "Alfa Romeo 156" });
+            normalized.Add(new string[] { L10n.Get("label.default_car_name") });
         ExpenseDataCodec.SaveRows(Path.Combine(directory, fileName), normalized);
     }
 

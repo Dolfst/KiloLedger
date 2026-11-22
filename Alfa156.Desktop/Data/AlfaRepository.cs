@@ -48,7 +48,7 @@ namespace Alfa156.Desktop.Data
         public void CreateNew(string directory)
         {
             Directory.CreateDirectory(directory);
-            Cars = new List<string[]> { new string[] { "Alfa Romeo 156" } };
+            Cars = new List<string[]> { new string[] { L10n.Get("label.default_car_name") } };
             Fuel = new List<string[]>();
             Repairs = new List<string[]>();
             Utilities = new List<string[]>();

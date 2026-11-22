@@ -1,6 +1,8 @@
 using System;
+using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using Microsoft.WindowsCE.Forms;
 
 using Alfa156.Localization;
 namespace CarExpenses
@@ -45,6 +47,10 @@ namespace CarExpenses
         private readonly Control[] inputs;
         private readonly Label[] labels;
         private readonly CheckBox[] dateEnabled;
+        private readonly Panel scrollPanel;
+        private readonly Label bottomSpacer;
+        private InputPanel inputPanel;
+        private int lastFocusedIndex = -1;
 
         internal EntryEditorForm(string title, EntryField[] fields)
         {
@@ -53,20 +59,65 @@ namespace CarExpenses
             labels = new Label[fields.Length];
             dateEnabled = new CheckBox[fields.Length];
             Text = title;
-            ClientSize = new System.Drawing.Size(240, 268);
-            AutoScroll = true;
-            BackColor = System.Drawing.Color.FromArgb(232, 238, 244);
+            ClientSize = new Size(240, 268);
+            AutoScroll = false;
+            BackColor = Color.FromArgb(232, 238, 244);
             MinimizeBox = false;
             WindowState = FormWindowState.Maximized;
+
+            scrollPanel = new Panel();
+            scrollPanel.Location = new Point(0, 0);
+            scrollPanel.Size = ClientSize;
+            scrollPanel.BackColor = BackColor;
+            scrollPanel.AutoScroll = true;
+            Controls.Add(scrollPanel);
 
             for (int i = 0; i < fields.Length; i++)
                 AddField(i);
 
+            bottomSpacer = new Label();
+            bottomSpacer.Text = "";
+            bottomSpacer.BackColor = BackColor;
+            bottomSpacer.Location = new Point(0, 8 + fields.Length * 72);
+            bottomSpacer.Size = new Size(10, 14);
+            scrollPanel.Controls.Add(bottomSpacer);
+
+            try
+            {
+                inputPanel = new InputPanel();
+                inputPanel.EnabledChanged += new EventHandler(SipChanged);
+            }
+            catch
+            {
+                inputPanel = null;
+            }
+
             Resize += new EventHandler(ResizeInputs);
+            Load += new EventHandler(FormLoaded);
+            Activated += new EventHandler(FormActivated);
             MainMenu menu = new MainMenu();
             menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.save"), new EventHandler(Save)));
             menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.cancel"), new EventHandler(Cancel)));
             Menu = menu;
+
+            UpdateLayoutAndScroll(false);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && inputPanel != null)
+            {
+                try
+                {
+                    inputPanel.EnabledChanged -= new EventHandler(SipChanged);
+                    inputPanel.Dispose();
+                }
+                catch
+                {
+                }
+                inputPanel = null;
+            }
+            base.Dispose(disposing);
         }
 
         internal string[] Values
@@ -116,11 +167,12 @@ namespace CarExpenses
             Label label = new Label();
             label.Text = fields[index].Label;
             label.BackColor = BackColor;
-            label.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
-            label.Font = new System.Drawing.Font("Arial", 9, System.Drawing.FontStyle.Bold);
+            label.ForeColor = Color.FromArgb(35, 51, 70);
+            label.Font = new Font("Arial", 9, FontStyle.Bold);
             labels[index] = label;
-            Controls.Add(label);
+            scrollPanel.Controls.Add(label);
 
+            int fieldIndex = index;
             Control input;
             if (fields[index].Kind == "check")
             {
@@ -128,7 +180,7 @@ namespace CarExpenses
                 check.Text = fields[index].Label;
                 check.Checked = fields[index].Value != "0";
                 check.BackColor = BackColor;
-                check.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                check.ForeColor = Color.FromArgb(35, 51, 70);
                 input = check;
                 labels[index].Text = "";
             }
@@ -136,8 +188,8 @@ namespace CarExpenses
             {
                 ComboBox combo = new ComboBox();
                 combo.DropDownStyle = ComboBoxStyle.DropDown;
-                combo.BackColor = System.Drawing.Color.White;
-                combo.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                combo.BackColor = Color.White;
+                combo.ForeColor = Color.FromArgb(35, 51, 70);
                 if (fields[index].Options != null)
                 {
                     for (int j = 0; j < fields[index].Options.Length; j++)
@@ -150,8 +202,8 @@ namespace CarExpenses
             {
                 ComboBox combo = new ComboBox();
                 combo.DropDownStyle = ComboBoxStyle.DropDownList;
-                combo.BackColor = System.Drawing.Color.White;
-                combo.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                combo.BackColor = Color.White;
+                combo.ForeColor = Color.FromArgb(35, 51, 70);
                 for (int j = 0; j < fields[index].Options.Length; j++)
                 {
                     combo.Items.Add(fields[index].Options[j]);
@@ -176,11 +228,12 @@ namespace CarExpenses
                     enabled.Text = L10n.Get("button.specify");
                     enabled.Checked = fields[index].Value.Length > 0;
                     enabled.BackColor = BackColor;
-                    enabled.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                    enabled.ForeColor = Color.FromArgb(35, 51, 70);
                     dateEnabled[index] = enabled;
                     picker.Enabled = enabled.Checked;
                     enabled.Click += delegate { picker.Enabled = enabled.Checked; };
-                    Controls.Add(enabled);
+                    enabled.GotFocus += delegate { OnFieldFocused(fieldIndex); };
+                    scrollPanel.Controls.Add(enabled);
                 }
                 input = picker;
             }
@@ -188,43 +241,162 @@ namespace CarExpenses
             {
                 TextBox text = new TextBox();
                 text.Text = fields[index].Value;
-                text.BackColor = System.Drawing.Color.White;
-                text.ForeColor = System.Drawing.Color.FromArgb(35, 51, 70);
+                text.BackColor = Color.White;
+                text.ForeColor = Color.FromArgb(35, 51, 70);
                 input = text;
             }
 
+            input.GotFocus += delegate { OnFieldFocused(fieldIndex); };
             inputs[index] = input;
-            Controls.Add(input);
-            LayoutField(index, top);
+            scrollPanel.Controls.Add(input);
+            LayoutField(index, top, ClientSize.Width - 28);
+        }
+
+        private void FormLoaded(object sender, EventArgs e)
+        {
+            UpdateLayoutAndScroll(false);
+        }
+
+        private void FormActivated(object sender, EventArgs e)
+        {
+            UpdateLayoutAndScroll(false);
+        }
+
+        private void SipChanged(object sender, EventArgs e)
+        {
+            UpdateLayoutAndScroll(true);
         }
 
         private void ResizeInputs(object sender, EventArgs e)
         {
-            for (int i = 0; i < fields.Length; i++)
-                LayoutField(i, 8 + i * 72);
+            UpdateLayoutAndScroll(false);
         }
 
-        private void LayoutField(int index, int top)
+        private void UpdateLayoutAndScroll(bool scrollFocusedIntoView)
         {
-            int width = ClientSize.Width - 20;
-            if (width < 40)
-                width = 40;
-            labels[index].Location = new System.Drawing.Point(10, top);
-            labels[index].Size = new System.Drawing.Size(width, 26);
+            int clientW = ClientSize.Width;
+            int clientH = ClientSize.Height;
+            if (clientW < 40) clientW = 40;
+            if (clientH < 40) clientH = 40;
+
+            int visibleHeight = GetVisibleHeightAboveKeyboard(clientH);
+            scrollPanel.Location = new Point(0, 0);
+            scrollPanel.Size = new Size(clientW, visibleHeight);
+
+            int contentHeight = 8 + fields.Length * 72 + 14;
+            bool needsVScroll = contentHeight > visibleHeight;
+            int scrollReserve = needsVScroll ? 24 : 20;
+            int fieldWidth = clientW - scrollReserve;
+            if (fieldWidth < 40)
+                fieldWidth = 40;
+
+            int scrollY = -scrollPanel.AutoScrollPosition.Y;
+            for (int i = 0; i < fields.Length; i++)
+                LayoutField(i, 8 + i * 72 - scrollY, fieldWidth);
+            if (bottomSpacer != null)
+                bottomSpacer.Location = new Point(0, 8 + fields.Length * 72 - scrollY);
+
+            if (scrollFocusedIntoView)
+            {
+                int focusIdx = FindFocusedFieldIndex();
+                if (focusIdx >= 0)
+                    EnsureFieldVisible(focusIdx);
+            }
+        }
+
+        private int GetVisibleHeightAboveKeyboard(int fullClientHeight)
+        {
+            int visible = fullClientHeight;
+            try
+            {
+                if (inputPanel != null && inputPanel.Enabled)
+                {
+                    Point topLeft = PointToScreen(new Point(0, 0));
+                    Rectangle sip = inputPanel.Bounds;
+                    if (sip.Height > 0 && sip.Width > 0)
+                    {
+                        int candidate = sip.Top - topLeft.Y;
+                        if (candidate >= 48 && candidate < visible)
+                            visible = candidate;
+                    }
+                    Rectangle desktop = inputPanel.VisibleDesktop;
+                    if (desktop.Height > 0 && desktop.Width > 0)
+                    {
+                        int candidate = desktop.Bottom - topLeft.Y;
+                        if (candidate >= 48 && candidate < visible)
+                            visible = candidate;
+                    }
+                }
+            }
+            catch
+            {
+            }
+            return visible;
+        }
+
+        private int FindFocusedFieldIndex()
+        {
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                if (inputs[i] != null && inputs[i].Focused)
+                    return i;
+                if (dateEnabled[i] != null && dateEnabled[i].Focused)
+                    return i;
+            }
+            return lastFocusedIndex;
+        }
+
+        private void OnFieldFocused(int index)
+        {
+            lastFocusedIndex = index;
+            UpdateLayoutAndScroll(false);
+            EnsureFieldVisible(index);
+        }
+
+        private void EnsureFieldVisible(int index)
+        {
+            if (index < 0 || index >= fields.Length)
+                return;
+            int viewHeight = scrollPanel.Height;
+            if (viewHeight <= 0)
+                return;
+
+            int fieldTop = 8 + index * 72;
+            int fieldBottom = fieldTop + 70;
+            int currentTop = -scrollPanel.AutoScrollPosition.Y;
+            int currentBottom = currentTop + viewHeight;
+
+            int targetTop = currentTop;
+            if (fieldTop < currentTop)
+                targetTop = fieldTop - 6;
+            else if (fieldBottom > currentBottom)
+                targetTop = fieldBottom - viewHeight + 8;
+
+            if (targetTop < 0)
+                targetTop = 0;
+
+            if (targetTop != currentTop)
+                scrollPanel.AutoScrollPosition = new Point(0, targetTop);
+        }
+
+        private void LayoutField(int index, int top, int width)
+        {
+            labels[index].Location = new Point(10, top);
+            labels[index].Size = new Size(width, 26);
             if (dateEnabled[index] != null)
             {
                 int inputWidth = width - 74;
                 if (inputWidth < 40)
                     inputWidth = 40;
-                dateEnabled[index].Location = new System.Drawing.Point(10, top + 33);
-                dateEnabled[index].Size = new System.Drawing.Size(72, 34);
-                inputs[index].Location = new System.Drawing.Point(84, top + 33);
-                inputs[index].Size = new System.Drawing.Size(inputWidth, 34);
+                dateEnabled[index].Location = new Point(10, top + 33);
+                dateEnabled[index].Size = new Size(72, 34);
+                inputs[index].Location = new Point(84, top + 33);
+                inputs[index].Size = new Size(inputWidth, 34);
             }
             else
             {
-                inputs[index].Location = new System.Drawing.Point(10, top + 33);
-                inputs[index].Size = new System.Drawing.Size(width, 34);
+                inputs[index].Location = new Point(10, top + 33);
+                inputs[index].Size = new Size(width, 34);
             }
         }
 

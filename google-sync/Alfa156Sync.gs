@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Alfa156 ↔ Google Sheets sync webhook.
  *
- * Установка (один раз утром):
- * 1. Откройте таблицу «Деньги».
+ * Установка (один раз):
+ * 1. Откройте вашу таблицу в Google Sheets (или создайте новую).
  * 2. Расширения → Apps Script.
  * 3. Вставьте этот файл вместо Code.gs.
- * 4. В Script Properties добавьте ключ SYNC_TOKEN = любой секрет (например alfa156).
+ * 4. В Script Properties добавьте ключ SYNC_TOKEN = ваш секретный пароль.
  * 5. Deploy → New deployment → Web app:
  *    - Execute as: Me
  *    - Who has access: Anyone
@@ -23,12 +23,21 @@ var EXPENSE_PREFIX = 'Прочие ';
 var UTILITIES_SHEET = 'Коммунальные';
 var CATEGORIES_SHEET = 'Справочник';
 var EXPENSE_CATEGORIES_SHEET = 'Кат. прочих';
-var DEFAULT_CAR = 'Alfa Romeo 156';
+var DEFAULT_CAR = 'Мой автомобиль';
 
-var SPREADSHEET_ID = '1h-EJLq7PhsP_XDSsdnKMLsB7_nxxxFeoT_WKUJ4XgJA';
+// Для standalone Apps Script можно задать SPREADSHEET_ID в Script Properties (или здесь).
+// Если скрипт открыт через Расширения → Apps Script из таблицы, таблица определяется автоматически.
+var SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID';
 function getSs_() {
-  try { return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SPREADSHEET_ID); }
-  catch (e) { return SpreadsheetApp.openById(SPREADSHEET_ID); }
+  var bound = null;
+  try { bound = SpreadsheetApp.getActiveSpreadsheet(); } catch (e) {}
+  if (bound) return bound;
+  var propId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  var id = (propId && propId.trim()) ? propId.trim() : SPREADSHEET_ID;
+  if (!id || id === 'YOUR_SPREADSHEET_ID') {
+    throw new Error('Откройте скрипт из вашей таблицы (Расширения → Apps Script) или задайте SPREADSHEET_ID в Script Properties.');
+  }
+  return SpreadsheetApp.openById(id);
 }
 
 

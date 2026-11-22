@@ -21,27 +21,20 @@ Alfa 156 Desktop ←→ Google Apps Script ←→ Google Sheets
 ### Шаг 1: Создайте Google Sheet
 
 1. Откройте [Google Sheets](https://sheets.google.com)
-2. Создайте новую таблицу с названием "Alfa156" (или другим названием)
-3. Скопируйте ID таблицы из URL:
-   ```
-   https://docs.google.com/spreadsheets/d/[ID]/edit
-   ```
+2. Создайте новую таблицу (или откройте вашу существующую таблицу)
 
 ### Шаг 2: Создайте Apps Script
 
 1. В Google Sheets: Меню → Расширения → Apps Script
 2. Удалите код по умолчанию
 3. Скопируйте код из [`google-sync/Alfa156Sync.gs`](google-sync/Alfa156Sync.gs)
-4. Вставьте код в редактор
+4. Вставьте код в редактор и сохраните проект (Ctrl+S)
 
-### Шаг 3: Настройте скрипт
+### Шаг 3: Настройте секретный токен (`SYNC_TOKEN`)
 
-1. В Apps Script найдите строку:
-   ```javascript
-   const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
-   ```
-2. Замените `YOUR_SPREADSHEET_ID` на ID из Шага 1
-3. Сохраните проект (Ctrl+S)
+1. В редакторе Apps Script откройте **Project Settings (⚙)** → **Script properties**
+2. Добавьте свойство `SYNC_TOKEN` с любым надёжным паролем (придуманным вами)
+3. Если скрипт создан отдельно (не через `Расширения → Apps Script` из таблицы), добавьте ещё свойство `SPREADSHEET_ID` с ID таблицы из URL `https://docs.google.com/spreadsheets/d/[ID]/edit`
 
 ### Шаг 4: Разверните как веб-приложение
 
@@ -193,4 +186,4 @@ Apps Script создает следующие листы в Google Sheets:
 
 ---
 
-**Версия 1.37.1** — поддержка Google Sheets синхронизации через двусторонний Apps Script.
+**Версия 1.38.0** — поддержка Google Sheets синхронизации через двусторонний Apps Script.

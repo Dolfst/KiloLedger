@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Alfa156.Desktop.Data;
+using Alfa156.Localization;
 
 namespace Alfa156.Desktop.Exchange
 {
@@ -48,7 +49,10 @@ namespace Alfa156.Desktop.Exchange
                     cars[car] = car;
             }
             if (cars.Count == 0)
-                cars["Alfa Romeo 156"] = "Alfa Romeo 156";
+            {
+                string defaultCar = L10n.Get("label.default_car_name");
+                cars[defaultCar] = defaultCar;
+            }
 
             List<string[]> rows = new List<string[]>();
             foreach (string car in cars.Values)
