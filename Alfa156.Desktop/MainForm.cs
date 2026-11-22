@@ -17,6 +17,7 @@ namespace Alfa156.Desktop
     {
         private const string AppVersion = "1.38.2";
         private bool chartShowsCostPerKm;
+        private bool _firstRun;
 
         private string Cur()
         {
@@ -35,7 +36,7 @@ namespace Alfa156.Desktop
         private readonly DataGridView expenseCategoriesGrid = CreateGrid();
         private readonly TextBox summaryBox = new TextBox();
         private readonly MonthlyChartPanel summaryChart = new MonthlyChartPanel();
-        private readonly TabPage summaryTab = new TabPage(L10n.Get("tab.summary"));
+        private readonly TabPage summaryTab = new TabPage(L10n.Get("tab.summary")) { Tag = "tab.summary" };
         private readonly TextBox oilIntervalBox = new TextBox();
         private readonly TextBox oilWarnBox = new TextBox();
         private readonly TextBox beltIntervalBox = new TextBox();
@@ -98,7 +99,11 @@ namespace Alfa156.Desktop
             // Загрузить сохранённый язык из настроек до создания UI-элементов,
             // иначе L10n.Get() вернёт строки по умолчанию (ru).
             string savedLang = ToSettings.GetLanguage(repository.Settings);
-            LocalizationManager.Instance.CurrentLanguage = savedLang;
+            _firstRun = String.IsNullOrEmpty(savedLang);
+            if (!_firstRun)
+                LocalizationManager.Instance.CurrentLanguage = savedLang;
+            else
+                LocalizationManager.Instance.CurrentLanguage = "ru";
 
             // Обновить текст полей, инициализированных до конструктора
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
@@ -144,13 +149,13 @@ namespace Alfa156.Desktop
             pathBox.Width = 420;
             pathBox.ReadOnly = true;
             toolbar.Controls.Add(pathBox);
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.open_folder"), OpenFolder));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.open_zip"), OpenZip));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.new_folder"), CreateFolder));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.save_data"), SaveData));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.export_zip"), SaveZip));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.attach_receipt"), AttachReceiptPhoto));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.delete_receipt"), DeleteReceiptPhoto));
+            toolbar.Controls.Add(MakeButton("button.open_folder", OpenFolder));
+            toolbar.Controls.Add(MakeButton("button.open_zip", OpenZip));
+            toolbar.Controls.Add(MakeButton("button.new_folder", CreateFolder));
+            toolbar.Controls.Add(MakeButton("button.save_data", SaveData));
+            toolbar.Controls.Add(MakeButton("button.export_zip", SaveZip));
+            toolbar.Controls.Add(MakeButton("button.attach_receipt", AttachReceiptPhoto));
+            toolbar.Controls.Add(MakeButton("button.delete_receipt", DeleteReceiptPhoto));
             globalSearchBox.Width = 140;
             globalSearchBox.Text = L10n.Get("button.search_ellipsis");
             globalSearchBox.ForeColor = Color.Gray;
@@ -164,12 +169,12 @@ namespace Alfa156.Desktop
             };
             globalSearchBox.KeyDown += GlobalSearchKeyDown;
             toolbar.Controls.Add(globalSearchBox);
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.search"), OpenGlobalSearch));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.duplicates"), OpenDuplicates));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.data_integrity"), OpenDataIntegrity));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.quick_fuel"), OpenQuickFuelEntry));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.trip"), OpenTripEntry));
-            toolbar.Controls.Add(MakeButton(L10n.Get("button.trip_report"), ShowTripReport));
+            toolbar.Controls.Add(MakeButton("button.search", OpenGlobalSearch));
+            toolbar.Controls.Add(MakeButton("button.duplicates", OpenDuplicates));
+            toolbar.Controls.Add(MakeButton("button.data_integrity", OpenDataIntegrity));
+            toolbar.Controls.Add(MakeButton("button.quick_fuel", OpenQuickFuelEntry));
+            toolbar.Controls.Add(MakeButton("button.trip", OpenTripEntry));
+            toolbar.Controls.Add(MakeButton("button.trip_report", ShowTripReport));
 
             FlowLayoutPanel exchange = new FlowLayoutPanel
             {
@@ -177,12 +182,12 @@ namespace Alfa156.Desktop
                 WrapContents = true,
                 AutoSize = true
             };
-            exchange.Controls.Add(MakeButton(L10n.Get("button.import"), OpenImportWizard));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.export_excel"), ExportExcel));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.import_excel"), ImportExcel));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.export_csv"), ExportCsv));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.import_csv_folder"), ImportCsvFolder));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.csv_templates"), ExportCsvTemplates));
+            exchange.Controls.Add(MakeButton("button.import", OpenImportWizard));
+            exchange.Controls.Add(MakeButton("button.export_excel", ExportExcel));
+            exchange.Controls.Add(MakeButton("button.import_excel", ImportExcel));
+            exchange.Controls.Add(MakeButton("button.export_csv", ExportCsv));
+            exchange.Controls.Add(MakeButton("button.import_csv_folder", ImportCsvFolder));
+            exchange.Controls.Add(MakeButton("button.csv_templates", ExportCsvTemplates));
             googleUrlBox.Width = 280;
             googleUrlBox.Text = L10n.Get("message.google_sheet_url");
             googleUrlBox.ForeColor = Color.Gray;
@@ -195,19 +200,19 @@ namespace Alfa156.Desktop
                 }
             };
             exchange.Controls.Add(googleUrlBox);
-            exchange.Controls.Add(MakeButton(L10n.Get("button.import_google"), ImportGoogle));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.google_wizard"), OpenGoogleSyncWizard));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.google_settings"), ConfigureGoogleSync));
-            exchange.Controls.Add(MakeButton(L10n.Get("button.google_sync"), SyncGoogle));
+            exchange.Controls.Add(MakeButton("button.import_google", ImportGoogle));
+            exchange.Controls.Add(MakeButton("button.google_wizard", OpenGoogleSyncWizard));
+            exchange.Controls.Add(MakeButton("button.google_settings", ConfigureGoogleSync));
+            exchange.Controls.Add(MakeButton("button.google_sync", SyncGoogle));
 
             tabs.Dock = DockStyle.Fill;
-            tabs.TabPages.Add(WrapGrid(L10n.Get("tab.vehicles"), carsGrid));
-            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.fuel"), fuelGrid, BuildFuelFilterBar()));
-            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.repairs"), repairsGrid, BuildRepairFilterBar()));
-            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.expenses"), expensesGrid, BuildExpenseFilterBar()));
-            tabs.TabPages.Add(WrapGrid(L10n.Get("tab.expense_categories"), expenseCategoriesGrid));
-            tabs.TabPages.Add(WrapFilteredGrid(L10n.Get("tab.utilities"), utilitiesGrid, BuildUtilityFilterBar()));
-            tabs.TabPages.Add(WrapGrid(L10n.Get("tab.categories"), categoriesGrid));
+            tabs.TabPages.Add(WrapGrid("tab.vehicles", carsGrid));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.fuel", fuelGrid, BuildFuelFilterBar()));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.repairs", repairsGrid, BuildRepairFilterBar()));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.expenses", expensesGrid, BuildExpenseFilterBar()));
+            tabs.TabPages.Add(WrapGrid("tab.expense_categories", expenseCategoriesGrid));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.utilities", utilitiesGrid, BuildUtilityFilterBar()));
+            tabs.TabPages.Add(WrapGrid("tab.categories", categoriesGrid));
 
             summaryBox.Multiline = true;
             summaryBox.ReadOnly = true;
@@ -241,12 +246,12 @@ namespace Alfa156.Desktop
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warning"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             beltWarnBox.Width = 60;
             intervalRow.Controls.Add(beltWarnBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_intervals"), SaveToIntervals));
+            intervalRow.Controls.Add(MakeButton("button.save_intervals", SaveToIntervals));
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.currency"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             currencyBox.Width = 60;
             currencyBox.Text = "BYN";
             intervalRow.Controls.Add(currencyBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_currency"), SaveCurrency));
+            intervalRow.Controls.Add(MakeButton("button.save_currency", SaveCurrency));
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.budget_month"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             budgetBox.Width = 70;
             budgetBox.Text = "0";
@@ -255,21 +260,21 @@ namespace Alfa156.Desktop
             budgetWarnBox.Width = 40;
             budgetWarnBox.Text = "80";
             intervalRow.Controls.Add(budgetWarnBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_budget"), SaveBudget));
+            intervalRow.Controls.Add(MakeButton("button.save_budget", SaveBudget));
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.backup_remind"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             backupRemindBox.Width = 40;
             backupRemindBox.Text = "7";
             intervalRow.Controls.Add(backupRemindBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_backup_remind"), SaveBackupRemind));
+            intervalRow.Controls.Add(MakeButton("button.save_backup_remind", SaveBackupRemind));
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.reminder_days"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             reminderWarnBox.Width = 40;
             reminderWarnBox.Text = "14";
             intervalRow.Controls.Add(reminderWarnBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_reminder_days"), SaveReminderWarnDays));
+            intervalRow.Controls.Add(MakeButton("button.save_reminder_days", SaveReminderWarnDays));
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.default_car"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             defaultCarBox.Width = 140;
             intervalRow.Controls.Add(defaultCarBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_car"), SaveDefaultCar));
+            intervalRow.Controls.Add(MakeButton("button.save_car", SaveDefaultCar));
             intervalRow.Controls.Add(new Label { Text = L10n.Get("dialog.language"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
             languageBox.Width = 100;
             languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -277,19 +282,19 @@ namespace Alfa156.Desktop
                 languageBox.Items.Add(lang);
             languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
             intervalRow.Controls.Add(languageBox);
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_language"), SaveLanguage));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_reminder"), AddDateReminder));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.delete_reminder"), DeleteDateReminder));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.add_note"), AddCarNote));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.edit_note"), EditCarNote));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.delete_note"), DeleteCarNote));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_summary"), SaveSummaryText));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.compare_periods"), ShowPeriodCompare));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.period_report"), ShowPeriodReport));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.timeline"), ShowCarTimeline));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.apply_template"), ApplyTemplateToActiveGrid));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.save_template"), SaveActiveRowAsTemplate));
-            intervalRow.Controls.Add(MakeButton(L10n.Get("button.chart_cost_per_km"), ToggleCostPerKmChart));
+            intervalRow.Controls.Add(MakeButton("button.save_language", SaveLanguage));
+            intervalRow.Controls.Add(MakeButton("button.add_reminder", AddDateReminder));
+            intervalRow.Controls.Add(MakeButton("button.delete_reminder", DeleteDateReminder));
+            intervalRow.Controls.Add(MakeButton("button.add_note", AddCarNote));
+            intervalRow.Controls.Add(MakeButton("button.edit_note", EditCarNote));
+            intervalRow.Controls.Add(MakeButton("button.delete_note", DeleteCarNote));
+            intervalRow.Controls.Add(MakeButton("button.save_summary", SaveSummaryText));
+            intervalRow.Controls.Add(MakeButton("button.compare_periods", ShowPeriodCompare));
+            intervalRow.Controls.Add(MakeButton("button.period_report", ShowPeriodReport));
+            intervalRow.Controls.Add(MakeButton("button.timeline", ShowCarTimeline));
+            intervalRow.Controls.Add(MakeButton("button.apply_template", ApplyTemplateToActiveGrid));
+            intervalRow.Controls.Add(MakeButton("button.save_template", SaveActiveRowAsTemplate));
+            intervalRow.Controls.Add(MakeButton("button.chart_cost_per_km", ToggleCostPerKmChart));
             summaryChart.Dock = DockStyle.Fill;
             summaryLayout.Controls.Add(intervalRow, 0, 0);
             summaryLayout.Controls.Add(summaryChart, 0, 1);
@@ -335,6 +340,12 @@ namespace Alfa156.Desktop
 
             defaultCarBox.DropDownStyle = ComboBoxStyle.DropDownList;
             defaultCarBox.Width = 140;
+
+            // При первом запуске — спросить язык, иначе применить сохранённый
+            if (_firstRun)
+                ShowFirstRunLanguageDialog();
+            else
+                ApplyLanguageToUI();
         }
 
         private static DataGridView CreateGrid()
@@ -353,16 +364,18 @@ namespace Alfa156.Desktop
             };
         }
 
-        private static TabPage WrapGrid(string title, DataGridView grid)
+        private static TabPage WrapGrid(string locKey, DataGridView grid)
         {
-            TabPage page = new TabPage(title);
+            TabPage page = new TabPage(L10n.Get(locKey));
+            page.Tag = locKey;
             page.Controls.Add(grid);
             return page;
         }
 
-        private static TabPage WrapFilteredGrid(string title, DataGridView grid, Control filterBar)
+        private static TabPage WrapFilteredGrid(string locKey, DataGridView grid, Control filterBar)
         {
-            TabPage page = new TabPage(title);
+            TabPage page = new TabPage(L10n.Get(locKey));
+            page.Tag = locKey;
             TableLayoutPanel layout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -485,8 +498,8 @@ namespace Alfa156.Desktop
             bar.Controls.Add(FilterLabel(textLabel));
             textBox.Width = 140;
             bar.Controls.Add(textBox);
-            bar.Controls.Add(MakeButton(L10n.Get("button.apply"), apply));
-            bar.Controls.Add(MakeButton(L10n.Get("button.reset"), reset));
+            bar.Controls.Add(MakeButton("button.apply", apply));
+            bar.Controls.Add(MakeButton("button.reset", reset));
             return bar;
         }
 
@@ -513,8 +526,8 @@ namespace Alfa156.Desktop
             bar.Controls.Add(FilterLabel(L10n.Get("title.search")));
             textBox.Width = 140;
             bar.Controls.Add(textBox);
-            bar.Controls.Add(MakeButton(L10n.Get("button.apply"), apply));
-            bar.Controls.Add(MakeButton(L10n.Get("button.reset"), reset));
+            bar.Controls.Add(MakeButton("button.apply", apply));
+            bar.Controls.Add(MakeButton("button.reset", reset));
             return bar;
         }
 
@@ -961,17 +974,18 @@ namespace Alfa156.Desktop
             }
         }
 
-        private static Button MakeButton(string text, EventHandler click)
+        private static Button MakeButton(string locKey, EventHandler click)
         {
             Button button = new Button
             {
-                Text = text,
+                Text = L10n.Get(locKey),
                 AutoSize = true,
                 Margin = new Padding(4, 4, 4, 4),
                 Padding = new Padding(8, 2, 8, 2),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(225, 231, 237),
-                ForeColor = Color.FromArgb(35, 51, 70)
+                ForeColor = Color.FromArgb(35, 51, 70),
+                Tag = locKey
             };
             button.FlatAppearance.BorderColor = Color.FromArgb(49, 77, 102);
             button.Click += click;
@@ -1710,14 +1724,151 @@ namespace Alfa156.Desktop
                 repository.Save();
                 dirty = false;
                 LocalizationManager.SetLanguage(lang);
+                ApplyLanguageToUI();
                 SetStatus(L10n.Get("label.language_colon") + " " + L10n.GetLanguageDisplayName(lang));
                 RefreshSummaryText();
-                MessageBox.Show(this, L10n.Get("msg.language_changed_to") + " " + L10n.GetLanguageDisplayName(lang) + "\n" + L10n.Get("msg.please_restart"), L10n.Get("label.language"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, L10n.Get("msg.language_changed_to") + " " + L10n.GetLanguageDisplayName(lang), L10n.Get("label.language"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(this, ex.Message, L10n.Get("label.language"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        /// <summary>
+        /// Применить текущий язык ко всем элементам интерфейса (кнопки, вкладки, метки).
+        /// Вызывается при старте и при смене языка — без перезапуска приложения.
+        /// </summary>
+        private void ApplyLanguageToUI()
+        {
+            // Заголовок окна
+            Text = "Alfa 156 " + ResolveVersion();
+
+            // Статус-бар
+            statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
+
+            // Вкладка Summary
+            summaryTab.Text = L10n.Get("tab.summary");
+
+            // Кнопки на панели инструментов (toolbar)
+            foreach (Control ctrl in toolbar.Controls)
+            {
+                if (ctrl is Button btn && btn.Tag is string key)
+                    btn.Text = L10n.Get(key);
+            }
+
+            // Кнопки на панели обмена (exchange)
+            foreach (Control ctrl in exchange.Controls)
+            {
+                if (ctrl is Button btn2 && btn2.Tag is string key2)
+                    btn2.Text = L10n.Get(key2);
+            }
+
+            // Кнопки в строке интервалов (intervalRow)
+            foreach (Control ctrl in intervalRow.Controls)
+            {
+                if (ctrl is Button btn3 && btn3.Tag is string key3)
+                    btn3.Text = L10n.Get(key3);
+            }
+
+            // Кнопки в панелях фильтров (fuel, repairs, expenses, utilities)
+            UpdateFilterBarButtons(fuelGrid);
+            UpdateFilterBarButtons(repairsGrid);
+            UpdateFilterBarButtons(expensesGrid);
+            UpdateFilterBarButtons(utilitiesGrid);
+
+            // Заголовки вкладок
+            foreach (TabPage page in tabs.TabPages)
+            {
+                if (page.Tag is string tabKey)
+                    page.Text = L10n.Get(tabKey);
+            }
+
+            // Язык в комбобоксе
+            languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
+        }
+
+        /// <summary>
+        /// Обновить кнопки apply/reset в панели фильтрации.
+        /// </summary>
+        private void UpdateFilterBarButtons(DataGridView grid)
+        {
+            foreach (Control ctrl in grid.Parent.Controls)
+            {
+                if (ctrl is FlowLayoutPanel bar)
+                {
+                    foreach (Control c in bar.Controls)
+                    {
+                        if (c is Button b && b.Tag is string key)
+                            b.Text = L10n.Get(key);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Показать диалог выбора языка при первом запуске, если язык ещё не сохранён.
+        /// </summary>
+        private void ShowFirstRunLanguageDialog()
+        {
+            string[] langs = L10n.GetAvailableLanguages();
+            using (Form dialog = new Form())
+            {
+                dialog.Text = L10n.Get("dialog.language");
+                dialog.Width = 420;
+                dialog.Height = 240;
+                dialog.StartPosition = FormStartPosition.CenterScreen;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                dialog.BackColor = Color.FromArgb(245, 247, 250);
+
+                var label = new Label
+                {
+                    Text = L10n.Get("msg.choose_language"),
+                    Left = 16, Top = 20, Width = 380,
+                    AutoSize = false
+                };
+
+                var combo = new ComboBox
+                {
+                    Left = 16, Top = 50, Width = 380,
+                    DropDownStyle = ComboBoxStyle.DropDownList
+                };
+                foreach (var lang in langs)
+                    combo.Items.Add(L10n.GetLanguageDisplayName(lang) + " (" + lang + ")");
+                combo.SelectedIndex = 0;
+
+                var btnOk = new Button
+                {
+                    Text = L10n.Get("button.save"),
+                    Left = 160, Top = 100, Width = 100,
+                    DialogResult = DialogResult.OK
+                };
+                var btnCancel = new Button
+                {
+                    Text = L10n.Get("button.cancel"),
+                    Left = 270, Top = 100, Width = 100,
+                    DialogResult = DialogResult.Cancel
+                };
+
+                dialog.Controls.AddRange(new Control[] { label, combo, btnOk, btnCancel });
+                dialog.AcceptButton = btnOk;
+                dialog.CancelButton = btnCancel;
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    string selected = langs[combo.SelectedIndex];
+                    LocalizationManager.Instance.CurrentLanguage = selected;
+                    repository.Settings = ToSettings.SetLanguage(repository.Settings, selected);
+                    repository.Save();
+                    languageBox.Items.Clear();
+                    foreach (var lang in langs)
+                        languageBox.Items.Add(lang);
+                    languageBox.Text = selected;
+                    ApplyLanguageToUI();
+                }
             }
         }
 
