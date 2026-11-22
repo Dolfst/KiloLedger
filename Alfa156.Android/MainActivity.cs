@@ -4611,7 +4611,7 @@ public sealed class MainActivity : Activity
 
     private void ShowAbout()
     {
-        string version = "1.38.0";
+        string version = "1.38.1";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -5109,7 +5109,7 @@ public sealed class MainActivity : Activity
         string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
         string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
             CultureInfo.InvariantCulture);
-        string version = "1.38.0";
+        string version = "1.38.1";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);

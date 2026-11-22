@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -29,7 +29,7 @@ using System.Runtime.InteropServices;
 //      Номер построения
 //      Редакция
 //
-[assembly: AssemblyVersion("1.38.0.0")]
+[assembly: AssemblyVersion("1.38.1.0")]
 
 // Следующий атрибут служит для подавления предупреждения FxCop "CA2232: Microsoft.Usage: добавьте к сборке STAThreadAttribute",
 // так как приложение для устройства не поддерживает поток STA.
