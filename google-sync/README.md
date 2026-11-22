@@ -43,7 +43,7 @@
 https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 ```
 
-[СКРИНШОТ: пустая Google Таблица с адресной строкой браузера]
+![Empty Google Table with address bar](screenshots/empty_google_table.png)
 
 ---
 
@@ -56,7 +56,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 5. Нажмите **Сохранить** (дискета) или `Ctrl + S`.
 6. Назовите проект, например `Alfa156 Sync`.
 
-[СКРИНШОТ: редактор Apps Script с вставленным кодом Alfa156Sync.gs]
+![Apps Script editor with Alfa156Sync.gs code](screenshots/apps_script_editor.png)
 
 ## Шаг 3. Настройте свойства скрипта (SYNC_TOKEN)
 
@@ -79,7 +79,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 
 6. Нажмите **Сохранить**.
 
-[СКРИНШОТ: окно Project Settings → Script properties с заполненными полями]
+![Project Settings with filled fields](screenshots/project_settings.png)
 
 ---
 
@@ -105,7 +105,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 
 6. Сохраните этот URL — он понадобится в приложении.
 
-[СКРИНШОТ: окно New deployment с выбранными параметрами и скопированным URL]
+![New deployment window with parameters and copied URL](screenshots/new_deployment.png)
 
 ## Шаг 5. Настройте Alfa 156 Desktop
 
@@ -125,7 +125,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 3. В поле **Токен (SYNC_TOKEN)** введите придуманный пароль.
 4. Нажмите **Сохранить**.
 
-[СКРИНШОТ: окно мастера Google Sync в приложении Alfa 156 Desktop]
+![Google Sync master window in Alfa 156 Desktop](screenshots/google_sync_master.png)
 
 ---
 
@@ -136,7 +136,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 3. После подтверждения нажмите **push** — локальные данные из `.dat` файлов отправятся в таблицу.
 4. Скрипт автоматически создаст нужные листы: `Заправки {авто}`, `Ремонт {авто}`, `Прочие {авто}`, `Коммунальные`, `Справочник`.
 
-[СКРИНШОТ: диалог синхронизации Google в Alfa 156 Desktop]
+![Google Sync dialog in Alfa 156 Desktop](screenshots/google_sync_dialog.png)
 
 ---
 
@@ -148,7 +148,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 4. Нажмите **Сохранить**.
 5. Используйте кнопку синхронизации Google в приложении.
 
-[СКРИНШОТ: экран настроек Google Sync в Alfa 156 Android]
+![Google Sync settings screen in Alfa 156 Android](screenshots/android_sync_settings.png)
 
 ---
 

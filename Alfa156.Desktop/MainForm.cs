@@ -46,6 +46,9 @@ namespace Alfa156.Desktop
         private readonly TextBox budgetWarnBox = new TextBox();
         private readonly TextBox backupRemindBox = new TextBox();
         private readonly TextBox reminderWarnBox = new TextBox();
+        private readonly FlowLayoutPanel toolbar;
+        private readonly FlowLayoutPanel exchange;
+        private readonly FlowLayoutPanel intervalRow;
         private readonly ComboBox defaultCarBox = new ComboBox();
         private readonly ComboBox languageBox = new ComboBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
@@ -99,11 +102,12 @@ namespace Alfa156.Desktop
             // Загрузить сохранённый язык из настроек до создания UI-элементов,
             // иначе L10n.Get() вернёт строки по умолчанию (ru).
             string savedLang = ToSettings.GetLanguage(repository.Settings);
-            _firstRun = String.IsNullOrEmpty(savedLang);
-            if (!_firstRun)
-                LocalizationManager.Instance.CurrentLanguage = savedLang;
-            else
-                LocalizationManager.Instance.CurrentLanguage = "ru";
+// First run detection: if no language saved OR no settings exist, user will be prompted to select language
+_firstRun = String.IsNullOrEmpty(savedLang) || !SettingsExist();
+if (!_firstRun)
+    LocalizationManager.Instance.CurrentLanguage = savedLang;
+else
+    LocalizationManager.Instance.CurrentLanguage = "ru";
 
             // Обновить текст полей, инициализированных до конструктора
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
@@ -140,7 +144,7 @@ namespace Alfa156.Desktop
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            FlowLayoutPanel toolbar = new FlowLayoutPanel
+            toolbar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 WrapContents = true,
@@ -176,7 +180,7 @@ namespace Alfa156.Desktop
             toolbar.Controls.Add(MakeButton("button.trip", OpenTripEntry));
             toolbar.Controls.Add(MakeButton("button.trip_report", ShowTripReport));
 
-            FlowLayoutPanel exchange = new FlowLayoutPanel
+            exchange = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 WrapContents = true,
@@ -233,7 +237,7 @@ namespace Alfa156.Desktop
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            FlowLayoutPanel intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
+            intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
             intervalRow.Controls.Add(new Label { Text = L10n.Get("label.oil_interval"), AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
             oilIntervalBox.Width = 70;
             intervalRow.Controls.Add(oilIntervalBox);
@@ -343,9 +347,100 @@ namespace Alfa156.Desktop
 
             // При первом запуске — спросить язык, иначе применить сохранённый
             if (_firstRun)
-                ShowFirstRunLanguageDialog();
+                ShowLanguageSelectionDialog();
             else
                 ApplyLanguageToUI();
+        }
+
+        private bool SettingsExist()
+        {
+            try
+            {
+                // Проверяем наличие файла настроек в папке приложения пользователя
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string settingsDir = Path.Combine(appDataPath, "Alfa156");
+                string settingsFile = Path.Combine(settingsDir, "settings.json");
+                
+                // Если файл настроек не существует — это настоящий первый запуск
+                return !File.Exists(settingsFile);
+            }
+            catch (Exception)
+            {
+                // При любой ошибке считаем, что настройки не существуют
+                return true;
+            }
+        }
+
+        private void ShowLanguageSelectionDialog()
+        {
+            // Создаем диалог выбора языка
+            string[] langs = L10n.GetAvailableLanguages();
+            if (langs.Length == 0)
+            {
+                // Если языков нет, используем русский по умолчанию
+                LocalizationManager.Instance.CurrentLanguage = "ru";
+                ApplyLanguageToUI();
+                return;
+            }
+            
+            // Показываем форму выбора языка
+            using (var dialog = new Form())
+            {
+                dialog.Text = L10n.Get("dialog.language");
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                dialog.Size = new Size(300, 200);
+                
+                // Комбобокс с языками
+                var langCombo = new ComboBox()
+                {
+                    Dock = DockStyle.Top,
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Width = 200
+                };
+                
+                foreach (var lang in langs)
+                    langCombo.Items.Add(lang);
+                
+                if (langCombo.Items.Count > 0)
+                    langCombo.SelectedIndex = 0;
+                
+                // Кнопки OK/Cancel
+                var btnOk = new Button() { Text = "OK", DialogResult = DialogResult.OK, Dock = DockStyle.Bottom, Width = 100 };
+                var btnCancel = new Button() { Text = "Cancel", DialogResult = DialogResult.Cancel, Dock = DockStyle.Bottom, Width = 100 };
+                
+                dialog.AcceptButton = btnOk;
+                dialog.CancelButton = btnCancel;
+                
+                var panel = new Panel()
+                {
+                    Dock = DockStyle.Fill,
+                    Margin = new Padding(20)
+                };
+                
+                panel.Controls.Add(langCombo);
+                panel.Controls.Add(btnOk);
+                panel.Controls.Add(btnCancel);
+                dialog.Controls.Add(panel);
+                
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    string selectedLang = langCombo.SelectedItem?.ToString() ?? "ru";
+                    LocalizationManager.Instance.CurrentLanguage = selectedLang;
+                    // Сохраняем выбранный язык
+                    ToSettings.SetLanguage(repository.Settings, selectedLang);
+                    repository.Save();
+                    ApplyLanguageToUI();
+                }
+                else
+                {
+                    // Пользователь отменил - устанавливаем русский
+                    LocalizationManager.Instance.CurrentLanguage = "ru";
+                    ApplyLanguageToUI();
+                }
+            }
         }
 
         private static DataGridView CreateGrid()
