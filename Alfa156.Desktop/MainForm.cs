@@ -95,6 +95,15 @@ namespace Alfa156.Desktop
 
         public MainForm()
         {
+            // Загрузить сохранённый язык из настроек до создания UI-элементов,
+            // иначе L10n.Get() вернёт строки по умолчанию (ru).
+            string savedLang = ToSettings.GetLanguage(repository.Settings);
+            LocalizationManager.Instance.CurrentLanguage = savedLang;
+
+            // Обновить текст полей, инициализированных до конструктора
+            statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
+            summaryTab.Text = L10n.Get("tab.summary");
+
             Text = "Alfa 156 " + ResolveVersion();
             Width = 1100;
             Height = 720;
