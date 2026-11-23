@@ -1152,6 +1152,8 @@
   "error.specify_template_name": "Specify template name.",
   "app.subtitle": "Expense Tracker",
   "import.excel_file_label": "Excel file (.xlsx)",
+  "import.date_number_warnings": "Warnings: numbers not restored from dates",
+  "import.date_number_skipped": "A numeric field contained a date and the number could not be restored unambiguously (value skipped): {0}",
   "error.image_file_not_found": "Image file not found.",
   "status.fuel_filter_applied": "Fuel filter applied (no data deleted).",
   "status.fuel_filter_reset": "Fuel filter reset.",

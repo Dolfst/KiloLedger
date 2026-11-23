@@ -96,6 +96,7 @@ namespace KiloLedger.Desktop.Exchange
 
         internal static void ImportGoogleSheetWorkbook(KiloLedgerRepository repo, string spreadsheetUrl)
         {
+            DengiFormat.ResetWarnings();
             string id = ExtractSpreadsheetId(spreadsheetUrl);
             if (id == null)
                 throw new InvalidDataException(L10n.Get("error.invalid_google_sheet_url"));

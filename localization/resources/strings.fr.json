@@ -1152,6 +1152,8 @@
   "error.specify_template_name": "Indiquez le nom du modèle.",
   "app.subtitle": "Suivi des dépenses",
   "import.excel_file_label": "Fichier Excel (.xlsx)",
+  "import.date_number_warnings": "Avertissements : nombres non rétablis depuis une date",
+  "import.date_number_skipped": "Un champ numérique contenait une date et le nombre n'a pas pu être rétabli sans ambiguïté (valeur ignorée) : {0}",
   "error.image_file_not_found": "Fichier image introuvable.",
   "status.fuel_filter_applied": "Filtre carburant appliqué (aucune suppression).",
   "status.fuel_filter_reset": "Filtre carburant réinitialisé.",

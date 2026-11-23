@@ -3711,8 +3711,15 @@ namespace KiloLedger.Desktop
                 CsvExchange.ImportGoogleSheetWorkbook(repository, url);
                 BindAll();
                 dirty = true;
-                SetStatus(L10n.Get("msg.imported_google_save") +
-                    (safety != null ? " " + L10n.Get("backup.copy_colon") + " " + safety : ""));
+                string imported = L10n.Get("msg.imported_google_save") +
+                    (safety != null ? " " + L10n.Get("backup.copy_colon") + " " + safety : "");
+                if (DengiFormat.DateNumberWarnings.Count > 0)
+                {
+                    imported += "\r\n\r\n" + L10n.Get("import.date_number_warnings");
+                    for (int w = 0; w < DengiFormat.DateNumberWarnings.Count; w++)
+                        imported += "\r\n" + DengiFormat.DateNumberWarnings[w];
+                }
+                SetStatus(imported);
             }
             catch (Exception ex)
             {

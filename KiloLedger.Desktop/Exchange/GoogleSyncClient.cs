@@ -222,6 +222,34 @@ namespace KiloLedger.Desktop.Exchange
                 throw new InvalidOperationException(L10n.Get("error.sync_token_not_set"));
         }
 
+        private static void RecoverDateNumbers(List<string[]> rows, int[] indexes, List<string> warnings)
+        {
+            if (rows == null)
+                return;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (rows[i] == null)
+                    continue;
+                for (int n = 0; n < indexes.Length; n++)
+                {
+                    int index = indexes[n];
+                    if (index < 0 || index >= rows[i].Length)
+                        continue;
+                    string raw = rows[i][index] ?? "";
+                    string recovered;
+                    DateNumberKind kind = DengiDateNumbers.Classify(raw, false, out recovered);
+                    if (kind == DateNumberKind.Recovered)
+                        rows[i][index] = recovered;
+                    else if (kind == DateNumberKind.Ambiguous)
+                    {
+                        rows[i][index] = "";
+                        if (warnings != null && warnings.Count < 30)
+                            warnings.Add(L10n.Format("import.date_number_skipped", raw.Trim()));
+                    }
+                }
+            }
+        }
+
         private static KiloLedgerRepository ParseSnapshot(string json)
         {
             if (JsonUtil.GetBool(json, "ok") == false)
@@ -229,13 +257,29 @@ namespace KiloLedger.Desktop.Exchange
 
             string data = JsonUtil.GetObjectJson(json, "data") ?? json;
             KiloLedgerRepository repo = new KiloLedgerRepository();
+            List<string[]> fuel = JsonUtil.GetTable(data, "fuel");
+            List<string[]> repairs = JsonUtil.GetTable(data, "repairs");
+            List<string[]> utilities = JsonUtil.GetTable(data, "utilities");
+            List<string[]> expenses = JsonUtil.GetTable(data, "expenses");
+            RecoverDateNumbers(fuel, new int[] { 2, 3, 4, 5 }, repo.ImportWarnings);
+            RecoverDateNumbers(repairs, new int[] { 2, 6, 7 }, repo.ImportWarnings);
+            RecoverDateNumbers(utilities, new int[] { 1, 2, 3, 4, 5, 6, 7 }, repo.ImportWarnings);
+            RecoverDateNumbers(expenses, new int[] { 4 }, repo.ImportWarnings);
+            List<string> remoteWarnings = JsonUtil.GetStringList(data, "dateNumberWarnings");
+            for (int i = 0; i < remoteWarnings.Count && repo.ImportWarnings.Count < 30; i++)
+            {
+                string item = (remoteWarnings[i] ?? "").Trim();
+                if (item.Length == 0)
+                    continue;
+                repo.ImportWarnings.Add(L10n.Format("import.date_number_skipped", item));
+            }
             repo.ReplaceAll(
                 JsonUtil.GetTable(data, "cars"),
-                JsonUtil.GetTable(data, "fuel"),
-                JsonUtil.GetTable(data, "repairs"),
-                JsonUtil.GetTable(data, "utilities"),
+                fuel,
+                repairs,
+                utilities,
                 JsonUtil.GetTable(data, "categories"),
-                JsonUtil.GetTable(data, "expenses"),
+                expenses,
                 JsonUtil.GetTable(data, "expenseCategories"),
                 null);
             if (repo.Cars.Count == 0)
@@ -438,6 +482,28 @@ namespace KiloLedger.Desktop.Exchange
         internal static List<string[]> GetTable(string json, string key)
         {
             return ParseTableFallback(json, key);
+        }
+
+        internal static List<string> GetStringList(string json, string key)
+        {
+            List<string> items = new List<string>();
+            if (String.IsNullOrEmpty(json))
+                return items;
+            string pattern = "\"" + key + "\"";
+            int index = IndexOfKey(json, pattern);
+            if (index < 0)
+                return items;
+            int colon = json.IndexOf(':', index + pattern.Length);
+            int i = SkipWs(json, colon + 1);
+            if (i >= json.Length || json[i] != '[')
+                return items;
+            int end = FindMatchingBracket(json, i);
+            if (end < 0)
+                return items;
+            string[] row = ParseRow(json.Substring(i + 1, end - i - 1));
+            for (int n = 0; n < row.Length; n++)
+                items.Add(row[n] ?? "");
+            return items;
         }
 
         private static List<string[]> ParseTableFallback(string json, string key)

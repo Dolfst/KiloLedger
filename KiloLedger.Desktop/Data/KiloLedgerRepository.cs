@@ -26,6 +26,7 @@ namespace KiloLedger.Desktop.Data
         public List<string[]> NotesRows { get; set; }
         public List<string[]> TripsRows { get; set; }
         public List<Tombstone> Deleted { get; set; }
+        internal List<string> ImportWarnings = new List<string>();
 
         public KiloLedgerRepository()
         {
@@ -43,6 +44,7 @@ namespace KiloLedger.Desktop.Data
             NotesRows = new List<string[]>();
             TripsRows = new List<string[]>();
             Deleted = new List<Tombstone>();
+            ImportWarnings = new List<string>();
         }
 
         public void CreateNew(string directory)
@@ -66,12 +68,14 @@ namespace KiloLedger.Desktop.Data
             NotesRows = new List<string[]>();
             TripsRows = new List<string[]>();
             Deleted = new List<Tombstone>();
+            ImportWarnings = new List<string>();
             DirectoryPath = directory;
             Save();
         }
 
         public void LoadDirectory(string directory)
         {
+            ImportWarnings = new List<string>();
             KiloLedgerCodec.ValidateDirectory(directory);
             Cars = KiloLedgerCodec.ReadRows(Path.Combine(directory, "cars.dat"));
             Fuel = KiloLedgerCodec.ReadRows(Path.Combine(directory, "fuel.dat"));

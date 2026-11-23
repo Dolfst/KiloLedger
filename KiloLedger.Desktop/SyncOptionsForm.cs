@@ -116,6 +116,12 @@ namespace KiloLedger.Desktop
             preview.SafetyPath = safetyPath;
             summary.Text = SyncMerge.FormatSummary(diffs) + "\r\n\r\n" + preview.FormatPreview() +
                 ("\r\n\r\n" + L10n.Get("sync.preview_uses_options"));
+            if (remote != null && remote.ImportWarnings != null && remote.ImportWarnings.Count > 0)
+            {
+                summary.Text += "\r\n\r\n" + L10n.Get("import.date_number_warnings");
+                for (int i = 0; i < remote.ImportWarnings.Count; i++)
+                    summary.Text += "\r\n" + remote.ImportWarnings[i];
+            }
         }
 
         private SyncPlan ReadDraftPlan()

@@ -47,7 +47,7 @@ jobs:
       - name: Install Mono CF build tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes mono-devel
+          sudo apt-get install --yes mono-devel nodejs
 
       - name: Run smoke verifies
         run: python3 build/run_verifies.py

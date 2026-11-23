@@ -13,6 +13,25 @@ namespace KiloLedger.Desktop.Exchange
     /// </summary>
     internal static class DengiFormat
     {
+        internal struct SheetCell
+        {
+            internal string Text;
+            internal bool DateFormatted;
+
+            internal SheetCell(string text, bool dateFormatted)
+            {
+                Text = text ?? "";
+                DateFormatted = dateFormatted;
+            }
+        }
+
+        internal static readonly List<string> DateNumberWarnings = new List<string>();
+
+        internal static void ResetWarnings()
+        {
+            DateNumberWarnings.Clear();
+        }
+
         private static readonly string[] MonthNames = new string[]
         {
             "январь", "февраль", "март", "апрель", "май", "июнь",
@@ -76,19 +95,35 @@ namespace KiloLedger.Desktop.Exchange
         /// </summary>
         internal static List<string[]> MapFuel(List<string[]> raw, string car)
         {
+            return MapFuel(CellsFromText(raw), car);
+        }
+
+        internal static List<string[]> MapFuel(List<SheetCell[]> raw, string car)
+        {
             List<string[]> rows = new List<string[]>();
+            if (raw == null)
+                return rows;
             for (int i = 0; i < raw.Count; i++)
             {
-                string[] src = raw[i];
-                if (src.Length == 0) continue;
-                if (IsHeaderCell(src[0], "дата")) continue;
-                string date = NormalizeAnyDate(src[0]);
+                SheetCell[] src = raw[i];
+                if (src == null || src.Length == 0) continue;
+                if (IsHeaderCell(src[0].Text, "дата")) continue;
+                string date = NormalizeAnyDate(src[0].Text);
                 if (String.IsNullOrEmpty(date)) continue;
-                string km = src.Length > 1 ? CleanNumber(src[1]) : "";
-                string liters = src.Length > 2 ? CleanNumber(src[2]) : "";
-                string cost = src.Length > 3 ? CleanNumber(src[3]) : "";
+                string km = CleanMeasure(CellAt(src, 1));
+                string liters = CleanMeasure(CellAt(src, 2));
+                string cost = CleanMeasure(CellAt(src, 3));
+                // Колонка после «Расход»: цена за литр. Текст и пустая ячейка не удлиняют строку.
+                string priceText = src.Length > 5 ? CleanMeasure(CellAt(src, 5)) : "";
+                decimal priceNumber;
+                string price = KiloLedgerCodec.TryNumber(priceText, out priceNumber)
+                    ? priceNumber.ToString(CultureInfo.InvariantCulture)
+                    : "";
                 if (km.Length == 0 && liters.Length == 0 && cost.Length == 0) continue;
-                rows.Add(new string[] { date, car, km, liters, cost });
+                if (price.Length > 0)
+                    rows.Add(new string[] { date, car, km, liters, cost, price });
+                else
+                    rows.Add(new string[] { date, car, km, liters, cost });
             }
             return rows;
         }
@@ -98,22 +133,29 @@ namespace KiloLedger.Desktop.Exchange
         /// </summary>
         internal static List<string[]> MapRepairs(List<string[]> raw, string car)
         {
+            return MapRepairs(CellsFromText(raw), car);
+        }
+
+        internal static List<string[]> MapRepairs(List<SheetCell[]> raw, string car)
+        {
             List<string[]> rows = new List<string[]>();
+            if (raw == null)
+                return rows;
             for (int i = 0; i < raw.Count; i++)
             {
-                string[] src = raw[i];
-                if (src.Length == 0) continue;
-                if (IsHeaderCell(src[0], "дата")) continue;
-                string date = NormalizeAnyDate(src[0]);
+                SheetCell[] src = raw[i];
+                if (src == null || src.Length == 0) continue;
+                if (IsHeaderCell(src[0].Text, "дата")) continue;
+                string date = NormalizeAnyDate(src[0].Text);
                 if (String.IsNullOrEmpty(date)) continue;
-                string km = src.Length > 1 ? CleanNumber(src[1]) : "";
-                string category = src.Length > 2 ? (src[2] ?? "").Trim() : "";
-                string product = src.Length > 3 ? CleanMultiline(src[3]) : "";
-                string description = src.Length > 4 ? CleanMultiline(src[4]) : "";
-                string qty = src.Length > 5 ? CleanNumber(src[5]) : "1";
+                string km = CleanMeasure(CellAt(src, 1));
+                string category = src.Length > 2 ? (src[2].Text ?? "").Trim() : "";
+                string product = src.Length > 3 ? CleanMultiline(src[3].Text) : "";
+                string description = src.Length > 4 ? CleanMultiline(src[4].Text) : "";
+                string qty = src.Length > 5 ? CleanMeasure(src[5]) : "1";
                 if (qty.Length == 0) qty = "1";
-                string sum = src.Length > 6 ? CleanNumber(src[6]) : "";
-                string comment = src.Length > 7 ? CleanMultiline(src[7]) : "";
+                string sum = src.Length > 6 ? CleanMeasure(src[6]) : "";
+                string comment = src.Length > 7 ? CleanMultiline(src[7].Text) : "";
                 if (product.Length == 0 && description.Length == 0 && sum.Length == 0) continue;
                 rows.Add(new string[] { date, car, km, category, product, description, qty, sum, comment });
             }
@@ -125,12 +167,19 @@ namespace KiloLedger.Desktop.Exchange
         /// </summary>
         internal static List<string[]> MapUtilities(List<string[]> raw)
         {
+            return MapUtilities(CellsFromText(raw));
+        }
+
+        internal static List<string[]> MapUtilities(List<SheetCell[]> raw)
+        {
             List<string[]> rows = new List<string[]>();
+            if (raw == null)
+                return rows;
             for (int i = 0; i < raw.Count; i++)
             {
-                string[] src = raw[i];
-                if (src.Length == 0) continue;
-                string monthText = (src[0] ?? "").Trim();
+                SheetCell[] src = raw[i];
+                if (src == null || src.Length == 0) continue;
+                string monthText = (src[0].Text ?? "").Trim();
                 if (monthText.Length == 0) continue;
                 if (IsHeaderCell(monthText, "дата") || monthText.IndexOf("вид", StringComparison.OrdinalIgnoreCase) >= 0)
                     continue;
@@ -146,7 +195,7 @@ namespace KiloLedger.Desktop.Exchange
                 string[] row = new string[8];
                 row[0] = month;
                 for (int c = 1; c <= 7; c++)
-                    row[c] = src.Length > c ? CleanNumber(src[c]) : "";
+                    row[c] = CleanMeasure(CellAt(src, c));
                 rows.Add(row);
             }
             return rows;
@@ -229,6 +278,49 @@ namespace KiloLedger.Desktop.Exchange
         {
             string text = (value ?? "").Trim().ToLowerInvariant();
             return text.StartsWith(expected, StringComparison.Ordinal);
+        }
+
+        private static List<SheetCell[]> CellsFromText(List<string[]> raw)
+        {
+            List<SheetCell[]> rows = new List<SheetCell[]>();
+            if (raw == null)
+                return rows;
+            for (int i = 0; i < raw.Count; i++)
+            {
+                string[] src = raw[i] ?? new string[0];
+                SheetCell[] cells = new SheetCell[src.Length];
+                for (int c = 0; c < src.Length; c++)
+                    cells[c] = new SheetCell(src[c], false);
+                rows.Add(cells);
+            }
+            return rows;
+        }
+
+        private static SheetCell CellAt(SheetCell[] src, int index)
+        {
+            if (src == null || index < 0 || index >= src.Length)
+                return new SheetCell("", false);
+            return src[index];
+        }
+
+        private static string CleanMeasure(SheetCell cell)
+        {
+            string recovered;
+            DateNumberKind kind = DengiDateNumbers.Classify(cell.Text, cell.DateFormatted, out recovered);
+            if (kind == DateNumberKind.Recovered)
+                return recovered;
+            if (kind == DateNumberKind.Ambiguous)
+            {
+                if (DateNumberWarnings.Count < 30)
+                {
+                    string shown = (cell.Text ?? "").Trim();
+                    if (shown.Length == 0)
+                        shown = "?";
+                    DateNumberWarnings.Add(L10n.Format("import.date_number_skipped", shown));
+                }
+                return "";
+            }
+            return CleanNumber(cell.Text);
         }
 
         private static string CleanNumber(string text)

@@ -1152,6 +1152,8 @@
   "error.specify_template_name": "Indique el nombre de la plantilla.",
   "app.subtitle": "Control de gastos",
   "import.excel_file_label": "Archivo Excel (.xlsx)",
+  "import.date_number_warnings": "Avisos: números no restaurados desde una fecha",
+  "import.date_number_skipped": "Un campo numérico contenía una fecha y no se pudo restaurar el número de forma unívoca (valor omitido): {0}",
   "error.image_file_not_found": "Archivo de imagen no encontrado.",
   "status.fuel_filter_applied": "Filtro de combustible aplicado (sin borrar datos).",
   "status.fuel_filter_reset": "Filtro de combustible restablecido.",
