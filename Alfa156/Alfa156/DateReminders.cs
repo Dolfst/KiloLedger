@@ -28,7 +28,7 @@ namespace CarExpenses
         internal const string TypeInsurance = "insurance";
         internal const string TypeInspection = "inspection";
         internal const string TypeCustom = "custom";
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
         private const string DateFormat = "yyyy-MM-dd";
 
         internal static void EnsureFile()

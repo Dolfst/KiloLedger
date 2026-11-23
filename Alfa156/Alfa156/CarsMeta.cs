@@ -25,7 +25,7 @@ namespace CarExpenses
     internal static class CarsMeta
     {
         internal const string FileName = "cars-meta.dat";
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
 
         internal static void EnsureFile()
         {

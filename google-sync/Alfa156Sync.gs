@@ -1,5 +1,5 @@
 /**
- * Alfa156 ↔ Google Sheets sync webhook.
+ * KiloLedger ↔ Google Sheets sync webhook.
  *
  * Установка (один раз):
  * 1. Откройте вашу таблицу в Google Sheets (или создайте новую).
@@ -9,7 +9,7 @@
  * 5. Deploy → New deployment → Web app:
  *    - Execute as: Me
  *    - Who has access: Anyone
- * 6. Скопируйте URL веб-приложения в Alfa156 Desktop / Android.
+ * 6. Скопируйте URL веб-приложения в KiloLedger Desktop / Android.
  *
  * API:
  *   GET  ?action=pull&token=...
@@ -72,7 +72,7 @@ function doPost(e) {
 
 function assertToken_(token) {
   var expected = PropertiesService.getScriptProperties().getProperty('SYNC_TOKEN');
-  if (!expected) { expected = 'alfa156'; }
+  if (!expected) { expected = 'kiloledger'; }
   if (String(token || '') !== String(expected)) {
     throw new Error('Неверный token');
   }

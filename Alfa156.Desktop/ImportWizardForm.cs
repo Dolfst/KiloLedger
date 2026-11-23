@@ -357,7 +357,7 @@ namespace Alfa156.Desktop
                 using (OpenFileDialog dialog = new OpenFileDialog())
                 {
                     dialog.Filter = "Excel (*.xlsx)|*.xlsx";
-                    dialog.Title = "Excel Alfa156";
+                    dialog.Title = "Excel KiloLedger";
                     if (dialog.ShowDialog(this) != DialogResult.OK)
                         return;
                     sourcePath = dialog.FileName;
@@ -388,7 +388,7 @@ namespace Alfa156.Desktop
                     return;
                 try
                 {
-                    string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv-templates");
+                    string folder = Path.Combine(dialog.SelectedPath, "KiloLedger-csv-templates");
                     CsvExchange.ExportTemplates(folder);
                     MessageBox.Show(this,
                         (L10n.Get("msg.templates_saved_to") + "\r\n") + folder +
@@ -409,7 +409,7 @@ namespace Alfa156.Desktop
             {
                 CleanupExtract();
                 zipExtractDir = Path.Combine(Path.GetTempPath(),
-                    "Alfa156_import_" + Guid.NewGuid().ToString("N"));
+                    "KiloLedger_import_" + Guid.NewGuid().ToString("N"));
                 return ImportPreview.FromZip(sourcePath, zipExtractDir);
             }
             if (kind == SourceKind.DatFolder)

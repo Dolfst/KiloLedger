@@ -24,7 +24,7 @@ namespace CarExpenses
     {
         internal const string FileName = "notes.dat";
         internal const int MaxTextLength = 500;
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
         private const string DateFormat = "yyyy-MM-dd";
 
         internal static void EnsureFile()

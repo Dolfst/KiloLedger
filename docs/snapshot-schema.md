@@ -1,4 +1,4 @@
-# Формат данных и snapshot Alfa 156 (schemaVersion 1)
+# Формат данных и snapshot KiloLedger (schemaVersion 1)
 
 Документ описывает публичный формат резервной копии, общий для Android, Desktop и КПК.
 Любое несовместимое изменение повышает `schemaVersion`; клиенты отклоняют неизвестную схему до записи данных.
@@ -11,12 +11,12 @@
 ## snapshot.json
 
 ```json
-{"schema":"alfa156.snapshot","schemaVersion":1,"appVersion":"1.36.0","createdUtc":"2026-11-21T10:00:00Z","deviceToken":"..."}
+{"schema":"kiloledger.snapshot","schemaVersion":1,"appVersion":"1.39.3","createdUtc":"2026-11-21T10:00:00Z","deviceToken":"..."}
 ```
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `schema` | строка | Всегда `alfa156.snapshot` |
+| `schema` | строка | Всегда `kiloledger.snapshot` |
 | `schemaVersion` | число | Версия схемы; сейчас `1` |
 | `appVersion` | строка | Версия приложения, создавшего копию (`VERSION`) |
 | `createdUtc` | строка | Время UTC, `yyyy-MM-ddTHH:mm:ssZ` |

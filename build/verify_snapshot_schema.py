@@ -42,7 +42,7 @@ def main() -> int:
 
     for rel in PRODUCERS:
         text = (ROOT / rel).read_text(encoding="utf-8")
-        if 'alfa156.snapshot' not in text or 'schemaVersion\\":1' not in text:
+        if 'kiloledger.snapshot' not in text or 'schemaVersion\\":1' not in text:
             errors.append(f"{rel}: snapshot producer does not match schemaVersion 1")
         for field in FIELDS:
             if field not in text:

@@ -29,7 +29,7 @@ using Uri = global::Android.Net.Uri;
 namespace Alfa156.Android;
 
 [Activity(
-    Label = "Alfa 156",
+    Label = "KiloLedger",
     Icon = "@mipmap/ic_launcher",
     MainLauncher = true,
     Exported = true,
@@ -99,7 +99,7 @@ public sealed class MainActivity : Activity
 
     private string DataDirectory
     {
-        get { return Path.Combine(FilesDir.AbsolutePath, "Alfa156"); }
+        get { return Path.Combine(FilesDir.AbsolutePath, "KiloLedger"); }
     }
 
     protected override void OnCreate(Bundle savedInstanceState)
@@ -107,7 +107,7 @@ public sealed class MainActivity : Activity
         base.OnCreate(savedInstanceState);
         try
         {
-            Title = "Alfa 156";
+            Title = "KiloLedger";
             var settings = GetSharedPreferences("settings", FileCreationMode.Private);
             currentCar = settings.GetString("currentCar", "");
             string savedSection = settings.GetString("selectedSection", Fuel);
@@ -242,7 +242,7 @@ public sealed class MainActivity : Activity
         logo.SetScaleType(ImageView.ScaleType.FitCenter);
         titleRow.AddView(logo, new LinearLayout.LayoutParams(Dp(36), Dp(36)));
         TextView title = new TextView(this);
-        title.Text = "  Alfa 156";
+        title.Text = "  KiloLedger";
         title.TextSize = 22;
         title.SetTypeface(title.Typeface, AndroidTypefaceStyle.Bold);
         title.SetTextColor(AndroidColor.Rgb(180, 40, 40));
@@ -3926,7 +3926,7 @@ public sealed class MainActivity : Activity
         intent.AddCategory(Intent.CategoryOpenable);
         intent.SetType("application/zip");
         intent.PutExtra(Intent.ExtraTitle,
-            "Alfa156_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".zip");
+            "KiloLedger_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".zip");
         StartActivityForResult(intent, ExportRequest);
     }
 
@@ -4088,8 +4088,8 @@ public sealed class MainActivity : Activity
     {
         if (String.IsNullOrEmpty(json))
             throw new InvalidDataException(L10n.Get("error.empty_snapshot"));
-        if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
-            json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+        if (json.IndexOf("\"schema\":\"kiloledger.snapshot\"", StringComparison.Ordinal) < 0 &&
+            json.IndexOf("\"schema\": \"kiloledger.snapshot\"", StringComparison.Ordinal) < 0)
             throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_schema"));
         if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
             json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
@@ -4593,7 +4593,7 @@ public sealed class MainActivity : Activity
         Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
             ? new Notification.Builder(this, ToReminderChannelId)
             : new Notification.Builder(this);
-        builder.SetContentTitle("Alfa 156 · " + categoryLabel)
+        builder.SetContentTitle("KiloLedger · " + categoryLabel)
             .SetContentText(text)
             .SetStyle(new Notification.BigTextStyle().BigText(text))
             .SetSmallIcon(Resource.Drawable.icon)
@@ -4857,7 +4857,7 @@ public sealed class MainActivity : Activity
             return;
         }
         new AlertDialog.Builder(this)
-            .SetTitle("Alfa 156")
+            .SetTitle("KiloLedger")
             .SetMessage(message)
             .SetPositiveButton(L10n.Get("button.ok"), delegate { })
             .Show();
@@ -5129,7 +5129,7 @@ public sealed class MainActivity : Activity
         string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
         string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
             CultureInfo.InvariantCulture);
-        string version = "1.39.2";
+        string version = "1.39.3";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -5137,7 +5137,7 @@ public sealed class MainActivity : Activity
                 version = info.VersionName;
         }
         catch { }
-        return "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
+        return "{\"schema\":\"kiloledger.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
             QuoteSnapshotJson(version) + ",\"createdUtc\":" + QuoteSnapshotJson(created) +
             ",\"deviceToken\":" + QuoteSnapshotJson(token) + "}";
     }

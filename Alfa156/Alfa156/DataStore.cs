@@ -13,7 +13,7 @@ namespace CarExpenses
 {
     internal static class DataStore
     {
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
         private const string CarsFile = "cars.dat";
         private const string FuelFile = "fuel.dat";
         private const string RepairsFile = "repairs.dat";
@@ -29,7 +29,7 @@ namespace CarExpenses
         private const string TripsFile = "trips.dat";
         private const string DeletedFile = "deleted.dat";
         private const string SyncAddressFile = "last-sync-ip.txt";
-        private const string StartMenuShortcut = "Alfa 156.lnk";
+        private const string StartMenuShortcut = "KiloLedger.lnk";
         private static readonly string[] CoreDataFiles = new string[]
         {
             CarsFile, FuelFile, RepairsFile, UtilitiesFile
@@ -350,8 +350,8 @@ namespace CarExpenses
             SyncConflictResolver resolveConflict)
         {
             string parent = Path.GetDirectoryName(DataDirectory);
-            string staging = Path.Combine(parent, "Alfa156_Sync_" + Guid.NewGuid().ToString("N"));
-            string merged = Path.Combine(parent, "Alfa156_SyncMerged_" + Guid.NewGuid().ToString("N"));
+            string staging = Path.Combine(parent, "KiloLedger_Sync_" + Guid.NewGuid().ToString("N"));
+            string merged = Path.Combine(parent, "KiloLedger_SyncMerged_" + Guid.NewGuid().ToString("N"));
             string safety = AllocateSafetyBackupPath(parent);
             Directory.CreateDirectory(staging);
             try
@@ -447,7 +447,7 @@ namespace CarExpenses
             string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
             string created = DateTime.UtcNow.ToString(
                 "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-            string json = "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":\"1.39.3\"," +
+            string json = "{\"schema\":\"kiloledger.snapshot\",\"schemaVersion\":1,\"appVersion\":\"1.39.3\"," +
                 "\"createdUtc\":\"" + created + "\",\"deviceToken\":\"" + token + "\"}";
             using (StreamWriter writer = new StreamWriter(
                 Path.Combine(backupPath, "snapshot.json"), false, Encoding.UTF8))
@@ -464,8 +464,8 @@ namespace CarExpenses
                 json = reader.ReadToEnd();
             if (json == null || json.Length == 0)
                 throw new InvalidDataException(L10n.Get("error.empty_snapshot"));
-            if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
-                json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+            if (json.IndexOf("\"schema\":\"kiloledger.snapshot\"", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schema\": \"kiloledger.snapshot\"", StringComparison.Ordinal) < 0)
                 throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_schema"));
             if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
                 json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)
@@ -1038,14 +1038,14 @@ namespace CarExpenses
             };
             for (int i = 0; i < cardRoots.Length; i++)
                 if (Directory.Exists(cardRoots[i]))
-                    return Path.Combine(cardRoots[i], "Alfa156_Backups");
+                    return Path.Combine(cardRoots[i], "KiloLedger_Backups");
             throw new DirectoryNotFoundException(
                 L10n.Get("error.sd_card_not_found"));
         }
 
         private static string GetLocalBackupRoot()
         {
-            return Path.Combine(Path.GetDirectoryName(DataDirectory), "Alfa156_LocalBackups");
+            return Path.Combine(Path.GetDirectoryName(DataDirectory), "KiloLedger_LocalBackups");
         }
 
         /// <summary>

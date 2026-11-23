@@ -7,7 +7,7 @@ import struct
 import sys
 
 
-SALT = "Alfa156-WiFi-Sync-v2"
+SALT = "KiloLedger-WiFi-Sync-v2"
 
 
 def derive_key(code: str) -> bytes:

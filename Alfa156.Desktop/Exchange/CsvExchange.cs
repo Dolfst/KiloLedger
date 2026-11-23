@@ -100,13 +100,13 @@ namespace Alfa156.Desktop.Exchange
             if (id == null)
                 throw new InvalidDataException(L10n.Get("error.invalid_google_sheet_url"));
 
-            // Формат «Деньги»: Заправки Alfa Romeo 156 / Ремонт ... / Коммунальные / Справочник
+            // Формат «Деньги»: Заправки [Авто] / Ремонт [Авто] / Коммунальные / Справочник
             string fuelSheet;
             List<string[]> fuelRaw = DownloadFirstMatchingSheet(id, out fuelSheet,
-                new string[] { "Заправки Alfa Romeo 156", "Заправки", "fuel" }, 8, false);
+                new string[] { "Заправки", "fuel" }, 8, false);
             string repairSheet;
             List<string[]> repairRaw = DownloadFirstMatchingSheet(id, out repairSheet,
-                new string[] { "Ремонт Alfa Romeo 156", "Ремонт", "repairs" }, 10, false);
+                new string[] { "Ремонт", "repairs" }, 10, false);
             string utilitiesSheet;
             List<string[]> utilitiesRaw = DownloadFirstMatchingSheet(id, out utilitiesSheet,
                 new string[] { "Коммунальные", "Коммуналка", "utilities" }, 10, false);
@@ -133,7 +133,7 @@ namespace Alfa156.Desktop.Exchange
                 return;
             }
 
-            // Канонический формат Alfa156 Desktop
+            // Канонический формат KiloLedger Desktop
             List<string[]> canonicalCars = DownloadSheetOptional(id, new string[] { "Автомобили", "cars" }, 1, true);
             if (DengiFormat.LooksLikeMonthList(canonicalCars))
                 throw new InvalidDataException(L10n.Get("error.dengi_sheets_expected"));
@@ -200,7 +200,7 @@ namespace Alfa156.Desktop.Exchange
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
-            request.UserAgent = "Alfa156Desktop/1.0";
+            request.UserAgent = "KiloLedgerDesktop/1.0";
             request.AllowAutoRedirect = true;
             request.Timeout = 30000;
             using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())

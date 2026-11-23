@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Alfa156.Localization
 {
-    /// <summary>Система локализации для Alfa 156 (i18n). Строки встроены как ресурсы exe.</summary>
+    /// <summary>Система локализации для KiloLedger (i18n). Строки встроены как ресурсы exe.</summary>
     public class LocalizationManager
     {
         private static LocalizationManager _instance;

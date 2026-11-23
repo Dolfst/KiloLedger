@@ -38,8 +38,8 @@ def main() -> int:
             errors.append(f"{rel}: missing DefaultCurrency BYN")
 
     for rel, header in (
-        ("Alfa156/Alfa156/SyncCrypto.cs", "ALFA156SYNC2R|"),
-        ("Alfa156.Android/SyncCrypto.cs", "ALFA156SYNC2R|"),
+        ("Alfa156/Alfa156/SyncCrypto.cs", "KILOLEDGER2R|"),
+        ("Alfa156.Android/SyncCrypto.cs", "KILOLEDGER2R|"),
     ):
         text = (ROOT / rel).read_text()
         if header not in text:

@@ -91,7 +91,7 @@ namespace CarExpenses
                     (L10n.Get("about.bullet_wifi_phone") + "\r\n") +
                     (L10n.Get("about.bullet_sd_memory_backups") + "\r\n") +
                     L10n.Get("about.bullet_summary_reminders"),
-                    "Alfa 156");
+                    "KiloLedger");
             }
             catch
             {
@@ -229,8 +229,8 @@ namespace CarExpenses
             using (Font titleFont = new Font("Arial", 13, FontStyle.Bold))
             {
                 e.Graphics.FillEllipse(badge, 8, 8, 36, 36);
-                e.Graphics.DrawString("A", markFont, whiteBrush, 16, 8);
-                e.Graphics.DrawString("ALFA 156", titleFont, whiteBrush, 56, 15);
+                e.Graphics.DrawString("K", markFont, whiteBrush, 16, 8);
+                e.Graphics.DrawString("KiloLedger", titleFont, whiteBrush, 56, 15);
             }
         }
 
@@ -796,7 +796,7 @@ namespace CarExpenses
                     currentCar = values[1];
                     string tankHint = CarsMeta.TankNearHint(values[1], values[3]);
                     if (tankHint != null)
-                        MessageBox.Show(tankHint, "Alfa 156");
+                        MessageBox.Show(tankHint, "KiloLedger");
                 }
             }
             else if (currentSection == RepairSection)
@@ -1648,7 +1648,7 @@ namespace CarExpenses
                 currentCar = values[1];
                 string tankHint = CarsMeta.TankNearHint(values[1], values[3]);
                 if (tankHint != null)
-                    MessageBox.Show(tankHint, "Alfa 156");
+                    MessageBox.Show(tankHint, "KiloLedger");
             }
             ShowRecords(FuelSection);
         }
@@ -1709,7 +1709,7 @@ namespace CarExpenses
                 currentCar = values[1];
                 string tankHint = CarsMeta.TankNearHint(values[1], values[3]);
                 if (tankHint != null)
-                    MessageBox.Show(tankHint, "Alfa 156");
+                    MessageBox.Show(tankHint, "KiloLedger");
             }
             ShowRecords(FuelSection);
         }
@@ -2201,7 +2201,7 @@ namespace CarExpenses
                 string text = PeriodReport.FormatText(currentCar, from, to, totals, Cur());
 
                 string fileName = "Report_" + from + "_" + to + ".txt";
-                string folder = @"\My Documents\Alfa156";
+                string folder = @"\My Documents\KiloLedger";
                 if (!Directory.Exists(folder))
                     Directory.CreateDirectory(folder);
                 string path = Path.Combine(folder, fileName);
@@ -2914,7 +2914,7 @@ namespace CarExpenses
             {
                 string text = BuildSummary();
                 string fileName = "Summary_" + DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".txt";
-                string folder = @"\My Documents\Alfa156";
+                string folder = @"\My Documents\KiloLedger";
                 if (!Directory.Exists(folder))
                     Directory.CreateDirectory(folder);
                 string path = Path.Combine(folder, fileName);

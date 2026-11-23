@@ -938,7 +938,7 @@ internal static class ExpenseSyncService
             return true;
         if (handshake.StartsWith(ProtocolHeader, StringComparison.Ordinal))
             return false;
-        if (handshake.StartsWith("ALFA156SYNC", StringComparison.Ordinal))
+        if (handshake.StartsWith("KILOLEDGER", StringComparison.Ordinal))
             return true;
         return false;
     }

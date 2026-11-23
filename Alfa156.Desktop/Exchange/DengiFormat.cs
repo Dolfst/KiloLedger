@@ -9,7 +9,7 @@ namespace Alfa156.Desktop.Exchange
 {
     /// <summary>
     /// Импорт формата таблицы «Деньги»:
-    /// Заправки Alfa Romeo 156 | Ремонт Alfa Romeo 156 | Коммунальные | Справочник | Итоги
+    /// Заправки {авто} | Ремонт {авто} | Коммунальные | Справочник | Итоги
     /// </summary>
     internal static class DengiFormat
     {

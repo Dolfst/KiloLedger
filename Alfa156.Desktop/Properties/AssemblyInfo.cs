@@ -1,11 +1,11 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("Alfa156 Desktop")]
-[assembly: AssemblyDescription("ПК-приложение Alfa156: данные, Excel и Google Sheets")]
+[assembly: AssemblyTitle("KiloLedger Desktop")]
+[assembly: AssemblyDescription("ПК-приложение KiloLedger: данные, Excel и Google Sheets")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Alfa156")]
-[assembly: AssemblyProduct("Alfa156 Desktop")]
+[assembly: AssemblyCompany("KiloLedger")]
+[assembly: AssemblyProduct("KiloLedger Desktop")]
 [assembly: AssemblyCopyright("Copyright © 2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: ComVisible(false)]

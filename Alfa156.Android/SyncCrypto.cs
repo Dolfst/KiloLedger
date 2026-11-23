@@ -7,18 +7,18 @@ namespace Alfa156.Android;
 
 /// <summary>
 /// Session obfuscation for Wi‑Fi sync payloads (protocol v2).
-/// Key = SHA1("Alfa156-WiFi-Sync-v2|" + pairing code); payload XOR'd with
+/// Key = SHA1("KiloLedger-WiFi-Sync-v2|" + pairing code); payload XOR'd with
 /// SHA1(key || LE32(blockIndex)) keystream. Not a substitute for TLS —
 /// still use a trusted hotspot.
 /// </summary>
 internal sealed class SyncCrypto : IDisposable
 {
     // SYNC2 crypto; "R" = receipts over Wi-Fi (1.15+). Same XOR session as 1.12–1.14.
-    internal const string ProtocolHeader = "ALFA156SYNC2R|";
+    internal const string ProtocolHeader = "KILOLEDGER2R|";
     internal static string UpgradeMessage =>
         L10n.Get("error.update_for_photos");
 
-    private const string Salt = "Alfa156-WiFi-Sync-v2";
+    private const string Salt = "KiloLedger-WiFi-Sync-v2";
     private readonly SHA1 sha;
     private readonly byte[] key;
     private readonly byte[] blockInput;

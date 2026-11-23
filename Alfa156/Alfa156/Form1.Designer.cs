@@ -19,7 +19,7 @@ namespace CarExpenses
             BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
             ClientSize = new System.Drawing.Size(240, 268);
             Name = "Form1";
-            Text = "Alfa 156";
+            Text = "KiloLedger";
             WindowState = System.Windows.Forms.FormWindowState.Maximized;
         }
     }

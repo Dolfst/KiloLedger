@@ -1,4 +1,4 @@
-# Alfa 156 Desktop
+# KiloLedger Desktop
 
 ПК-приложение с тем же логотипом и стилем, что КПК и Android.
 

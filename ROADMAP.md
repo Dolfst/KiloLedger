@@ -1,10 +1,10 @@
-# План улучшений Alfa 156
+# План улучшений KiloLedger
 
 Этот план отражает состояние разработки и обновляется перед этапной публикацией.
 
 ## Выполнено
 
-- Добавлен базовый [сравнительный анализ аналогов и долгосрочный бэклог](docs/competitive-analysis.md): Alfa 156 vs Drivvo, Fuelio, Simply Auto, aCar и Fuelly.
+- Добавлен базовый [сравнительный анализ аналогов и долгосрочный бэклог](docs/competitive-analysis.md): KiloLedger vs Drivvo, Fuelio, Simply Auto, aCar и Fuelly.
 - Этап 1: версия 1.34.0 опубликована на GitHub для Android, Desktop и КПК.
 - Этап 2: сборка КПК через Mono добавлена в smoke workflow.
 - 1.34.0: усилена проверка стабильных ID и обнаружение дубликатов.

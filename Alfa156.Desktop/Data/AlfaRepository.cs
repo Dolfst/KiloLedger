@@ -161,7 +161,7 @@ namespace Alfa156.Desktop.Data
             string token = ToSettings.GetOrCreateSnapshotDeviceToken(DirectoryPath);
             string created = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
                 CultureInfo.InvariantCulture);
-            return "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
+            return "{\"schema\":\"kiloledger.snapshot\",\"schemaVersion\":1,\"appVersion\":" +
                 QuoteSnapshotJson(AppVersion) + ",\"createdUtc\":" + QuoteSnapshotJson(created) +
                 ",\"deviceToken\":" + QuoteSnapshotJson(token) + "}";
         }
@@ -180,7 +180,7 @@ namespace Alfa156.Desktop.Data
         public string AllocateSafetyBackupPath()
         {
             string parent = String.IsNullOrEmpty(DirectoryPath)
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Alfa156")
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "KiloLedger")
                 : Path.GetDirectoryName(DirectoryPath);
             if (String.IsNullOrEmpty(parent))
                 parent = DirectoryPath;

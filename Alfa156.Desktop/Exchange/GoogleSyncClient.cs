@@ -20,7 +20,7 @@ namespace Alfa156.Desktop.Exchange
             {
                 return Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "Alfa156", "google-sync.json");
+                    "KiloLedger", "google-sync.json");
             }
         }
 
@@ -277,7 +277,7 @@ namespace Alfa156.Desktop.Exchange
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
-            request.UserAgent = "Alfa156Desktop/1.0";
+            request.UserAgent = "KiloLedgerDesktop/1.0";
             request.AllowAutoRedirect = true;
             request.Timeout = 60000;
             using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
@@ -293,7 +293,7 @@ namespace Alfa156.Desktop.Exchange
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "POST";
             request.ContentType = "application/json; charset=utf-8";
-            request.UserAgent = "Alfa156Desktop/1.0";
+            request.UserAgent = "KiloLedgerDesktop/1.0";
             request.AllowAutoRedirect = true;
             request.Timeout = 120000;
             request.ContentLength = bytes.Length;

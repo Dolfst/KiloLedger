@@ -12,7 +12,7 @@ namespace CarExpenses
     /// </summary>
     internal static class DataIntegrity
     {
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
         private const string RepairCategoriesFile = "repair-categories.dat";
         private const string ExpenseCategoriesFile = "expense-categories.dat";
 

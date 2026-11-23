@@ -25,7 +25,7 @@ namespace CarExpenses
         internal const string TypeFuel = "fuel";
         internal const string TypeRepair = "repair";
         internal const string TypeExpense = "expense";
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
 
         internal static void EnsureFile()
         {

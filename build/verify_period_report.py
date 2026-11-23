@@ -156,7 +156,7 @@ def main() -> int:
     # Format smoke: totals formatting must mention cost/km and car
     sample_totals_fuel = 1200.5
     sample_text = (
-        "Alfa 156 · отчёт за период\n"
+        "KiloLedger · отчёт за период\n"
         f"Авто: Alfa\nПериод: 2026-11-01…2026-11-30\n\n"
         f"Топливо: {sample_totals_fuel:.2f} RUB\n"
         "Ремонт: 0 RUB\nПрочие: 0 RUB\nКоммунальные: 0 RUB\n"

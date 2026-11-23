@@ -1,6 +1,6 @@
-# Установка Alfa 156
+# Установка KiloLedger
 
-Alfa 156 — универсальное приложение для учета расходов автомобиля на **Android**, **Windows (Desktop)** и **Windows Mobile (КПК)**.
+KiloLedger — универсальное приложение для учета расходов автомобиля на **Android**, **Windows (Desktop)** и **Windows Mobile (КПК)**.
 
 ## Быстрый старт
 
@@ -47,9 +47,9 @@ Alfa 156 — универсальное приложение для учета �
 
 Все данные хранятся локально на вашем устройстве:
 
-- **Android**: `/data/data/com.alfa156.mobile/`
-- **Desktop**: `%APPDATA%\Local\Alfa156\`
-- **КПК**: `\My Documents\Alfa156\`
+- **Android**: `/data/data/com.kiloledger.app/`
+- **Desktop**: `%APPDATA%\Local\KiloLedger\` (настройки языка и Google Sync: `%AppData%\KiloLedger\`)
+- **КПК**: `\My Documents\KiloLedger\`
 
 ### Создание резервной копии
 

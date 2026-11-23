@@ -82,8 +82,8 @@ namespace Alfa156.Desktop.Exchange
             List<string[]> cars = DengiFormat.BuildCars(names);
             string defaultCar = cars[0][0];
 
-            string fuelName = FindSheet(names, "Заправки Alfa Romeo 156", "Заправки");
-            string repairName = FindSheet(names, "Ремонт Alfa Romeo 156", "Ремонт");
+            string fuelName = FindSheet(names, "Заправки");
+            string repairName = FindSheet(names, "Ремонт");
             string utilitiesName = FindSheet(names, "Коммунальные", "Коммуналка");
             string categoriesName = FindSheet(names, "Справочник", "Категории");
 

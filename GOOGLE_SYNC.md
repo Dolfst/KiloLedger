@@ -1,13 +1,13 @@
 # Google Sheets синхронизация
 
-Alfa 156 поддерживает двустороннюю синхронизацию с Google Sheets на **Desktop** и **Android**.
+KiloLedger поддерживает двустороннюю синхронизацию с Google Sheets на **Desktop** и **Android**.
 
 > Подробная иллюстрированная инструкция также находится в [`google-sync/README.md`](google-sync/README.md).
 
 ## Как это работает
 
 ```text
-Alfa 156 Desktop / Android ←→ Google Apps Script ←→ Google Sheets
+KiloLedger Desktop / Android ←→ Google Apps Script ←→ Google Sheets
 ```
 
 Приложение синхронизирует данные о расходах с вашей Google Таблицей через собственный Apps Script, который вы разворачиваете на своём аккаунте Google.
@@ -16,7 +16,7 @@ Alfa 156 Desktop / Android ←→ Google Apps Script ←→ Google Sheets
 
 - Google аккаунт
 - Доступ к Google Sheets
-- Alfa 156 Desktop (1.37.0 и выше) или Alfa 156 Android
+- KiloLedger Desktop (1.37.0 и выше) или KiloLedger Android
 
 ## Пошаговая инструкция
 
@@ -96,7 +96,7 @@ https://script.google.com/macros/s/AKfycb.../exec
 
 ### Шаг 5: Настройте Desktop приложение
 
-1. Откройте **Alfa 156 Desktop**
+1. Откройте **KiloLedger Desktop**
 2. Перейдите в **Обмен ▾ → Google: мастер** (или **Настройки → Центр Google Sync → Google: мастер** / **Google: настройка**)
 3. Вставьте **URL веб-приложения** из Шага 4 и **SYNC_TOKEN** из Шага 3
 4. Нажмите **«Проверить подключение»** (в мастере) и **«Готово» / «ОК»**
@@ -126,7 +126,7 @@ Apps Script автоматически создаёт следующие лис�
 
 - Синхронизация работает только через ваш Google аккаунт и ваш собственный скрипт
 - Данные не передаются третьим лицам
-- **Никогда не публикуйте** свой `SYNC_TOKEN`, URL веб-приложения и файл `%AppData%\Alfa156\google-sync.json`
+- **Никогда не публикуйте** свой `SYNC_TOKEN`, URL веб-приложения и файл `%AppData%\KiloLedger\google-sync.json`
 
 ## Поддержка
 

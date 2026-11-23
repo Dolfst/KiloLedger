@@ -47,7 +47,7 @@ internal static class GoogleSyncService
         if (pullJson.IndexOf("\"ok\":false", StringComparison.OrdinalIgnoreCase) >= 0)
             throw new InvalidDataException(ExtractError(pullJson));
 
-        string staging = Path.Combine(Path.GetTempPath(), "alfa156-google-" + Guid.NewGuid().ToString("N"));
+        string staging = Path.Combine(Path.GetTempPath(), "kiloledger-google-" + Guid.NewGuid().ToString("N"));
         string incoming = Path.Combine(staging, "incoming");
         Directory.CreateDirectory(incoming);
         try

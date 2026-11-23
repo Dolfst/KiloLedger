@@ -69,7 +69,7 @@ namespace Alfa156.Desktop
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel(L10n.Get("hint.open_folder_or_zip"));
         private readonly ToolStripStatusLabel reportLinkLabel = new ToolStripStatusLabel();
         private string lastDetailedReport = "";
-        private string lastReportTitle = "Alfa 156";
+        private string lastReportTitle = "KiloLedger";
         private readonly TextBox googleUrlBox = new TextBox();
         private bool suppressDirty;
         private bool dirty;
@@ -116,7 +116,7 @@ namespace Alfa156.Desktop
 
         public MainForm()
         {
-            // Загрузить сохранённый язык из %AppData%\Alfa156\language.txt (или настроек базы) до создания UI.
+            // Загрузить сохранённый язык из %AppData%\KiloLedger\language.txt (или настроек базы) до создания UI.
             string savedLang = LoadStartupLanguage();
             if (String.IsNullOrEmpty(savedLang))
                 savedLang = ToSettings.GetLanguage(repository.Settings);
@@ -128,7 +128,7 @@ namespace Alfa156.Desktop
             summaryTab.Text = L10n.Get("tab.summary");
             settingsTab.Text = L10n.Get("tab.settings");
 
-            Text = "Alfa 156 " + ResolveVersion();
+            Text = "KiloLedger " + ResolveVersion();
             Width = 1180;
             Height = 760;
             StartPosition = FormStartPosition.CenterScreen;
@@ -176,7 +176,7 @@ namespace Alfa156.Desktop
                 Padding = new Padding(10, 0, 0, 0),
                 BackColor = Color.Transparent
             };
-            brandTitleLabel.Text = "Alfa 156";
+            brandTitleLabel.Text = "KiloLedger";
             brandTitleLabel.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             brandTitleLabel.ForeColor = Color.White;
             brandTitleLabel.Dock = DockStyle.Top;
@@ -558,7 +558,7 @@ namespace Alfa156.Desktop
         private static string StartupLanguageFilePath()
         {
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return Path.Combine(Path.Combine(appDataPath, "Alfa156"), "language.txt");
+            return Path.Combine(Path.Combine(appDataPath, "KiloLedger"), "language.txt");
         }
 
         private static string LoadStartupLanguage()
@@ -1848,7 +1848,7 @@ namespace Alfa156.Desktop
                 catch { }
                 Label titleLbl = new Label
                 {
-                    Text = "Alfa 156  v" + ResolveVersion(),
+                    Text = "KiloLedger  v" + ResolveVersion(),
                     Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                     ForeColor = Color.White,
                     Left = 68,
@@ -2858,7 +2858,7 @@ namespace Alfa156.Desktop
         /// </summary>
         private void ApplyLanguageToUI()
         {
-            Text = "Alfa 156 " + ResolveVersion();
+            Text = "KiloLedger " + ResolveVersion();
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
             reportLinkLabel.Text = L10n.Get("button.last_report");
             if (String.IsNullOrEmpty(repository.DirectoryPath))
@@ -3370,7 +3370,7 @@ namespace Alfa156.Desktop
                     return;
                 try
                 {
-                    string extract = Path.Combine(Path.GetTempPath(), "Alfa156Desktop_" + Guid.NewGuid().ToString("N"));
+                    string extract = Path.Combine(Path.GetTempPath(), "KiloLedgerDesktop_" + Guid.NewGuid().ToString("N"));
                     repository.LoadZip(dialog.FileName, extract);
                     BindAll();
                     pathBox.Text = extract;
@@ -3393,7 +3393,7 @@ namespace Alfa156.Desktop
                     return;
                 try
                 {
-                    string target = Path.Combine(dialog.SelectedPath, "Alfa156");
+                    string target = Path.Combine(dialog.SelectedPath, "KiloLedger");
                     repository.CreateNew(target);
                     BindAll();
                     pathBox.Text = target;
@@ -3434,7 +3434,7 @@ namespace Alfa156.Desktop
                     (L10n.Get("about.bullet_wifi_phone_pda") + "\r\n") +
                     (L10n.Get("about.bullet_export_all_zip") + "\r\n") +
                     L10n.Get("about.bullet_summary_tab");
-                MessageBox.Show(this, tip, "Alfa 156", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, tip, "KiloLedger", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 SetStatus(L10n.Get("onboarding.shown_once_note"));
             }
             catch
@@ -3496,7 +3496,7 @@ namespace Alfa156.Desktop
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
                 dialog.Filter = "ZIP (*.zip)|*.zip";
-                dialog.FileName = "Alfa156-data.zip";
+                dialog.FileName = "KiloLedger-data.zip";
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -3550,7 +3550,7 @@ namespace Alfa156.Desktop
                     return;
                 try
                 {
-                    string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv-templates");
+                    string folder = Path.Combine(dialog.SelectedPath, "KiloLedger-csv-templates");
                     CsvExchange.ExportTemplates(folder);
                     SetStatus((L10n.Get("label.csv_templates_colon") + " ") + folder);
                 }
@@ -3566,7 +3566,7 @@ namespace Alfa156.Desktop
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
                 dialog.Filter = "Excel (*.xlsx)|*.xlsx";
-                dialog.FileName = "Alfa156.xlsx";
+                dialog.FileName = "KiloLedger.xlsx";
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
                 try
@@ -3616,7 +3616,7 @@ namespace Alfa156.Desktop
                 try
                 {
                     PullAll();
-                    string folder = Path.Combine(dialog.SelectedPath, "Alfa156-csv");
+                    string folder = Path.Combine(dialog.SelectedPath, "KiloLedger-csv");
                     CsvExchange.ExportFolder(repository, folder);
                     SetStatus((L10n.Get("msg.csv_exported_to") + " ") + folder + L10n.Get("hint.google_sheets_file_import"));
                 }
@@ -3735,7 +3735,7 @@ namespace Alfa156.Desktop
                 dialog.Description = L10n.Get("prompt.choose_folder_save_alfa");
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     throw new InvalidOperationException(L10n.Get("error.no_folder_selected"));
-                string target = Path.Combine(dialog.SelectedPath, "Alfa156");
+                string target = Path.Combine(dialog.SelectedPath, "KiloLedger");
                 Directory.CreateDirectory(target);
                 repository.CreateNew(target);
                 pathBox.Text = target;
@@ -3748,7 +3748,7 @@ namespace Alfa156.Desktop
                 return;
             string target = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "Alfa156");
+                "KiloLedger");
             Directory.CreateDirectory(target);
             if (!File.Exists(Path.Combine(target, "cars.dat")))
                 repository.CreateNew(target);
@@ -5356,7 +5356,7 @@ namespace Alfa156.Desktop
             string raw = text ?? "";
             if (raw.IndexOf('\n') >= 0 || raw.Length > 140)
             {
-                lastReportTitle = "Alfa 156";
+                lastReportTitle = "KiloLedger";
                 lastDetailedReport = raw;
                 reportLinkLabel.Text = L10n.Get("button.last_report");
                 reportLinkLabel.Visible = true;
@@ -5369,7 +5369,7 @@ namespace Alfa156.Desktop
 
         private void SetStatusWithReport(string shortText, string reportTitle, string fullReport)
         {
-            lastReportTitle = String.IsNullOrEmpty(reportTitle) ? "Alfa 156" : reportTitle;
+            lastReportTitle = String.IsNullOrEmpty(reportTitle) ? "KiloLedger" : reportTitle;
             lastDetailedReport = fullReport ?? "";
             reportLinkLabel.Text = L10n.Get("button.last_report");
             reportLinkLabel.Visible = lastDetailedReport.Length > 0;
@@ -5409,7 +5409,7 @@ namespace Alfa156.Desktop
 
         private void ShowError(Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Alfa156 Desktop", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, "KiloLedger Desktop", MessageBoxButtons.OK, MessageBoxIcon.Error);
             SetStatus((L10n.Get("label.error_colon") + " ") + ex.Message);
         }
 
@@ -5942,7 +5942,7 @@ namespace Alfa156.Desktop
             {
                 DialogResult result = MessageBox.Show(this,
                     L10n.Get("confirm.unsaved_exit"),
-                    "Alfa156 Desktop",
+                    "KiloLedger Desktop",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
                 if (result != DialogResult.Yes)

@@ -157,8 +157,8 @@ namespace Alfa156.Desktop.Exchange
         {
             if (String.IsNullOrEmpty(json))
                 throw new InvalidDataException(L10n.Get("error.empty_snapshot"));
-            if (json.IndexOf("\"schema\":\"alfa156.snapshot\"", StringComparison.Ordinal) < 0 &&
-                json.IndexOf("\"schema\": \"alfa156.snapshot\"", StringComparison.Ordinal) < 0)
+            if (json.IndexOf("\"schema\":\"kiloledger.snapshot\"", StringComparison.Ordinal) < 0 &&
+                json.IndexOf("\"schema\": \"kiloledger.snapshot\"", StringComparison.Ordinal) < 0)
                 throw new InvalidDataException(L10n.Get("error.unsupported_snapshot_schema"));
             if (json.IndexOf("\"schemaVersion\":1", StringComparison.Ordinal) < 0 &&
                 json.IndexOf("\"schemaVersion\": 1", StringComparison.Ordinal) < 0)

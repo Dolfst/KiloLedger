@@ -40,7 +40,7 @@ namespace CarExpenses
         internal const string DefaultLanguage = "ru";
         private const string BackupUtcFormat = "yyyy-MM-dd HH:mm:ss";
         private const string NagDateFormat = "yyyy-MM-dd";
-        private const string DataDirectory = @"\My Documents\Alfa156";
+        private const string DataDirectory = @"\My Documents\KiloLedger";
 
         internal static bool IsValidRow(string[] row)
         {

@@ -97,7 +97,7 @@ def main() -> int:
         "Alfa156/Alfa156/DataStore.cs",
     ):
         text = (ROOT / rel).read_text()
-        for needle in ("snapshot.json", "alfa156.snapshot", "schemaVersion",
+        for needle in ("snapshot.json", "kiloledger.snapshot", "schemaVersion",
                        "deviceToken", "createdUtc"):
             if needle not in text:
                 errors.append(f"{rel}: missing snapshot metadata {needle}")

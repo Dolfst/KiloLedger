@@ -3,7 +3,7 @@
 ## Project map
 
 - Read `README.md`, `ROADMAP.md`, and `VERSION` before making project-wide or release changes.
-- The application has three clients: `Alfa156/Alfa156` (Windows Mobile, .NET Compact Framework 3.5), `Alfa156.Android` (.NET 10 Android), and `Alfa156.Desktop` (.NET Framework 4.8).
+- The application brand is **KiloLedger** (Android `ApplicationId`: `com.kiloledger.app`), with three clients whose project folders remain `Alfa156/Alfa156` (Windows Mobile, .NET Compact Framework 3.5), `Alfa156.Android` (.NET 10 Android), and `Alfa156.Desktop` (.NET Framework 4.8).
 - Similar domain logic is intentionally implemented in more than one client. Keep behavior and file formats consistent across all affected clients.
 - `build/verify_*.py` contains offline smoke checks. `build/run_verifies.py` runs the full set.
 
