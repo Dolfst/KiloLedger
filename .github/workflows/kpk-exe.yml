@@ -47,8 +47,8 @@ jobs:
           $ErrorActionPreference = "Stop"
           $version = $env:APP_VERSION
           if (-not $version) { throw "VERSION is empty" }
-          $exeName = "Alfa156-$version-KPK.exe"
-          $zipName = "Alfa156-$version-KPK.zip"
+          $exeName = "KiloLedger-$version-KPK.exe"
+          $zipName = "KiloLedger-$version-KPK.zip"
 
           $exe = "Alfa156/Alfa156/bin/Release/Alfa156.exe"
           if (-not (Test-Path $exe)) { throw "KPK exe not found" }
@@ -76,7 +76,7 @@ jobs:
             $_.Name -ne $exeName -and $_.Name -ne $zipName -and (
               $_.Name -eq "Alfa156-KPK.exe" -or
               $_.Name -eq "Alfa156-KPK.zip" -or
-              $_.Name -match '^Alfa156-.+-KPK\.(exe|zip)$'
+              $_.Name -match '^(Alfa156|KiloLedger)-.+-KPK\.(exe|zip)$'
             )
           } | Remove-Item -Force
 
@@ -94,7 +94,7 @@ jobs:
             gh release delete kpk-latest --yes --cleanup-tag
           }
           gh release create kpk-latest $releaseExe $releaseZip `
-            --title "Alfa 156 $version — KPK" `
+            --title "KiloLedger $version — KPK" `
             --notes "Automatically updated KPK build $version (run #${{ github.run_number }})." `
             --target $env:GITHUB_SHA `
             --latest=false

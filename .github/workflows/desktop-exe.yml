@@ -51,7 +51,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $version = $env:APP_VERSION
           if (-not $version) { throw "VERSION is empty" }
-          $exeName = "Alfa156-$version-Desktop.exe"
+          $exeName = "KiloLedger-$version-Desktop.exe"
 
           $exe = Get-ChildItem "Alfa156.Desktop/bin/Release/Alfa156.Desktop.exe" | Select-Object -First 1
           if (-not $exe) { throw "Desktop exe not found" }
@@ -63,7 +63,7 @@ jobs:
           Get-ChildItem dist/download -File | Where-Object {
             $_.Name -ne $exeName -and (
               $_.Name -eq "Alfa156.Desktop.exe" -or
-              $_.Name -match '^Alfa156-.+-Desktop\.exe$'
+              $_.Name -match '^(Alfa156|KiloLedger)-.+-Desktop\.exe$'
             )
           } | Remove-Item -Force
 
@@ -79,7 +79,7 @@ jobs:
             gh release delete desktop-latest --yes --cleanup-tag
           }
           gh release create desktop-latest $releasePath `
-            --title "Alfa 156 $version — Desktop" `
+            --title "KiloLedger $version — Desktop" `
             --notes "Automatically updated Desktop build $version (run #${{ github.run_number }})." `
             --target $env:GITHUB_SHA `
             --latest=false

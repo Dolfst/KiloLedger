@@ -97,7 +97,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${{ steps.ver.outputs.version }}"
-          apk_name="Alfa156-${version}.apk"
+          apk_name="KiloLedger-${version}.apk"
           apk_path="$RUNNER_TEMP/$apk_name"
           signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
           if [ -z "$signed" ]; then
@@ -109,12 +109,13 @@ jobs:
 
           if gh release view android-latest >/dev/null 2>&1; then
             gh release edit android-latest \
-              --title "Alfa 156 ${version} — Android" \
+              --title "KiloLedger ${version} — Android" \
               --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})."
+            gh release delete-asset android-latest "Alfa156-${version}.apk" --yes >/dev/null 2>&1 || true
             gh release upload android-latest "$apk_path" --clobber
           else
             gh release create android-latest "$apk_path" \
-              --title "Alfa 156 ${version} — Android" \
+              --title "KiloLedger ${version} — Android" \
               --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})." \
               --target "$GITHUB_SHA" \
               --latest=false
@@ -125,7 +126,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${{ steps.ver.outputs.version }}"
-          apk_name="Alfa156-${version}.apk"
+          apk_name="KiloLedger-${version}.apk"
           signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
           mkdir -p dist/download
           cp "$signed" "dist/download/$apk_name"
@@ -133,7 +134,8 @@ jobs:
           # Remove old unversioned + other versioned Android APK download assets.
           find dist/download -maxdepth 1 -type f \( \
             -name 'Alfa156.apk' -o \
-            -name 'Alfa156-*.apk' \
+            -name 'Alfa156-*.apk' -o \
+            -name 'KiloLedger-*.apk' \
           \) ! -name "$apk_name" -delete
 
           git config user.name "github-actions[bot]"
