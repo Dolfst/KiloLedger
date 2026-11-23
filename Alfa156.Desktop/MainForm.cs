@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.38.3";
+        private const string AppVersion = "1.38.4";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -64,6 +64,9 @@ namespace Alfa156.Desktop
         private readonly ComboBox languageBox = new ComboBox();
         private readonly StatusStrip statusStrip = new StatusStrip();
         private readonly ToolStripStatusLabel statusLabel = new ToolStripStatusLabel(L10n.Get("hint.open_folder_or_zip"));
+        private readonly ToolStripStatusLabel reportLinkLabel = new ToolStripStatusLabel();
+        private string lastDetailedReport = "";
+        private string lastReportTitle = "Alfa 156";
         private readonly TextBox googleUrlBox = new TextBox();
         private bool suppressDirty;
         private bool dirty;
@@ -265,6 +268,8 @@ else
             headerRight.Controls.Add(dbBtn);
 
             // Exchange & Google dropdown menu
+            exchangeMenu.Items.Add(MakeMenuItem("title.google_sync_hub", OpenGoogleSyncHub));
+            exchangeMenu.Items.Add(new ToolStripSeparator());
             exchangeMenu.Items.Add(MakeMenuItem("button.import", OpenImportWizard));
             exchangeMenu.Items.Add(new ToolStripSeparator());
             exchangeMenu.Items.Add(MakeMenuItem("button.export_excel", ExportExcel));
@@ -303,9 +308,9 @@ else
             tabs.ItemSize = new Size(0, 1);
             tabs.SizeMode = TabSizeMode.Fixed;
             tabs.TabPages.Add(WrapGrid("tab.vehicles", carsGrid));
-            tabs.TabPages.Add(WrapFilteredGrid("tab.fuel", fuelGrid, BuildFuelFilterBar()));
-            tabs.TabPages.Add(WrapFilteredGrid("tab.repairs", repairsGrid, BuildRepairFilterBar()));
-            tabs.TabPages.Add(WrapFilteredGrid("tab.expenses", expensesGrid, BuildExpenseFilterBar()));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.fuel", fuelGrid, BuildFuelFilterBar(), BuildFuelContextBar()));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.repairs", repairsGrid, BuildRepairFilterBar(), BuildRecordContextBar()));
+            tabs.TabPages.Add(WrapFilteredGrid("tab.expenses", expensesGrid, BuildExpenseFilterBar(), BuildRecordContextBar()));
             tabs.TabPages.Add(WrapGrid("tab.expense_categories", expenseCategoriesGrid));
             tabs.TabPages.Add(WrapFilteredGrid("tab.utilities", utilitiesGrid, BuildUtilityFilterBar()));
             tabs.TabPages.Add(WrapGrid("tab.categories", categoriesGrid));
@@ -411,7 +416,18 @@ else
             };
             tabsHost.Controls.Add(tabs);
 
+            statusLabel.Spring = true;
+            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+            reportLinkLabel.Text = L10n.Get("button.last_report");
+            reportLinkLabel.IsLink = true;
+            reportLinkLabel.LinkColor = Color.FromArgb(200, 43, 43);
+            reportLinkLabel.Visible = false;
+            reportLinkLabel.Click += delegate { ShowLastReportDialog(); };
+            statusStrip.SizingGrip = false;
+            statusStrip.BackColor = Color.White;
+            statusStrip.Padding = new Padding(8, 2, 12, 2);
             statusStrip.Items.Add(statusLabel);
+            statusStrip.Items.Add(reportLinkLabel);
             statusStrip.Dock = DockStyle.Bottom;
 
             Panel workspacePanel = new Panel
@@ -575,7 +591,7 @@ else
             return page;
         }
 
-        private static TabPage WrapFilteredGrid(string locKey, DataGridView grid, Control filterBar)
+        private static TabPage WrapFilteredGrid(string locKey, DataGridView grid, Control filterBar, Control contextBar = null)
         {
             TabPage page = new TabPage(L10n.Get(locKey));
             page.Tag = locKey;
@@ -583,17 +599,73 @@ else
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 2,
-                Padding = new Padding(0)
+                RowCount = contextBar != null ? 3 : 2,
+                Padding = new Padding(0),
+                BackColor = Color.White
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+            if (contextBar != null)
+                layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             filterBar.Dock = DockStyle.Fill;
             layout.Controls.Add(filterBar, 0, 0);
-            grid.Dock = DockStyle.Fill;
-            layout.Controls.Add(grid, 0, 1);
+            if (contextBar != null)
+            {
+                contextBar.Dock = DockStyle.Fill;
+                layout.Controls.Add(contextBar, 0, 1);
+                grid.Dock = DockStyle.Fill;
+                layout.Controls.Add(grid, 0, 2);
+            }
+            else
+            {
+                grid.Dock = DockStyle.Fill;
+                layout.Controls.Add(grid, 0, 1);
+            }
             page.Controls.Add(layout);
             return page;
+        }
+
+        private FlowLayoutPanel BuildFuelContextBar()
+        {
+            FlowLayoutPanel bar = CreateContextStrip();
+            bar.Controls.Add(MakeButton("button.apply_template", ApplyTemplateToActiveGrid));
+            bar.Controls.Add(MakeButton("button.save_template", SaveActiveRowAsTemplate));
+            bar.Controls.Add(MakeButton("button.attach_receipt", AttachReceiptPhoto));
+            bar.Controls.Add(MakeButton("button.delete_receipt", DeleteReceiptPhoto));
+            bar.Controls.Add(MakeButton("button.trip", OpenTripEntry));
+            bar.Controls.Add(MakeButton("button.trip_report", ShowTripReport));
+            return bar;
+        }
+
+        private FlowLayoutPanel BuildRecordContextBar()
+        {
+            FlowLayoutPanel bar = CreateContextStrip();
+            bar.Controls.Add(MakeButton("button.apply_template", ApplyTemplateToActiveGrid));
+            bar.Controls.Add(MakeButton("button.save_template", SaveActiveRowAsTemplate));
+            bar.Controls.Add(MakeButton("button.attach_receipt", AttachReceiptPhoto));
+            bar.Controls.Add(MakeButton("button.delete_receipt", DeleteReceiptPhoto));
+            return bar;
+        }
+
+        private static FlowLayoutPanel CreateContextStrip()
+        {
+            FlowLayoutPanel bar = new FlowLayoutPanel
+            {
+                WrapContents = true,
+                AutoSize = true,
+                Margin = new Padding(0),
+                Padding = new Padding(4, 3, 4, 3),
+                BackColor = Color.FromArgb(249, 250, 252)
+            };
+            bar.Paint += delegate(object s, PaintEventArgs pe)
+            {
+                using (Pen p = new Pen(Color.FromArgb(229, 234, 242)))
+                {
+                    pe.Graphics.DrawLine(p, 0, 0, bar.Width, 0);
+                    pe.Graphics.DrawLine(p, 0, bar.Height - 1, bar.Width, bar.Height - 1);
+                }
+            };
+            return bar;
         }
 
         private static string ResolveVersion()
@@ -1340,6 +1412,146 @@ else
             }
         }
 
+        private void OpenGoogleSyncHub(object sender, EventArgs e)
+        {
+            GoogleSyncSettings settings = GoogleSyncSettings.Load();
+            using (Form hub = new Form())
+            {
+                hub.Text = L10n.Get("title.google_sync_hub");
+                hub.Width = 620;
+                hub.Height = 290;
+                hub.StartPosition = FormStartPosition.CenterParent;
+                hub.FormBorderStyle = FormBorderStyle.FixedDialog;
+                hub.MaximizeBox = false;
+                hub.MinimizeBox = false;
+                hub.BackColor = Color.FromArgb(244, 246, 249);
+                hub.Font = new Font("Segoe UI", 9F);
+
+                bool configured = settings != null && !String.IsNullOrEmpty(settings.ScriptUrl);
+                Label statusBadge = new Label
+                {
+                    Text = configured ? L10n.Get("label.script_configured_yes") : L10n.Get("label.script_configured_no"),
+                    Left = 18,
+                    Top = 16,
+                    Width = 568,
+                    Height = 28,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(10, 0, 10, 0),
+                    BackColor = configured ? Color.FromArgb(236, 253, 245) : Color.FromArgb(254, 242, 242),
+                    ForeColor = configured ? Color.FromArgb(21, 128, 61) : Color.FromArgb(185, 28, 28),
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+                };
+
+                Label hintLabel = new Label
+                {
+                    Text = L10n.Get("label.google_hub_hint"),
+                    Left = 18,
+                    Top = 52,
+                    Width = 568,
+                    Height = 32,
+                    ForeColor = Color.FromArgb(71, 85, 105)
+                };
+
+                Label sheetLabel = new Label
+                {
+                    Text = L10n.Get("label.sheet_url_csv"),
+                    Left = 18,
+                    Top = 90,
+                    Width = 568
+                };
+
+                string initialUrl = googleUrlBox.ForeColor != Color.Gray && !String.IsNullOrWhiteSpace(googleUrlBox.Text)
+                    ? googleUrlBox.Text.Trim()
+                    : (settings != null && settings.SpreadsheetUrl != null ? settings.SpreadsheetUrl : "");
+                TextBox sheetInput = new TextBox
+                {
+                    Left = 18,
+                    Top = 112,
+                    Width = 568,
+                    Text = initialUrl
+                };
+
+                Button syncNowBtn = MakeAccentButton("button.google_sync", delegate
+                {
+                    SaveHubUrl(sheetInput.Text);
+                    hub.Close();
+                    SyncGoogle(this, EventArgs.Empty);
+                });
+                syncNowBtn.AutoSize = false;
+                syncNowBtn.Width = 175;
+                syncNowBtn.Height = 34;
+                syncNowBtn.Left = 18;
+                syncNowBtn.Top = 158;
+
+                Button importSheetBtn = MakeButton("button.import_google", delegate
+                {
+                    SaveHubUrl(sheetInput.Text);
+                    hub.Close();
+                    ImportGoogle(this, EventArgs.Empty);
+                });
+                importSheetBtn.AutoSize = false;
+                importSheetBtn.Width = 150;
+                importSheetBtn.Height = 34;
+                importSheetBtn.Left = 202;
+                importSheetBtn.Top = 158;
+
+                Button wizardBtn = MakeButton("button.google_wizard", delegate
+                {
+                    SaveHubUrl(sheetInput.Text);
+                    hub.Close();
+                    OpenGoogleSyncWizard(this, EventArgs.Empty);
+                });
+                wizardBtn.AutoSize = false;
+                wizardBtn.Width = 140;
+                wizardBtn.Height = 34;
+                wizardBtn.Left = 360;
+                wizardBtn.Top = 158;
+
+                Button settingsBtn = MakeButton("button.google_settings", delegate
+                {
+                    SaveHubUrl(sheetInput.Text);
+                    hub.Close();
+                    ConfigureGoogleSync(this, EventArgs.Empty);
+                });
+                settingsBtn.AutoSize = false;
+                settingsBtn.Width = 160;
+                settingsBtn.Height = 34;
+                settingsBtn.Left = 18;
+                settingsBtn.Top = 202;
+
+                Button closeBtn = MakeButton("button.close", delegate
+                {
+                    SaveHubUrl(sheetInput.Text);
+                    hub.Close();
+                });
+                closeBtn.AutoSize = false;
+                closeBtn.Width = 110;
+                closeBtn.Height = 34;
+                closeBtn.Left = 476;
+                closeBtn.Top = 202;
+
+                hub.Controls.AddRange(new Control[]
+                {
+                    statusBadge, hintLabel, sheetLabel, sheetInput,
+                    syncNowBtn, importSheetBtn, wizardBtn, settingsBtn, closeBtn
+                });
+                hub.ShowDialog(this);
+            }
+        }
+
+        private void SaveHubUrl(string rawUrl)
+        {
+            string url = (rawUrl ?? "").Trim();
+            if (url.Length > 0)
+            {
+                googleUrlBox.Text = url;
+                googleUrlBox.ForeColor = SystemColors.WindowText;
+                GoogleSyncSettings s = GoogleSyncSettings.Load();
+                s.SpreadsheetUrl = url;
+                s.Save();
+            }
+        }
+
         private void OpenGoogleSyncWizard(object sender, EventArgs e)
         {
             GoogleSyncSettings settings = GoogleSyncSettings.Load();
@@ -1421,11 +1633,14 @@ else
                     BindAll();
                     repository.Save();
                     dirty = false;
-                    SetStatus(message + ("\r\n" + L10n.Get("backup.copy_colon") + " ") + safetyPath);
+                    UpdateSaveDirtyVisual();
                     SyncJournal journal = SyncMerge.LastJournal;
+                    string fullReport = (journal != null ? journal.FormatSummary() : message) +
+                        ("\r\n\r\n" + L10n.Get("backup.copy_colon") + " ") + safetyPath;
+                    string firstLine = (message ?? "").Replace("\r\n", "\n").Split('\n')[0];
+                    SetStatusWithReport(firstLine, L10n.Get("button.google_sync"), fullReport);
                     if (journal != null)
-                        MessageBox.Show(this, journal.FormatSummary() +
-                            ("\r\n\r\n" + L10n.Get("backup.copy_colon") + " ") + safetyPath, L10n.Get("button.google_sync"),
+                        MessageBox.Show(this, fullReport, L10n.Get("button.google_sync"),
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
@@ -2092,6 +2307,7 @@ else
         {
             Text = "Alfa 156 " + ResolveVersion();
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
+            reportLinkLabel.Text = L10n.Get("button.last_report");
             if (String.IsNullOrEmpty(repository.DirectoryPath))
                 pathBox.Text = L10n.Get("hint.open_folder_or_zip");
             summaryTab.Text = L10n.Get("tab.summary");
@@ -4512,7 +4728,58 @@ else
 
         private void SetStatus(string text)
         {
-            statusLabel.Text = text;
+            string raw = text ?? "";
+            if (raw.IndexOf('\n') >= 0 || raw.Length > 140)
+            {
+                lastReportTitle = "Alfa 156";
+                lastDetailedReport = raw;
+                reportLinkLabel.Text = L10n.Get("button.last_report");
+                reportLinkLabel.Visible = true;
+            }
+            string compact = raw.Replace("\r\n", " · ").Replace('\n', ' ').Replace('\r', ' ').Trim();
+            if (compact.Length > 140)
+                compact = compact.Substring(0, 137) + "…";
+            statusLabel.Text = compact;
+        }
+
+        private void SetStatusWithReport(string shortText, string reportTitle, string fullReport)
+        {
+            lastReportTitle = String.IsNullOrEmpty(reportTitle) ? "Alfa 156" : reportTitle;
+            lastDetailedReport = fullReport ?? "";
+            reportLinkLabel.Text = L10n.Get("button.last_report");
+            reportLinkLabel.Visible = lastDetailedReport.Length > 0;
+            SetStatus(shortText);
+        }
+
+        private void ShowLastReportDialog()
+        {
+            if (String.IsNullOrEmpty(lastDetailedReport))
+                return;
+            using (Form dlg = new Form())
+            {
+                dlg.Text = lastReportTitle;
+                dlg.Width = 640;
+                dlg.Height = 460;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.BackColor = Color.FromArgb(244, 246, 249);
+                TextBox box = new TextBox
+                {
+                    Multiline = true,
+                    ReadOnly = true,
+                    ScrollBars = ScrollBars.Vertical,
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Consolas", 9.5F),
+                    BackColor = Color.White,
+                    Text = lastDetailedReport
+                };
+                Panel bottom = new Panel { Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(8) };
+                Button close = new Button { Text = L10n.Get("button.close"), Width = 100, Dock = DockStyle.Right, DialogResult = DialogResult.OK };
+                bottom.Controls.Add(close);
+                dlg.AcceptButton = close;
+                dlg.Controls.Add(box);
+                dlg.Controls.Add(bottom);
+                dlg.ShowDialog(this);
+            }
         }
 
         private void ShowError(Exception ex)
