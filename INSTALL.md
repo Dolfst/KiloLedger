@@ -8,27 +8,27 @@ KiloLedger — универсальное приложение для учета
 
 Выберите версию для вашей платформы:
 
-- **Android**: `Alfa156-1.39.3.apk`
-- **Windows Desktop**: `Alfa156-1.39.3-Desktop.exe`
-- **Windows Mobile/КПК**: `Alfa156-1.39.3-KPK.exe`
+- **Android**: `KiloLedger-1.39.3.apk`
+- **Windows Desktop**: `KiloLedger-1.39.3-Desktop.exe`
+- **Windows Mobile/КПК**: `KiloLedger-1.39.3-KPK.exe`
 
 [Скачать последнюю версию](https://github.com/Dolfst/alfa/tree/main/dist/download)
 
 ### 2. Установка
 
 #### Android
-1. Скачайте `Alfa156-1.39.3.apk`
+1. Скачайте `KiloLedger-1.39.3.apk`
 2. Перейдите в файловый менеджер → найдите файл
 3. Нажмите и подтвердите установку
 4. Запустите приложение
 
 #### Windows Desktop
-1. Скачайте `Alfa156-1.39.3-Desktop.exe`
+1. Скачайте `KiloLedger-1.39.3-Desktop.exe`
 2. Дважды нажмите на файл для запуска (установки не требуется)
 3. Приложение запустится автоматически
 
 #### Windows Mobile/КПК
-1. Скачайте `Alfa156-1.39.3-KPK.exe`
+1. Скачайте `KiloLedger-1.39.3-KPK.exe`
 2. Используйте **Windows Mobile Device Center** или **ActiveSync** для синхронизации с КПК
 3. Скопируйте файл на КПК
 4. Запустите на устройстве
