@@ -2843,6 +2843,7 @@ namespace CarExpenses
         }
 
         private const string AppVersionBanner = "Версия 1.39.3";
+        private const string BoostySupportUrl = "https://boosty.to/kiloledger";
 
         private void ShowAbout(object sender, EventArgs e)
         {
@@ -2861,7 +2862,9 @@ namespace CarExpenses
                 L10n.Get("onboarding.full_tank_feature") + "\r\n\r\n" +
                 L10n.Get("about.website_label") + "\r\nhttps://github.com/Dolfst/alfa\r\n\r\n" +
                 L10n.Get("about.support_hint") + "\r\n" +
-                L10n.Get("about.support_url_note");
+                L10n.Get("about.support_url_note") + "\r\n\r\n" +
+                L10n.Get("button.support_boosty") + "\r\n" +
+                BoostySupportUrl;
 
             using (Form aboutForm = new Form())
             {
@@ -2880,18 +2883,9 @@ namespace CarExpenses
                 aboutForm.Controls.Add(infoBox);
 
                 MainMenu menu = new MainMenu();
-                menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.support_project"), new EventHandler(delegate
+                menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.support_boosty"), new EventHandler(delegate
                 {
-                    try
-                    {
-                        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-                        startInfo.FileName = "https://github.com/Dolfst/alfa#support";
-                        System.Diagnostics.Process.Start(startInfo);
-                    }
-                    catch
-                    {
-                        MessageBox.Show(L10n.Get("about.support_url_note"), L10n.Get("button.support_project"));
-                    }
+                    MessageBox.Show(BoostySupportUrl, L10n.Get("button.support_boosty"));
                 })));
                 menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.close"), new EventHandler(delegate
                 {
