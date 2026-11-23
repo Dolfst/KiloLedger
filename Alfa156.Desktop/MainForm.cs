@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.39.1";
+        private const string AppVersion = "1.39.2";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -424,7 +424,12 @@ namespace Alfa156.Desktop
             settingsTab.Controls.Add(BuildSettingsPage());
             tabs.TabPages.Add(settingsTab);
             tabs.SelectedIndexChanged += SummaryTabSelected;
-            tabs.SelectedIndexChanged += delegate { SyncSidebarSelection(); };
+            tabs.SelectedIndexChanged += delegate
+            {
+                SyncSidebarSelection();
+                if (tabs.SelectedTab == settingsTab)
+                    settingsTab.PerformLayout();
+            };
 
             BuildSidebarNavItems();
             SyncSidebarSelection();
@@ -1604,16 +1609,23 @@ namespace Alfa156.Desktop
             return btn;
         }
 
-        private Panel MakeSettingsCard(string titleKey, Control content)
+        private Control MakeSettingsCard(string titleKey, Control content)
         {
-            Panel card = new Panel
+            TableLayoutPanel card = new TableLayoutPanel
             {
-                BackColor = Color.White,
-                Width = 860,
+                Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 3,
+                BackColor = Color.White,
                 Padding = new Padding(16, 12, 16, 14),
                 Margin = new Padding(0, 0, 0, 12)
             };
+            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             card.Paint += delegate(object s, PaintEventArgs pe)
             {
                 using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
@@ -1625,8 +1637,9 @@ namespace Alfa156.Desktop
                 Text = L10n.Get(titleKey),
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(35, 51, 70),
-                Dock = DockStyle.Top,
-                Height = 26,
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, 0, 4),
                 Tag = titleKey
             };
             settingsLocalizable.Add(header);
@@ -1636,40 +1649,67 @@ namespace Alfa156.Desktop
                 Dock = DockStyle.Top,
                 Height = 1,
                 BackColor = Color.FromArgb(234, 238, 244),
-                Margin = new Padding(0, 4, 0, 8)
+                Margin = new Padding(0, 4, 0, 5)
             };
 
-            content.Dock = DockStyle.Top;
-            card.Controls.Add(content);
-            card.Controls.Add(divider);
-            card.Controls.Add(header);
+            content.Dock = DockStyle.Fill;
+            content.Margin = new Padding(0);
+            card.Controls.Add(header, 0, 0);
+            card.Controls.Add(divider, 0, 1);
+            card.Controls.Add(content, 0, 2);
             return card;
+        }
+
+        private static FlowLayoutPanel CreateSettingsFlowBody()
+        {
+            return new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = true,
+                Padding = new Padding(0, 2, 0, 0),
+                Margin = new Padding(0),
+                BackColor = Color.White
+            };
         }
 
         private Control BuildSettingsPage()
         {
-            FlowLayoutPanel host = new FlowLayoutPanel
+            Panel host = new Panel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 246, 249),
                 Padding = new Padding(4, 2, 12, 12)
             };
 
-            // Card 1: Maintenance intervals
-            FlowLayoutPanel maintBody = new FlowLayoutPanel
+            TableLayoutPanel stack = new TableLayoutPanel
             {
+                Dock = DockStyle.Top,
                 AutoSize = true,
-                WrapContents = true,
-                Padding = new Padding(0, 8, 0, 0),
-                BackColor = Color.White
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 5,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
+            stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            for (int r = 0; r < 5; r++)
+                stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            // Card 1: Maintenance intervals
+            FlowLayoutPanel maintBody = CreateSettingsFlowBody();
+            ToIntervals defaults = new ToIntervals();
             oilIntervalBox.Width = 76;
+            oilIntervalBox.Text = defaults.OilInterval.ToString(CultureInfo.InvariantCulture);
             oilWarnBox.Width = 64;
+            oilWarnBox.Text = defaults.OilWarn.ToString(CultureInfo.InvariantCulture);
             beltIntervalBox.Width = 76;
+            beltIntervalBox.Text = defaults.BeltInterval.ToString(CultureInfo.InvariantCulture);
             beltWarnBox.Width = 64;
+            beltWarnBox.Text = defaults.BeltWarn.ToString(CultureInfo.InvariantCulture);
             maintBody.Controls.Add(MakeSettingsLabel("label.oil_interval"));
             maintBody.Controls.Add(oilIntervalBox);
             maintBody.Controls.Add(MakeSettingsLabel("label.warning"));
@@ -1679,16 +1719,10 @@ namespace Alfa156.Desktop
             maintBody.Controls.Add(MakeSettingsLabel("label.warning"));
             maintBody.Controls.Add(beltWarnBox);
             maintBody.Controls.Add(MakeSettingsButton("button.save_intervals", SaveToIntervals));
-            host.Controls.Add(MakeSettingsCard("settings.card_maintenance", maintBody));
+            stack.Controls.Add(MakeSettingsCard("settings.card_maintenance", maintBody), 0, 0);
 
             // Card 2: Currency & monthly budget
-            FlowLayoutPanel financeBody = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                WrapContents = true,
-                Padding = new Padding(0, 8, 0, 0),
-                BackColor = Color.White
-            };
+            FlowLayoutPanel financeBody = CreateSettingsFlowBody();
             currencyBox.Width = 66;
             currencyBox.Text = "BYN";
             budgetBox.Width = 76;
@@ -1703,16 +1737,10 @@ namespace Alfa156.Desktop
             financeBody.Controls.Add(MakeSettingsLabel("label.warn_pct_compact"));
             financeBody.Controls.Add(budgetWarnBox);
             financeBody.Controls.Add(MakeSettingsButton("button.save_budget", SaveBudget));
-            host.Controls.Add(MakeSettingsCard("settings.card_currency_budget", financeBody));
+            stack.Controls.Add(MakeSettingsCard("settings.card_currency_budget", financeBody), 0, 1);
 
             // Card 3: Backups & reminders
-            FlowLayoutPanel remindBody = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                WrapContents = true,
-                Padding = new Padding(0, 8, 0, 0),
-                BackColor = Color.White
-            };
+            FlowLayoutPanel remindBody = CreateSettingsFlowBody();
             backupRemindBox.Width = 52;
             backupRemindBox.Text = "7";
             reminderWarnBox.Width = 52;
@@ -1723,17 +1751,12 @@ namespace Alfa156.Desktop
             remindBody.Controls.Add(MakeSettingsLabel("label.reminder_days"));
             remindBody.Controls.Add(reminderWarnBox);
             remindBody.Controls.Add(MakeSettingsButton("button.save_reminder_days", SaveReminderWarnDays));
-            host.Controls.Add(MakeSettingsCard("settings.card_reminders", remindBody));
+            stack.Controls.Add(MakeSettingsCard("settings.card_reminders", remindBody), 0, 2);
 
             // Card 4: Vehicle & language
-            FlowLayoutPanel generalBody = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                WrapContents = true,
-                Padding = new Padding(0, 8, 0, 0),
-                BackColor = Color.White
-            };
+            FlowLayoutPanel generalBody = CreateSettingsFlowBody();
             defaultCarBox.Width = 170;
+            RefreshDefaultCarBox();
             languageBox.Width = 110;
             languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
             languageBox.Items.Clear();
@@ -1746,8 +1769,17 @@ namespace Alfa156.Desktop
             generalBody.Controls.Add(MakeSettingsLabel("dialog.language"));
             generalBody.Controls.Add(languageBox);
             generalBody.Controls.Add(MakeSettingsButton("button.save_language", SaveLanguage));
-            host.Controls.Add(MakeSettingsCard("settings.card_general", generalBody));
+            stack.Controls.Add(MakeSettingsCard("settings.card_general", generalBody), 0, 3);
 
+            // Card 5: Google Sync & database shortcuts
+            FlowLayoutPanel syncBody = CreateSettingsFlowBody();
+            syncBody.Controls.Add(MakeSettingsButton("button.open_folder", OpenFolder));
+            syncBody.Controls.Add(MakeSettingsButton("button.open_zip", OpenZip));
+            syncBody.Controls.Add(MakeSettingsButton("button.google_wizard", OpenGoogleSyncWizard));
+            syncBody.Controls.Add(MakeSettingsButton("button.google_settings", ConfigureGoogleSync));
+            stack.Controls.Add(MakeSettingsCard("title.google_sync_hub", syncBody), 0, 4);
+
+            host.Controls.Add(stack);
             return host;
         }
 
