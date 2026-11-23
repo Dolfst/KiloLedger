@@ -1,6 +1,7 @@
 using Alfa156.Localization;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Printing;
 using System.Globalization;
@@ -15,7 +16,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.39.2";
+        private const string AppVersion = "1.39.3";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -337,6 +338,8 @@ namespace Alfa156.Desktop
             toolsMenu.Items.Add(new ToolStripSeparator());
             toolsMenu.Items.Add(MakeMenuItem("button.duplicates", OpenDuplicates));
             toolsMenu.Items.Add(MakeMenuItem("button.data_integrity", OpenDataIntegrity));
+            toolsMenu.Items.Add(new ToolStripSeparator());
+            toolsMenu.Items.Add(MakeMenuItem("title.about", ShowAboutDialog));
             Control toolsBtn = MakeDropdownButton("menu.tools", toolsMenu);
             headerActions.Add(toolsBtn);
             actionsBar.Controls.Add(toolsBtn);
@@ -1690,13 +1693,13 @@ namespace Alfa156.Desktop
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 5,
+                RowCount = 6,
                 BackColor = Color.Transparent,
                 Margin = new Padding(0),
                 Padding = new Padding(0)
             };
             stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            for (int r = 0; r < 5; r++)
+            for (int r = 0; r < 6; r++)
                 stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             // Card 1: Maintenance intervals
@@ -1779,8 +1782,183 @@ namespace Alfa156.Desktop
             syncBody.Controls.Add(MakeSettingsButton("button.google_settings", ConfigureGoogleSync));
             stack.Controls.Add(MakeSettingsCard("title.google_sync_hub", syncBody), 0, 4);
 
+            // Card 6: About & Project support
+            FlowLayoutPanel aboutBody = CreateSettingsFlowBody();
+            aboutBody.Controls.Add(MakeSettingsButton("title.about", ShowAboutDialog));
+            aboutBody.Controls.Add(MakeSettingsButton("button.support_project", delegate { OpenExternalUrl("https://github.com/Dolfst/alfa#support"); }));
+            stack.Controls.Add(MakeSettingsCard("title.about", aboutBody), 0, 5);
+
             host.Controls.Add(stack);
             return host;
+        }
+
+        private void OpenExternalUrl(string url)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, url + "\r\n\r\n" + ex.Message, L10n.Get("title.about"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void ShowAboutDialog(object sender, EventArgs e)
+        {
+            using (Form dlg = new Form())
+            {
+                dlg.Text = L10n.Get("title.about");
+                dlg.Width = 520;
+                dlg.Height = 400;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.MaximizeBox = false;
+                dlg.MinimizeBox = false;
+                dlg.BackColor = Color.FromArgb(244, 246, 249);
+                dlg.Font = new Font("Segoe UI", 9F);
+                if (Icon != null)
+                    dlg.Icon = Icon;
+
+                Panel banner = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 68,
+                    BackColor = Color.FromArgb(35, 51, 70),
+                    Padding = new Padding(16, 12, 16, 10)
+                };
+                PictureBox logo = new PictureBox
+                {
+                    Width = 40,
+                    Height = 40,
+                    Left = 16,
+                    Top = 14,
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    BackColor = Color.Transparent
+                };
+                try
+                {
+                    if (Icon != null)
+                    {
+                        using (Icon small = new Icon(Icon, new Size(40, 40)))
+                            logo.Image = small.ToBitmap();
+                    }
+                }
+                catch { }
+                Label titleLbl = new Label
+                {
+                    Text = "Alfa 156  v" + ResolveVersion(),
+                    Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                    ForeColor = Color.White,
+                    Left = 68,
+                    Top = 12,
+                    Width = 420,
+                    Height = 26
+                };
+                Label platLbl = new Label
+                {
+                    Text = L10n.Get("about.platforms_line"),
+                    Font = new Font("Segoe UI", 8.5F),
+                    ForeColor = Color.FromArgb(180, 195, 214),
+                    Left = 68,
+                    Top = 38,
+                    Width = 420,
+                    Height = 20
+                };
+                banner.Controls.Add(titleLbl);
+                banner.Controls.Add(platLbl);
+                if (logo.Image != null)
+                    banner.Controls.Add(logo);
+
+                Panel body = new Panel
+                {
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(18, 14, 18, 12),
+                    BackColor = Color.White
+                };
+
+                Label taglineLbl = new Label
+                {
+                    Text = L10n.Get("about.tagline"),
+                    Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(35, 51, 70),
+                    Left = 18,
+                    Top = 14,
+                    Width = 465,
+                    Height = 36
+                };
+
+                Label siteLabel = new Label
+                {
+                    Text = L10n.Get("about.website_label"),
+                    ForeColor = Color.FromArgb(71, 85, 105),
+                    Left = 18,
+                    Top = 58,
+                    Width = 465,
+                    Height = 20
+                };
+
+                LinkLabel repoLink = new LinkLabel
+                {
+                    Text = "https://github.com/Dolfst/alfa",
+                    LinkColor = Color.FromArgb(200, 43, 43),
+                    Left = 18,
+                    Top = 80,
+                    Width = 465,
+                    Height = 22
+                };
+                repoLink.LinkClicked += delegate { OpenExternalUrl("https://github.com/Dolfst/alfa"); };
+
+                Label supportLbl = new Label
+                {
+                    Text = L10n.Get("about.support_hint"),
+                    ForeColor = Color.FromArgb(71, 85, 105),
+                    Left = 18,
+                    Top = 114,
+                    Width = 465,
+                    Height = 48
+                };
+
+                LinkLabel supportLink = new LinkLabel
+                {
+                    Text = "https://github.com/Dolfst/alfa#support",
+                    LinkColor = Color.FromArgb(35, 51, 70),
+                    Left = 18,
+                    Top = 166,
+                    Width = 465,
+                    Height = 22
+                };
+                supportLink.LinkClicked += delegate { OpenExternalUrl("https://github.com/Dolfst/alfa#support"); };
+
+                Button supportBtn = MakeAccentButton("button.support_project", delegate
+                {
+                    OpenExternalUrl("https://github.com/Dolfst/alfa#support");
+                });
+                supportBtn.AutoSize = false;
+                supportBtn.Width = 210;
+                supportBtn.Height = 34;
+                supportBtn.Left = 18;
+                supportBtn.Top = 212;
+
+                Button closeBtn = MakeButton("button.close", delegate { dlg.Close(); });
+                closeBtn.AutoSize = false;
+                closeBtn.Width = 110;
+                closeBtn.Height = 34;
+                closeBtn.Left = 374;
+                closeBtn.Top = 212;
+
+                body.Controls.AddRange(new Control[]
+                {
+                    taglineLbl, siteLabel, repoLink, supportLbl, supportLink, supportBtn, closeBtn
+                });
+
+                dlg.Controls.Add(body);
+                dlg.Controls.Add(banner);
+                dlg.AcceptButton = closeBtn;
+                dlg.CancelButton = closeBtn;
+                dlg.ShowDialog(this);
+            }
         }
 
         private void OpenGoogleSyncHub(object sender, EventArgs e)

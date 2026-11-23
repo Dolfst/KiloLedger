@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: Wechsel fällig",
   "notif.due_soon_title": "Alfa 156: Wartung bald fällig",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.39.2\n\nErfassung von Tanken, Reparaturen, Ausgaben und Nebenkosten.",
+  "about.kpk_full": "Alfa 156\nVersion 1.39.3\n\nErfassung von Tanken, Reparaturen, Ausgaben und Nebenkosten.",
   "error.csv_unclosed_quote": "CSV enthält ein nicht geschlossenes Anführungszeichen.",
   "msg.csv_exported_to": "CSV exportiert nach",
   "import.csv_folder_label": "CSV-Ordner",
@@ -1249,5 +1249,10 @@
   "settings.card_maintenance": "Wartungsintervalle",
   "settings.card_currency_budget": "Währung & Budget",
   "settings.card_reminders": "Backups & Erinnerungen",
-  "settings.card_general": "Fahrzeug & Sprache"
+  "settings.card_general": "Fahrzeug & Sprache",
+  "button.support_project": "Projekt unterstützen",
+  "about.platforms_line": "Plattformen: Windows PC, Android & Windows Mobile (PDA)",
+  "about.website_label": "Projektwebsite & Quellcode:",
+  "about.support_hint": "Die App ist völlig kostenlos und werbefrei. Wenn sie Ihnen Zeit spart, können Sie die Entwicklung unterstützen:",
+  "about.support_url_note": "Unterstützungsoptionen und Links:\nhttps://github.com/Dolfst/alfa#support"
 }

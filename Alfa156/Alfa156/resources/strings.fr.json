@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156 : remplacement requis",
   "notif.due_soon_title": "Alfa 156 : entretien proche",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.39.2\n\nSuivi carburant, réparations, dépenses et services.",
+  "about.kpk_full": "Alfa 156\nVersion 1.39.3\n\nSuivi carburant, réparations, dépenses et services.",
   "error.csv_unclosed_quote": "Le CSV contient un guillemet non fermé.",
   "msg.csv_exported_to": "CSV exportés vers",
   "import.csv_folder_label": "Dossier CSV",
@@ -1249,5 +1249,10 @@
   "settings.card_maintenance": "Intervalles d'entretien",
   "settings.card_currency_budget": "Devise et budget",
   "settings.card_reminders": "Sauvegardes et rappels",
-  "settings.card_general": "Véhicule et langue"
+  "settings.card_general": "Véhicule et langue",
+  "button.support_project": "Soutenir le projet",
+  "about.platforms_line": "Plateformes : Windows PC, Android et Windows Mobile (PDA)",
+  "about.website_label": "Site du projet et code source :",
+  "about.support_hint": "L'application est entièrement gratuite et sans publicité. Si elle vous fait gagner du temps, vous pouvez soutenir son développement :",
+  "about.support_url_note": "Options et liens de soutien :\nhttps://github.com/Dolfst/alfa#support"
 }

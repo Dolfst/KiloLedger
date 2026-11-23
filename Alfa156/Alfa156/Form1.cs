@@ -2842,10 +2842,13 @@ namespace CarExpenses
             return ToSettings.GetCurrency();
         }
 
+        private const string AppVersionBanner = "Версия 1.39.3";
+
         private void ShowAbout(object sender, EventArgs e)
         {
-            MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.39.2\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+            string bodyText =
+                L10n.Get("about.kpk_full") + "\r\n" +
+                L10n.Get("about.platforms_line") + "\r\n\r\n" +
                 (L10n.Get("onboarding.station_short") + "\r\n") +
                 (L10n.Get("onboarding.forecast_feature") + "\r\n") +
                 (L10n.Get("onboarding.passport_timeline_short") + "\r\n") +
@@ -2855,8 +2858,54 @@ namespace CarExpenses
                 (L10n.Get("onboarding.period_compare_feature") + "\r\n") +
                 (L10n.Get("onboarding.purpose_year_feature") + "\r\n") +
                 (L10n.Get("onboarding.export_dups_search") + "\r\n") +
-                L10n.Get("onboarding.full_tank_feature"),
-                L10n.Get("title.about"));
+                L10n.Get("onboarding.full_tank_feature") + "\r\n\r\n" +
+                L10n.Get("about.website_label") + "\r\nhttps://github.com/Dolfst/alfa\r\n\r\n" +
+                L10n.Get("about.support_hint") + "\r\n" +
+                L10n.Get("about.support_url_note");
+
+            using (Form aboutForm = new Form())
+            {
+                aboutForm.Text = L10n.Get("title.about");
+                aboutForm.WindowState = FormWindowState.Maximized;
+                aboutForm.MinimizeBox = false;
+
+                TextBox infoBox = new TextBox();
+                infoBox.Multiline = true;
+                infoBox.ReadOnly = true;
+                infoBox.ScrollBars = ScrollBars.Vertical;
+                infoBox.Location = new Point(4, 4);
+                infoBox.Text = bodyText;
+                infoBox.SelectionStart = 0;
+                infoBox.SelectionLength = 0;
+                aboutForm.Controls.Add(infoBox);
+
+                MainMenu menu = new MainMenu();
+                menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.support_project"), new EventHandler(delegate
+                {
+                    try
+                    {
+                        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                        startInfo.FileName = "https://github.com/Dolfst/alfa#support";
+                        System.Diagnostics.Process.Start(startInfo);
+                    }
+                    catch
+                    {
+                        MessageBox.Show(L10n.Get("about.support_url_note"), L10n.Get("button.support_project"));
+                    }
+                })));
+                menu.MenuItems.Add(CreateMenuItem(L10n.Get("button.close"), new EventHandler(delegate
+                {
+                    aboutForm.Close();
+                })));
+                aboutForm.Menu = menu;
+
+                aboutForm.Resize += new EventHandler(delegate
+                {
+                    infoBox.Size = new Size(aboutForm.ClientSize.Width - 8, aboutForm.ClientSize.Height - 8);
+                });
+                infoBox.Size = new Size(aboutForm.ClientSize.Width - 8, aboutForm.ClientSize.Height - 8);
+                aboutForm.ShowDialog();
+            }
         }
 
         private void ExportSummaryFromMenu(object sender, EventArgs e)

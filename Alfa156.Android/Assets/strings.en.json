@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: replacement due",
   "notif.due_soon_title": "Alfa 156: service due soon",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.39.2\n\nFuel, repair, expense, and utility tracker.",
+  "about.kpk_full": "Alfa 156\nVersion 1.39.3\n\nFuel, repair, expense, and utility tracker.",
   "error.csv_unclosed_quote": "CSV contains an unclosed quote.",
   "msg.csv_exported_to": "CSV exported to",
   "import.csv_folder_label": "CSV folder",
@@ -1249,5 +1249,10 @@
   "settings.card_maintenance": "Maintenance intervals",
   "settings.card_currency_budget": "Currency & budget",
   "settings.card_reminders": "Backups & reminders",
-  "settings.card_general": "Vehicle & language"
+  "settings.card_general": "Vehicle & language",
+  "button.support_project": "Support the project",
+  "about.platforms_line": "Platforms: Windows PC, Android & Windows Mobile (PDA)",
+  "about.website_label": "Project website & source code:",
+  "about.support_hint": "The app is completely free and ad-free. If it saves you time, you can support its development:",
+  "about.support_url_note": "Support options and links:\nhttps://github.com/Dolfst/alfa#support"
 }

@@ -4609,9 +4609,22 @@ public sealed class MainActivity : Activity
         return ToSettings.GetCurrency(DataDirectory);
     }
 
+    private void OpenExternalUrl(string url)
+    {
+        try
+        {
+            Intent intent = new Intent(Intent.ActionView, Uri.Parse(url));
+            StartActivity(intent);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage(url + "\n\n" + ex.Message);
+        }
+    }
+
     private void ShowAbout()
     {
-        string version = "1.39.2";
+        string version = "1.39.3";
         try
         {
             var info = PackageManager.GetPackageInfo(PackageName, 0);
@@ -4623,14 +4636,21 @@ public sealed class MainActivity : Activity
             .SetTitle(L10n.Get("title.about"))
             .SetMessage((L10n.Get("about.android_version_prefix") + " ") + version +
                 ("\n\n" + L10n.Get("about.tagline")) +
-                ("\n" + L10n.Get("onboarding.forecast_feature")) +
+                ("\n" + L10n.Get("about.platforms_line")) +
+                ("\n\n" + L10n.Get("onboarding.forecast_feature")) +
                 ("\n" + L10n.Get("onboarding.passport_templates_feature")) +
                 ("\n" + L10n.Get("onboarding.reminders_feature")) +
                 ("\n" + L10n.Get("onboarding.notes_feature")) +
                 ("\n" + L10n.Get("onboarding.station_feature")) +
                 ("\n" + L10n.Get("onboarding.chart_feature")) +
                 ("\n" + L10n.Get("onboarding.receipts_feature")) +
-                ("\n" + L10n.Get("onboarding.full_tank_feature")))
+                ("\n" + L10n.Get("onboarding.full_tank_feature")) +
+                ("\n\n" + L10n.Get("about.website_label") + "\nhttps://github.com/Dolfst/alfa") +
+                ("\n\n" + L10n.Get("about.support_hint")))
+            .SetNeutralButton(L10n.Get("button.support_project"), delegate
+            {
+                OpenExternalUrl("https://github.com/Dolfst/alfa#support");
+            })
             .SetPositiveButton(L10n.Get("button.ok"), delegate { })
             .Show();
     }
