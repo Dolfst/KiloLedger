@@ -4609,6 +4609,8 @@ public sealed class MainActivity : Activity
         return ToSettings.GetCurrency(DataDirectory);
     }
 
+    private const string BoostySupportUrl = "https://boosty.to/kiloledger";
+
     private void OpenExternalUrl(string url)
     {
         try
@@ -4646,10 +4648,11 @@ public sealed class MainActivity : Activity
                 ("\n" + L10n.Get("onboarding.receipts_feature")) +
                 ("\n" + L10n.Get("onboarding.full_tank_feature")) +
                 ("\n\n" + L10n.Get("about.website_label") + "\nhttps://github.com/Dolfst/alfa") +
-                ("\n\n" + L10n.Get("about.support_hint")))
-            .SetNeutralButton(L10n.Get("button.support_project"), delegate
+                ("\n\n" + L10n.Get("about.support_hint")) +
+                ("\n" + L10n.Get("button.support_boosty") + "\n" + BoostySupportUrl))
+            .SetNeutralButton(L10n.Get("button.support_boosty"), delegate
             {
-                OpenExternalUrl("https://github.com/Dolfst/alfa#support");
+                OpenExternalUrl(BoostySupportUrl);
             })
             .SetPositiveButton(L10n.Get("button.ok"), delegate { })
             .Show();
