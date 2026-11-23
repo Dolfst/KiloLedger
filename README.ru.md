@@ -100,7 +100,7 @@ Smoke-проверкам нужен Python 3. В CI стоит Python 3.12. Ус
 | `KiloLedger-1.39.3-KPK.exe` | Windows Mobile |
 | `KiloLedger-1.39.3-KPK.zip` | пакет КПК (приложение и CAB CF 3.5) |
 
-Те же файлы прикреплены к скользящим релизам [`android-latest`](https://github.com/Dolfst/alfa/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) и [`kpk-latest`](https://github.com/Dolfst/alfa/releases/tag/kpk-latest). Workflow **Android APK**, **Desktop EXE** и **KPK EXE** пересобирают их при push в соответствующий проект или в `VERSION`. Их можно запустить вручную на вкладке Actions.
+Те же файлы прикреплены к скользящим релизам [`android-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest) и [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest). Workflow **Android APK**, **Desktop EXE** и **KPK EXE** пересобирают их при push в соответствующий проект или в `VERSION`. Их можно запустить вручную на вкладке Actions.
 
 На КПК новый `KiloLedger-<версия>-KPK.exe` нужно один раз запустить. Он переписывает ярлык в меню «Пуск», чтобы тот указывал на эту сборку.
 
@@ -275,12 +275,12 @@ Workflow **Smoke verifies** на GitHub Actions запускает этот на
 
 ## Поддержка
 
-KiloLedger бесплатный и без рекламы. Экран «О программе» ведёт сюда (`https://github.com/Dolfst/alfa#support`). На GitHub по умолчанию открывается английский [`README.md`](README.md), и якорь `#support` стоит в том файле. Этот раздел его повторяет.
+KiloLedger бесплатный и без рекламы. Репозиторий — [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger). Экран «О программе» по-прежнему открывает `https://github.com/Dolfst/alfa#support`; GitHub перенаправляет этот адрес сюда, на якорь `#support` английского [`README.md`](README.md). Этот раздел его повторяет.
 
-- Поставьте звезду [Dolfst/alfa](https://github.com/Dolfst/alfa), если проект полезен.
+- Поставьте звезду [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger), если проект полезен.
 - Ссылок на платную поддержку (Boosty, Tribute, ЮMoney) в репозитории пока нет. Добавьте их в раздел Support английского README, когда выберете. Приложения уже открывают этот якорь.
 
-Замечания: [github.com/Dolfst/alfa/issues](https://github.com/Dolfst/alfa/issues).
+Замечания: [github.com/Dolfst/KiloLedger/issues](https://github.com/Dolfst/KiloLedger/issues).
 
 ## Участие в разработке
 

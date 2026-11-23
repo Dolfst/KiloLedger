@@ -100,7 +100,7 @@ Version **1.39.3** in [`dist/download`](dist/download):
 | `KiloLedger-1.39.3-KPK.exe` | Windows Mobile |
 | `KiloLedger-1.39.3-KPK.zip` | Handheld package (app and CF 3.5 CAB) |
 
-The same files are also attached to the rolling GitHub releases [`android-latest`](https://github.com/Dolfst/alfa/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/alfa/releases/tag/desktop-latest), and [`kpk-latest`](https://github.com/Dolfst/alfa/releases/tag/kpk-latest). Workflows **Android APK**, **Desktop EXE**, and **KPK EXE** rebuild them on pushes that touch the matching project or `VERSION`, and they can be started by hand from the Actions tab.
+The same files are also attached to the rolling GitHub releases [`android-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest), and [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest). Workflows **Android APK**, **Desktop EXE**, and **KPK EXE** rebuild them on pushes that touch the matching project or `VERSION`, and they can be started by hand from the Actions tab.
 
 On the handheld, run the new `KiloLedger-<version>-KPK.exe` once. It rewrites the Start-menu shortcut so it points at that build.
 
@@ -275,12 +275,12 @@ Version 1.39.3 is the current line. Recent desktop work (1.38.3–1.39.3) rework
 
 ## Support
 
-KiloLedger is free and has no ads. The in-app About screen links here (`https://github.com/Dolfst/alfa#support`).
+KiloLedger is free and has no ads. This repository is [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger). The in-app About screen still opens `https://github.com/Dolfst/alfa#support`; GitHub redirects that address here, to `#support` on the English README.
 
-- Star [Dolfst/alfa](https://github.com/Dolfst/alfa) if the project is useful to you.
+- Star [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger) if the project is useful to you.
 - Paid support links (Boosty, Tribute, YooMoney) are not in the repository yet. Add them in this section when you choose them. The apps already point at this anchor.
 
-Issues: [github.com/Dolfst/alfa/issues](https://github.com/Dolfst/alfa/issues).
+Issues: [github.com/Dolfst/KiloLedger/issues](https://github.com/Dolfst/KiloLedger/issues).
 
 ## Contributing
 

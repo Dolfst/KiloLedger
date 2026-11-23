@@ -16,7 +16,7 @@ KiloLedger — приложение для учёта расходов авто�
 - **Windows Desktop**: `KiloLedger-1.39.3-Desktop.exe`
 - **Windows Mobile/КПК**: `KiloLedger-1.39.3-KPK.exe`
 
-[Скачать последнюю версию](https://github.com/Dolfst/alfa/tree/main/dist/download)
+[Скачать последнюю версию](https://github.com/Dolfst/KiloLedger/tree/main/dist/download)
 
 ### 2. Установка
 
@@ -181,7 +181,7 @@ Wi-Fi-обмен (порт `45816`) — это отдельный канал м�
 
 ## Поддержка и обратная связь
 
-- **GitHub Issues**: https://github.com/Dolfst/alfa/issues
+- **GitHub Issues**: https://github.com/Dolfst/KiloLedger/issues
 - **Поиск**: используйте встроенный глобальный поиск (Меню → Действия → Поиск)
 - **Документация**: [README.md](README.md) · [README.ru.md](README.ru.md)
 

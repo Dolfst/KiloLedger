@@ -135,7 +135,7 @@ Apps Script автоматически создаёт следующие лис�
 - **Подробная инструкция**: [`google-sync/README.md`](google-sync/README.md)
 - **Код скрипта**: [`google-sync/Alfa156Sync.gs`](google-sync/Alfa156Sync.gs)
 - **Документация Google Apps Script**: https://developers.google.com/apps-script
-- **Issues**: https://github.com/Dolfst/alfa/issues
+- **Issues**: https://github.com/Dolfst/KiloLedger/issues
 
 ---
 

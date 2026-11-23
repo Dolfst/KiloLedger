@@ -58,7 +58,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 
 ![Пустой проект Apps Script с кодом по умолчанию](screenshots/scr%20%283%29.png)
 
-3. Откройте файл [`Alfa156Sync.gs`](Alfa156Sync.gs) в репозитории (или скачайте [raw-файл](https://raw.githubusercontent.com/Dolfst/alfa/main/google-sync/Alfa156Sync.gs)), скопируйте **всё** его содержимое и вставьте в редактор `Код.gs`.
+3. Откройте файл [`Alfa156Sync.gs`](Alfa156Sync.gs) в репозитории (или скачайте [raw-файл](https://raw.githubusercontent.com/Dolfst/KiloLedger/main/google-sync/Alfa156Sync.gs)), скопируйте **всё** его содержимое и вставьте в редактор `Код.gs`.
 4. Нажмите значок сохранения (дискета) или `Ctrl + S` — надпись *«Несохранённые изменения»* должна исчезнуть.
 5. При желании нажмите на заголовок **«Проект без названия»** вверху и переименуйте проект, например в `KiloLedger Синхр`.
 

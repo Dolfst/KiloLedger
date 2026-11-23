@@ -41,7 +41,7 @@ Commit messages in this repository are bilingual, for example: `Уточнить
 
 ## Bugs and ideas
 
-Open an issue on [Dolfst/alfa](https://github.com/Dolfst/alfa/issues). Say which client, which version (`VERSION` or the About screen), and whether the data came from a `.dat` folder, a ZIP, Wi-Fi, or Google Sheets.
+Open an issue on [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger/issues). Say which client, which version (`VERSION` or the About screen), and whether the data came from a `.dat` folder, a ZIP, Wi-Fi, or Google Sheets.
 
 There is no `LICENSE` file yet. Do not add one on a contributor’s behalf. The owner chooses the license. See the License section of the README.
 

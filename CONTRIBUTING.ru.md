@@ -41,7 +41,7 @@ python3 build/run_verifies.py
 
 ## Ошибки и идеи
 
-Замечание открывают в [Dolfst/alfa](https://github.com/Dolfst/alfa/issues). Напишите клиент, версию (`VERSION` или экран «О программе») и откуда данные: папка `.dat`, ZIP, Wi-Fi или Google Таблицы.
+Замечание открывают в [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger/issues). Напишите клиент, версию (`VERSION` или экран «О программе») и откуда данные: папка `.dat`, ZIP, Wi-Fi или Google Таблицы.
 
 Файла `LICENSE` пока нет. Не добавляйте его от имени автора. Лицензию выбирает владелец. Смотрите раздел «Лицензия» в README.
 
