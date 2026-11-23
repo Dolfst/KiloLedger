@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: Wechsel fällig",
   "notif.due_soon_title": "Alfa 156: Wartung bald fällig",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.38.5\n\nErfassung von Tanken, Reparaturen, Ausgaben und Nebenkosten.",
+  "about.kpk_full": "Alfa 156\nVersion 1.39.0\n\nErfassung von Tanken, Reparaturen, Ausgaben und Nebenkosten.",
   "error.csv_unclosed_quote": "CSV enthält ein nicht geschlossenes Anführungszeichen.",
   "msg.csv_exported_to": "CSV exportiert nach",
   "import.csv_folder_label": "CSV-Ordner",

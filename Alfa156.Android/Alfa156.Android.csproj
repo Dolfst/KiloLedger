@@ -4,8 +4,8 @@
     <OutputType>Exe</OutputType>
     <ApplicationId>com.alfa156.mobile</ApplicationId>
     <ApplicationTitle>Alfa 156</ApplicationTitle>
-    <ApplicationVersion>13805</ApplicationVersion>
-    <ApplicationDisplayVersion>1.38.5</ApplicationDisplayVersion>
+    <ApplicationVersion>13900</ApplicationVersion>
+    <ApplicationDisplayVersion>1.39.0</ApplicationDisplayVersion>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <AndroidManifest>AndroidManifest.xml</AndroidManifest>
     <AndroidPackageFormat>apk</AndroidPackageFormat>

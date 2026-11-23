@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156 : remplacement requis",
   "notif.due_soon_title": "Alfa 156 : entretien proche",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.38.5\n\nSuivi carburant, réparations, dépenses et services.",
+  "about.kpk_full": "Alfa 156\nVersion 1.39.0\n\nSuivi carburant, réparations, dépenses et services.",
   "error.csv_unclosed_quote": "Le CSV contient un guillemet non fermé.",
   "msg.csv_exported_to": "CSV exportés vers",
   "import.csv_folder_label": "Dossier CSV",

@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.38.5";
+        private const string AppVersion = "1.39.0";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -115,15 +115,12 @@ namespace Alfa156.Desktop
 
         public MainForm()
         {
-            // Загрузить сохранённый язык из настроек до создания UI-элементов,
-            // иначе L10n.Get() вернёт строки по умолчанию (ru).
-            string savedLang = ToSettings.GetLanguage(repository.Settings);
-// First run detection: if no language saved OR no settings exist, user will be prompted to select language
-_firstRun = String.IsNullOrEmpty(savedLang) || !SettingsExist();
-if (!_firstRun)
-    LocalizationManager.Instance.CurrentLanguage = savedLang;
-else
-    LocalizationManager.Instance.CurrentLanguage = "ru";
+            // Загрузить сохранённый язык из %AppData%\Alfa156\language.txt (или настроек базы) до создания UI.
+            string savedLang = LoadStartupLanguage();
+            if (String.IsNullOrEmpty(savedLang))
+                savedLang = ToSettings.GetLanguage(repository.Settings);
+            _firstRun = String.IsNullOrEmpty(savedLang);
+            LocalizationManager.Instance.CurrentLanguage = _firstRun ? "ru" : savedLang;
 
             // Обновить текст полей, инициализированных до конструктора
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
@@ -158,26 +155,53 @@ else
                 Dock = DockStyle.Top,
                 Height = 68,
                 BackColor = Color.FromArgb(28, 41, 57),
-                Padding = new Padding(16, 12, 16, 8)
+                Padding = new Padding(14, 12, 12, 8)
+            };
+            PictureBox brandIcon = new PictureBox
+            {
+                Width = 34,
+                Height = 34,
+                Dock = DockStyle.Left,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 0, 10, 0)
+            };
+            try
+            {
+                if (Icon != null)
+                {
+                    using (Icon small = new Icon(Icon, new Size(32, 32)))
+                        brandIcon.Image = small.ToBitmap();
+                }
+            }
+            catch { }
+            Panel brandTextHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(10, 0, 0, 0),
+                BackColor = Color.Transparent
             };
             brandTitleLabel.Text = "Alfa 156";
-            brandTitleLabel.Font = new Font("Segoe UI", 13.5F, FontStyle.Bold);
+            brandTitleLabel.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             brandTitleLabel.ForeColor = Color.White;
             brandTitleLabel.Dock = DockStyle.Top;
-            brandTitleLabel.Height = 26;
+            brandTitleLabel.Height = 24;
             brandVersionLabel.Text = "v" + ResolveVersion();
             brandVersionLabel.Font = new Font("Segoe UI", 8.5F);
             brandVersionLabel.ForeColor = Color.FromArgb(165, 180, 200);
             brandVersionLabel.Dock = DockStyle.Top;
             brandVersionLabel.Height = 18;
+            brandTextHost.Controls.Add(brandVersionLabel);
+            brandTextHost.Controls.Add(brandTitleLabel);
             Panel brandAccent = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 3,
                 BackColor = Color.FromArgb(200, 43, 43)
             };
-            brandHeader.Controls.Add(brandVersionLabel);
-            brandHeader.Controls.Add(brandTitleLabel);
+            brandHeader.Controls.Add(brandTextHost);
+            if (brandIcon.Image != null)
+                brandHeader.Controls.Add(brandIcon);
             brandHeader.Controls.Add(brandAccent);
 
             navList.Dock = DockStyle.Fill;
@@ -460,22 +484,52 @@ else
                 ApplyLanguageToUI();
         }
 
+        private static string StartupLanguageFilePath()
+        {
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            return Path.Combine(Path.Combine(appDataPath, "Alfa156"), "language.txt");
+        }
+
+        private static string LoadStartupLanguage()
+        {
+            try
+            {
+                string path = StartupLanguageFilePath();
+                if (!File.Exists(path))
+                    return "";
+                string code = (File.ReadAllText(path, Encoding.UTF8) ?? "").Trim().ToLowerInvariant();
+                return code;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        private static void SaveStartupLanguage(string lang)
+        {
+            try
+            {
+                if (String.IsNullOrWhiteSpace(lang))
+                    return;
+                string path = StartupLanguageFilePath();
+                string dir = Path.GetDirectoryName(path);
+                if (!String.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+                File.WriteAllText(path, lang.Trim().ToLowerInvariant(), Encoding.UTF8);
+            }
+            catch { }
+        }
+
         private bool SettingsExist()
         {
             try
             {
-                // Проверяем наличие файла настроек в папке приложения пользователя
-                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                string settingsDir = Path.Combine(appDataPath, "Alfa156");
-                string settingsFile = Path.Combine(settingsDir, "settings.json");
-                
-                // Если файл настроек не существует — это настоящий первый запуск
-                return !File.Exists(settingsFile);
+                return File.Exists(StartupLanguageFilePath());
             }
-            catch (Exception)
+            catch
             {
-                // При любой ошибке считаем, что настройки не существуют
-                return true;
+                return false;
             }
         }
 
@@ -496,80 +550,118 @@ else
                 dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dialog.MaximizeBox = false;
                 dialog.MinimizeBox = false;
-                dialog.Size = new Size(340, 190);
+                dialog.ClientSize = new Size(360, 145);
                 dialog.BackColor = Color.FromArgb(244, 246, 249);
+                dialog.Font = new Font("Segoe UI", 9F);
+
+                Label promptLbl = new Label
+                {
+                    Text = L10n.Get("msg.choose_language"),
+                    Left = 18,
+                    Top = 16,
+                    Width = 324,
+                    ForeColor = Color.FromArgb(35, 51, 70)
+                };
 
                 var langCombo = new ComboBox()
                 {
-                    Left = 16,
-                    Top = 20,
-                    Width = 290,
+                    Left = 18,
+                    Top = 42,
+                    Width = 324,
                     DropDownStyle = ComboBoxStyle.DropDownList
                 };
                 foreach (var lang in langs)
-                    langCombo.Items.Add(lang);
+                    langCombo.Items.Add(L10n.GetLanguageDisplayName(lang) + " (" + lang + ")");
                 if (langCombo.Items.Count > 0)
                     langCombo.SelectedIndex = 0;
 
-                var btnOk = new Button()
-                {
-                    Text = L10n.Get("button.save"),
-                    DialogResult = DialogResult.OK,
-                    Left = 116,
-                    Top = 76,
-                    Width = 90
-                };
-                var btnCancel = new Button()
-                {
-                    Text = L10n.Get("button.cancel"),
-                    DialogResult = DialogResult.Cancel,
-                    Left = 216,
-                    Top = 76,
-                    Width = 90
-                };
+                Button btnOk = MakeAccentButton("button.save", null);
+                btnOk.Text = L10n.Get("button.save");
+                btnOk.DialogResult = DialogResult.OK;
+                btnOk.AutoSize = false;
+                btnOk.Width = 104;
+                btnOk.Height = 32;
+                btnOk.Left = 140;
+                btnOk.Top = 92;
+
+                Button btnCancel = MakeButton("button.cancel", null);
+                btnCancel.DialogResult = DialogResult.Cancel;
+                btnCancel.AutoSize = false;
+                btnCancel.Width = 90;
+                btnCancel.Height = 32;
+                btnCancel.Left = 252;
+                btnCancel.Top = 92;
 
                 dialog.AcceptButton = btnOk;
                 dialog.CancelButton = btnCancel;
-                dialog.Controls.AddRange(new Control[] { langCombo, btnOk, btnCancel });
+                dialog.Controls.AddRange(new Control[] { promptLbl, langCombo, btnOk, btnCancel });
 
-                if (dialog.ShowDialog() == DialogResult.OK)
+                string selectedLang = "ru";
+                if (dialog.ShowDialog() == DialogResult.OK &&
+                    langCombo.SelectedIndex >= 0 &&
+                    langCombo.SelectedIndex < langs.Length)
                 {
-                    string selectedLang = langCombo.SelectedItem != null ? langCombo.SelectedItem.ToString() : "ru";
-                    LocalizationManager.Instance.CurrentLanguage = selectedLang;
-                    repository.Settings = ToSettings.SetLanguage(repository.Settings, selectedLang);
-                    if (!String.IsNullOrEmpty(repository.DirectoryPath))
-                        repository.Save();
-                    ApplyLanguageToUI();
+                    selectedLang = langs[langCombo.SelectedIndex];
                 }
-                else
-                {
-                    LocalizationManager.Instance.CurrentLanguage = "ru";
-                    ApplyLanguageToUI();
-                }
+                LocalizationManager.Instance.CurrentLanguage = selectedLang;
+                SaveStartupLanguage(selectedLang);
+                repository.Settings = ToSettings.SetLanguage(repository.Settings, selectedLang);
+                if (!String.IsNullOrEmpty(repository.DirectoryPath))
+                    repository.Save();
+                ApplyLanguageToUI();
             }
         }
 
         private static DataGridView CreateGrid()
         {
-            return new DataGridView
+            DataGridView grid = new DataGridView
             {
                 Dock = DockStyle.Fill,
                 AllowUserToAddRows = true,
                 AllowUserToDeleteRows = true,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 RowHeadersVisible = true,
+                RowHeadersWidth = 26,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = true,
                 BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(234, 238, 244),
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
+                ColumnHeadersHeight = 34,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single
             };
+            grid.RowTemplate.Height = 28;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 245, 249);
+            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(35, 51, 70);
+            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
+            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
+            grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.FromArgb(35, 51, 70);
+            grid.DefaultCellStyle.BackColor = Color.White;
+            grid.DefaultCellStyle.ForeColor = Color.FromArgb(30, 41, 59);
+            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(226, 234, 245);
+            grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(23, 37, 54);
+            grid.DefaultCellStyle.Padding = new Padding(6, 2, 6, 2);
+            grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 251, 253);
+            grid.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
+            grid.RowHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(200, 43, 43);
+            grid.RowHeadersDefaultCellStyle.SelectionForeColor = Color.White;
+            return grid;
         }
 
         private static TabPage WrapGrid(string locKey, DataGridView grid)
         {
             TabPage page = new TabPage(L10n.Get(locKey));
             page.Tag = locKey;
-            page.Controls.Add(grid);
+            page.BackColor = Color.FromArgb(244, 246, 249);
+            Panel card = CreateBorderedCard(new Padding(1), new Padding(0));
+            card.Dock = DockStyle.Fill;
+            card.Controls.Add(grid);
+            page.Controls.Add(card);
             return page;
         }
 
@@ -577,15 +669,21 @@ else
         {
             TabPage page = new TabPage(L10n.Get(locKey));
             page.Tag = locKey;
+            page.BackColor = Color.FromArgb(244, 246, 249);
             TableLayoutPanel layout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = contextBar != null ? 3 : 2,
-                Padding = new Padding(0),
+                Padding = new Padding(1),
                 BackColor = Color.White
             };
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+            layout.Paint += delegate(object s, PaintEventArgs pe)
+            {
+                using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
+                    pe.Graphics.DrawRectangle(p, 0, 0, layout.Width - 1, layout.Height - 1);
+            };
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             if (contextBar != null)
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -636,7 +734,7 @@ else
                 WrapContents = true,
                 AutoSize = true,
                 Margin = new Padding(0),
-                Padding = new Padding(4, 3, 4, 3),
+                Padding = new Padding(6, 3, 6, 3),
                 BackColor = Color.FromArgb(249, 250, 252)
             };
             bar.Paint += delegate(object s, PaintEventArgs pe)
@@ -670,19 +768,21 @@ else
                 delegate { ResetFuelFilter(); });
             fuelFilterPurpose.DropDownStyle = ComboBoxStyle.DropDownList;
             fuelFilterPurpose.Width = 110;
+            fuelFilterPurpose.Margin = new Padding(3, 5, 6, 3);
             fuelFilterPurpose.Items.Clear();
             fuelFilterPurpose.Items.Add("Все цели");
             fuelFilterPurpose.Items.Add("Личный");
             fuelFilterPurpose.Items.Add("Работа");
             fuelFilterPurpose.SelectedIndex = 0;
-            bar.Controls.Add(FilterLabel(L10n.Get("label.purpose")));
+            bar.Controls.Add(FilterLabel("label.purpose"));
             bar.Controls.Add(fuelFilterPurpose);
             fuelFilterStation.DropDownStyle = ComboBoxStyle.DropDownList;
             fuelFilterStation.Width = 120;
+            fuelFilterStation.Margin = new Padding(3, 5, 6, 3);
             fuelFilterStation.Items.Clear();
             fuelFilterStation.Items.Add("Все АЗС");
             fuelFilterStation.SelectedIndex = 0;
-            bar.Controls.Add(FilterLabel(L10n.Get("label.station")));
+            bar.Controls.Add(FilterLabel("label.station"));
             bar.Controls.Add(fuelFilterStation);
             // Move apply/reset after purpose/station: rebuild order by bringing buttons to end.
             Control apply = null;
@@ -729,31 +829,33 @@ else
                 utilityFilterFrom, utilityFilterTo, utilityFilterText,
                 delegate { ApplyUtilityFilterFromUi(); },
                 delegate { ResetUtilityFilter(); },
-                L10n.Get("label.month_from"), L10n.Get("label.month_to"), L10n.Get("title.search"));
+                "label.month_from", "label.month_to", "title.search");
         }
 
         private static FlowLayoutPanel BuildPeriodTextFilterBar(
             TextBox fromBox, TextBox toBox, TextBox textBox,
             EventHandler apply, EventHandler reset,
-            string fromLabel = null, string toLabel = null, string textLabel = null)
+            string fromKey = "label.from", string toKey = "label.to", string textKey = "title.search")
         {
-            if (fromLabel == null) fromLabel = L10n.Get("label.from");
-            if (toLabel == null) toLabel = L10n.Get("label.to");
-            if (textLabel == null) textLabel = L10n.Get("title.search");
             FlowLayoutPanel bar = new FlowLayoutPanel
             {
                 WrapContents = true,
-                AutoSize = false,
-                Padding = new Padding(2)
+                AutoSize = true,
+                Margin = new Padding(0),
+                Padding = new Padding(6, 5, 6, 5),
+                BackColor = Color.White
             };
-            bar.Controls.Add(FilterLabel(fromLabel));
+            bar.Controls.Add(FilterLabel(fromKey));
             fromBox.Width = 90;
+            fromBox.Margin = new Padding(3, 5, 6, 3);
             bar.Controls.Add(fromBox);
-            bar.Controls.Add(FilterLabel(toLabel));
+            bar.Controls.Add(FilterLabel(toKey));
             toBox.Width = 90;
+            toBox.Margin = new Padding(3, 5, 6, 3);
             bar.Controls.Add(toBox);
-            bar.Controls.Add(FilterLabel(textLabel));
+            bar.Controls.Add(FilterLabel(textKey));
             textBox.Width = 140;
+            textBox.Margin = new Padding(3, 5, 6, 3);
             bar.Controls.Add(textBox);
             bar.Controls.Add(MakeButton("button.apply", apply));
             bar.Controls.Add(MakeButton("button.reset", reset));
@@ -767,34 +869,42 @@ else
             FlowLayoutPanel bar = new FlowLayoutPanel
             {
                 WrapContents = true,
-                AutoSize = false,
-                Padding = new Padding(2)
+                AutoSize = true,
+                Margin = new Padding(0),
+                Padding = new Padding(6, 5, 6, 5),
+                BackColor = Color.White
             };
             categoryBox.DropDownStyle = ComboBoxStyle.DropDownList;
             categoryBox.Width = 140;
-            bar.Controls.Add(FilterLabel(L10n.Get("label.category")));
+            categoryBox.Margin = new Padding(3, 5, 6, 3);
+            bar.Controls.Add(FilterLabel("label.category"));
             bar.Controls.Add(categoryBox);
-            bar.Controls.Add(FilterLabel(L10n.Get("label.from")));
+            bar.Controls.Add(FilterLabel("label.from"));
             fromBox.Width = 90;
+            fromBox.Margin = new Padding(3, 5, 6, 3);
             bar.Controls.Add(fromBox);
-            bar.Controls.Add(FilterLabel(L10n.Get("label.to")));
+            bar.Controls.Add(FilterLabel("label.to"));
             toBox.Width = 90;
+            toBox.Margin = new Padding(3, 5, 6, 3);
             bar.Controls.Add(toBox);
-            bar.Controls.Add(FilterLabel(L10n.Get("title.search")));
+            bar.Controls.Add(FilterLabel("title.search"));
             textBox.Width = 140;
+            textBox.Margin = new Padding(3, 5, 6, 3);
             bar.Controls.Add(textBox);
             bar.Controls.Add(MakeButton("button.apply", apply));
             bar.Controls.Add(MakeButton("button.reset", reset));
             return bar;
         }
 
-        private static Label FilterLabel(string text)
+        private static Label FilterLabel(string locKey)
         {
             return new Label
             {
-                Text = text,
+                Text = L10n.Get(locKey),
                 AutoSize = true,
-                Padding = new Padding(4, 8, 0, 0)
+                Padding = new Padding(4, 9, 2, 0),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Tag = locKey
             };
         }
 
@@ -2447,12 +2557,16 @@ else
         {
             try
             {
-                EnsurePath();
                 string lang = languageBox.Text ?? "ru";
-                repository.Settings = ToSettings.SetLanguage(repository.Settings, lang);
-                repository.Save();
-                dirty = false;
                 LocalizationManager.SetLanguage(lang);
+                SaveStartupLanguage(lang);
+                if (!String.IsNullOrEmpty(repository.DirectoryPath))
+                {
+                    repository.Settings = ToSettings.SetLanguage(repository.Settings, lang);
+                    repository.Save();
+                    dirty = false;
+                    UpdateSaveDirtyVisual();
+                }
                 ApplyLanguageToUI();
                 SetStatus(L10n.Get("label.language_colon") + " " + L10n.GetLanguageDisplayName(lang));
                 RefreshSummaryText();
@@ -2466,7 +2580,7 @@ else
         }
 
         /// <summary>
-        /// Применить текущий язык ко всем элементам интерфейса (кнопки, вкладки, метки).
+        /// Применить текущий язык ко всем элементам интерфейса (кнопки, вкладки, метки, заголовки таблиц).
         /// Вызывается при старте и при смене языка — без перезапуска приложения.
         /// </summary>
         private void ApplyLanguageToUI()
@@ -2476,6 +2590,8 @@ else
             reportLinkLabel.Text = L10n.Get("button.last_report");
             if (String.IsNullOrEmpty(repository.DirectoryPath))
                 pathBox.Text = L10n.Get("hint.open_folder_or_zip");
+            if (globalSearchBox.ForeColor == Color.Gray)
+                globalSearchBox.Text = L10n.Get("button.search_ellipsis");
             summaryTab.Text = L10n.Get("tab.summary");
             settingsTab.Text = L10n.Get("tab.settings");
 
@@ -2520,6 +2636,7 @@ else
             UpdateFilterBarButtons(repairsGrid);
             UpdateFilterBarButtons(expensesGrid);
             UpdateFilterBarButtons(utilitiesGrid);
+            UpdateGridHeadersLanguage();
 
             foreach (TabPage page in tabs.TabPages)
             {
@@ -2528,14 +2645,74 @@ else
             }
 
             SyncSidebarSelection();
+            summaryChart.Invalidate();
             languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
         }
 
+        private void UpdateGridHeadersLanguage()
+        {
+            if (carsGrid.Columns.Count >= 6)
+            {
+                carsGrid.Columns[0].HeaderText = L10n.Get("label.vehicle");
+                carsGrid.Columns[1].HeaderText = L10n.Get("label.year");
+                carsGrid.Columns[2].HeaderText = L10n.Get("label.plate");
+                carsGrid.Columns[3].HeaderText = "VIN";
+                carsGrid.Columns[4].HeaderText = L10n.Get("label.tank_l");
+                carsGrid.Columns[5].HeaderText = L10n.Get("label.note");
+            }
+            if (fuelGrid.Columns.Count >= 10)
+            {
+                fuelGrid.Columns[0].HeaderText = L10n.Get("label.date");
+                fuelGrid.Columns[1].HeaderText = L10n.Get("label.vehicle");
+                fuelGrid.Columns[2].HeaderText = L10n.Get("label.odometer_km");
+                fuelGrid.Columns[3].HeaderText = L10n.Get("label.liters");
+                fuelGrid.Columns[4].HeaderText = (L10n.Get("label.amount_comma") + " ") + Cur();
+                fuelGrid.Columns[5].HeaderText = L10n.Get("label.price_per_l");
+                fuelGrid.Columns[6].HeaderText = L10n.Get("label.comment");
+                fuelGrid.Columns[7].HeaderText = L10n.Get("label.full_tank");
+                fuelGrid.Columns[8].HeaderText = L10n.Get("label.purpose");
+                fuelGrid.Columns[9].HeaderText = L10n.Get("label.station_brand");
+            }
+            if (repairsGrid.Columns.Count >= 9)
+            {
+                repairsGrid.Columns[0].HeaderText = L10n.Get("label.date");
+                repairsGrid.Columns[1].HeaderText = L10n.Get("label.vehicle");
+                repairsGrid.Columns[2].HeaderText = L10n.Get("label.odometer_km");
+                repairsGrid.Columns[3].HeaderText = L10n.Get("label.category");
+                repairsGrid.Columns[4].HeaderText = L10n.Get("label.product");
+                repairsGrid.Columns[5].HeaderText = L10n.Get("label.description");
+                repairsGrid.Columns[6].HeaderText = L10n.Get("label.qty_short");
+                repairsGrid.Columns[7].HeaderText = (L10n.Get("label.amount_comma") + " ") + Cur();
+                repairsGrid.Columns[8].HeaderText = L10n.Get("label.comment");
+            }
+            if (expensesGrid.Columns.Count >= 6)
+            {
+                expensesGrid.Columns[0].HeaderText = L10n.Get("label.date");
+                expensesGrid.Columns[1].HeaderText = L10n.Get("label.vehicle");
+                expensesGrid.Columns[2].HeaderText = L10n.Get("label.category");
+                expensesGrid.Columns[3].HeaderText = L10n.Get("label.name");
+                expensesGrid.Columns[4].HeaderText = (L10n.Get("label.amount_comma") + " ") + Cur();
+                expensesGrid.Columns[5].HeaderText = L10n.Get("label.comment");
+            }
+            if (utilitiesGrid.Columns.Count >= 1 + AlfaCodec.UtilityLabels.Length)
+            {
+                utilitiesGrid.Columns[0].HeaderText = L10n.Get("label.month");
+                for (int i = 0; i < AlfaCodec.UtilityLabels.Length; i++)
+                    utilitiesGrid.Columns[i + 1].HeaderText = AlfaCodec.GetUtilityLabel(i);
+            }
+            if (categoriesGrid.Columns.Count >= 1)
+                categoriesGrid.Columns[0].HeaderText = L10n.Get("label.category");
+            if (expenseCategoriesGrid.Columns.Count >= 1)
+                expenseCategoriesGrid.Columns[0].HeaderText = L10n.Get("label.category");
+        }
+
         /// <summary>
-        /// Обновить кнопки apply/reset в панели фильтрации.
+        /// Обновить кнопки и подписи в панели фильтрации и контекстной панели.
         /// </summary>
         private void UpdateFilterBarButtons(DataGridView grid)
         {
+            if (grid == null || grid.Parent == null)
+                return;
             foreach (Control ctrl in grid.Parent.Controls)
             {
                 if (ctrl is FlowLayoutPanel bar)
@@ -2544,6 +2721,8 @@ else
                     {
                         if (c is Button b && b.Tag is string key)
                             b.Text = L10n.Get(key);
+                        else if (c is Label l && l.Tag is string lKey)
+                            l.Text = L10n.Get(lKey);
                     }
                 }
             }
