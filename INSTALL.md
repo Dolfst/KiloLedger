@@ -185,6 +185,17 @@ Wi-Fi-обмен (порт `45816`) — это отдельный канал м�
 - **Поиск**: используйте встроенный глобальный поиск (Меню → Действия → Поиск)
 - **Документация**: [README.md](README.md) · [README.ru.md](README.ru.md)
 
+## Подпись Android-релиза
+
+Обычная сборка APK подписывается отладочным ключом SDK и не обновляет уже установленное приложение с другим ключом. Для релизной подписи задайте все четыре переменные и соберите Release:
+
+- `KILOLEDGER_KEYSTORE_PATH` — путь к вашему keystore
+- `KILOLEDGER_KEYSTORE_PASSWORD`
+- `KILOLEDGER_KEY_ALIAS`
+- `KILOLEDGER_KEY_PASSWORD`
+
+В GitHub Actions для workflow **Android APK** те же данные лежат в секретах `ANDROID_KEYSTORE_BASE64` (содержимое keystore в base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` и `ANDROID_KEY_PASSWORD`. Если секрет не задан, релизный job останавливается и не публикует APK.
+
 ## Лицензия
 
 Copyright (C) 2026 Dolfst. Программа — под GNU AGPL версии 3 или любой более поздней версии. Текст: [LICENSE](LICENSE). Кратко: [README.md](README.md#license) и [README.ru.md](README.ru.md#лицензия).

@@ -79,6 +79,8 @@ dotnet build KiloLedger.Android/KiloLedger.Android.csproj -c Release \
 
 Signed APK: `KiloLedger.Android/bin/Release/net10.0-android/android-arm64/com.kiloledger.app-Signed.apk`.
 
+Without signing environment variables the Android build uses the SDK debug key, so pull-request compiles still succeed. A release that can update an installed app needs all four of `KILOLEDGER_KEYSTORE_PATH`, `KILOLEDGER_KEYSTORE_PASSWORD`, `KILOLEDGER_KEY_ALIAS`, and `KILOLEDGER_KEY_PASSWORD`. GitHub release workflow `android-apk.yml` reads `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. If any of those secrets is missing, the release job stops and does not publish an APK. Do not commit a keystore or a password.
+
 Handheld: `./build/build-kpk.sh Release` (package `mono-devel`: `mcs` and `resgen`). References are in `build/cf35/WindowsCE`.
 
 ## Checks and CI
