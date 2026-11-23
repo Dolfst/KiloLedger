@@ -119,7 +119,7 @@ def main() -> int:
     if 'ForecastInsights.cs"' not in kpk_build and "ForecastInsights.cs')" not in kpk_build:
         errors.append("build/build-kpk.ps1: ForecastInsights.cs must be in $sources")
 
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.ru.md").read_text()
     if "**1.30.0**" not in readme:
         errors.append("README: missing 1.30.0")
     if "оценк" not in readme.lower():

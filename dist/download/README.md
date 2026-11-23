@@ -1,5 +1,7 @@
 # Готовые сборки KiloLedger
 
+[English](../../README.md#installation) · [Русский](../../README.ru.md#установка)
+
 Версия берётся из корневого файла [`VERSION`](../../VERSION) (сейчас `1.39.3`).
 
 Имена файлов в этой папке всегда включают номер версии:
@@ -94,6 +96,6 @@
 **1.9.0:** сводка на Desktop, цена/л и комментарий у заправок, уведомления ТО на Android.
 
 Сборки обновляются автоматически GitHub Actions и публикуются в rolling Releases:
-- [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) — APK
-- [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) — Desktop EXE
-- [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) — КПК EXE / ZIP
+- [android-latest](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest) — APK
+- [desktop-latest](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest) — Desktop EXE
+- [kpk-latest](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest) — КПК EXE / ZIP
