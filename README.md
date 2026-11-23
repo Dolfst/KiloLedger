@@ -50,7 +50,7 @@ Default service intervals in a new database are 10â€¯000 km for oil (warn at 1â€
 
 Shared domain code is copied into each client on purpose. A change to behaviour or to a `.dat` file has to land in every client that owns that behaviour.
 
-Published Android builds are ARM64 APKs. GitHub Actions signs them with `KiloLedger.Android/kiloledger-upload.keystore`.
+Published Android builds are ARM64 APKs. GitHub Actions signs a release only when the repository signing secrets are set. See [INSTALL.md](INSTALL.md).
 
 ## Repository layout
 

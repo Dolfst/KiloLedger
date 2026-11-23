@@ -13,11 +13,12 @@
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <Nullable>disable</Nullable>
-    <!-- Постоянная подпись для обновлений sideload (один ключ для CI и локальных сборок). -->
-    <AndroidKeyStore>true</AndroidKeyStore>
-    <AndroidSigningKeyStore>$(MSBuildThisFileDirectory)kiloledger-upload.keystore</AndroidSigningKeyStore>
-    <AndroidSigningStorePass>Alfa156Upload!</AndroidSigningStorePass>
-    <AndroidSigningKeyAlias>kiloledger</AndroidSigningKeyAlias>
-    <AndroidSigningKeyPass>Alfa156Upload!</AndroidSigningKeyPass>
+    <!-- Release signing only when all four KILOLEDGER_* values are set (environment or MSBuild). -->
+    <KiloLedgerSignRelease Condition="'$(KILOLEDGER_KEYSTORE_PATH)' != '' and '$(KILOLEDGER_KEYSTORE_PASSWORD)' != '' and '$(KILOLEDGER_KEY_ALIAS)' != '' and '$(KILOLEDGER_KEY_PASSWORD)' != ''">true</KiloLedgerSignRelease>
+    <AndroidKeyStore Condition="'$(KiloLedgerSignRelease)' == 'true'">true</AndroidKeyStore>
+    <AndroidSigningKeyStore Condition="'$(KiloLedgerSignRelease)' == 'true'">$(KILOLEDGER_KEYSTORE_PATH)</AndroidSigningKeyStore>
+    <AndroidSigningStorePass Condition="'$(KiloLedgerSignRelease)' == 'true'">$(KILOLEDGER_KEYSTORE_PASSWORD)</AndroidSigningStorePass>
+    <AndroidSigningKeyAlias Condition="'$(KiloLedgerSignRelease)' == 'true'">$(KILOLEDGER_KEY_ALIAS)</AndroidSigningKeyAlias>
+    <AndroidSigningKeyPass Condition="'$(KiloLedgerSignRelease)' == 'true'">$(KILOLEDGER_KEY_PASSWORD)</AndroidSigningKeyPass>
   </PropertyGroup>
 </Project>

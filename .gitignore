@@ -32,6 +32,8 @@ My Documents/
 *secret*
 *credential*
 *auth*
+*.keystore
+*.jks
 
 # Local development
 local/
