@@ -2,6 +2,8 @@
 
 [English](README.md) · [Русский](README.ru.md)
 
+![KiloLedger](assets/logo/logo-256.png)
+
 **Vehicle expense tracker for Windows, Android, and Windows Mobile.**
 
 KiloLedger keeps fuel, service, other car costs, and household utility bills for one or more vehicles. A Windows PC, an Android phone, and a Windows Mobile handheld share the same text files, the same version number, and the same red-circle logo. The apps work offline. Cloud sync is optional and uses a Google Sheet that you host yourself.
