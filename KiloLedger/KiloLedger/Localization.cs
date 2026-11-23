@@ -121,19 +121,52 @@ namespace KiloLedger.Localization
         {
             try
             {
-                using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
+                Assembly asm = Assembly.GetExecutingAssembly();
+                string asmName = asm.GetName().Name;
+                string[] candidates = new string[]
                 {
-                    if (stream == null)
-                        return null;
-                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    resourceName,
+                    asmName + "." + resourceName,
+                    asmName + ".resources." + resourceName,
+                    "KiloLedger.resources." + resourceName
+                };
+                for (int i = 0; i < candidates.Length; i++)
+                {
+                    string text = ReadManifestStream(asm, candidates[i]);
+                    if (text != null)
+                        return text;
+                }
+                string[] all = asm.GetManifestResourceNames();
+                string suffix = "." + resourceName;
+                for (int i = 0; i < all.Length; i++)
+                {
+                    string fullName = all[i];
+                    if (string.Equals(fullName, resourceName, StringComparison.OrdinalIgnoreCase) ||
+                        fullName.EndsWith(suffix))
                     {
-                        return reader.ReadToEnd();
+                        string text = ReadManifestStream(asm, fullName);
+                        if (text != null)
+                            return text;
                     }
                 }
+                return null;
             }
             catch (Exception)
             {
                 return null;
+            }
+        }
+
+        private static string ReadManifestStream(Assembly asm, string name)
+        {
+            using (Stream stream = asm.GetManifestResourceStream(name))
+            {
+                if (stream == null)
+                    return null;
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                {
+                    return reader.ReadToEnd().TrimStart('\uFEFF');
+                }
             }
         }
 

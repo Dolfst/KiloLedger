@@ -85,6 +85,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Program.cs" />
+    <Compile Include="Localization.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
@@ -106,6 +107,23 @@
     </EmbeddedResource>
     <EmbeddedResource Include="SeedData\Vehicles.seed">
       <LogicalName>KiloLedger.SeedData.Vehicles.seed</LogicalName>
+    </EmbeddedResource>
+    <!-- LogicalName must match Localization.cs GetManifestResourceStream("strings.*.json").
+         Without these entries Visual Studio builds show L10n keys instead of translated text. -->
+    <EmbeddedResource Include="resources\strings.ru.json">
+      <LogicalName>strings.ru.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.en.json">
+      <LogicalName>strings.en.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.es.json">
+      <LogicalName>strings.es.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.fr.json">
+      <LogicalName>strings.fr.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.de.json">
+      <LogicalName>strings.de.json</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CompactFramework.CSharp.targets" />
