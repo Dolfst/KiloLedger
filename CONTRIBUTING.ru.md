@@ -2,7 +2,7 @@
 
 [English](CONTRIBUTING.md) · [Русский](CONTRIBUTING.ru.md)
 
-KiloLedger — это три клиента и одна текстовая база: Windows Mobile (`Alfa156/Alfa156`, .NET Compact Framework 3.5), Android (`Alfa156.Android`, .NET 10) и Windows (`Alfa156.Desktop`, .NET Framework 4.8). Что приложения делают на самом деле, написано в [`README.ru.md`](README.ru.md). Английский текст — [`README.md`](README.md).
+KiloLedger — это три клиента и одна текстовая база: Windows Mobile (`KiloLedger/KiloLedger`, .NET Compact Framework 3.5), Android (`KiloLedger.Android`, .NET 10) и Windows (`KiloLedger.Desktop`, .NET Framework 4.8). Что приложения делают на самом деле, написано в [`README.ru.md`](README.ru.md). Английский текст — [`README.md`](README.md).
 
 ## Прежде чем менять поведение
 
@@ -25,7 +25,7 @@ python3 build/run_verifies.py
 Соберите затронутый клиент, если машина это позволяет:
 
 - КПК: `./build/build-kpk.sh Release` или `build/build-kpk.ps1`.
-- Desktop на Windows: MSBuild, конфигурация `Release`. На Linux в заметках репозитория указано `dotnet build Alfa156.Desktop/Alfa156.Desktop.csproj -p:FrameworkPathOverride=/usr/lib/mono/4.8-api`.
+- Desktop на Windows: MSBuild, конфигурация `Release`. На Linux в заметках репозитория указано `dotnet build KiloLedger.Desktop/KiloLedger.Desktop.csproj -p:FrameworkPathOverride=/usr/lib/mono/4.8-api`.
 - Android: .NET 10 SDK, JDK 17, Android SDK. Команды — в разделе сборки README. CI публикует APK для ARM64.
 
 ## Документация

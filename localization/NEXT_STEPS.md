@@ -14,7 +14,7 @@
   - Система готова к использованию
 
 - **ЭТАП 2 (6d6ebca)**: Локализация Desktop главного меню
-  - Добавлена инструкция `using Alfa156.Localization`
+  - Добавлена инструкция `using KiloLedger.Localization`
   - Заменены основные кнопки на `L10n.Get()`
   - ~30% кнопок в главном меню локализировано
 
@@ -156,16 +156,16 @@ localization/
 │   └── strings.de.json                 # TODO: Немецкий
 └── LOCALIZATION.md                      # Документация
 
-Alfa156.Desktop/
+KiloLedger.Desktop/
 ├── Localization.cs                      # Скопировано из localization/
 ├── resources/                           # Скопировано из localization/
 └── MainForm.cs                          # ~30% локализировано
 
-Alfa156.Android/
+KiloLedger.Android/
 ├── Localization.cs                      # Копия готова
 └── resources/                           # Копия готова
 
-Alfa156/Alfa156/
+KiloLedger/KiloLedger/
 ├── Localization.cs                      # Копия готова
 └── resources/                           # Копия готова
 ```
@@ -188,5 +188,5 @@ Alfa156/Alfa156/
 
 Если нужны вопросы по система локализации:
 - Прочитайте `localization/LOCALIZATION.md`
-- Посмотрите на примеры в `Alfa156.Desktop/MainForm.cs`
+- Посмотрите на примеры в `KiloLedger.Desktop/MainForm.cs`
 - Используйте этот файл как roadmap для продолжения

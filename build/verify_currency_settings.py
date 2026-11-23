@@ -26,9 +26,9 @@ def main() -> int:
             errors.append(f"VERSION expected >= 1.15.0, got {version!r}")
 
     for rel in (
-        "Alfa156/Alfa156/ToSettings.cs",
-        "Alfa156.Android/ToSettings.cs",
-        "Alfa156.Desktop/Data/ToSettings.cs",
+        "KiloLedger/KiloLedger/ToSettings.cs",
+        "KiloLedger.Android/ToSettings.cs",
+        "KiloLedger.Desktop/Data/ToSettings.cs",
     ):
         text = (ROOT / rel).read_text()
         if 'CurrencyKey = "currency"' not in text and 'CurrencyKey = "currency"' not in text.replace(" ", ""):
@@ -38,8 +38,8 @@ def main() -> int:
             errors.append(f"{rel}: missing DefaultCurrency BYN")
 
     for rel, header in (
-        ("Alfa156/Alfa156/SyncCrypto.cs", "KILOLEDGER2R|"),
-        ("Alfa156.Android/SyncCrypto.cs", "KILOLEDGER2R|"),
+        ("KiloLedger/KiloLedger/SyncCrypto.cs", "KILOLEDGER2R|"),
+        ("KiloLedger.Android/SyncCrypto.cs", "KILOLEDGER2R|"),
     ):
         text = (ROOT / rel).read_text()
         if header not in text:
@@ -47,13 +47,13 @@ def main() -> int:
         if "1.15+" not in text:
             errors.append(f"{rel}: expected upgrade message mentioning 1.15+")
 
-    android_receipts = (ROOT / "Alfa156.Android/ReceiptStore.cs").read_text()
+    android_receipts = (ROOT / "KiloLedger.Android/ReceiptStore.cs").read_text()
     if "MaxSyncFileBytes = 2 * 1024 * 1024" not in android_receipts:
         errors.append("Android ReceiptStore: missing 2 MB cap")
     if "MaxSyncFiles = 50" not in android_receipts:
         errors.append("Android ReceiptStore: missing 50-file cap")
 
-    kpk = (ROOT / "Alfa156/Alfa156/DataStore.cs").read_text()
+    kpk = (ROOT / "KiloLedger/KiloLedger/DataStore.cs").read_text()
     if "MaxReceiptSyncFileBytes = 2 * 1024 * 1024" not in kpk:
         errors.append("KPK DataStore: missing 2 MB receipt cap")
     if "MaxReceiptSyncFiles = 50" not in kpk:
@@ -61,15 +61,15 @@ def main() -> int:
     if "WriteSyncReceipts" not in kpk or "ReadSyncReceipts" not in kpk:
         errors.append("KPK DataStore: missing receipt sync send/receive")
 
-    sync = (ROOT / "Alfa156.Android/ExpenseSyncService.cs").read_text()
+    sync = (ROOT / "KiloLedger.Android/ExpenseSyncService.cs").read_text()
     if "SendReceipts" not in sync or "ReceiveReceipts" not in sync:
         errors.append("Android ExpenseSyncService: missing receipt sync")
 
     # Visible BYN should be gone from UI (except currency picker help).
     for rel in (
-        "Alfa156/Alfa156/Form1.cs",
-        "Alfa156.Android/MainActivity.cs",
-        "Alfa156.Desktop/MainForm.cs",
+        "KiloLedger/KiloLedger/Form1.cs",
+        "KiloLedger.Android/MainActivity.cs",
+        "KiloLedger.Desktop/MainForm.cs",
     ):
         text = (ROOT / rel).read_text()
         for i, line in enumerate(text.splitlines(), 1):

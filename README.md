@@ -8,7 +8,7 @@ KiloLedger keeps fuel, service, other car costs, and household utility bills for
 
 Current version: **1.39.3**, from [`VERSION`](VERSION). Ready-to-run builds are in [`dist/download`](dist/download).
 
-The product name is **KiloLedger**. Project folders, namespaces, and some asset file names are still `Alfa156` (`com.kiloledger.app` on Android).
+The product name is **KiloLedger**. Project folders and namespaces are `KiloLedger`. The Android application id is `com.kiloledger.app`.
 
 ## What it is for
 
@@ -43,21 +43,21 @@ Default service intervals in a new database are 10 000 km for oil (warn at 1�
 
 | Client | Folder | Stack |
 | --- | --- | --- |
-| Windows Mobile handheld | `Alfa156/Alfa156` | .NET Compact Framework 3.5, Windows Forms, Pocket PC |
-| Android | `Alfa156.Android` | .NET 10 (`net10.0-android`), application id `com.kiloledger.app`, minimum Android 6.0 (API 23) |
-| Windows PC | `Alfa156.Desktop` | .NET Framework 4.8, Windows Forms |
-| Google Sheet bridge | `google-sync/Alfa156Sync.gs` | Google Apps Script web app |
+| Windows Mobile handheld | `KiloLedger/KiloLedger` | .NET Compact Framework 3.5, Windows Forms, Pocket PC |
+| Android | `KiloLedger.Android` | .NET 10 (`net10.0-android`), application id `com.kiloledger.app`, minimum Android 6.0 (API 23) |
+| Windows PC | `KiloLedger.Desktop` | .NET Framework 4.8, Windows Forms |
+| Google Sheet bridge | `google-sync/KiloLedgerSync.gs` | Google Apps Script web app |
 
 Shared domain code is copied into each client on purpose. A change to behaviour or to a `.dat` file has to land in every client that owns that behaviour.
 
-Published Android builds are ARM64 APKs. GitHub Actions signs them with `Alfa156.Android/alfa156-upload.keystore`.
+Published Android builds are ARM64 APKs. GitHub Actions signs them with `KiloLedger.Android/kiloledger-upload.keystore`.
 
 ## Repository layout
 
 ```text
-Alfa156/Alfa156/     Windows Mobile solution (Alfa156.sln)
-Alfa156.Android/     Android project
-Alfa156.Desktop/     Windows desktop project
+KiloLedger/KiloLedger/     Windows Mobile solution (KiloLedger.sln)
+KiloLedger.Android/     Android project
+KiloLedger.Desktop/     Windows desktop project
 google-sync/         Apps Script and the illustrated sync guide
 branding/            Shared logo and BrandTheme.md
 localization/        String tables (ru, en, es, fr, de) and older i18n notes
@@ -79,7 +79,7 @@ To **run** a published build:
 
 To **build**:
 
-- Handheld on Windows: `build/build-kpk.ps1`, `ResGen.exe`, and `csc.exe`, plus the reference assemblies already in `build/cf35/WindowsCE`. Visual Studio 2008 with the Windows Mobile SDK can open `Alfa156/Alfa156.sln` instead.
+- Handheld on Windows: `build/build-kpk.ps1`, `ResGen.exe`, and `csc.exe`, plus the reference assemblies already in `build/cf35/WindowsCE`. Visual Studio 2008 with the Windows Mobile SDK can open `KiloLedger/KiloLedger.sln` instead.
 - Handheld on Linux or macOS: Mono (`mono-devel`) and `./build/build-kpk.sh`.
 - Desktop on Windows: MSBuild and the .NET Framework 4.8 targeting pack.
 - Desktop on Linux, as used by this repository’s agent notes: the .NET SDK with `FrameworkPathOverride` pointed at Mono’s 4.8 reference assemblies.
@@ -121,34 +121,34 @@ powershell -ExecutionPolicy Bypass -File build/build-kpk.ps1 -Configuration Rele
 Desktop on Windows:
 
 ```bat
-msbuild Alfa156.Desktop\Alfa156.Desktop.csproj /p:Configuration=Release /p:Platform=AnyCPU
+msbuild KiloLedger.Desktop\KiloLedger.Desktop.csproj /p:Configuration=Release /p:Platform=AnyCPU
 ```
 
-The output is `Alfa156.Desktop\bin\Release\Alfa156.Desktop.exe`.
+The output is `KiloLedger.Desktop\bin\Release\KiloLedger.Desktop.exe`.
 
 Desktop on Linux, when Mono 4.8 reference assemblies are installed:
 
 ```sh
-dotnet build Alfa156.Desktop/Alfa156.Desktop.csproj --nologo -p:FrameworkPathOverride=/usr/lib/mono/4.8-api
+dotnet build KiloLedger.Desktop/KiloLedger.Desktop.csproj --nologo -p:FrameworkPathOverride=/usr/lib/mono/4.8-api
 ```
 
 Android ARM64, after `ANDROID_HOME` and `JAVA_HOME` are set and the Android workload is installed:
 
 ```sh
 dotnet workload install android
-dotnet build Alfa156.Android/Alfa156.Android.csproj \
+dotnet build KiloLedger.Android/KiloLedger.Android.csproj \
   -t:InstallAndroidDependencies -f net10.0-android \
   -p:AndroidSdkDirectory="$ANDROID_HOME" \
   -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AcceptAndroidSDKLicenses=True
-dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
+dotnet build KiloLedger.Android/KiloLedger.Android.csproj -c Release \
   -p:RuntimeIdentifier=android-arm64 \
   -p:AndroidSdkDirectory="$ANDROID_HOME" \
   -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AcceptAndroidSDKLicenses=True
 ```
 
-The signed APK is under `Alfa156.Android/bin/Release/net10.0-android/android-arm64/` and its name ends with `-Signed.apk`.
+The signed APK is under `KiloLedger.Android/bin/Release/net10.0-android/android-arm64/` and its name ends with `-Signed.apk`.
 
 ## Configuration
 
@@ -205,7 +205,7 @@ The Wi-Fi exchange is implemented only on Android and Windows Mobile. The PC doe
 
 Stable ids are matched first. Otherwise the clients fall back to natural keys (for fuel: date + vehicle + odometer). The Wi-Fi payload includes the `.dat` files those clients already share, including templates, reminders, notes, the car passport, and trips on current versions.
 
-**Android / PC ↔ Google Sheets.** You paste `google-sync/Alfa156Sync.gs` into the sheet, set `SYNC_TOKEN`, and deploy a web app that runs as you and is reachable by anyone who has the URL. The script’s pull/push payload is cars, fuel, repairs, other expenses, utilities, repair categories, and expense categories. Sheets are named `Заправки {car}`, `Ремонт {car}`, `Прочие {car}`, `Коммунальные`, `Справочник`, and `Кат. прочих`. Trips, notes, reminders, templates, the car passport, and receipt photos are not part of that payload. Record ids stay in the local `.dat` files and in ZIP backups. Desktop Excel import also recognizes a Dengi-style workbook when the sheet names match that layout.
+**Android / PC ↔ Google Sheets.** You paste `google-sync/KiloLedgerSync.gs` into the sheet, set `SYNC_TOKEN`, and deploy a web app that runs as you and is reachable by anyone who has the URL. The script’s pull/push payload is cars, fuel, repairs, other expenses, utilities, repair categories, and expense categories. Sheets are named `Заправки {car}`, `Ремонт {car}`, `Прочие {car}`, `Коммунальные`, `Справочник`, and `Кат. прочих`. Trips, notes, reminders, templates, the car passport, and receipt photos are not part of that payload. Record ids stay in the local `.dat` files and in ZIP backups. Desktop Excel import also recognizes a Dengi-style workbook when the sheet names match that layout.
 
 ## Tests
 

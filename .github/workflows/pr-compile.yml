@@ -3,8 +3,8 @@ name: PR compile
 on:
   pull_request:
     paths:
-      - "Alfa156.Desktop/**"
-      - "Alfa156.Android/**"
+      - "KiloLedger.Desktop/**"
+      - "KiloLedger.Android/**"
       - "VERSION"
       - ".github/workflows/pr-compile.yml"
   workflow_dispatch:
@@ -34,9 +34,9 @@ jobs:
           set -euo pipefail
           curl -fsSL -o /tmp/net48.nupkg https://www.nuget.org/api/v2/package/Microsoft.NETFramework.ReferenceAssemblies.net48/1.0.3
           unzip -q /tmp/net48.nupkg -d /tmp/net48
-          dotnet build Alfa156.Desktop/Alfa156.Desktop.csproj -c Release --nologo \
+          dotnet build KiloLedger.Desktop/KiloLedger.Desktop.csproj -c Release --nologo \
             -p:FrameworkPathOverride=/tmp/net48/build/.NETFramework/v4.8
-          test -f Alfa156.Desktop/bin/Release/Alfa156.Desktop.exe
+          test -f KiloLedger.Desktop/bin/Release/KiloLedger.Desktop.exe
 
   android:
     runs-on: ubuntu-latest
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build ARM64 APK
         run: >-
-          dotnet build Alfa156.Android/Alfa156.Android.csproj
+          dotnet build KiloLedger.Android/KiloLedger.Android.csproj
           -c Release
           -p:RuntimeIdentifier=android-arm64
           -p:AndroidSdkDirectory="$ANDROID_HOME"
@@ -94,10 +94,10 @@ jobs:
       - name: Confirm signed APK
         run: |
           set -euo pipefail
-          signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' -print)"
+          signed="$(find KiloLedger.Android/bin/Release -name '*-Signed.apk' -print)"
           if [ -z "$signed" ]; then
             echo "Signed APK not found" >&2
-            find Alfa156.Android/bin/Release -name '*.apk' -print >&2 || true
+            find KiloLedger.Android/bin/Release -name '*.apk' -print >&2 || true
             exit 1
           fi
           echo "$signed"

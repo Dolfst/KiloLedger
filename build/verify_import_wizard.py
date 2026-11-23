@@ -24,7 +24,7 @@ def main() -> int:
     if not ok:
         errors.append(f"VERSION expected >= 1.27.0, got {version!r}")
 
-    preview = ROOT / "Alfa156.Desktop/Exchange/ImportPreview.cs"
+    preview = ROOT / "KiloLedger.Desktop/Exchange/ImportPreview.cs"
     if not preview.is_file():
         errors.append("missing ImportPreview.cs")
     else:
@@ -40,7 +40,7 @@ def main() -> int:
             if needle not in text:
                 errors.append(f"ImportPreview.cs: missing {needle!r}")
 
-    wizard = ROOT / "Alfa156.Desktop/ImportWizardForm.cs"
+    wizard = ROOT / "KiloLedger.Desktop/ImportWizardForm.cs"
     if not wizard.is_file():
         errors.append("missing ImportWizardForm.cs")
     else:
@@ -59,20 +59,20 @@ def main() -> int:
             if needle not in text:
                 errors.append(f"ImportWizardForm.cs: missing {needle!r}")
 
-    csv = (ROOT / "Alfa156.Desktop/Exchange/CsvExchange.cs").read_text()
+    csv = (ROOT / "KiloLedger.Desktop/Exchange/CsvExchange.cs").read_text()
     if "ExportTemplates" not in csv:
         errors.append("CsvExchange.cs: missing ExportTemplates")
     for needle in ("FuelHeaders", "RepairHeaders", "ExpenseHeaders"):
         if needle not in csv:
             errors.append(f"CsvExchange.cs: missing {needle!r}")
 
-    csproj = (ROOT / "Alfa156.Desktop/Alfa156.Desktop.csproj").read_text()
+    csproj = (ROOT / "KiloLedger.Desktop/KiloLedger.Desktop.csproj").read_text()
     if "ImportWizardForm.cs" not in csproj:
         errors.append("Desktop csproj: missing ImportWizardForm.cs")
     if "ImportPreview.cs" not in csproj:
         errors.append("Desktop csproj: missing ImportPreview.cs")
 
-    mainform = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    mainform = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
     for needle in (
         f'AppVersion = "{version}"',
         "OpenImportWizard",
@@ -83,7 +83,7 @@ def main() -> int:
         if needle not in mainform:
             errors.append(f"Desktop MainForm: missing {needle!r}")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
     for needle in (
         f'version = "{version}"',
         'SetTitle("Импорт копии")',
@@ -96,7 +96,7 @@ def main() -> int:
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
 
-    display = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
+    display = (ROOT / "KiloLedger.Android/KiloLedger.Android.csproj").read_text()
     if f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>" not in display:
         errors.append(f"Android csproj: ApplicationDisplayVersion not {version}")
     major, minor, patch = (int(part) for part in version.split("."))
@@ -104,7 +104,7 @@ def main() -> int:
     if f"<ApplicationVersion>{version_code}</ApplicationVersion>" not in display:
         errors.append(f"Android csproj: ApplicationVersion not {version_code}")
 
-    asm = (ROOT / "Alfa156.Desktop/Properties/AssemblyInfo.cs").read_text()
+    asm = (ROOT / "KiloLedger.Desktop/Properties/AssemblyInfo.cs").read_text()
     if f'AssemblyVersion("{version}.0")' not in asm:
         errors.append(f"Desktop AssemblyInfo: not {version}.0")
 

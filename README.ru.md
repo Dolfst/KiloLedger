@@ -12,7 +12,7 @@ KiloLedger ведёт заправки, ремонт, прочие расход�
 
 - Экран «О программе» на Desktop, Android и КПК: версия, список платформ, ссылка на проект и раздел «Поддержать проект».
 
-Название продукта — **KiloLedger**. Каталоги проектов, пространства имён и часть имён файлов по-прежнему `Alfa156` (на Android идентификатор `com.kiloledger.app`).
+Название продукта — **KiloLedger**. Каталоги проектов и пространства имён тоже `KiloLedger`. Идентификатор Android — `com.kiloledger.app`.
 
 ## Зачем это приложение
 
@@ -47,21 +47,21 @@ KiloLedger ведёт заправки, ремонт, прочие расход�
 
 | Клиент | Каталог | Стек |
 | --- | --- | --- |
-| КПК, Windows Mobile | `Alfa156/Alfa156` | .NET Compact Framework 3.5, Windows Forms, Pocket PC |
-| Android | `Alfa156.Android` | .NET 10 (`net10.0-android`), приложение `com.kiloledger.app`, минимум Android 6.0 (API 23) |
-| Windows, ПК | `Alfa156.Desktop` | .NET Framework 4.8, Windows Forms |
-| Мост к Google Таблице | `google-sync/Alfa156Sync.gs` | веб-приложение Google Apps Script |
+| КПК, Windows Mobile | `KiloLedger/KiloLedger` | .NET Compact Framework 3.5, Windows Forms, Pocket PC |
+| Android | `KiloLedger.Android` | .NET 10 (`net10.0-android`), приложение `com.kiloledger.app`, минимум Android 6.0 (API 23) |
+| Windows, ПК | `KiloLedger.Desktop` | .NET Framework 4.8, Windows Forms |
+| Мост к Google Таблице | `google-sync/KiloLedgerSync.gs` | веб-приложение Google Apps Script |
 
 Одинаковая предметная логика сознательно скопирована в каждый клиент. Изменение поведения или формата `.dat` нужно вносить во все клиенты, которых оно касается.
 
-Публикуемые сборки Android — APK для ARM64. GitHub Actions подписывает их ключом `Alfa156.Android/alfa156-upload.keystore`.
+Публикуемые сборки Android — APK для ARM64. GitHub Actions подписывает их ключом `KiloLedger.Android/kiloledger-upload.keystore`.
 
 ## Структура репозитория
 
 ```text
-Alfa156/Alfa156/     решение Windows Mobile (Alfa156.sln)
-Alfa156.Android/     проект Android
-Alfa156.Desktop/     проект для Windows
+KiloLedger/KiloLedger/     решение Windows Mobile (KiloLedger.sln)
+KiloLedger.Android/     проект Android
+KiloLedger.Desktop/     проект для Windows
 google-sync/         Apps Script и иллюстрированная инструкция
 branding/            общий логотип и BrandTheme.md
 localization/        таблицы строк (ru, en, es, fr, de) и ранние заметки по i18n
@@ -83,7 +83,7 @@ VERSION              единая строка версии для имён ре
 
 Чтобы **собрать**:
 
-- КПК на Windows: `build/build-kpk.ps1`, `ResGen.exe` и `csc.exe`, справочные сборки уже лежат в `build/cf35/WindowsCE`. Вместо этого можно открыть `Alfa156/Alfa156.sln` в Visual Studio 2008 с Windows Mobile SDK.
+- КПК на Windows: `build/build-kpk.ps1`, `ResGen.exe` и `csc.exe`, справочные сборки уже лежат в `build/cf35/WindowsCE`. Вместо этого можно открыть `KiloLedger/KiloLedger.sln` в Visual Studio 2008 с Windows Mobile SDK.
 - КПК на Linux или macOS: Mono (`mono-devel`) и `./build/build-kpk.sh`.
 - Desktop на Windows: MSBuild и targeting pack .NET Framework 4.8.
 - Desktop на Linux, как в заметках репозитория для агентов: .NET SDK и `FrameworkPathOverride` на справочные сборки Mono 4.8.
@@ -125,34 +125,34 @@ powershell -ExecutionPolicy Bypass -File build/build-kpk.ps1 -Configuration Rele
 Desktop на Windows:
 
 ```bat
-msbuild Alfa156.Desktop\Alfa156.Desktop.csproj /p:Configuration=Release /p:Platform=AnyCPU
+msbuild KiloLedger.Desktop\KiloLedger.Desktop.csproj /p:Configuration=Release /p:Platform=AnyCPU
 ```
 
-Результат: `Alfa156.Desktop\bin\Release\Alfa156.Desktop.exe`.
+Результат: `KiloLedger.Desktop\bin\Release\KiloLedger.Desktop.exe`.
 
 Desktop на Linux, если установлены справочные сборки Mono 4.8:
 
 ```sh
-dotnet build Alfa156.Desktop/Alfa156.Desktop.csproj --nologo -p:FrameworkPathOverride=/usr/lib/mono/4.8-api
+dotnet build KiloLedger.Desktop/KiloLedger.Desktop.csproj --nologo -p:FrameworkPathOverride=/usr/lib/mono/4.8-api
 ```
 
 Android ARM64, когда заданы `ANDROID_HOME` и `JAVA_HOME` и установлен workload Android:
 
 ```sh
 dotnet workload install android
-dotnet build Alfa156.Android/Alfa156.Android.csproj \
+dotnet build KiloLedger.Android/KiloLedger.Android.csproj \
   -t:InstallAndroidDependencies -f net10.0-android \
   -p:AndroidSdkDirectory="$ANDROID_HOME" \
   -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AcceptAndroidSDKLicenses=True
-dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
+dotnet build KiloLedger.Android/KiloLedger.Android.csproj -c Release \
   -p:RuntimeIdentifier=android-arm64 \
   -p:AndroidSdkDirectory="$ANDROID_HOME" \
   -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AcceptAndroidSDKLicenses=True
 ```
 
-Подписанный APK лежит в `Alfa156.Android/bin/Release/net10.0-android/android-arm64/`, имя заканчивается на `-Signed.apk`.
+Подписанный APK лежит в `KiloLedger.Android/bin/Release/net10.0-android/android-arm64/`, имя заканчивается на `-Signed.apk`.
 
 ## Настройка
 
@@ -209,7 +209,7 @@ Windows Mobile  ←── Wi-Fi, порт 45816 ──→  Android  ←── Ap
 
 Сначала записи сопоставляются по стабильному id, иначе по естественному ключу (для заправки: дата, автомобиль и пробег). В полезную нагрузку Wi-Fi входят общие `.dat`, на текущих версиях в том числе шаблоны, напоминания, заметки, паспорт автомобиля и поездки.
 
-**Android / ПК ↔ Google Таблицы.** В таблицу вставляют `google-sync/Alfa156Sync.gs`, задают `SYNC_TOKEN` и публикуют веб-приложение от своего имени с доступом «все, у кого есть ссылка». Скрипт забирает и отдаёт автомобили, заправки, ремонт, прочие расходы, коммунальные, категории ремонта и категории прочих. Листы называются `Заправки {авто}`, `Ремонт {авто}`, `Прочие {авто}`, `Коммунальные`, `Справочник` и `Кат. прочих`. Поездки, заметки, напоминания, шаблоны, паспорт автомобиля и фото чеков в эту полезную нагрузку не входят. Стабильные id остаются в локальных `.dat` и в ZIP. Импорт Excel на Desktop дополнительно узнаёт книгу в раскладке Dengi, если имена листов ей соответствуют.
+**Android / ПК ↔ Google Таблицы.** В таблицу вставляют `google-sync/KiloLedgerSync.gs`, задают `SYNC_TOKEN` и публикуют веб-приложение от своего имени с доступом «все, у кого есть ссылка». Скрипт забирает и отдаёт автомобили, заправки, ремонт, прочие расходы, коммунальные, категории ремонта и категории прочих. Листы называются `Заправки {авто}`, `Ремонт {авто}`, `Прочие {авто}`, `Коммунальные`, `Справочник` и `Кат. прочих`. Поездки, заметки, напоминания, шаблоны, паспорт автомобиля и фото чеков в эту полезную нагрузку не входят. Стабильные id остаются в локальных `.dat` и в ZIP. Импорт Excel на Desktop дополнительно узнаёт книгу в раскладке Dengi, если имена листов ей соответствуют.
 
 ## Проверки
 

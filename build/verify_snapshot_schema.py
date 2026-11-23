@@ -17,9 +17,9 @@ FILES = (
 PREFIXES = ("c_", "f_", "r_", "e_", "u_", "g_", "m_", "k_", "p_", "t_", "n_", "j_")
 FIELDS = ("schema", "schemaVersion", "appVersion", "createdUtc", "deviceToken")
 PRODUCERS = (
-    "Alfa156/Alfa156/DataStore.cs",
-    "Alfa156.Android/MainActivity.cs",
-    "Alfa156.Desktop/Data/AlfaRepository.cs",
+    "KiloLedger/KiloLedger/DataStore.cs",
+    "KiloLedger.Android/MainActivity.cs",
+    "KiloLedger.Desktop/Data/KiloLedgerRepository.cs",
 )
 
 

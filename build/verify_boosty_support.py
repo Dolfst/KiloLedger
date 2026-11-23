@@ -18,17 +18,17 @@ LABELS = {
 }
 STRING_ROOTS = (
     "localization/resources",
-    "Alfa156.Desktop/resources",
-    "Alfa156.Android/Assets",
-    "Alfa156/Alfa156/resources",
+    "KiloLedger.Desktop/resources",
+    "KiloLedger.Android/Assets",
+    "KiloLedger/KiloLedger/resources",
 )
 
 
 def main() -> int:
     errors: list[str] = []
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text(encoding="utf-8")
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text(encoding="utf-8")
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text(encoding="utf-8")
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text(encoding="utf-8")
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text(encoding="utf-8")
 
     for name, text in (("Desktop", desktop), ("Android", android), ("KPK", kpk)):
         if f'BoostySupportUrl = "{URL}"' not in text:

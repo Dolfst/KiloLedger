@@ -48,7 +48,7 @@ def verify_fault_scenarios() -> None:
         "f_new": "2026-11-20|Alfa|10800",
     }
 
-    with tempfile.TemporaryDirectory(prefix="alfa-sync-fault-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="kiloledger-sync-fault-") as tmp:
         staging = Path(tmp) / "incoming"
         staging.mkdir()
         (staging / "fuel.dat").write_text(
@@ -126,7 +126,7 @@ def require_order(text: str, labels: list[tuple[str, str]], path: str) -> None:
 def main() -> int:
     verify_fault_scenarios()
 
-    android_path = "Alfa156.Android/ExpenseSyncService.cs"
+    android_path = "KiloLedger.Android/ExpenseSyncService.cs"
     android = (ROOT / android_path).read_text(encoding="utf-8")
     serve_client = method(
         android,
@@ -164,7 +164,7 @@ def main() -> int:
         android_path,
     )
 
-    kpk_path = "Alfa156/Alfa156/DataStore.cs"
+    kpk_path = "KiloLedger/KiloLedger/DataStore.cs"
     kpk = (ROOT / kpk_path).read_text(encoding="utf-8-sig")
     kpk_sync = method(
         kpk,

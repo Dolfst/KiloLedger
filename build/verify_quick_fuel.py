@@ -24,7 +24,7 @@ def main() -> int:
     if not ok:
         errors.append(f"VERSION expected >= 1.29.0, got {version!r}")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
     for needle in (
         "Быстрая заправка",
         "ShowQuickFuelEntry",
@@ -37,7 +37,7 @@ def main() -> int:
     if f'version = "{version}"' not in android:
         errors.append(f"Android MainActivity: missing version {version}")
 
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
     for needle in (
         "Быстрая заправка",
         "OpenQuickFuelEntry",
@@ -50,7 +50,7 @@ def main() -> int:
     if f'AppVersion = "{version}"' not in desktop:
         errors.append(f"Desktop MainForm: missing AppVersion {version}")
 
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text()
     for needle in (
         "Быстрая заправка",
         "QuickFuelFromMenu",
@@ -73,14 +73,14 @@ def main() -> int:
     if "1.29.0" not in download:
         errors.append("dist/download/README: missing 1.29.0")
 
-    csproj = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
+    csproj = (ROOT / "KiloLedger.Android/KiloLedger.Android.csproj").read_text()
     if f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>" not in csproj:
         errors.append(f"Android csproj: missing ApplicationDisplayVersion {version}")
 
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
     if "Проверьте данные: пробег не меньше 0" not in desktop:
         errors.append("Desktop MainForm: missing quick-fuel positive-value validation")
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
     if "Проверьте данные: пробег не меньше 0" not in android:
         errors.append("Android MainActivity: missing quick-fuel positive-value validation")
 

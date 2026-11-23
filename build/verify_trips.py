@@ -23,9 +23,9 @@ def main() -> int:
     if end < start:
         errors.append("trip fixture: end odometer before start")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text(encoding="utf-8")
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text(encoding="utf-8-sig")
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text(encoding="utf-8")
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text(encoding="utf-8")
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text(encoding="utf-8-sig")
     for rel, text in (
         ("Android", android),
         ("Desktop", desktop),
@@ -39,18 +39,18 @@ def main() -> int:
             errors.append(f"{rel}: missing trip mileage report")
 
     for rel in (
-        "Alfa156.Android/ExpenseDataCodec.cs",
-        "Alfa156.Desktop/Data/AlfaCodec.cs",
-        "Alfa156/Alfa156/DataStore.cs",
+        "KiloLedger.Android/ExpenseDataCodec.cs",
+        "KiloLedger.Desktop/Data/KiloLedgerCodec.cs",
+        "KiloLedger/KiloLedger/DataStore.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8-sig")
         if "trips.dat" not in text:
             errors.append(f"{rel}: missing trips.dat contract")
 
     for rel in (
-        "Alfa156.Android/RecordIds.cs",
-        "Alfa156.Desktop/Data/RecordIds.cs",
-        "Alfa156/Alfa156/RecordIds.cs",
+        "KiloLedger.Android/RecordIds.cs",
+        "KiloLedger.Desktop/Data/RecordIds.cs",
+        "KiloLedger/KiloLedger/RecordIds.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8-sig")
         if "g_" not in text:

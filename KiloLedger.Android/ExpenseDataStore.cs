@@ -1,0 +1,888 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+
+using KiloLedger.Localization;
+namespace KiloLedger.Android;
+
+internal static class ExpenseDataStore
+{
+    private static readonly string[] DefaultRepairCategories =
+    {
+        L10n.Get("service.oil_short"), L10n.Get("service.belt_short"), L10n.Get("category.parts"), L10n.Get("category.fluids"), L10n.Get("category.brakes"), L10n.Get("category.body"), L10n.Get("category.consumables")
+    };
+
+    private static readonly string[] DefaultExpenseCategories = ExpenseDataCodec.DefaultExpenseCategories;
+
+    internal static readonly string[] UtilityLabels =
+    {
+        L10n.Get("utility.label_0"), L10n.Get("utility.label_1"), L10n.Get("utility.label_2"), L10n.Get("utility.label_3"),
+        L10n.Get("utility.label_4"), L10n.Get("utility.label_5"), L10n.Get("utility.label_6")
+    };
+        internal static string GetUtilityLabel(int index)
+        {
+            if (index >= 0 && index < UtilityLabels.Length)
+                return KiloLedger.Localization.L10n.Get("utility.label_" + index);
+            return "";
+        }
+
+
+    internal static List<string> LoadCarNames(string directory)
+    {
+        List<string[]> rows = ExpenseDataCodec.ReadRows(Path.Combine(directory, "cars.dat"));
+        List<string> names = new List<string>();
+        for (int i = 0; i < rows.Count; i++)
+            if (rows[i].Length >= 1 && rows[i][0].Length > 0 &&
+                (rows[i].Length == 1 || (rows[i].Length == 2 && RecordIds.LooksLikeId(rows[i][1]))))
+                names.Add(rows[i][0]);
+        if (names.Count == 0)
+            throw new InvalidDataException(L10n.Get("error.car_list_empty_add"));
+        return names;
+    }
+
+    internal static List<string[]> Load(string directory, string fileName)
+    {
+        if (!ExpenseDataCodec.IsDataFile(fileName) || fileName == "cars.dat")
+            throw new ArgumentException(L10n.Get("error.invalid_log_file"), "fileName");
+        return ExpenseDataCodec.ReadRows(Path.Combine(directory, fileName));
+    }
+
+    internal static void EnsureRepairCategories(string directory)
+    {
+        string path = Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile);
+        List<string> categories = new List<string>();
+        bool changed = !File.Exists(path);
+        if (File.Exists(path))
+        {
+            List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (!ExpenseDataCodec.IsValidCategoryRow(rows[i]))
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_in") + " ") +
+                        ExpenseDataCodec.RepairCategoriesFile + ".");
+                if (!RecordIds.HasId(rows[i]))
+                    changed = true;
+                if (ContainsCategory(categories, rows[i][0]))
+                    changed = true;
+                else
+                    categories.Add(rows[i][0]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < DefaultRepairCategories.Length; i++)
+                AddUniqueCategory(categories, DefaultRepairCategories[i]);
+        }
+
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < repairs.Count; i++)
+        {
+            if (repairs[i][3].Length == 0 || ContainsCategory(categories, repairs[i][3]))
+                continue;
+            categories.Add(repairs[i][3]);
+            changed = true;
+        }
+        if (changed)
+            SaveRepairCategories(directory, categories);
+    }
+
+    internal static List<string> LoadRepairCategories(string directory)
+    {
+        EnsureRepairCategories(directory);
+        List<string[]> rows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile));
+        List<string> categories = new List<string>();
+        for (int i = 0; i < rows.Count; i++)
+            categories.Add(rows[i][0]);
+        return categories;
+    }
+
+    internal static void AddRepairCategory(string directory, string name)
+    {
+        name = ValidateRepairCategoryName(name);
+        List<string> categories = LoadRepairCategories(directory);
+        if (ContainsCategory(categories, name))
+            throw new InvalidOperationException(L10n.Get("error.category_duplicate"));
+        categories.Add(name);
+        SaveRepairCategories(directory, categories);
+    }
+
+    internal static void RenameRepairCategory(string directory, string oldName, string newName)
+    {
+        newName = ValidateRepairCategoryName(newName);
+        List<string> categories = LoadRepairCategories(directory);
+        int categoryIndex = FindCategory(categories, oldName);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
+        if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(L10n.Get("error.same_name"));
+        if (ContainsCategory(categories, newName))
+            throw new InvalidOperationException(L10n.Get("error.category_exists"));
+
+        string previousName = categories[categoryIndex];
+        List<string> previousCategories = new List<string>(categories);
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < repairs.Count; i++)
+            if (String.Equals(repairs[i][3], previousName, StringComparison.OrdinalIgnoreCase))
+                repairs[i][3] = newName;
+
+        categories[categoryIndex] = newName;
+        SaveRepairCategories(directory, categories);
+        try
+        {
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), repairs);
+        }
+        catch (Exception renameError)
+        {
+            try
+            {
+                SaveRepairCategories(directory, previousCategories);
+            }
+            catch (Exception rollbackError)
+            {
+                throw new IOException((L10n.Get("error.rename_category_failed") + " ") +
+                    renameError.Message + (L10n.Get("error.rollback_categories_failed") + " ") +
+                    rollbackError.Message);
+            }
+            throw;
+        }
+    }
+
+    internal static void DeleteRepairCategory(string directory, string name)
+    {
+        List<string> categories = LoadRepairCategories(directory);
+        int categoryIndex = FindCategory(categories, name);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        for (int i = 0; i < repairs.Count; i++)
+            if (String.Equals(repairs[i][3], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    L10n.Get("error.move_records_from_category"));
+        List<string[]> categoryRows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.RepairCategoriesFile));
+        string deletedId = null;
+        for (int i = 0; i < categoryRows.Count; i++)
+            if (String.Equals(categoryRows[i][0], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+            {
+                deletedId = RecordIds.GetId(categoryRows[i]);
+                break;
+            }
+        categories.RemoveAt(categoryIndex);
+        SaveRepairCategories(directory, categories);
+        if (deletedId != null)
+            RecordIds.AddTombstone(directory, ExpenseDataCodec.RepairCategoriesFile, deletedId);
+    }
+
+    internal static void EnsureExpenseCategories(string directory)
+    {
+        string path = Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile);
+        List<string> categories = new List<string>();
+        bool changed = !File.Exists(path);
+        if (File.Exists(path))
+        {
+            List<string[]> rows = ExpenseDataCodec.ReadRows(path);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (!ExpenseDataCodec.IsValidCategoryRow(rows[i]))
+                    throw new InvalidDataException((L10n.Get("error.invalid_record_in") + " ") +
+                        ExpenseDataCodec.ExpenseCategoriesFile + ".");
+                if (!RecordIds.HasId(rows[i]))
+                    changed = true;
+                if (ContainsCategory(categories, rows[i][0]))
+                    changed = true;
+                else
+                    categories.Add(rows[i][0]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < DefaultExpenseCategories.Length; i++)
+                AddUniqueCategory(categories, DefaultExpenseCategories[i]);
+        }
+
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            if (expenses[i].Length < 3 || expenses[i][2].Length == 0 ||
+                ContainsCategory(categories, expenses[i][2]))
+                continue;
+            categories.Add(expenses[i][2]);
+            changed = true;
+        }
+        if (changed)
+            SaveExpenseCategories(directory, categories);
+    }
+
+    internal static List<string> LoadExpenseCategories(string directory)
+    {
+        EnsureExpenseCategories(directory);
+        List<string[]> rows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile));
+        List<string> categories = new List<string>();
+        for (int i = 0; i < rows.Count; i++)
+            categories.Add(rows[i][0]);
+        return categories;
+    }
+
+    internal static void AddExpenseCategory(string directory, string name)
+    {
+        name = ValidateRepairCategoryName(name);
+        List<string> categories = LoadExpenseCategories(directory);
+        if (ContainsCategory(categories, name))
+            throw new InvalidOperationException(L10n.Get("error.category_duplicate"));
+        categories.Add(name);
+        SaveExpenseCategories(directory, categories);
+    }
+
+    internal static void RenameExpenseCategory(string directory, string oldName, string newName)
+    {
+        newName = ValidateRepairCategoryName(newName);
+        List<string> categories = LoadExpenseCategories(directory);
+        int categoryIndex = FindCategory(categories, oldName);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
+        if (String.Equals(categories[categoryIndex], newName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(L10n.Get("error.same_name"));
+        if (ContainsCategory(categories, newName))
+            throw new InvalidOperationException(L10n.Get("error.category_exists"));
+
+        string previousName = categories[categoryIndex];
+        List<string> previousCategories = new List<string>(categories);
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < expenses.Count; i++)
+            if (String.Equals(expenses[i][2], previousName, StringComparison.OrdinalIgnoreCase))
+                expenses[i][2] = newName;
+
+        categories[categoryIndex] = newName;
+        SaveExpenseCategories(directory, categories);
+        try
+        {
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), expenses);
+        }
+        catch (Exception renameError)
+        {
+            try
+            {
+                SaveExpenseCategories(directory, previousCategories);
+            }
+            catch (Exception rollbackError)
+            {
+                throw new IOException((L10n.Get("error.rename_category_failed") + " ") +
+                    renameError.Message + (L10n.Get("error.rollback_categories_failed") + " ") +
+                    rollbackError.Message);
+            }
+            throw;
+        }
+    }
+
+    internal static void DeleteExpenseCategory(string directory, string name)
+    {
+        List<string> categories = LoadExpenseCategories(directory);
+        int categoryIndex = FindCategory(categories, name);
+        if (categoryIndex < 0)
+            throw new InvalidOperationException(L10n.Get("error.category_missing"));
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < expenses.Count; i++)
+            if (String.Equals(expenses[i][2], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    L10n.Get("error.move_records_from_category"));
+        List<string[]> categoryRows = ExpenseDataCodec.ReadRows(
+            Path.Combine(directory, ExpenseDataCodec.ExpenseCategoriesFile));
+        string deletedId = null;
+        for (int i = 0; i < categoryRows.Count; i++)
+            if (String.Equals(categoryRows[i][0], categories[categoryIndex], StringComparison.OrdinalIgnoreCase))
+            {
+                deletedId = RecordIds.GetId(categoryRows[i]);
+                break;
+            }
+        categories.RemoveAt(categoryIndex);
+        SaveExpenseCategories(directory, categories);
+        if (deletedId != null)
+            RecordIds.AddTombstone(directory, ExpenseDataCodec.ExpenseCategoriesFile, deletedId);
+    }
+
+    internal static List<string[]> LoadOptional(string directory, string fileName)
+    {
+        string path = Path.Combine(directory, fileName);
+        if (!File.Exists(path))
+            return new List<string[]>();
+        return ExpenseDataCodec.ReadRows(path);
+    }
+
+    internal static void EnsureCompanionFiles(string directory)
+    {
+        EnsureExpenseCategories(directory);
+        if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.ExpensesFile)))
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile),
+                new List<string[]>());
+        ToSettings.EnsureFile(directory);
+        CarsMeta.EnsureFile(directory);
+        RecordTemplates.EnsureFile(directory);
+        DateReminders.EnsureFile(directory);
+        CarNotes.EnsureFile(directory);
+        if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.TripsFile)))
+            ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.TripsFile),
+                new List<string[]>());
+    }
+
+    internal static void AddCar(string directory, string name)
+    {
+        name = ValidateCarName(name);
+        List<string> existing = LoadCarNames(directory);
+        if (FindCar(existing, name) >= 0)
+            throw new InvalidOperationException(L10n.Get("error.car_duplicate"));
+
+        List<string[]> rows = ExpenseDataCodec.ReadRows(Path.Combine(directory, "cars.dat"));
+        rows.Add(RecordIds.EnsureId(new string[] { name }, RecordIds.PrefixForFile("cars.dat")));
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"), rows);
+    }
+
+    internal static void RenameCar(string directory, string oldName, string newName)
+    {
+        newName = ValidateCarName(newName);
+        List<string> cars = LoadCarNames(directory);
+        int carIndex = FindCar(cars, oldName);
+        if (carIndex < 0)
+            throw new InvalidOperationException(L10n.Get("error.car_missing"));
+        if (String.Equals(cars[carIndex], newName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(L10n.Get("error.same_name"));
+        if (FindCar(cars, newName) >= 0)
+            throw new InvalidOperationException(L10n.Get("error.car_exists"));
+
+        string previousName = cars[carIndex];
+        List<string[]> fuel = Load(directory, "fuel.dat");
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        for (int i = 0; i < fuel.Count; i++)
+            if (String.Equals(fuel[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                fuel[i][1] = newName;
+        for (int i = 0; i < repairs.Count; i++)
+            if (String.Equals(repairs[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                repairs[i][1] = newName;
+        for (int i = 0; i < expenses.Count; i++)
+            if (String.Equals(expenses[i][1], previousName, StringComparison.OrdinalIgnoreCase))
+                expenses[i][1] = newName;
+
+        cars[carIndex] = newName;
+        SaveCarNames(directory, cars);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), fuel);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), repairs);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), expenses);
+        CarsMeta.RenameCar(directory, previousName, newName);
+    }
+
+    internal static void DeleteCar(string directory, string name)
+    {
+        List<string> cars = LoadCarNames(directory);
+        int carIndex = FindCar(cars, name);
+        if (carIndex < 0)
+            throw new InvalidOperationException(L10n.Get("error.car_missing"));
+        if (cars.Count <= 1)
+            throw new InvalidOperationException(L10n.Get("error.cannot_delete_only_car"));
+
+        string carName = cars[carIndex];
+        List<string[]> carRows = ExpenseDataCodec.ReadRows(Path.Combine(directory, "cars.dat"));
+        string carId = null;
+        for (int i = 0; i < carRows.Count; i++)
+            if (String.Equals(carRows[i][0], carName, StringComparison.OrdinalIgnoreCase))
+            {
+                carId = RecordIds.GetId(RecordIds.EnsureId(carRows[i], RecordIds.PrefixForFile("cars.dat")));
+                break;
+            }
+        List<string[]> fuel = Load(directory, "fuel.dat");
+        List<string[]> repairs = Load(directory, "repairs.dat");
+        List<string[]> expenses = LoadOptional(directory, ExpenseDataCodec.ExpensesFile);
+        List<string[]> keptFuel = new List<string[]>();
+        List<string[]> keptRepairs = new List<string[]>();
+        List<string[]> keptExpenses = new List<string[]>();
+        for (int i = 0; i < fuel.Count; i++)
+        {
+            if (!String.Equals(fuel[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                keptFuel.Add(fuel[i]);
+            else
+            {
+                string id = RecordIds.GetId(RecordIds.EnsureId(fuel[i], RecordIds.PrefixForFile("fuel.dat")));
+                if (id != null)
+                    RecordIds.AddTombstone(directory, "fuel.dat", id);
+            }
+        }
+        for (int i = 0; i < repairs.Count; i++)
+        {
+            if (!String.Equals(repairs[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                keptRepairs.Add(repairs[i]);
+            else
+            {
+                string id = RecordIds.GetId(RecordIds.EnsureId(repairs[i],
+                    RecordIds.PrefixForFile("repairs.dat")));
+                if (id != null)
+                    RecordIds.AddTombstone(directory, "repairs.dat", id);
+            }
+        }
+        for (int i = 0; i < expenses.Count; i++)
+        {
+            if (!String.Equals(expenses[i][1], carName, StringComparison.OrdinalIgnoreCase))
+                keptExpenses.Add(expenses[i]);
+            else
+            {
+                string id = RecordIds.GetId(RecordIds.EnsureId(expenses[i],
+                    RecordIds.PrefixForFile(ExpenseDataCodec.ExpensesFile)));
+                if (id != null)
+                    RecordIds.AddTombstone(directory, ExpenseDataCodec.ExpensesFile, id);
+            }
+        }
+
+        cars.RemoveAt(carIndex);
+        SaveCarNames(directory, cars);
+        if (carId != null)
+            RecordIds.AddTombstone(directory, "cars.dat", carId);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), keptFuel);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), keptRepairs);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), keptExpenses);
+        CarsMeta.DeleteCar(directory, carName);
+    }
+
+    private static string ValidateCarName(string name)
+    {
+        name = (name ?? "").Trim();
+        if (name.Length == 0)
+            throw new InvalidOperationException(L10n.Get("error.enter_car_name"));
+        if (name.IndexOf('\n') >= 0 || name.IndexOf('\r') >= 0)
+            throw new InvalidOperationException(L10n.Get("error.car_name_newline"));
+        return name;
+    }
+
+    private static int FindCar(List<string> cars, string name)
+    {
+        for (int i = 0; i < cars.Count; i++)
+            if (String.Equals(cars[i], name, StringComparison.OrdinalIgnoreCase))
+                return i;
+        return -1;
+    }
+
+    private static void SaveCarNames(string directory, List<string> cars)
+    {
+        Dictionary<string, string> existingIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string carsPath = Path.Combine(directory, "cars.dat");
+        if (File.Exists(carsPath))
+        {
+            List<string[]> previous = ExpenseDataCodec.ReadRows(carsPath);
+            for (int i = 0; i < previous.Count; i++)
+            {
+                string id = RecordIds.GetId(previous[i]);
+                if (id != null && previous[i].Length > 0 && !existingIds.ContainsKey(previous[i][0]))
+                    existingIds.Add(previous[i][0], id);
+            }
+        }
+        List<string[]> rows = new List<string[]>();
+        for (int i = 0; i < cars.Count; i++)
+        {
+            string[] row = new string[] { cars[i] };
+            string id;
+            if (existingIds.TryGetValue(cars[i], out id))
+                row = RecordIds.WithId(row, id);
+            else
+                row = RecordIds.EnsureId(row, RecordIds.PrefixForFile("cars.dat"));
+            rows.Add(row);
+        }
+        ExpenseDataCodec.SaveRows(carsPath, rows);
+    }
+
+    /// <summary>
+    /// Создаёт пустой набор данных на телефоне: авто, пустые журналы и категории ремонта.
+    /// </summary>
+    internal static void CreateNewWorkspace(string directory, string firstCarName)
+    {
+        firstCarName = (firstCarName ?? "").Trim();
+        if (firstCarName.Length == 0)
+            throw new InvalidOperationException(L10n.Get("error.enter_car_name"));
+        if (firstCarName.IndexOf('\n') >= 0 || firstCarName.IndexOf('\r') >= 0)
+            throw new InvalidOperationException(L10n.Get("error.car_name_newline"));
+
+        if (HasCompleteCoreFiles(directory))
+            throw new InvalidOperationException(
+                L10n.Get("error.phone_already_has_data"));
+
+        Directory.CreateDirectory(directory);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "cars.dat"),
+            new List<string[]>
+            {
+                RecordIds.EnsureId(new string[] { firstCarName }, RecordIds.PrefixForFile("cars.dat"))
+            });
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "fuel.dat"), new List<string[]>());
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "repairs.dat"), new List<string[]>());
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, "utilities.dat"), new List<string[]>());
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, ExpenseDataCodec.ExpensesFile), new List<string[]>());
+        RecordIds.EnsureDeletedFile(directory);
+        EnsureRepairCategories(directory);
+        EnsureExpenseCategories(directory);
+        ToSettings.EnsureFile(directory);
+        CarsMeta.EnsureFile(directory);
+        RecordTemplates.EnsureFile(directory);
+        DateReminders.EnsureFile(directory);
+        CarNotes.EnsureFile(directory);
+        ExpenseDataCodec.ValidateDirectory(directory);
+    }
+
+    internal static bool HasCompleteCoreFiles(string directory)
+    {
+        if (!Directory.Exists(directory))
+            return false;
+        for (int i = 0; i < ExpenseDataCodec.CoreDataFiles.Length; i++)
+            if (!File.Exists(Path.Combine(directory, ExpenseDataCodec.CoreDataFiles[i])))
+                return false;
+        return true;
+    }
+
+    internal static void AddRecord(string directory, string fileName, string[] row)
+    {
+        row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(fileName));
+        ValidateRecord(fileName, row);
+        List<string[]> rows = Load(directory, fileName);
+        if (fileName == "utilities.dat")
+            EnsureUniqueUtilityMonth(rows, row[0], -1);
+        rows.Add(row);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, fileName), rows);
+    }
+
+    internal static void UpdateRecord(string directory, string fileName, int index, string[] row)
+    {
+        List<string[]> rows = Load(directory, fileName);
+        ValidateIndex(rows, index);
+        string oldId = RecordIds.GetId(rows[index]);
+        if (!RecordIds.HasId(row) && oldId != null)
+            row = RecordIds.WithId(row, oldId);
+        else
+            row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(fileName));
+        ValidateRecord(fileName, row);
+        if (fileName == "utilities.dat")
+            EnsureUniqueUtilityMonth(rows, row[0], index);
+        rows[index] = row;
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, fileName), rows);
+    }
+
+    internal static void DeleteRecord(string directory, string fileName, int index)
+    {
+        List<string[]> rows = Load(directory, fileName);
+        ValidateIndex(rows, index);
+        string id = RecordIds.GetId(RecordIds.EnsureId(rows[index], RecordIds.PrefixForFile(fileName)));
+        rows.RemoveAt(index);
+        ExpenseDataCodec.SaveRows(Path.Combine(directory, fileName), rows);
+        if (id != null)
+        {
+            RecordIds.AddTombstone(directory, fileName, id);
+            ReceiptStore.Delete(directory, id);
+        }
+    }
+
+    internal static string CreateBackup(string dataDirectory)
+    {
+        ExpenseDataCodec.ValidateDirectory(dataDirectory);
+        string backupRoot = GetBackupRoot(dataDirectory);
+        Directory.CreateDirectory(backupRoot);
+
+        string baseName = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        string backupName = baseName;
+        string backupPath = Path.Combine(backupRoot, backupName);
+        int suffix = 1;
+        while (Directory.Exists(backupPath))
+        {
+            backupName = baseName + "_" + suffix.ToString(CultureInfo.InvariantCulture);
+            backupPath = Path.Combine(backupRoot, backupName);
+            suffix++;
+        }
+
+        Directory.CreateDirectory(backupPath);
+        try
+        {
+            CopyData(dataDirectory, backupPath);
+            ExpenseDataCodec.ValidateDirectory(backupPath);
+        }
+        catch
+        {
+            Directory.Delete(backupPath, true);
+            throw;
+        }
+        try { ToSettings.MarkBackupDone(dataDirectory); }
+        catch { /* reminder stamp must not fail backup */ }
+        return backupName;
+    }
+
+    /// <summary>
+    /// Allocates a unique Safety_yyyyMMdd_HHmmss path under Backups (does not create it).
+    /// </summary>
+    internal static string AllocateSafetyBackupPath(string dataDirectory)
+    {
+        string backupRoot = GetBackupRoot(dataDirectory);
+        string baseName = "Safety_" +
+            DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        string path = Path.Combine(backupRoot, baseName);
+        int suffix = 1;
+        while (Directory.Exists(path))
+        {
+            path = Path.Combine(backupRoot,
+                baseName + "_" + suffix.ToString(CultureInfo.InvariantCulture));
+            suffix++;
+        }
+        return path;
+    }
+
+    /// <summary>
+    /// Creates an automatic safety copy at the given path (or allocates Safety_* if null).
+    /// Returns the full path of the created directory.
+    /// </summary>
+    internal static string CreateSafetyBackup(string dataDirectory, string allocatedPath)
+    {
+        ExpenseDataCodec.ValidateDirectory(dataDirectory);
+        string path = allocatedPath;
+        if (String.IsNullOrEmpty(path))
+            path = AllocateSafetyBackupPath(dataDirectory);
+        string parent = Path.GetDirectoryName(path);
+        if (!String.IsNullOrEmpty(parent))
+            Directory.CreateDirectory(parent);
+        if (Directory.Exists(path))
+            Directory.Delete(path, true);
+        Directory.CreateDirectory(path);
+        try
+        {
+            CopyData(dataDirectory, path);
+            ExpenseDataCodec.ValidateDirectory(path);
+        }
+        catch
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, true);
+            throw;
+        }
+        try { ToSettings.MarkBackupDone(dataDirectory); }
+        catch { /* reminder stamp must not fail safety copy */ }
+        return path;
+    }
+
+    internal static List<string> ListBackupNames(string dataDirectory)
+    {
+        string backupRoot = GetBackupRoot(dataDirectory);
+        List<string> names = new List<string>();
+        if (!Directory.Exists(backupRoot))
+            return names;
+
+        string[] directories = Directory.GetDirectories(backupRoot);
+        for (int i = 0; i < directories.Length; i++)
+        {
+            string name = Path.GetFileName(directories[i]);
+            bool complete = true;
+            for (int j = 0; j < ExpenseDataCodec.CoreDataFiles.Length; j++)
+                if (!File.Exists(Path.Combine(directories[i], ExpenseDataCodec.CoreDataFiles[j])))
+                    complete = false;
+            if (complete)
+                names.Add(name);
+        }
+        names.Sort(StringComparer.Ordinal);
+        names.Reverse();
+        return names;
+    }
+
+    internal static void RestoreBackup(string dataDirectory, string backupName)
+    {
+        if (String.IsNullOrEmpty(backupName) || Path.GetFileName(backupName) != backupName)
+            throw new InvalidDataException(L10n.Get("error.invalid_backup_selected"));
+
+        List<string> availableBackups = ListBackupNames(dataDirectory);
+        if (!availableBackups.Contains(backupName))
+            throw new InvalidDataException(L10n.Get("error.invalid_incomplete_backup"));
+
+        string backupRoot = GetBackupRoot(dataDirectory);
+        string source = Path.Combine(backupRoot, backupName);
+        ExpenseDataCodec.ValidateDirectory(source);
+        string safetyPath = CreateSafetyBackup(dataDirectory, null);
+        try
+        {
+            CopyData(source, dataDirectory);
+            ExpenseDataCodec.ValidateDirectory(dataDirectory);
+        }
+        catch (Exception restoreError)
+        {
+            try
+            {
+                CopyData(safetyPath, dataDirectory);
+            }
+            catch (Exception rollbackError)
+            {
+                throw new IOException((L10n.Get("error.restore_backup_failed") + " ") + restoreError.Message +
+                    (L10n.Get("error.rollback_prev_data_failed") + " ") + rollbackError.Message +
+                    (L10n.Get("msg.original_backup_saved_in") + " ") + safetyPath);
+            }
+            throw;
+        }
+    }
+
+    private static void CopyData(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        for (int i = 0; i < ExpenseDataCodec.CoreDataFiles.Length; i++)
+        {
+            string fileName = ExpenseDataCodec.CoreDataFiles[i];
+            File.Copy(Path.Combine(source, fileName), Path.Combine(destination, fileName), true);
+        }
+        string categoriesSource = Path.Combine(source, ExpenseDataCodec.RepairCategoriesFile);
+        string categoriesDestination = Path.Combine(destination, ExpenseDataCodec.RepairCategoriesFile);
+        if (File.Exists(categoriesSource))
+            File.Copy(categoriesSource, categoriesDestination, true);
+        else
+            SaveRepairCategories(destination, new List<string>(DefaultRepairCategories));
+        CopyOptionalFile(source, destination, ExpenseDataCodec.ExpensesFile, true);
+        string expenseCategoriesSource = Path.Combine(source, ExpenseDataCodec.ExpenseCategoriesFile);
+        string expenseCategoriesDestination = Path.Combine(destination, ExpenseDataCodec.ExpenseCategoriesFile);
+        if (File.Exists(expenseCategoriesSource))
+            File.Copy(expenseCategoriesSource, expenseCategoriesDestination, true);
+        else
+            SaveExpenseCategories(destination, new List<string>(DefaultExpenseCategories));
+        string settingsSource = Path.Combine(source, ExpenseDataCodec.SettingsFile);
+        string settingsDestination = Path.Combine(destination, ExpenseDataCodec.SettingsFile);
+        if (File.Exists(settingsSource))
+            File.Copy(settingsSource, settingsDestination, true);
+        else
+            ToSettings.EnsureFile(destination);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.CarsMetaFile, true);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.TemplatesFile, true);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.RemindersFile, true);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.NotesFile, true);
+        CopyOptionalFile(source, destination, ExpenseDataCodec.TripsFile, true);
+        string deletedSource = Path.Combine(source, RecordIds.DeletedFile);
+        string deletedDestination = Path.Combine(destination, RecordIds.DeletedFile);
+        if (File.Exists(deletedSource))
+            File.Copy(deletedSource, deletedDestination, true);
+        else
+            RecordIds.EnsureDeletedFile(destination);
+        EnsureRepairCategories(destination);
+        EnsureExpenseCategories(destination);
+        ToSettings.EnsureFile(destination);
+        CarsMeta.EnsureFile(destination);
+        RecordTemplates.EnsureFile(destination);
+        DateReminders.EnsureFile(destination);
+        CarNotes.EnsureFile(destination);
+        // Replace Receipts/ only when the source snapshot includes that folder
+        // (ZIP/копия с фото). Старые .dat-импорты без Receipts/ не стирают чеки.
+        string receiptsSource = ReceiptStore.GetFolder(source);
+        if (Directory.Exists(receiptsSource))
+        {
+            string receiptsDest = ReceiptStore.GetFolder(destination);
+            if (Directory.Exists(receiptsDest))
+                Directory.Delete(receiptsDest, true);
+            ReceiptStore.CopyFolder(source, destination);
+        }
+    }
+
+    private static void CopyOptionalFile(string source, string destination, string fileName, bool createEmpty)
+    {
+        string from = Path.Combine(source, fileName);
+        string to = Path.Combine(destination, fileName);
+        if (File.Exists(from))
+            File.Copy(from, to, true);
+        else if (createEmpty)
+            ExpenseDataCodec.SaveRows(to, new List<string[]>());
+    }
+
+    internal static void CopyDataFiles(string source, string destination)
+    {
+        CopyData(source, destination);
+    }
+
+    private static string GetBackupRoot(string dataDirectory)
+    {
+        string parent = Path.GetDirectoryName(dataDirectory);
+        if (String.IsNullOrEmpty(parent))
+            throw new ArgumentException(L10n.Get("error.invalid_data_folder"), "dataDirectory");
+        return Path.Combine(parent, "Backups");
+    }
+
+    private static void EnsureUniqueUtilityMonth(List<string[]> rows, string month, int ignoredIndex)
+    {
+        for (int i = 0; i < rows.Count; i++)
+            if (i != ignoredIndex && rows[i][0] == month)
+                throw new InvalidOperationException(L10n.Get("error.utility_month_exists"));
+    }
+
+    private static void ValidateRecord(string fileName, string[] row)
+    {
+        if (ExpenseDataCodec.IsValidColumnCount(fileName, row.Length))
+            return;
+        throw new InvalidDataException(L10n.Get("error.invalid_field_count"));
+    }
+
+    private static void ValidateIndex(List<string[]> rows, int index)
+    {
+        if (index < 0 || index >= rows.Count)
+            throw new ArgumentOutOfRangeException("index", L10n.Get("error.record_missing"));
+    }
+
+    private static string ValidateRepairCategoryName(string name)
+    {
+        name = (name ?? "").Trim();
+        if (name.Length == 0)
+            throw new InvalidOperationException(L10n.Get("error.enter_category_name"));
+        if (String.Equals(name, "Все категории", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(L10n.Get("error.reserved_for_filter"));
+        if (name.IndexOf('\r') >= 0 || name.IndexOf('\n') >= 0)
+            throw new InvalidOperationException(L10n.Get("error.category_name_newline"));
+        return name;
+    }
+
+    private static void SaveRepairCategories(string directory, List<string> categories)
+    {
+        SaveNamedCategories(directory, ExpenseDataCodec.RepairCategoriesFile, categories);
+    }
+
+    private static void SaveExpenseCategories(string directory, List<string> categories)
+    {
+        SaveNamedCategories(directory, ExpenseDataCodec.ExpenseCategoriesFile, categories);
+    }
+
+    private static void SaveNamedCategories(string directory, string fileName, List<string> categories)
+    {
+        Dictionary<string, string> existingIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string path = Path.Combine(directory, fileName);
+        if (File.Exists(path))
+        {
+            List<string[]> previous = ExpenseDataCodec.ReadRows(path);
+            for (int i = 0; i < previous.Count; i++)
+            {
+                string id = RecordIds.GetId(previous[i]);
+                if (id != null && previous[i].Length > 0 && !existingIds.ContainsKey(previous[i][0]))
+                    existingIds.Add(previous[i][0], id);
+            }
+        }
+        List<string[]> rows = new List<string[]>();
+        for (int i = 0; i < categories.Count; i++)
+        {
+            string[] row = new string[] { categories[i] };
+            string id;
+            if (existingIds.TryGetValue(categories[i], out id))
+                row = RecordIds.WithId(row, id);
+            else
+                row = RecordIds.EnsureId(row, RecordIds.PrefixForFile(fileName));
+            rows.Add(row);
+        }
+        ExpenseDataCodec.SaveRows(path, rows);
+    }
+
+    private static void AddUniqueCategory(List<string> categories, string name)
+    {
+        if (!ContainsCategory(categories, name))
+            categories.Add(name);
+    }
+
+    private static bool ContainsCategory(List<string> categories, string name)
+    {
+        return FindCategory(categories, name) >= 0;
+    }
+
+    private static int FindCategory(List<string> categories, string name)
+    {
+        for (int i = 0; i < categories.Count; i++)
+            if (String.Equals(categories[i], name, StringComparison.OrdinalIgnoreCase))
+                return i;
+        return -1;
+    }
+}

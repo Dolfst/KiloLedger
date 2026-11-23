@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "Alfa156.Android" / "AndroidManifest.xml"
-ACTIVITY = ROOT / "Alfa156.Android" / "MainActivity.cs"
+MANIFEST = ROOT / "KiloLedger.Android" / "AndroidManifest.xml"
+ACTIVITY = ROOT / "KiloLedger.Android" / "MainActivity.cs"
 
 
 def main() -> int:

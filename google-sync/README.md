@@ -58,11 +58,11 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 
 ![Пустой проект Apps Script с кодом по умолчанию](screenshots/scr%20%283%29.png)
 
-3. Откройте файл [`Alfa156Sync.gs`](Alfa156Sync.gs) в репозитории (или скачайте [raw-файл](https://raw.githubusercontent.com/Dolfst/KiloLedger/main/google-sync/Alfa156Sync.gs)), скопируйте **всё** его содержимое и вставьте в редактор `Код.gs`.
+3. Откройте файл [`KiloLedgerSync.gs`](KiloLedgerSync.gs) в репозитории (или скачайте [raw-файл](https://raw.githubusercontent.com/Dolfst/KiloLedger/main/google-sync/KiloLedgerSync.gs)), скопируйте **всё** его содержимое и вставьте в редактор `Код.gs`.
 4. Нажмите значок сохранения (дискета) или `Ctrl + S` — надпись *«Несохранённые изменения»* должна исчезнуть.
 5. При желании нажмите на заголовок **«Проект без названия»** вверху и переименуйте проект, например в `KiloLedger Синхр`.
 
-![Редактор Apps Script со вставленным кодом Alfa156Sync.gs](screenshots/scr%20%284%29.png)
+![Редактор Apps Script со вставленным кодом KiloLedgerSync.gs](screenshots/scr%20%284%29.png)
 
 ---
 
@@ -189,7 +189,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 
 ## Обновление Apps Script после правок
 
-Если вы обновляете код `Alfa156Sync.gs` (например, после выхода новой версии приложения), **обязательно опубликуйте новую версию развертывания**, иначе на сервере Google останется старый код:
+Если вы обновляете код `KiloLedgerSync.gs` (например, после выхода новой версии приложения), **обязательно опубликуйте новую версию развертывания**, иначе на сервере Google останется старый код:
 
 1. В редакторе Apps Script нажмите **«Начать развертывание» → «Управление развертываниями»** *(пункт виден в том же выпадающем меню на скриншоте к шагу 4)*.
 2. Выберите ваше активное развертывание и нажмите значок карандаша (**Изменить** / *Edit*).
@@ -249,7 +249,7 @@ https://docs.google.com/spreadsheets/d/ЗДЕСЬ_ИД_ТАБЛИЦЫ/edit
 
 ## Файлы репозитория
 
-- [`Alfa156Sync.gs`](Alfa156Sync.gs) — код Google Apps Script.
+- [`KiloLedgerSync.gs`](KiloLedgerSync.gs) — код Google Apps Script.
 - [`README.md`](README.md) — эта инструкция.
 
 ---

@@ -142,9 +142,9 @@ def main() -> int:
 
     # report must mention every produced metric; all three clients format the same labels
     for rel in (
-        "Alfa156/Alfa156/PeriodReport.cs",
-        "Alfa156.Android/PeriodReport.cs",
-        "Alfa156.Desktop/Data/PeriodReport.cs",
+        "KiloLedger/KiloLedger/PeriodReport.cs",
+        "KiloLedger.Android/PeriodReport.cs",
+        "KiloLedger.Desktop/Data/PeriodReport.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for needle in ("Топливо", "Заправлено", "Расход", "Бюджет", "Поездки личные"):

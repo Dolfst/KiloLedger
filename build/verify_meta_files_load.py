@@ -80,8 +80,8 @@ def main() -> int:
     errors: list[str] = []
 
     for rel in (
-        "Alfa156.Android/DataIntegrity.cs",
-        "Alfa156.Desktop/Data/DataIntegrity.cs",
+        "KiloLedger.Android/DataIntegrity.cs",
+        "KiloLedger.Desktop/Data/DataIntegrity.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         if "CheckCarsMeta" not in text:
@@ -95,7 +95,7 @@ def main() -> int:
     # (names may appear as string literals or *File / FileName constants).
     for rel, required in (
         (
-            "Alfa156/Alfa156/DataStore.cs",
+            "KiloLedger/KiloLedger/DataStore.cs",
             (
                 "ExpensesFile",
                 "CarsMetaFile",
@@ -107,7 +107,7 @@ def main() -> int:
             ),
         ),
         (
-            "Alfa156.Android/ExpenseDataCodec.cs",
+            "KiloLedger.Android/ExpenseDataCodec.cs",
             (
                 "ExpensesFile",
                 "CarsMetaFile",
@@ -119,7 +119,7 @@ def main() -> int:
             ),
         ),
         (
-            "Alfa156.Desktop/Data/AlfaCodec.cs",
+            "KiloLedger.Desktop/Data/KiloLedgerCodec.cs",
             (
                 "ExpensesFile",
                 "CarsMetaFile",
@@ -141,15 +141,15 @@ def main() -> int:
             if name not in text:
                 errors.append(f"{rel}: DataFiles missing {name}")
     for rel, needle in (
-        ("Alfa156.Android/CarsMeta.cs", 'FileName = "cars-meta.dat"'),
-        ("Alfa156.Android/RecordTemplates.cs", 'FileName = "templates.dat"'),
-        ("Alfa156.Android/DateReminders.cs", 'FileName = "reminders.dat"'),
-        ("Alfa156.Android/CarNotes.cs", 'FileName = "notes.dat"'),
-        ("Alfa156.Android/RecordIds.cs", 'DeletedFile = "deleted.dat"'),
-        ("Alfa156.Desktop/Data/CarsMeta.cs", 'FileName = "cars-meta.dat"'),
-        ("Alfa156.Desktop/Data/RecordTemplates.cs", 'FileName = "templates.dat"'),
-        ("Alfa156.Desktop/Data/DateReminders.cs", 'FileName = "reminders.dat"'),
-        ("Alfa156.Desktop/Data/CarNotes.cs", 'FileName = "notes.dat"'),
+        ("KiloLedger.Android/CarsMeta.cs", 'FileName = "cars-meta.dat"'),
+        ("KiloLedger.Android/RecordTemplates.cs", 'FileName = "templates.dat"'),
+        ("KiloLedger.Android/DateReminders.cs", 'FileName = "reminders.dat"'),
+        ("KiloLedger.Android/CarNotes.cs", 'FileName = "notes.dat"'),
+        ("KiloLedger.Android/RecordIds.cs", 'DeletedFile = "deleted.dat"'),
+        ("KiloLedger.Desktop/Data/CarsMeta.cs", 'FileName = "cars-meta.dat"'),
+        ("KiloLedger.Desktop/Data/RecordTemplates.cs", 'FileName = "templates.dat"'),
+        ("KiloLedger.Desktop/Data/DateReminders.cs", 'FileName = "reminders.dat"'),
+        ("KiloLedger.Desktop/Data/CarNotes.cs", 'FileName = "notes.dat"'),
     ):
         if needle not in (ROOT / rel).read_text(encoding="utf-8"):
             errors.append(f"{rel}: missing {needle!r}")
@@ -157,19 +157,19 @@ def main() -> int:
     # ZIP / backup paths must reference DataFiles (not only CoreDataFiles)
     for rel, needles in (
         (
-            "Alfa156.Desktop/Data/AlfaRepository.cs",
-            ["AlfaCodec.DataFiles", "SaveZip", "CreateEntryFromFile"],
+            "KiloLedger.Desktop/Data/KiloLedgerRepository.cs",
+            ["KiloLedgerCodec.DataFiles", "SaveZip", "CreateEntryFromFile"],
         ),
         (
-            "Alfa156.Android/MainActivity.cs",
+            "KiloLedger.Android/MainActivity.cs",
             ["DataFiles.Length", "CreateEntry", "ExportTo"],
         ),
         (
-            "Alfa156/Alfa156/DataStore.cs",
+            "KiloLedger/KiloLedger/DataStore.cs",
             ["DataFiles.Length", "CreateBackup", "CountBackupFiles"],
         ),
         (
-            "Alfa156.Android/ExpenseDataStore.cs",
+            "KiloLedger.Android/ExpenseDataStore.cs",
             ["TemplatesFile", "RemindersFile", "NotesFile", "CarsMetaFile", "CopyOptionalFile"],
         ),
     ):
@@ -179,7 +179,7 @@ def main() -> int:
                 errors.append(f"{rel}: missing {needle!r}")
 
     # Android export must ensure optional files before ZIP (so they are not skipped)
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text(encoding="utf-8")
     if "EnsureDataFilesForExport" not in android and "RecordTemplates.EnsureFile" not in android:
         # Accept either a helper or inline ensures near ExportTo
         export_idx = android.find("private void ExportTo")
