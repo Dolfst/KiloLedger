@@ -1152,6 +1152,8 @@
   "error.specify_template_name": "Укажите имя шаблона.",
   "app.subtitle": "Учет расходов",
   "import.excel_file_label": "Файл Excel (.xlsx)",
+  "import.date_number_warnings": "Предупреждения: число не восстановлено из даты",
+  "import.date_number_skipped": "Числовое поле содержало дату, восстановить число однозначно не удалось (значение пропущено): {0}",
   "error.image_file_not_found": "Файл изображения не найден.",
   "status.fuel_filter_applied": "Фильтр заправок применён (данные не удаляются).",
   "status.fuel_filter_reset": "Фильтр заправок сброшен.",

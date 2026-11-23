@@ -26,6 +26,7 @@ namespace KiloLedger.Desktop.Exchange
         internal int ReminderCount;
         internal int NoteCount;
         internal int ReceiptCount;
+        internal List<string> Warnings = new List<string>();
 
         internal static ImportPreview FromRepository(KiloLedgerRepository repo, string kindLabel, string path)
         {
@@ -187,7 +188,9 @@ namespace KiloLedger.Desktop.Exchange
         {
             KiloLedgerRepository temp = new KiloLedgerRepository();
             XlsxExchange.Import(temp, xlsxPath);
-            return FromRepository(temp, "Excel", xlsxPath);
+            ImportPreview preview = FromRepository(temp, "Excel", xlsxPath);
+            preview.Warnings = new List<string>(DengiFormat.DateNumberWarnings);
+            return preview;
         }
 
         /// <summary>
@@ -238,6 +241,12 @@ namespace KiloLedger.Desktop.Exchange
                 sb.Append(("\r\n" + L10n.Get("summary.notes_colon") + " ")).Append(NoteCount);
             if (ReceiptCount > 0)
                 sb.Append(("\r\n" + L10n.Get("label.receipt_photos_colon") + " ")).Append(ReceiptCount);
+            if (Warnings != null && Warnings.Count > 0)
+            {
+                sb.Append("\r\n\r\n").Append(L10n.Get("import.date_number_warnings"));
+                for (int i = 0; i < Warnings.Count; i++)
+                    sb.Append("\r\n").Append(Warnings[i]);
+            }
             return sb.ToString();
         }
 

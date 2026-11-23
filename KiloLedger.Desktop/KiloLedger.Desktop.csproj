@@ -59,6 +59,7 @@
     <Compile Include="Data\SyncMerge.cs" />
     <Compile Include="Data\ToSettings.cs" />
     <Compile Include="Exchange\CsvExchange.cs" />
+    <Compile Include="Exchange\DengiDateNumbers.cs" />
     <Compile Include="Exchange\DengiFormat.cs" />
     <Compile Include="Exchange\GoogleSyncClient.cs" />
     <Compile Include="Exchange\ImportPreview.cs" />

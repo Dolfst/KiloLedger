@@ -47,6 +47,7 @@ namespace KiloLedger.Desktop.Exchange
 
         public static void Import(KiloLedgerRepository repo, string xlsxPath)
         {
+            DengiFormat.ResetWarnings();
             using (FileStream stream = File.OpenRead(xlsxPath))
             using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
             {
@@ -87,21 +88,22 @@ namespace KiloLedger.Desktop.Exchange
             string utilitiesName = FindSheet(names, "Коммунальные", "Коммуналка");
             string categoriesName = FindSheet(names, "Справочник", "Категории");
 
-            List<string[]> fuelRaw = fuelName == null ? new List<string[]>() :
-                ReadNamedSheetOptional(zip, sheetMap, new string[] { fuelName }, 8);
-            List<string[]> repairRaw = repairName == null ? new List<string[]>() :
-                ReadNamedSheetOptional(zip, sheetMap, new string[] { repairName }, 10);
-            List<string[]> utilitiesRaw = utilitiesName == null ? new List<string[]>() :
-                ReadNamedSheetOptional(zip, sheetMap, new string[] { utilitiesName }, 10);
-            List<string[]> categoriesRaw = categoriesName == null ? new List<string[]>() :
-                ReadNamedSheetOptional(zip, sheetMap, new string[] { categoriesName }, 3);
+            HashSet<int> dateStyles = ReadDateStyleIndexes(zip);
+            List<DengiFormat.SheetCell[]> fuelRaw = fuelName == null ? new List<DengiFormat.SheetCell[]>() :
+                ReadNamedSheetCells(zip, sheetMap, new string[] { fuelName }, 8, dateStyles);
+            List<DengiFormat.SheetCell[]> repairRaw = repairName == null ? new List<DengiFormat.SheetCell[]>() :
+                ReadNamedSheetCells(zip, sheetMap, new string[] { repairName }, 10, dateStyles);
+            List<DengiFormat.SheetCell[]> utilitiesRaw = utilitiesName == null ? new List<DengiFormat.SheetCell[]>() :
+                ReadNamedSheetCells(zip, sheetMap, new string[] { utilitiesName }, 10, dateStyles);
+            List<DengiFormat.SheetCell[]> categoriesRaw = categoriesName == null ? new List<DengiFormat.SheetCell[]>() :
+                ReadNamedSheetCells(zip, sheetMap, new string[] { categoriesName }, 3, dateStyles);
 
-            // ReadNamedSheetOptional skips header row (starts at Excel row 2). For Dengi header is row 1 — OK.
+            // ReadNamedSheetCells skips header row (starts at Excel row 2). For Dengi header is row 1 — OK.
             // But categories may start at row 1 without header in live sheets; xlsx export has header.
-            List<string[]> fuel = DengiFormat.MapFuel(PrependIfNeeded(fuelRaw, false), DengiFormat.CarFromSheetName(fuelName, defaultCar));
-            List<string[]> repairs = DengiFormat.MapRepairs(PrependIfNeeded(repairRaw, false), DengiFormat.CarFromSheetName(repairName, defaultCar));
-            List<string[]> utilities = DengiFormat.MapUtilities(PrependIfNeeded(utilitiesRaw, false));
-            List<string[]> categories = DengiFormat.MapCategories(PrependIfNeeded(categoriesRaw, false));
+            List<string[]> fuel = DengiFormat.MapFuel(fuelRaw, DengiFormat.CarFromSheetName(fuelName, defaultCar));
+            List<string[]> repairs = DengiFormat.MapRepairs(repairRaw, DengiFormat.CarFromSheetName(repairName, defaultCar));
+            List<string[]> utilities = DengiFormat.MapUtilities(utilitiesRaw);
+            List<string[]> categories = DengiFormat.MapCategories(ProjectText(categoriesRaw));
             repo.ReplaceAll(cars, fuel, repairs, utilities, categories);
         }
 
@@ -123,11 +125,6 @@ namespace KiloLedger.Desktop.Exchange
                 }
             }
             return null;
-        }
-
-        private static List<string[]> PrependIfNeeded(List<string[]> rows, bool unused)
-        {
-            return rows ?? new List<string[]>();
         }
 
         private static string[] UtilityHeaders()
@@ -218,11 +215,16 @@ namespace KiloLedger.Desktop.Exchange
 
         private static List<string[]> ReadNamedSheet(ZipArchive zip, Dictionary<string, string> map, string[] names, int columns)
         {
-            List<string[]> rows = ReadNamedSheetOptional(zip, map, names, columns);
-            return rows;
+            return ReadNamedSheetOptional(zip, map, names, columns);
         }
 
         private static List<string[]> ReadNamedSheetOptional(ZipArchive zip, Dictionary<string, string> map, string[] names, int columns)
+        {
+            return ProjectText(ReadNamedSheetCells(zip, map, names, columns, null));
+        }
+
+        private static List<DengiFormat.SheetCell[]> ReadNamedSheetCells(
+            ZipArchive zip, Dictionary<string, string> map, string[] names, int columns, HashSet<int> dateStyles)
         {
             for (int i = 0; i < names.Length; i++)
             {
@@ -243,12 +245,28 @@ namespace KiloLedger.Desktop.Exchange
                 }
                 if (entry == null)
                     continue;
-                return ReadSheetRows(entry, columns);
+                return ReadSheetRows(entry, columns, dateStyles);
             }
-            return new List<string[]>();
+            return new List<DengiFormat.SheetCell[]>();
         }
 
-        private static List<string[]> ReadSheetRows(ZipArchiveEntry entry, int columns)
+        private static List<string[]> ProjectText(List<DengiFormat.SheetCell[]> rows)
+        {
+            List<string[]> text = new List<string[]>();
+            if (rows == null)
+                return text;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                DengiFormat.SheetCell[] src = rows[i] ?? new DengiFormat.SheetCell[0];
+                string[] row = new string[src.Length];
+                for (int c = 0; c < src.Length; c++)
+                    row[c] = src[c].Text ?? "";
+                text.Add(row);
+            }
+            return text;
+        }
+
+        private static List<DengiFormat.SheetCell[]> ReadSheetRows(ZipArchiveEntry entry, int columns, HashSet<int> dateStyles)
         {
             List<string[]> shared = null;
             // shared strings may be needed; load from parent archive
@@ -257,7 +275,8 @@ namespace KiloLedger.Desktop.Exchange
             if (sharedEntry != null)
                 shared = ReadSharedStrings(sharedEntry);
 
-            Dictionary<string, string> cells = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, DengiFormat.SheetCell> cells =
+                new Dictionary<string, DengiFormat.SheetCell>(StringComparer.OrdinalIgnoreCase);
             int maxRow = 0;
             int maxCol = 0;
             using (Stream stream = entry.Open())
@@ -278,33 +297,118 @@ namespace KiloLedger.Desktop.Exchange
                     if (col > maxCol) maxCol = col;
                     string type = cell.GetAttribute("t");
                     string value = ExtractCellValue(cell, type, shared);
-                    cells[reference] = value;
+                    bool dateFormatted = String.Equals(type, "d", StringComparison.OrdinalIgnoreCase) ||
+                        IsDateStyle(cell.GetAttribute("s"), dateStyles);
+                    cells[reference] = new DengiFormat.SheetCell(value, dateFormatted);
                 }
             }
 
-            List<string[]> rows = new List<string[]>();
+            List<DengiFormat.SheetCell[]> rows = new List<DengiFormat.SheetCell[]>();
             if (maxRow < 2)
                 return rows;
 
-            int width = Math.Max(columns, maxCol);
             for (int r = 2; r <= maxRow; r++)
             {
-                string[] row = new string[columns];
+                DengiFormat.SheetCell[] row = new DengiFormat.SheetCell[columns];
                 bool empty = true;
                 for (int c = 1; c <= columns; c++)
                 {
                     string key = ColumnName(c) + r.ToString(CultureInfo.InvariantCulture);
-                    string value;
+                    DengiFormat.SheetCell value;
                     if (!cells.TryGetValue(key, out value))
-                        value = "";
+                        value = new DengiFormat.SheetCell("", false);
                     row[c - 1] = value;
-                    if (!String.IsNullOrEmpty(value.Trim()))
+                    if (!String.IsNullOrEmpty((value.Text ?? "").Trim()))
                         empty = false;
                 }
                 if (!empty)
                     rows.Add(row);
             }
             return rows;
+        }
+
+        private static bool IsDateStyle(string styleText, HashSet<int> dateStyles)
+        {
+            if (dateStyles == null || String.IsNullOrEmpty(styleText))
+                return false;
+            int styleIndex;
+            if (!Int32.TryParse(styleText, NumberStyles.Integer, CultureInfo.InvariantCulture, out styleIndex))
+                return false;
+            return dateStyles.Contains(styleIndex);
+        }
+
+        private static HashSet<int> ReadDateStyleIndexes(ZipArchive zip)
+        {
+            HashSet<int> dates = new HashSet<int>();
+            ZipArchiveEntry entry = zip.GetEntry("xl/styles.xml");
+            if (entry == null)
+                return dates;
+            Dictionary<int, string> custom = new Dictionary<int, string>();
+            using (Stream stream = entry.Open())
+            {
+                XmlDocument doc = new XmlDocument();
+                doc.Load(stream);
+                XmlNodeList formats = doc.GetElementsByTagName("numFmt");
+                for (int i = 0; i < formats.Count; i++)
+                {
+                    XmlElement fmt = formats[i] as XmlElement;
+                    if (fmt == null)
+                        continue;
+                    int id;
+                    if (!Int32.TryParse(fmt.GetAttribute("numFmtId"), NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out id))
+                        continue;
+                    custom[id] = fmt.GetAttribute("formatCode");
+                }
+                XmlNodeList cellXfs = doc.GetElementsByTagName("cellXfs");
+                if (cellXfs.Count == 0)
+                    return dates;
+                XmlNode parent = cellXfs[0];
+                int index = 0;
+                for (int i = 0; i < parent.ChildNodes.Count; i++)
+                {
+                    XmlElement xf = parent.ChildNodes[i] as XmlElement;
+                    if (xf == null || xf.LocalName != "xf")
+                        continue;
+                    int id;
+                    if (!Int32.TryParse(xf.GetAttribute("numFmtId"), NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out id))
+                    {
+                        index++;
+                        continue;
+                    }
+                    string code;
+                    if (!custom.TryGetValue(id, out code) || String.IsNullOrEmpty(code))
+                        code = BuiltinFormatCode(id);
+                    if (DengiDateNumbers.IsDayMonthFormat(code))
+                        dates.Add(index);
+                    index++;
+                }
+            }
+            return dates;
+        }
+
+        private static string BuiltinFormatCode(int id)
+        {
+            switch (id)
+            {
+                case 14: return "mm-dd-yy";
+                case 15: return "d-mmm-yy";
+                case 16: return "d-mmm";
+                case 17: return "mmm-yy";
+                case 18: return "h:mm AM/PM";
+                case 19: return "h:mm:ss AM/PM";
+                case 20: return "h:mm";
+                case 21: return "h:mm:ss";
+                case 22: return "m/d/yy h:mm";
+                case 45: return "mm:ss";
+                case 46: return "[h]:mm:ss";
+                case 47: return "mmss.0";
+                default:
+                    if ((id >= 27 && id <= 36) || (id >= 50 && id <= 58))
+                        return "d";
+                    return "";
+            }
         }
 
         private static List<string[]> ReadSharedStrings(ZipArchiveEntry entry)

@@ -1152,6 +1152,8 @@
   "error.specify_template_name": "Vorlagenname angeben.",
   "app.subtitle": "Ausgabenverwaltung",
   "import.excel_file_label": "Excel-Datei (.xlsx)",
+  "import.date_number_warnings": "Warnungen: Zahlen nicht aus Datum wiederhergestellt",
+  "import.date_number_skipped": "Ein Zahlenfeld enthielt ein Datum, die Zahl ließ sich nicht eindeutig wiederherstellen (Wert übersprungen): {0}",
   "error.image_file_not_found": "Bilddatei nicht gefunden.",
   "status.fuel_filter_applied": "Kraftstofffilter angewendet (Daten bleiben erhalten).",
   "status.fuel_filter_reset": "Kraftstofffilter zurückgesetzt.",

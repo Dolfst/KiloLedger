@@ -52,7 +52,8 @@ internal static class GoogleSyncService
         Directory.CreateDirectory(incoming);
         try
         {
-            WriteSnapshotFromJson(pullJson, incoming);
+            List<string> dateWarnings = new List<string>();
+            WriteSnapshotFromJson(pullJson, incoming, dateWarnings);
             ExpenseDataCodec.ValidateDirectory(incoming);
 
             SyncPlan defaultPlan = new SyncPlan();
@@ -60,8 +61,15 @@ internal static class GoogleSyncService
                 dataDirectory, incoming, defaultPlan);
             string safetyPath = ExpenseDataStore.AllocateSafetyBackupPath(dataDirectory);
             preview.SafetyPath = safetyPath;
-            SyncPlan plan = resolvePlan(ExpenseSyncService.BuildPreviewText(
-                dataDirectory, incoming, "Android", "Google", preview));
+            string previewText = ExpenseSyncService.BuildPreviewText(
+                dataDirectory, incoming, "Android", "Google", preview);
+            if (dateWarnings.Count > 0)
+            {
+                previewText += "\n\n" + L10n.Get("import.date_number_warnings");
+                for (int w = 0; w < dateWarnings.Count; w++)
+                    previewText += "\n" + dateWarnings[w];
+            }
+            SyncPlan plan = resolvePlan(previewText);
             if (plan == null || plan.Cancelled)
                 throw new System.OperationCanceledException(L10n.Get("sync.cancelled"));
 
@@ -95,16 +103,66 @@ internal static class GoogleSyncService
         }
     }
 
-    private static void WriteSnapshotFromJson(string json, string directory)
+    private static void WriteSnapshotFromJson(string json, string directory, List<string> dateWarnings)
     {
+        string data = ExtractObject(json, "data") ?? json;
+        List<string[]> fuel = ExtractTable(json, "fuel");
+        List<string[]> repairs = ExtractTable(json, "repairs");
+        List<string[]> utilities = ExtractTable(json, "utilities");
+        List<string[]> expenses = ExtractTable(json, "expenses");
+        RecoverDateNumbers(fuel, new int[] { 2, 3, 4, 5 }, dateWarnings);
+        RecoverDateNumbers(repairs, new int[] { 2, 6, 7 }, dateWarnings);
+        RecoverDateNumbers(utilities, new int[] { 1, 2, 3, 4, 5, 6, 7 }, dateWarnings);
+        RecoverDateNumbers(expenses, new int[] { 4 }, dateWarnings);
+        AddScriptWarnings(data, dateWarnings);
         WriteTable(directory, "cars.dat", ExtractTable(json, "cars"), 1);
-        WriteFuelTable(directory, ExtractTable(json, "fuel"));
-        WriteTable(directory, "repairs.dat", ExtractTable(json, "repairs"), 9);
-        WriteTable(directory, "utilities.dat", ExtractTable(json, "utilities"), 8);
+        WriteFuelTable(directory, fuel);
+        WriteTable(directory, "repairs.dat", repairs, 9);
+        WriteTable(directory, "utilities.dat", utilities, 8);
         WriteTable(directory, ExpenseDataCodec.RepairCategoriesFile, ExtractTable(json, "categories"), 1);
-        WriteTable(directory, ExpenseDataCodec.ExpensesFile, ExtractTable(json, "expenses"), 6);
+        WriteTable(directory, ExpenseDataCodec.ExpensesFile, expenses, 6);
         WriteTable(directory, ExpenseDataCodec.ExpenseCategoriesFile,
             ExtractTable(json, "expenseCategories"), 1);
+    }
+
+    private static void RecoverDateNumbers(List<string[]> rows, int[] indexes, List<string> warnings)
+    {
+        if (rows == null)
+            return;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            if (rows[i] == null)
+                continue;
+            for (int n = 0; n < indexes.Length; n++)
+            {
+                int index = indexes[n];
+                if (index < 0 || index >= rows[i].Length)
+                    continue;
+                string raw = rows[i][index] ?? "";
+                string recovered;
+                DateNumberKind kind = DengiDateNumbers.Classify(raw, false, out recovered);
+                if (kind == DateNumberKind.Recovered)
+                    rows[i][index] = recovered;
+                else if (kind == DateNumberKind.Ambiguous)
+                {
+                    rows[i][index] = "";
+                    if (warnings != null && warnings.Count < 30)
+                        warnings.Add(L10n.Format("import.date_number_skipped", raw.Trim()));
+                }
+            }
+        }
+    }
+
+    private static void AddScriptWarnings(string dataJson, List<string> warnings)
+    {
+        List<string> remote = ParseStringList(dataJson, "dateNumberWarnings");
+        for (int i = 0; i < remote.Count && warnings.Count < 30; i++)
+        {
+            string item = (remote[i] ?? "").Trim();
+            if (item.Length == 0)
+                continue;
+            warnings.Add(L10n.Format("import.date_number_skipped", item));
+        }
     }
 
     private static void WriteTable(string directory, string fileName, List<string[]> rows, int columns)
@@ -211,6 +269,30 @@ internal static class GoogleSyncService
         // Prefer data.* then root.*
         string data = ExtractObject(json, "data") ?? json;
         return ParseTable(data, key);
+    }
+
+    private static List<string> ParseStringList(string json, string key)
+    {
+        List<string> items = new List<string>();
+        if (String.IsNullOrEmpty(json))
+            return items;
+        string marker = "\"" + key + "\"";
+        int index = json.IndexOf(marker, StringComparison.Ordinal);
+        if (index < 0)
+            return items;
+        int colon = json.IndexOf(':', index + marker.Length);
+        int start = colon + 1;
+        while (start < json.Length && Char.IsWhiteSpace(json[start]))
+            start++;
+        if (start >= json.Length || json[start] != '[')
+            return items;
+        int end = FindMatching(json, start, '[', ']');
+        if (end < 0)
+            return items;
+        string[] row = ParseRow(json.Substring(start + 1, end - start - 1));
+        for (int i = 0; i < row.Length; i++)
+            items.Add(row[i] ?? "");
+        return items;
     }
 
     private static List<string[]> ParseTable(string json, string key)
