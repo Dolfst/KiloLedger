@@ -92,4 +92,12 @@ jobs:
           -p:AcceptAndroidSDKLicenses=True
 
       - name: Confirm signed APK
-        run: find Alfa156.Android/bin/Release -name '*-Signed.apk' -print
+        run: |
+          set -euo pipefail
+          signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' -print)"
+          if [ -z "$signed" ]; then
+            echo "Signed APK not found" >&2
+            find Alfa156.Android/bin/Release -name '*.apk' -print >&2 || true
+            exit 1
+          fi
+          echo "$signed"
