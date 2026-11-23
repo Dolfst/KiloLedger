@@ -447,7 +447,7 @@ namespace CarExpenses
             string token = ToSettings.GetOrCreateSnapshotDeviceToken(DataDirectory);
             string created = DateTime.UtcNow.ToString(
                 "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-            string json = "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":\"1.38.1\"," +
+            string json = "{\"schema\":\"alfa156.snapshot\",\"schemaVersion\":1,\"appVersion\":\"1.38.3\"," +
                 "\"createdUtc\":\"" + created + "\",\"deviceToken\":\"" + token + "\"}";
             using (StreamWriter writer = new StreamWriter(
                 Path.Combine(backupPath, "snapshot.json"), false, Encoding.UTF8))

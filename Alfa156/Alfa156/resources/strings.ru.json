@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: пора заменить",
   "notif.due_soon_title": "Alfa 156: скоро ТО",
   "about.android_version_prefix": "Alfa 156\nВерсия",
-  "about.kpk_full": "Alfa 156\nВерсия 1.38.1\n\nУчёт заправок, ремонта, прочих расходов и коммуналки.",
+  "about.kpk_full": "Alfa 156\nВерсия 1.38.3\n\nУчёт заправок, ремонта, прочих расходов и коммуналки.",
   "error.csv_unclosed_quote": "CSV содержит незакрытую кавычку.",
   "msg.csv_exported_to": "CSV экспортированы в",
   "import.csv_folder_label": "CSV-папка",
@@ -1236,5 +1236,8 @@
   "sync.cancelled_word": "отменена",
   "backup.safety_copy_colon": "Копия Safety:",
   "label.all_months": "все месяцы",
-  "label.default_car_name": "Мой автомобиль"
+  "label.default_car_name": "Мой автомобиль",
+  "menu.database": "База",
+  "menu.exchange": "Обмен",
+  "menu.tools": "Сервис"
 }

@@ -79,7 +79,7 @@ def main() -> int:
         "AddCarNote",
         "EditCarNote",
         "DeleteCarNote",
-        "Добавить заметку",
+        "button.add_note",
         "NotesRows",
     ):
         if needle not in desktop:

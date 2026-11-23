@@ -77,8 +77,8 @@ def main() -> int:
         f'AppVersion = "{version}"',
         "OpenImportWizard",
         "ExportCsvTemplates",
-        'MakeButton("Импорт…"',
-        'MakeButton("Шаблоны CSV"',
+        '"button.import"',
+        '"button.csv_templates"',
     ):
         if needle not in mainform:
             errors.append(f"Desktop MainForm: missing {needle!r}")

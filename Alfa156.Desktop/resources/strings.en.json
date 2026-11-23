@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: replacement due",
   "notif.due_soon_title": "Alfa 156: service due soon",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.38.1\n\nFuel, repair, expense, and utility tracker.",
+  "about.kpk_full": "Alfa 156\nVersion 1.38.3\n\nFuel, repair, expense, and utility tracker.",
   "error.csv_unclosed_quote": "CSV contains an unclosed quote.",
   "msg.csv_exported_to": "CSV exported to",
   "import.csv_folder_label": "CSV folder",
@@ -1236,5 +1236,8 @@
   "sync.cancelled_word": "cancelled",
   "backup.safety_copy_colon": "Safety copy:",
   "label.all_months": "all months",
-  "label.default_car_name": "My Car"
+  "label.default_car_name": "My Car",
+  "menu.database": "Database",
+  "menu.exchange": "Exchange",
+  "menu.tools": "Tools"
 }

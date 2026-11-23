@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.38.2";
+        private const string AppVersion = "1.38.3";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -46,8 +46,19 @@ namespace Alfa156.Desktop
         private readonly TextBox budgetWarnBox = new TextBox();
         private readonly TextBox backupRemindBox = new TextBox();
         private readonly TextBox reminderWarnBox = new TextBox();
-        private readonly FlowLayoutPanel toolbar;
-        private readonly FlowLayoutPanel exchange;
+        private readonly Panel sidebarPanel = new Panel();
+        private readonly FlowLayoutPanel navList = new FlowLayoutPanel();
+        private readonly List<Button> navButtons = new List<Button>();
+        private readonly List<ToolStripMenuItem> localizableMenuItems = new List<ToolStripMenuItem>();
+        private readonly List<Control> headerActions = new List<Control>();
+        private readonly Label brandTitleLabel = new Label();
+        private readonly Label brandVersionLabel = new Label();
+        private readonly Label sectionTitleLabel = new Label();
+        private Button quickFuelButton;
+        private Button saveButton;
+        private readonly ContextMenuStrip dbMenu = new ContextMenuStrip();
+        private readonly ContextMenuStrip exchangeMenu = new ContextMenuStrip();
+        private readonly ContextMenuStrip toolsMenu = new ContextMenuStrip();
         private readonly FlowLayoutPanel intervalRow;
         private readonly ComboBox defaultCarBox = new ComboBox();
         private readonly ComboBox languageBox = new ComboBox();
@@ -114,12 +125,12 @@ else
             summaryTab.Text = L10n.Get("tab.summary");
 
             Text = "Alfa 156 " + ResolveVersion();
-            Width = 1100;
-            Height = 720;
+            Width = 1180;
+            Height = 760;
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(900, 560);
+            MinimumSize = new Size(940, 600);
             Font = new Font("Segoe UI", 9F);
-            BackColor = Color.FromArgb(245, 247, 250);
+            BackColor = Color.FromArgb(244, 246, 249);
             ForeColor = Color.FromArgb(35, 51, 70);
             try
             {
@@ -131,36 +142,94 @@ else
             }
             catch { }
 
-            TableLayoutPanel root = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 4,
-                Padding = new Padding(8),
-                BackColor = Color.FromArgb(245, 247, 250)
-            };
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            // Left dark-navy navigation sidebar
+            sidebarPanel.Dock = DockStyle.Left;
+            sidebarPanel.Width = 212;
+            sidebarPanel.BackColor = Color.FromArgb(35, 51, 70);
 
-            toolbar = new FlowLayoutPanel
+            Panel brandHeader = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 68,
+                BackColor = Color.FromArgb(28, 41, 57),
+                Padding = new Padding(16, 12, 16, 8)
+            };
+            brandTitleLabel.Text = "Alfa 156";
+            brandTitleLabel.Font = new Font("Segoe UI", 13.5F, FontStyle.Bold);
+            brandTitleLabel.ForeColor = Color.White;
+            brandTitleLabel.Dock = DockStyle.Top;
+            brandTitleLabel.Height = 26;
+            brandVersionLabel.Text = "v" + ResolveVersion();
+            brandVersionLabel.Font = new Font("Segoe UI", 8.5F);
+            brandVersionLabel.ForeColor = Color.FromArgb(165, 180, 200);
+            brandVersionLabel.Dock = DockStyle.Top;
+            brandVersionLabel.Height = 18;
+            Panel brandAccent = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 3,
+                BackColor = Color.FromArgb(200, 43, 43)
+            };
+            brandHeader.Controls.Add(brandVersionLabel);
+            brandHeader.Controls.Add(brandTitleLabel);
+            brandHeader.Controls.Add(brandAccent);
+
+            navList.Dock = DockStyle.Fill;
+            navList.FlowDirection = FlowDirection.TopDown;
+            navList.WrapContents = false;
+            navList.AutoScroll = true;
+            navList.Padding = new Padding(0, 10, 0, 10);
+            navList.BackColor = Color.FromArgb(35, 51, 70);
+
+            sidebarPanel.Controls.Add(navList);
+            sidebarPanel.Controls.Add(brandHeader);
+
+            // Compact single-row top header bar
+            Panel headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 62,
+                BackColor = Color.White,
+                Padding = new Padding(16, 8, 16, 8)
+            };
+            headerPanel.Paint += delegate(object s, PaintEventArgs pe)
+            {
+                using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
+                    pe.Graphics.DrawLine(p, 0, headerPanel.Height - 1, headerPanel.Width, headerPanel.Height - 1);
+            };
+
+            Panel headerLeft = new Panel
             {
                 Dock = DockStyle.Fill,
-                WrapContents = true,
-                AutoSize = true
+                BackColor = Color.White
             };
-            pathBox.Width = 420;
+            sectionTitleLabel.Text = L10n.Get("tab.vehicles");
+            sectionTitleLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            sectionTitleLabel.ForeColor = Color.FromArgb(35, 51, 70);
+            sectionTitleLabel.Dock = DockStyle.Top;
+            sectionTitleLabel.Height = 24;
             pathBox.ReadOnly = true;
-            toolbar.Controls.Add(pathBox);
-            toolbar.Controls.Add(MakeButton("button.open_folder", OpenFolder));
-            toolbar.Controls.Add(MakeButton("button.open_zip", OpenZip));
-            toolbar.Controls.Add(MakeButton("button.new_folder", CreateFolder));
-            toolbar.Controls.Add(MakeButton("button.save_data", SaveData));
-            toolbar.Controls.Add(MakeButton("button.export_zip", SaveZip));
-            toolbar.Controls.Add(MakeButton("button.attach_receipt", AttachReceiptPhoto));
-            toolbar.Controls.Add(MakeButton("button.delete_receipt", DeleteReceiptPhoto));
-            globalSearchBox.Width = 140;
+            pathBox.BorderStyle = BorderStyle.None;
+            pathBox.BackColor = Color.White;
+            pathBox.ForeColor = Color.FromArgb(100, 116, 139);
+            pathBox.Font = new Font("Segoe UI", 8.5F);
+            pathBox.Dock = DockStyle.Top;
+            pathBox.Height = 18;
+            pathBox.Text = L10n.Get("hint.open_folder_or_zip");
+            headerLeft.Controls.Add(pathBox);
+            headerLeft.Controls.Add(sectionTitleLabel);
+
+            FlowLayoutPanel headerRight = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                WrapContents = false,
+                Padding = new Padding(8, 6, 0, 0),
+                BackColor = Color.White
+            };
+
+            globalSearchBox.Width = 155;
+            globalSearchBox.Margin = new Padding(0, 6, 4, 4);
             globalSearchBox.Text = L10n.Get("button.search_ellipsis");
             globalSearchBox.ForeColor = Color.Gray;
             globalSearchBox.GotFocus += delegate
@@ -172,44 +241,67 @@ else
                 }
             };
             globalSearchBox.KeyDown += GlobalSearchKeyDown;
-            toolbar.Controls.Add(globalSearchBox);
-            toolbar.Controls.Add(MakeButton("button.search", OpenGlobalSearch));
-            toolbar.Controls.Add(MakeButton("button.duplicates", OpenDuplicates));
-            toolbar.Controls.Add(MakeButton("button.data_integrity", OpenDataIntegrity));
-            toolbar.Controls.Add(MakeButton("button.quick_fuel", OpenQuickFuelEntry));
-            toolbar.Controls.Add(MakeButton("button.trip", OpenTripEntry));
-            toolbar.Controls.Add(MakeButton("button.trip_report", ShowTripReport));
+            headerRight.Controls.Add(globalSearchBox);
+            Control searchBtn = MakeButton("button.search", OpenGlobalSearch);
+            headerActions.Add(searchBtn);
+            headerRight.Controls.Add(searchBtn);
 
-            exchange = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                WrapContents = true,
-                AutoSize = true
-            };
-            exchange.Controls.Add(MakeButton("button.import", OpenImportWizard));
-            exchange.Controls.Add(MakeButton("button.export_excel", ExportExcel));
-            exchange.Controls.Add(MakeButton("button.import_excel", ImportExcel));
-            exchange.Controls.Add(MakeButton("button.export_csv", ExportCsv));
-            exchange.Controls.Add(MakeButton("button.import_csv_folder", ImportCsvFolder));
-            exchange.Controls.Add(MakeButton("button.csv_templates", ExportCsvTemplates));
-            googleUrlBox.Width = 280;
-            googleUrlBox.Text = L10n.Get("message.google_sheet_url");
-            googleUrlBox.ForeColor = Color.Gray;
-            googleUrlBox.GotFocus += delegate
-            {
-                if (googleUrlBox.ForeColor == Color.Gray)
-                {
-                    googleUrlBox.Text = "";
-                    googleUrlBox.ForeColor = SystemColors.WindowText;
-                }
-            };
-            exchange.Controls.Add(googleUrlBox);
-            exchange.Controls.Add(MakeButton("button.import_google", ImportGoogle));
-            exchange.Controls.Add(MakeButton("button.google_wizard", OpenGoogleSyncWizard));
-            exchange.Controls.Add(MakeButton("button.google_settings", ConfigureGoogleSync));
-            exchange.Controls.Add(MakeButton("button.google_sync", SyncGoogle));
+            quickFuelButton = MakeAccentButton("button.quick_fuel", OpenQuickFuelEntry);
+            headerActions.Add(quickFuelButton);
+            headerRight.Controls.Add(quickFuelButton);
+
+            saveButton = MakeButton("button.save_data", SaveData);
+            headerActions.Add(saveButton);
+            headerRight.Controls.Add(saveButton);
+
+            // Database dropdown menu
+            dbMenu.Items.Add(MakeMenuItem("button.open_folder", OpenFolder));
+            dbMenu.Items.Add(MakeMenuItem("button.open_zip", OpenZip));
+            dbMenu.Items.Add(MakeMenuItem("button.new_folder", CreateFolder));
+            dbMenu.Items.Add(new ToolStripSeparator());
+            dbMenu.Items.Add(MakeMenuItem("button.export_zip", SaveZip));
+            Control dbBtn = MakeDropdownButton("menu.database", dbMenu);
+            headerActions.Add(dbBtn);
+            headerRight.Controls.Add(dbBtn);
+
+            // Exchange & Google dropdown menu
+            exchangeMenu.Items.Add(MakeMenuItem("button.import", OpenImportWizard));
+            exchangeMenu.Items.Add(new ToolStripSeparator());
+            exchangeMenu.Items.Add(MakeMenuItem("button.export_excel", ExportExcel));
+            exchangeMenu.Items.Add(MakeMenuItem("button.import_excel", ImportExcel));
+            exchangeMenu.Items.Add(new ToolStripSeparator());
+            exchangeMenu.Items.Add(MakeMenuItem("button.export_csv", ExportCsv));
+            exchangeMenu.Items.Add(MakeMenuItem("button.import_csv_folder", ImportCsvFolder));
+            exchangeMenu.Items.Add(MakeMenuItem("button.csv_templates", ExportCsvTemplates));
+            exchangeMenu.Items.Add(new ToolStripSeparator());
+            exchangeMenu.Items.Add(MakeMenuItem("button.google_sync", SyncGoogle));
+            exchangeMenu.Items.Add(MakeMenuItem("button.import_google", ImportGoogle));
+            exchangeMenu.Items.Add(MakeMenuItem("button.google_wizard", OpenGoogleSyncWizard));
+            exchangeMenu.Items.Add(MakeMenuItem("button.google_settings", ConfigureGoogleSync));
+            Control exBtn = MakeDropdownButton("menu.exchange", exchangeMenu);
+            headerActions.Add(exBtn);
+            headerRight.Controls.Add(exBtn);
+
+            // Tools dropdown menu
+            toolsMenu.Items.Add(MakeMenuItem("button.trip", OpenTripEntry));
+            toolsMenu.Items.Add(MakeMenuItem("button.trip_report", ShowTripReport));
+            toolsMenu.Items.Add(new ToolStripSeparator());
+            toolsMenu.Items.Add(MakeMenuItem("button.attach_receipt", AttachReceiptPhoto));
+            toolsMenu.Items.Add(MakeMenuItem("button.delete_receipt", DeleteReceiptPhoto));
+            toolsMenu.Items.Add(new ToolStripSeparator());
+            toolsMenu.Items.Add(MakeMenuItem("button.duplicates", OpenDuplicates));
+            toolsMenu.Items.Add(MakeMenuItem("button.data_integrity", OpenDataIntegrity));
+            Control toolsBtn = MakeDropdownButton("menu.tools", toolsMenu);
+            headerActions.Add(toolsBtn);
+            headerRight.Controls.Add(toolsBtn);
+
+            headerPanel.Controls.Add(headerLeft);
+            headerPanel.Controls.Add(headerRight);
 
             tabs.Dock = DockStyle.Fill;
+            tabs.Appearance = TabAppearance.FlatButtons;
+            tabs.ItemSize = new Size(0, 1);
+            tabs.SizeMode = TabSizeMode.Fixed;
             tabs.TabPages.Add(WrapGrid("tab.vehicles", carsGrid));
             tabs.TabPages.Add(WrapFilteredGrid("tab.fuel", fuelGrid, BuildFuelFilterBar()));
             tabs.TabPages.Add(WrapFilteredGrid("tab.repairs", repairsGrid, BuildRepairFilterBar()));
@@ -306,15 +398,33 @@ else
             summaryTab.Controls.Add(summaryLayout);
             tabs.TabPages.Add(summaryTab);
             tabs.SelectedIndexChanged += SummaryTabSelected;
+            tabs.SelectedIndexChanged += delegate { SyncSidebarSelection(); };
+
+            BuildSidebarNavItems();
+            SyncSidebarSelection();
+
+            Panel tabsHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12, 10, 12, 6),
+                BackColor = Color.FromArgb(244, 246, 249)
+            };
+            tabsHost.Controls.Add(tabs);
 
             statusStrip.Items.Add(statusLabel);
-            statusStrip.Dock = DockStyle.Fill;
+            statusStrip.Dock = DockStyle.Bottom;
 
-            root.Controls.Add(toolbar, 0, 0);
-            root.Controls.Add(exchange, 0, 1);
-            root.Controls.Add(tabs, 0, 2);
-            root.Controls.Add(statusStrip, 0, 3);
-            Controls.Add(root);
+            Panel workspacePanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(244, 246, 249)
+            };
+            workspacePanel.Controls.Add(tabsHost);
+            workspacePanel.Controls.Add(headerPanel);
+            workspacePanel.Controls.Add(statusStrip);
+
+            Controls.Add(workspacePanel);
+            Controls.Add(sidebarPanel);
 
             SetupCarsGrid();
             SetupFuelGrid();
@@ -373,17 +483,14 @@ else
 
         private void ShowLanguageSelectionDialog()
         {
-            // Создаем диалог выбора языка
             string[] langs = L10n.GetAvailableLanguages();
             if (langs.Length == 0)
             {
-                // Если языков нет, используем русский по умолчанию
                 LocalizationManager.Instance.CurrentLanguage = "ru";
                 ApplyLanguageToUI();
                 return;
             }
-            
-            // Показываем форму выбора языка
+
             using (var dialog = new Form())
             {
                 dialog.Text = L10n.Get("dialog.language");
@@ -391,52 +498,53 @@ else
                 dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dialog.MaximizeBox = false;
                 dialog.MinimizeBox = false;
-                dialog.Size = new Size(300, 200);
-                
-                // Комбобокс с языками
+                dialog.Size = new Size(340, 190);
+                dialog.BackColor = Color.FromArgb(244, 246, 249);
+
                 var langCombo = new ComboBox()
                 {
-                    Dock = DockStyle.Top,
-                    DropDownStyle = ComboBoxStyle.DropDownList,
-                    Width = 200
+                    Left = 16,
+                    Top = 20,
+                    Width = 290,
+                    DropDownStyle = ComboBoxStyle.DropDownList
                 };
-                
                 foreach (var lang in langs)
                     langCombo.Items.Add(lang);
-                
                 if (langCombo.Items.Count > 0)
                     langCombo.SelectedIndex = 0;
-                
-                // Кнопки OK/Cancel
-                var btnOk = new Button() { Text = "OK", DialogResult = DialogResult.OK, Dock = DockStyle.Bottom, Width = 100 };
-                var btnCancel = new Button() { Text = "Cancel", DialogResult = DialogResult.Cancel, Dock = DockStyle.Bottom, Width = 100 };
-                
+
+                var btnOk = new Button()
+                {
+                    Text = L10n.Get("button.save"),
+                    DialogResult = DialogResult.OK,
+                    Left = 116,
+                    Top = 76,
+                    Width = 90
+                };
+                var btnCancel = new Button()
+                {
+                    Text = L10n.Get("button.cancel"),
+                    DialogResult = DialogResult.Cancel,
+                    Left = 216,
+                    Top = 76,
+                    Width = 90
+                };
+
                 dialog.AcceptButton = btnOk;
                 dialog.CancelButton = btnCancel;
-                
-                var panel = new Panel()
-                {
-                    Dock = DockStyle.Fill,
-                    Margin = new Padding(20)
-                };
-                
-                panel.Controls.Add(langCombo);
-                panel.Controls.Add(btnOk);
-                panel.Controls.Add(btnCancel);
-                dialog.Controls.Add(panel);
-                
+                dialog.Controls.AddRange(new Control[] { langCombo, btnOk, btnCancel });
+
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    string selectedLang = langCombo.SelectedItem?.ToString() ?? "ru";
+                    string selectedLang = langCombo.SelectedItem != null ? langCombo.SelectedItem.ToString() : "ru";
                     LocalizationManager.Instance.CurrentLanguage = selectedLang;
-                    // Сохраняем выбранный язык
-                    ToSettings.SetLanguage(repository.Settings, selectedLang);
-                    repository.Save();
+                    repository.Settings = ToSettings.SetLanguage(repository.Settings, selectedLang);
+                    if (!String.IsNullOrEmpty(repository.DirectoryPath))
+                        repository.Save();
                     ApplyLanguageToUI();
                 }
                 else
                 {
-                    // Пользователь отменил - устанавливаем русский
                     LocalizationManager.Instance.CurrentLanguage = "ru";
                     ApplyLanguageToUI();
                 }
@@ -1076,15 +1184,160 @@ else
                 Text = L10n.Get(locKey),
                 AutoSize = true,
                 Margin = new Padding(4, 4, 4, 4),
-                Padding = new Padding(8, 2, 8, 2),
+                Padding = new Padding(10, 4, 10, 4),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(225, 231, 237),
+                BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(35, 51, 70),
+                Cursor = Cursors.Hand,
                 Tag = locKey
             };
-            button.FlatAppearance.BorderColor = Color.FromArgb(49, 77, 102);
+            button.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(226, 232, 240);
             button.Click += click;
             return button;
+        }
+
+        private static Button MakeAccentButton(string locKey, EventHandler click)
+        {
+            Button button = new Button
+            {
+                Text = "+ " + L10n.Get(locKey),
+                AutoSize = true,
+                Margin = new Padding(4, 4, 4, 4),
+                Padding = new Padding(12, 4, 12, 4),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(200, 43, 43),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Tag = locKey
+            };
+            button.FlatAppearance.BorderColor = Color.FromArgb(170, 32, 32);
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(178, 34, 34);
+            button.Click += click;
+            return button;
+        }
+
+        private static Button MakeDropdownButton(string locKey, ContextMenuStrip menu)
+        {
+            Button button = new Button
+            {
+                Text = L10n.Get(locKey) + " ▾",
+                AutoSize = true,
+                Margin = new Padding(4, 4, 4, 4),
+                Padding = new Padding(10, 4, 10, 4),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(35, 51, 70),
+                Cursor = Cursors.Hand,
+                Tag = locKey
+            };
+            button.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(241, 245, 249);
+            button.Click += delegate
+            {
+                menu.Show(button, new Point(0, button.Height));
+            };
+            return button;
+        }
+
+        private ToolStripMenuItem MakeMenuItem(string locKey, EventHandler click)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(L10n.Get(locKey))
+            {
+                Tag = locKey
+            };
+            item.Click += click;
+            localizableMenuItems.Add(item);
+            return item;
+        }
+
+        private void BuildSidebarNavItems()
+        {
+            navList.Controls.Clear();
+            navButtons.Clear();
+            for (int i = 0; i < tabs.TabPages.Count; i++)
+            {
+                TabPage page = tabs.TabPages[i];
+                if (i == tabs.TabPages.Count - 1)
+                {
+                    Panel sep = new Panel
+                    {
+                        Width = 180,
+                        Height = 1,
+                        Margin = new Padding(16, 8, 16, 8),
+                        BackColor = Color.FromArgb(62, 82, 106)
+                    };
+                    navList.Controls.Add(sep);
+                }
+                int idx = i;
+                string key = page.Tag as string;
+                Button navBtn = new Button
+                {
+                    Text = page.Text,
+                    Width = 212,
+                    Height = 38,
+                    Margin = new Padding(0, 1, 0, 1),
+                    Padding = new Padding(18, 0, 12, 0),
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(35, 51, 70),
+                    ForeColor = Color.FromArgb(215, 225, 236),
+                    Font = new Font("Segoe UI", 9.5F),
+                    Cursor = Cursors.Hand,
+                    Tag = key
+                };
+                navBtn.FlatAppearance.BorderSize = 0;
+                navBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(47, 67, 91);
+                navBtn.Paint += delegate(object s, PaintEventArgs pe)
+                {
+                    if (tabs.SelectedIndex == idx)
+                    {
+                        using (SolidBrush b = new SolidBrush(Color.FromArgb(200, 43, 43)))
+                            pe.Graphics.FillRectangle(b, 0, 4, 4, navBtn.Height - 8);
+                    }
+                };
+                navBtn.Click += delegate
+                {
+                    tabs.SelectedIndex = idx;
+                };
+                navButtons.Add(navBtn);
+                navList.Controls.Add(navBtn);
+            }
+        }
+
+        private void SyncSidebarSelection()
+        {
+            int selected = tabs.SelectedIndex;
+            for (int i = 0; i < navButtons.Count; i++)
+            {
+                bool active = (i == selected);
+                Button btn = navButtons[i];
+                btn.BackColor = active ? Color.FromArgb(47, 67, 91) : Color.FromArgb(35, 51, 70);
+                btn.ForeColor = active ? Color.White : Color.FromArgb(210, 220, 232);
+                btn.Font = new Font("Segoe UI", 9.5F, active ? FontStyle.Bold : FontStyle.Regular);
+                btn.Invalidate();
+            }
+            if (selected >= 0 && selected < tabs.TabPages.Count)
+                sectionTitleLabel.Text = tabs.TabPages[selected].Text;
+        }
+
+        private void UpdateSaveDirtyVisual()
+        {
+            if (saveButton == null)
+                return;
+            if (dirty)
+            {
+                saveButton.BackColor = Color.FromArgb(254, 242, 242);
+                saveButton.ForeColor = Color.FromArgb(185, 28, 28);
+                saveButton.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            }
+            else
+            {
+                saveButton.BackColor = Color.FromArgb(241, 245, 249);
+                saveButton.ForeColor = Color.FromArgb(35, 51, 70);
+                saveButton.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            }
         }
 
         private void OpenGoogleSyncWizard(object sender, EventArgs e)
@@ -1837,50 +2090,55 @@ else
         /// </summary>
         private void ApplyLanguageToUI()
         {
-            // Заголовок окна
             Text = "Alfa 156 " + ResolveVersion();
-
-            // Статус-бар
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
-
-            // Вкладка Summary
+            if (String.IsNullOrEmpty(repository.DirectoryPath))
+                pathBox.Text = L10n.Get("hint.open_folder_or_zip");
             summaryTab.Text = L10n.Get("tab.summary");
 
-            // Кнопки на панели инструментов (toolbar)
-            foreach (Control ctrl in toolbar.Controls)
+            foreach (Control ctrl in headerActions)
             {
                 if (ctrl is Button btn && btn.Tag is string key)
-                    btn.Text = L10n.Get(key);
+                {
+                    if (btn == quickFuelButton)
+                        btn.Text = "+ " + L10n.Get(key);
+                    else if (key.StartsWith("menu.", StringComparison.Ordinal))
+                        btn.Text = L10n.Get(key) + " ▾";
+                    else
+                        btn.Text = L10n.Get(key);
+                }
             }
 
-            // Кнопки на панели обмена (exchange)
-            foreach (Control ctrl in exchange.Controls)
+            foreach (ToolStripMenuItem item in localizableMenuItems)
             {
-                if (ctrl is Button btn2 && btn2.Tag is string key2)
-                    btn2.Text = L10n.Get(key2);
+                if (item.Tag is string mKey)
+                    item.Text = L10n.Get(mKey);
             }
 
-            // Кнопки в строке интервалов (intervalRow)
+            foreach (Button navBtn in navButtons)
+            {
+                if (navBtn.Tag is string nKey)
+                    navBtn.Text = L10n.Get(nKey);
+            }
+
             foreach (Control ctrl in intervalRow.Controls)
             {
                 if (ctrl is Button btn3 && btn3.Tag is string key3)
                     btn3.Text = L10n.Get(key3);
             }
 
-            // Кнопки в панелях фильтров (fuel, repairs, expenses, utilities)
             UpdateFilterBarButtons(fuelGrid);
             UpdateFilterBarButtons(repairsGrid);
             UpdateFilterBarButtons(expensesGrid);
             UpdateFilterBarButtons(utilitiesGrid);
 
-            // Заголовки вкладок
             foreach (TabPage page in tabs.TabPages)
             {
                 if (page.Tag is string tabKey)
                     page.Text = L10n.Get(tabKey);
             }
 
-            // Язык в комбобоксе
+            SyncSidebarSelection();
             languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
         }
 
@@ -2232,6 +2490,7 @@ else
             if (suppressDirty)
                 return;
             dirty = true;
+            UpdateSaveDirtyVisual();
             SetStatus(L10n.Get("confirm.unsaved_changes"));
         }
 
@@ -2248,6 +2507,7 @@ else
                     BindAll();
                     pathBox.Text = dialog.SelectedPath;
                     dirty = false;
+                    UpdateSaveDirtyVisual();
                     SetStatus(L10n.Get("msg.data_folder_opened"));
                     MaybeShowOnboardingTip();
                     MaybeShowBackupReminder();
@@ -2381,6 +2641,7 @@ else
                 }
                 repository.Save();
                 dirty = false;
+                UpdateSaveDirtyVisual();
                 SetStatus((L10n.Get("msg.saved_to_dat") + " ") + repository.DirectoryPath);
             }
             catch (Exception ex)
@@ -2552,6 +2813,34 @@ else
         private void ImportGoogle(object sender, EventArgs e)
         {
             string url = googleUrlBox.ForeColor == Color.Gray ? "" : googleUrlBox.Text.Trim();
+            if (url.Length == 0)
+            {
+                GoogleSyncSettings gs = GoogleSyncSettings.Load();
+                url = gs != null && gs.SpreadsheetUrl != null ? gs.SpreadsheetUrl.Trim() : "";
+            }
+            if (url.Length == 0)
+            {
+                using (Form prompt = new Form())
+                {
+                    prompt.Text = "Google Sheets";
+                    prompt.Width = 520;
+                    prompt.Height = 160;
+                    prompt.StartPosition = FormStartPosition.CenterParent;
+                    prompt.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    prompt.MaximizeBox = false;
+                    prompt.MinimizeBox = false;
+                    Label lbl = new Label { Text = L10n.Get("label.sheet_url_csv"), Left = 14, Top = 14, Width = 475 };
+                    TextBox tb = new TextBox { Left = 14, Top = 38, Width = 475 };
+                    Button ok = new Button { Text = L10n.Get("button.import"), Left = 290, Top = 78, Width = 100, DialogResult = DialogResult.OK };
+                    Button cancel = new Button { Text = L10n.Get("button.cancel"), Left = 398, Top = 78, Width = 90, DialogResult = DialogResult.Cancel };
+                    prompt.AcceptButton = ok;
+                    prompt.CancelButton = cancel;
+                    prompt.Controls.AddRange(new Control[] { lbl, tb, ok, cancel });
+                    if (prompt.ShowDialog(this) != DialogResult.OK)
+                        return;
+                    url = tb.Text.Trim();
+                }
+            }
             if (url.Length == 0)
             {
                 MessageBox.Show(this,

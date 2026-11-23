@@ -105,7 +105,7 @@ def main() -> int:
 
     desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
-        "Отчёт за период…",
+        "button.period_report",
         "ShowPeriodReport",
         "ShowPeriodReportResult",
         "PrintPeriodReport",

@@ -100,7 +100,7 @@ def main() -> int:
         "AddDateReminder",
         "DeleteDateReminder",
         "SaveReminderWarnDays",
-        "Добавить напоминание",
+        "button.add_reminder",
     ):
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
