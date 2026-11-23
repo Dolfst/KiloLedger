@@ -108,7 +108,7 @@ def main() -> int:
     if f'AssemblyVersion("{version}.0")' not in asm:
         errors.append(f"Desktop AssemblyInfo: not {version}.0")
 
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.ru.md").read_text()
     if "1.27.0" not in readme or "мастер импорта" not in readme.lower():
         errors.append("README.md: missing 1.27.0 import wizard notes")
 

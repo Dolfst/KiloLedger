@@ -118,7 +118,7 @@ def main() -> int:
         if "ValidateSnapshotJson" not in text:
             errors.append(f"{rel}: missing snapshot import validation")
 
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.ru.md").read_text()
     if f"## Что нового в {version}" not in readme and "## Что нового в 1.23.0" not in readme:
         errors.append(f"README: missing Что нового section for {version} (or 1.23.0)")
     if "**1.23.0**" not in readme or "backup_remind_days" not in readme:

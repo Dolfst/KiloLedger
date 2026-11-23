@@ -1786,11 +1786,14 @@ namespace KiloLedger.Desktop
             FlowLayoutPanel aboutBody = CreateSettingsFlowBody();
             aboutBody.Controls.Add(MakeSettingsButton("title.about", ShowAboutDialog));
             aboutBody.Controls.Add(MakeSettingsButton("button.support_project", delegate { OpenExternalUrl("https://github.com/Dolfst/alfa#support"); }));
+            aboutBody.Controls.Add(MakeSettingsButton("button.support_boosty", delegate { OpenExternalUrl(BoostySupportUrl); }));
             stack.Controls.Add(MakeSettingsCard("title.about", aboutBody), 0, 5);
 
             host.Controls.Add(stack);
             return host;
         }
+
+        private const string BoostySupportUrl = "https://boosty.to/kiloledger";
 
         private void OpenExternalUrl(string url)
         {
@@ -1811,7 +1814,7 @@ namespace KiloLedger.Desktop
             {
                 dlg.Text = L10n.Get("title.about");
                 dlg.Width = 520;
-                dlg.Height = 400;
+                dlg.Height = 460;
                 dlg.StartPosition = FormStartPosition.CenterParent;
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox = false;
@@ -1931,26 +1934,37 @@ namespace KiloLedger.Desktop
                 };
                 supportLink.LinkClicked += delegate { OpenExternalUrl("https://github.com/Dolfst/alfa#support"); };
 
-                Button supportBtn = MakeAccentButton("button.support_project", delegate
+                LinkLabel boostyLink = new LinkLabel
                 {
-                    OpenExternalUrl("https://github.com/Dolfst/alfa#support");
+                    Text = BoostySupportUrl,
+                    LinkColor = Color.FromArgb(200, 43, 43),
+                    Left = 18,
+                    Top = 196,
+                    Width = 465,
+                    Height = 22
+                };
+                boostyLink.LinkClicked += delegate { OpenExternalUrl(BoostySupportUrl); };
+
+                Button supportBtn = MakeAccentButton("button.support_boosty", delegate
+                {
+                    OpenExternalUrl(BoostySupportUrl);
                 });
                 supportBtn.AutoSize = false;
-                supportBtn.Width = 210;
+                supportBtn.Width = 220;
                 supportBtn.Height = 34;
                 supportBtn.Left = 18;
-                supportBtn.Top = 212;
+                supportBtn.Top = 230;
 
                 Button closeBtn = MakeButton("button.close", delegate { dlg.Close(); });
                 closeBtn.AutoSize = false;
                 closeBtn.Width = 110;
                 closeBtn.Height = 34;
                 closeBtn.Left = 374;
-                closeBtn.Top = 212;
+                closeBtn.Top = 230;
 
                 body.Controls.AddRange(new Control[]
                 {
-                    taglineLbl, siteLabel, repoLink, supportLbl, supportLink, supportBtn, closeBtn
+                    taglineLbl, siteLabel, repoLink, supportLbl, supportLink, boostyLink, supportBtn, closeBtn
                 });
 
                 dlg.Controls.Add(body);

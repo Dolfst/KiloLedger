@@ -65,7 +65,7 @@
 Для создания Pull Request:
 ```bash
 # На GitHub веб-интерфейсе:
-# 1. Перейти на https://github.com/Dolfst/alfa
+# 1. Перейти на https://github.com/Dolfst/KiloLedger
 # 2. Нажать "New pull request"
 # 3. Выбрать base: main, compare: localization
 # 4. Заполнить название и описание PR

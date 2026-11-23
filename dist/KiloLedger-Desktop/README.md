@@ -1,6 +1,8 @@
 # KiloLedger Desktop
 
-ПК-приложение с тем же логотипом и стилем, что КПК и Android.
+[English](../../README.md) · [Русский](../../README.ru.md)
+
+ПК-приложение с тем же логотипом и стилем, что КПК и Android. Полное описание — в корневом README. Файл для запуска в этой папке: `KiloLedger.Desktop.exe` (.NET Framework 4.8). Публикуемая копия с номером версии называется `KiloLedger-<версия>-Desktop.exe`.
 
 ## Запуск
 

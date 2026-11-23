@@ -1,6 +1,8 @@
 # Google Sheets синхронизация
 
-KiloLedger поддерживает двустороннюю синхронизацию с Google Sheets на **Desktop** и **Android**.
+[English](README.md#synchronization) · [Русский](README.ru.md#синхронизация)
+
+KiloLedger поддерживает двустороннюю синхронизацию с Google Sheets на **Desktop** и **Android**. КПК в Google напрямую не ходит.
 
 > Подробная иллюстрированная инструкция также находится в [`google-sync/README.md`](google-sync/README.md).
 
@@ -133,7 +135,7 @@ Apps Script автоматически создаёт следующие лис�
 - **Подробная инструкция**: [`google-sync/README.md`](google-sync/README.md)
 - **Код скрипта**: [`google-sync/KiloLedgerSync.gs`](google-sync/KiloLedgerSync.gs)
 - **Документация Google Apps Script**: https://developers.google.com/apps-script
-- **Issues**: https://github.com/Dolfst/alfa/issues
+- **Issues**: https://github.com/Dolfst/KiloLedger/issues
 
 ---
 

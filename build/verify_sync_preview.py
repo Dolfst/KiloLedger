@@ -54,8 +54,8 @@ def main() -> int:
     must_contain(ROOT / "KiloLedger.Android" / "MainActivity.cs", "Применить")
     must_contain(ROOT / "KiloLedger" / "KiloLedger" / "RecordIds.cs", "FormatPreview")
     must_contain(ROOT / "KiloLedger.Android" / "RecordIds.cs", "MaxExamples = 15")
-    must_contain(ROOT / "README.md", "**1.16.0**")
-    must_contain(ROOT / "README.md", "**1.17.0**")
+    must_contain(ROOT / "README.ru.md", "**1.16.0**")
+    must_contain(ROOT / "README.ru.md", "**1.17.0**")
     must_contain(ROOT / "KiloLedger.Android" / "MainActivity.cs", "ShowGlobalSearch")
     must_contain(ROOT / "google-sync" / "KiloLedgerSync.gs", "EXPENSE_PREFIX")
 

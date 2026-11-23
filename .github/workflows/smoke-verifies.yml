@@ -11,6 +11,7 @@ on:
       - "build/**"
       - "VERSION"
       - "README.md"
+      - "README.ru.md"
       - "google-sync/**"
       - ".github/workflows/smoke-verifies.yml"
   pull_request:
@@ -21,6 +22,7 @@ on:
       - "build/**"
       - "VERSION"
       - "README.md"
+      - "README.ru.md"
       - "google-sync/**"
       - ".github/workflows/smoke-verifies.yml"
   workflow_dispatch:

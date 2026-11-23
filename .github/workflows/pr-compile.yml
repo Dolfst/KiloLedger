@@ -1,0 +1,103 @@
+name: PR compile
+
+on:
+  pull_request:
+    paths:
+      - "KiloLedger.Desktop/**"
+      - "KiloLedger.Android/**"
+      - "VERSION"
+      - ".github/workflows/pr-compile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-compile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build Desktop with .NET Framework 4.8 reference assemblies
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/net48.nupkg https://www.nuget.org/api/v2/package/Microsoft.NETFramework.ReferenceAssemblies.net48/1.0.3
+          unzip -q /tmp/net48.nupkg -d /tmp/net48
+          dotnet build KiloLedger.Desktop/KiloLedger.Desktop.csproj -c Release --nologo \
+            -p:FrameworkPathOverride=/tmp/net48/build/.NETFramework/v4.8
+          test -f KiloLedger.Desktop/bin/Release/KiloLedger.Desktop.exe
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: microsoft
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          set +o pipefail
+          sdk_path="$(command -v sdkmanager || true)"
+          if [ -z "$sdk_path" ]; then
+            sdk_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          if [ ! -x "$sdk_path" ]; then
+            sdk_path="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
+          fi
+          if [ ! -x "$sdk_path" ]; then
+            echo "sdkmanager not found" >&2
+            exit 1
+          fi
+          yes | "$sdk_path" --licenses >/dev/null || true
+          set -o pipefail
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Build ARM64 APK
+        run: >-
+          dotnet build KiloLedger.Android/KiloLedger.Android.csproj
+          -c Release
+          -p:RuntimeIdentifier=android-arm64
+          -p:AndroidSdkDirectory="$ANDROID_HOME"
+          -p:JavaSdkDirectory="$JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True
+
+      - name: Confirm signed APK
+        run: |
+          set -euo pipefail
+          signed="$(find KiloLedger.Android/bin/Release -name '*-Signed.apk' -print)"
+          if [ -z "$signed" ]; then
+            echo "Signed APK not found" >&2
+            find KiloLedger.Android/bin/Release -name '*.apk' -print >&2 || true
+            exit 1
+          fi
+          echo "$signed"

@@ -63,7 +63,7 @@ def main() -> int:
     if f"Версия {version}" not in kpk:
         errors.append(f"KPK Form1: missing version {version}")
 
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.ru.md").read_text()
     if "**1.29.0**" not in readme:
         errors.append("README: missing 1.29.0")
     if "быстрая заправка" not in readme.lower() and "Быстрая заправка" not in readme:
