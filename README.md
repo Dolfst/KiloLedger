@@ -121,7 +121,7 @@
 - `google-sync/` — Apps Script для двусторонней синхронизации с Google Таблицей
 - `branding/` — общий логотип и описание стиля (`BrandTheme.md`)
 - `VERSION` — единый номер версии приложения (источник правды для имён файлов и сборок)
-- `dist/download/` — готовые сборки: `Alfa156-<version>.apk`, `Alfa156-<version>-Desktop.exe`, `Alfa156-<version>-KPK.exe` / `.zip`
+- `dist/download/` — готовые сборки: `KiloLedger-<version>.apk`, `KiloLedger-<version>-Desktop.exe`, `KiloLedger-<version>-KPK.exe` / `.zip`
 - `dist/Alfa156-Desktop/` — готовый `Alfa156.Desktop.exe`
 - `AGENTS.md` и `.github/skills/` — инструкции и специализированные навыки для AI-агентов, работающих с репозиторием.
 
@@ -279,19 +279,19 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
 
 Текущая версия: **1.39.3** (файл [`VERSION`](VERSION)).
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `Alfa156-1.39.3.apk` (Android), `Alfa156-1.39.3-Desktop.exe` (ПК), `Alfa156-1.39.3-KPK.exe` / `Alfa156-1.39.3-KPK.zip` (КПК).
+Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `KiloLedger-1.39.3.apk` (Android), `KiloLedger-1.39.3-Desktop.exe` (ПК), `KiloLedger-1.39.3-KPK.exe` / `KiloLedger-1.39.3-KPK.zip` (КПК).
 
 См. **История версий** выше (1.9.0 → 1.39.3). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
 
-**Обновление КПК:** скопируйте свежий `Alfa156-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «KiloLedger» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
+**Обновление КПК:** скопируйте свежий `KiloLedger-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «KiloLedger» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
 
 GitHub Actions собирает всё автоматически:
 
 | Workflow | `dist/download` | Rolling Release |
 |----------|-----------------|-----------------|
-| **Android APK** | `Alfa156-<version>.apk` | [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) |
-| **Desktop EXE** | `Alfa156-<version>-Desktop.exe` | [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) |
-| **KPK EXE** | `Alfa156-<version>-KPK.exe`, `Alfa156-<version>-KPK.zip` | [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) |
+| **Android APK** | `KiloLedger-<version>.apk` | [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) |
+| **Desktop EXE** | `KiloLedger-<version>-Desktop.exe` | [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) |
+| **KPK EXE** | `KiloLedger-<version>-KPK.exe`, `KiloLedger-<version>-KPK.zip` | [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) |
 
 Вручную: **Actions → нужный workflow → Run workflow**. Каждый workflow заново создаёт свой rolling release (дата на странице Releases обновляется). Изменение `VERSION` тоже запускает сборки.
 

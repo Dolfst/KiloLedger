@@ -6,12 +6,12 @@
 
 | Файл | Платформа |
 |------|-----------|
-| `Alfa156-<version>.apk` | Android (ARM64) |
-| `Alfa156-<version>-Desktop.exe` | Windows ПК |
-| `Alfa156-<version>-KPK.exe` | Windows Mobile / КПК |
-| `Alfa156-<version>-KPK.zip` | КПК + .NET CF 3.5 CAB |
+| `KiloLedger-<version>.apk` | Android (ARM64) |
+| `KiloLedger-<version>-Desktop.exe` | Windows ПК |
+| `KiloLedger-<version>-KPK.exe` | Windows Mobile / КПК |
+| `KiloLedger-<version>-KPK.zip` | КПК + .NET CF 3.5 CAB |
 
-Пример для `1.39.3`: `Alfa156-1.39.3.apk`, `Alfa156-1.39.3-Desktop.exe`, `Alfa156-1.39.3-KPK.exe`, `Alfa156-1.39.3-KPK.zip`.
+Пример для `1.39.3`: `KiloLedger-1.39.3.apk`, `KiloLedger-1.39.3-Desktop.exe`, `KiloLedger-1.39.3-KPK.exe`, `KiloLedger-1.39.3-KPK.zip`.
 
 **1.39.3:** Desktop / Android / КПК — экран «О программе» со ссылкой на проект и «Поддержать проект».
 
