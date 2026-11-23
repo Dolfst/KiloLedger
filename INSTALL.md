@@ -187,7 +187,7 @@ Wi-Fi-обмен (порт `45816`) — это отдельный канал м�
 
 ## Лицензия
 
-Файла `LICENSE` в репозитории нет. Исходный код опубликован, но конкретную лицензию владелец ещё не выбрал. Подробнее: [README.md](README.md#license) и [README.ru.md](README.ru.md#лицензия).
+Copyright (C) 2026 Dolfst. Программа — под GNU AGPL версии 3 или любой более поздней версии. Текст: [LICENSE](LICENSE). Кратко: [README.md](README.md#license) и [README.ru.md](README.ru.md#лицензия).
 
 ---
 

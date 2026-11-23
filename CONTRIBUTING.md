@@ -39,10 +39,16 @@ User-facing docs are bilingual.
 
 Commit messages in this repository are bilingual, for example: `Уточнить установку в README / Clarify install steps in the README`.
 
+## License and the contributor agreement
+
+The program is under the GNU AGPL version 3 or any later version. Copyright (C) 2026 Dolfst. The text is [LICENSE](LICENSE).
+
+By opening a pull request you agree to the [Contributor License Agreement](CLA.md) for the work in that request. You keep the copyright. You grant Dolfst a perpetual, worldwide, irrevocable, royalty-free license that includes the right to sublicense and to relicense the contribution, including under proprietary terms, plus the patent license and the originality statement in the CLA. The English [CLA.md](CLA.md) prevails over [CLA.ru.md](CLA.ru.md).
+
+To sign, tick the Contributor License Agreement checkbox in the pull request template ([`.github/pull_request_template.md`](.github/pull_request_template.md)). If the template is not in the description, write a sentence that you agree to `CLA.md`. The [CLA Assistant](https://github.com/cla-assistant/cla-assistant) GitHub app can record signatures automatically. This repository does not require that app.
+
 ## Bugs and ideas
 
 Open an issue on [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger/issues). Say which client, which version (`VERSION` or the About screen), and whether the data came from a `.dat` folder, a ZIP, Wi-Fi, or Google Sheets.
-
-There is no `LICENSE` file yet. Do not add one on a contributor’s behalf. The owner chooses the license. See the License section of the README.
 
 Automated contributors also follow [`AGENTS.md`](AGENTS.md) and `.github/skills/`.

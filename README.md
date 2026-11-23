@@ -284,8 +284,14 @@ Issues: [github.com/Dolfst/KiloLedger/issues](https://github.com/Dolfst/KiloLedg
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CONTRIBUTING.ru.md](CONTRIBUTING.ru.md). Short version: keep the three clients and the `.dat` format in step, stay inside the Compact Framework 3.5 API on the handheld, and run `python3 build/run_verifies.py` before you finish. Commit messages in this repository are bilingual (Russian and English).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CONTRIBUTING.ru.md](CONTRIBUTING.ru.md). Short version: keep the three clients and the `.dat` format in step, stay inside the Compact Framework 3.5 API on the handheld, and run `python3 build/run_verifies.py` before you finish. A pull request needs agreement to the [Contributor License Agreement](CLA.md). Commit messages in this repository are bilingual (Russian and English).
 
 ## License
 
-This repository has **no `LICENSE` file**. Source is published on GitHub, and the About screen calls the project open source, but a license has not been chosen here. Until the owner adds one, do not assume a particular OSI license. The owner should pick a license and add a `LICENSE` file.
+Copyright (C) 2026 Dolfst.
+
+KiloLedger is free software under the GNU Affero General Public License, version 3, or any later version of that license. The full text is [LICENSE](LICENSE). SPDX identifier: `AGPL-3.0-or-later`.
+
+You may copy, modify, and distribute the program under those terms. If you run a modified version as a network service for users, section 13 of the AGPL requires you to offer those users the corresponding source.
+
+The public license is AGPL-3.0-or-later. Contributors also agree to [CLA.md](CLA.md), which lets the project owner relicense contributions, including under other terms. The English CLA prevails over [CLA.ru.md](CLA.ru.md).
