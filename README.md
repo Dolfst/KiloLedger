@@ -1,304 +1,291 @@
-# KiloLedger — учёт расходов автомобиля
+# KiloLedger
 
-Приложения для **КПК (Windows Mobile)**, **Android** и **ПК (Windows)** с общим форматом данных, общим стилем и единым логотипом (красный круг с машинкой).
+[English](README.md) · [Русский](README.ru.md)
 
-Базовый сравнительный анализ с аналогами и поэтапный бэклог улучшений сохранены в [`docs/competitive-analysis.md`](docs/competitive-analysis.md).
+**Vehicle expense tracker for Windows, Android, and Windows Mobile.**
 
+KiloLedger keeps fuel, service, other car costs, and household utility bills for one or more vehicles. A Windows PC, an Android phone, and a Windows Mobile handheld share the same text files, the same version number, and the same red-circle logo. The apps work offline. Cloud sync is optional and uses a Google Sheet that you host yourself.
 
-## Что нового в 1.39.3
+Current version: **1.39.3**, from [`VERSION`](VERSION). Ready-to-run builds are in [`dist/download`](dist/download).
 
-- **О программе и поддержка (Desktop, Android и КПК)**: на всех трёх платформах обновлено окно «О программе» с версией, списком платформ, ссылкой на проект и кнопкой/разделом «Поддержать проект». На Desktop добавлен пункт «О программе» в меню «Сервис» и карточка в «Настройках»; на КПК (Windows Mobile) окно переведено на прокручиваемый экран.
+The product name is **KiloLedger**. Project folders, namespaces, and some asset file names are still `Alfa156` (`com.kiloledger.app` on Android).
 
-## Что нового в 1.39.2
+## What it is for
 
-- **Desktop (исправление вкладки «Настройки»)**: карточки настроек переведены на надёжную сетку `TableLayoutPanel` вместо вложенного `FlowLayoutPanel` + `AutoSize` — вкладка больше не отображается пустой; добавлена карточка быстрого доступа к Google Sync и открытию базы, а значения интервалов ТО и авто по умолчанию заполняются сразу при запуске.
+The three clients cover the same job: write down what the car cost, see the cost per kilometre and the fuel use, and move the ledger to another device without a mandatory account. Windows Mobile has no direct Google connection. It exchanges data with Android over local Wi-Fi, or through a folder or ZIP that a PC can open.
 
-## Что нового в 1.39.1
+There is no installer for the PC app and no store listing in this repository. You run a published executable, an APK, or a Windows Mobile `.exe`.
 
-- **Desktop (исправление сборки и шапки)**: исправлено встраивание ресурсов локализации и иконки в автономный `.exe` (`WithCulture=false`), шапка перестроена в адаптивный 2-рядный блок — строка поиска и заголовок больше не обрезаются в оконном режиме.
+## Features
 
-## Что нового в 1.39.0
+Confirmed in the three clients and in [`docs/snapshot-schema.md`](docs/snapshot-schema.md):
 
-- **Финальная полировка дизайна (Этап 4)**: обновлённое оформление таблиц и карточек, фирменный логотип в боковой панели, надёжное сохранение языка первого запуска (`%AppData%\\KiloLedger\\language.txt`) и мгновенный перевод всех заголовков таблиц и фильтров при смене языка.
+- Several vehicles, with a passport (`year`, plate, VIN, tank size, note) and a default vehicle.
+- Fuel rows: date, odometer, litres, cost, price per litre, comment, full-tank flag, purpose, station or brand.
+- Repairs and service, with editable categories.
+- Other expenses, with their own categories.
+- One utility row per month: utility bills, electricity, gas, landline phone, home internet, rental tax, and rent.
+- Trips with a start and end odometer, purpose, and driver. Mileage is `endKm − startKm`.
+- Notes, date reminders (insurance, inspection, or custom), and templates for fuel, repair, and expense rows.
+- Receipt photos stored as `Receipts/{recordId}.jpg`. Android and Desktop can attach or remove a photo. The handheld can open or delete a photo already stored for the selected row.
+- Summary with a 12-month chart, cost per kilometre, fuel use in l/100 km between full tanks, a yearly total, a car comparison, and a period comparison.
+- A service forecast from recent odometer readings (average km/day and an estimate until the next oil and timing-belt service).
+- A soft monthly budget (`budget_month`, warning at `budget_warn_pct`, default 80). Utilities stay outside that car-cost total.
+- Period report. Desktop can save `.txt` or `.html` and print. Android can share text or HTML. The handheld saves a text file and can also save HTML.
+- Search, filters, duplicate search, an odometer check, and a data-integrity check.
+- Full ZIP or folder backups, including a `snapshot.json` file and a safety copy taken before a restore.
+- Local Wi-Fi sync between Android and the handheld, and optional Google Sheets sync on Android and Desktop.
+- Interface languages: Russian, English, Spanish, French, and German. Dictionaries are embedded in the Desktop executable and in the Android assets. The default language is Russian.
 
-## Что нового в 1.38.5
+Default service intervals in a new database are 10 000 km for oil (warn at 1 000 km) and 60 000 km for the timing belt (warn at 5 000 km). The default currency code is `BYN`. All of these live in `settings.dat` and can be changed in the app.
 
-- **Раздел «Настройки» и чистая «Сводка» (Этап 3)**: параметры ТО, валюта, бюджет, напоминания, авто по умолчанию и язык вынесены на отдельный экран настроек в карточках; «Сводка» теперь полностью посвящена графику, отчётам и аналитике.
+## Tech stack
 
-## Что нового в 1.38.4
+| Client | Folder | Stack |
+| --- | --- | --- |
+| Windows Mobile handheld | `Alfa156/Alfa156` | .NET Compact Framework 3.5, Windows Forms, Pocket PC |
+| Android | `Alfa156.Android` | .NET 10 (`net10.0-android`), application id `com.kiloledger.app`, minimum Android 6.0 (API 23) |
+| Windows PC | `Alfa156.Desktop` | .NET Framework 4.8, Windows Forms |
+| Google Sheet bridge | `google-sync/Alfa156Sync.gs` | Google Apps Script web app |
 
-- Desktop (Этап 2): центр Google Sync в одном диалоге, контекстные панели действий над таблицами записей, однострочная строка состояния с окном подробного отчёта.
+Shared domain code is copied into each client on purpose. A change to behaviour or to a `.dat` file has to land in every client that owns that behaviour.
 
-## Что нового в 1.38.3
+Published Android builds are ARM64 APKs. GitHub Actions signs them with `Alfa156.Android/alfa156-upload.keystore`.
 
-- Desktop (Этап 1): переосмыслена навигация — боковая панель разделов и компактная верхняя шапка с выпадающими меню («База», «Обмен», «Сервис») вместо четырёх рядов кнопок; синхронизированы все проверки и сборка с изменениями 1.38.2.
-
-## Что нового в 1.38.1
-
-- КПК (Windows Mobile): исправлена иконка приложения в меню «Пуск» (добавлены 4/8/24-битные кадры в `Alfa156.ico`) и добавлена автоматическая прокрутка формы при появлении экранной клавиатуры.
-- Публичный чистый старт: удалены личные записи в `SeedData`, жёстко заданный `SPREADSHEET_ID` и привязка справки Google Sync к названию конкретной таблицы на всех трёх платформах.
-
-## Что нового в 1.38.0
-
-- Полная локализация на 5 языков (`ru`, `en`, `es`, `fr`, `de`) для Windows Desktop, Android и Windows Mobile (КПК) с переключением языка в настройках без потери форматов данных `.dat`, CSV, XLSX и Google Sheets.
-- Встроенные словари переводов внутри EXE и Android Assets для автономного запуска.
-
-## Что нового в 1.37.1
-
-- ✅ **Исправлена инициализация при первом запуске** — приложение теперь корректно создает файлы данных на новых устройствах
-- ✅ **Адаптивное меню для разных разрешений экранов** — поддержка 320x240 (QVGA) и 480x272 (WQVGA) экранов Windows Mobile с автоматической прокруткой
-- ✅ **Готово для публичного выпуска** — приложение полностью функционально без зависимостей от личных данных разработчика
-
-<a id="support"></a>
-
-## Поддержка проекта
-
-**KiloLedger** распространяется полностью бесплатно, без рекламы и с открытым кодом для **Windows ПК**, **Android** и **Windows Mobile (КПК)**.
-
-Если приложение экономит вам время и помогает вести расходы на автомобиль, поддержать развитие проекта можно любым удобным способом:
-- ⭐ Поставить звезду репозиторию на GitHub (`Dolfst/alfa`) и рассказать друзьям-автолюбителям.
-- ☕ Поддержать автора на **Boosty / Tribute / ЮMoney** *(добавьте сюда свои ссылки в `README.md` — все установленные приложения уже ведут прямо на этот раздел)*.
-
-**Быстрый старт:** [INSTALL.md](INSTALL.md)
-**Google Sheets синхронизация:** [GOOGLE_SYNC.md](GOOGLE_SYNC.md)
-
-Предыдущий релиз (1.37.0):
-
-- **Отчёт за период** по выбранному авто: топливо / ремонт / прочие / коммунальные, всего и стоимость/км.
-  Desktop — «Отчёт за период…»: пресеты (этот/прошлый месяц, год), сохранить `.txt` / `.html`, печать.
-  Android — «Отчёт за период»: поделиться текстом или HTML, сохранить файл (тот же share/export, что у сводки).
-  КПК — «Отчёт за период»: этот или прошлый месяц → текст в `\My Documents\KiloLedger\Report_….txt`.
-
-## История версий
-
-- **1.39.3** — Desktop / Android / КПК: единый экран «О программе» со ссылкой на проект и «Поддержать проект».
-- **1.39.2** — Desktop: исправлен рендер вкладки «Настройки» (`TableLayoutPanel`), заполнение значений по умолчанию и карточка Google Sync.
-- **1.39.1** — Desktop: встроены языковые ресурсы и иконка в одиночный `.exe`; адаптивная шапка без обрезания поиска в оконном режиме.
-- **1.39.0** — Desktop (Этап 4): визуальная полировка таблиц и карточек, иконка бренда, полный live-перевод заголовков и фильтров.
-- **1.38.5** — Desktop (Этап 3): отдельный экран «Настройки» с карточками и очищенный дашборд «Сводка».
-- **1.38.4** — Desktop (Этап 2): центр Google Sync, контекстная панель записей, однострочный статус-бар и окно отчёта.
-- **1.38.3** — Desktop (Этап 1): боковая навигация и компактная верхняя шапка вместо рядов кнопок; полная синхронизация проверок с 1.38.2.
-- **1.38.2** — выбор языка при первом запуске Desktop и мгновенное переключение языка без перезапуска.
-- **1.38.1** — иконка меню «Пуск» и прокрутка при экранной клавиатуре на КПК, универсальная справка Google Sync и чистый старт без личных данных.
-- **1.38.0** — полная локализация на 5 языков (`ru`, `en`, `es`, `fr`, `de`) на Desktop, Android и КПК.
-- **1.37.1** — исправлена инициализация файлов данных при первом запуске; адаптивное меню для разных разрешений экранов Windows Mobile.
-- **1.37.0** — в отчёте за период: заправленные литры, расход л/100 км, бюджет периода; на КПК — «Отчёт за год» и сохранение `.html`; документированная схема snapshot и кроссплатформенные сценарные проверки.
-- **1.36.0** — поездки и отчёт по пробегу на трёх платформах; версионированные snapshot-копии с токеном устройства.
-- **1.35.0** — содержательные отчёты синхронизации, усиленная проверка чеков и полная стоимость в отчётах периода.
-- **1.34.1** — безопасный импорт ZIP/CSV на Desktop и сохранение фото чеков при восстановлении старой копии КПК.
-- **1.34.0** — усиленная проверка целостности данных, кроссплатформенная сборка КПК и расширенные smoke-проверки.
-- **1.33.0** — печатный / шаринг отчёт за период (Desktop / Android / КПК).
-- **1.32.0** — АЗС / бренд (`station`) у заправок; автодополнение; статистика в сводке.
-- **1.31.0** — заметки по авто (`notes.dat`); sync/ZIP/tombstones; фрагмент в сводке и ленте.
-- **1.30.0** — оценка пробега и срока до ТО в сводке (Android / Desktop / КПК).
-- **1.29.0** — быстрая заправка (Android / Desktop / КПК) с подстановкой из последней заправки.
-- **1.28.0** — smoke verifies в CI; CF API guard; полный ZIP backup list; полировка после 1.25–1.27.
-- **1.27.0** — мастер импорта на Desktop; расширенный предпросмотр импорта на Android; шаблоны CSV.
-- **1.26.0** — напоминания по дате (`reminders.dat`); `reminder_warn_days` (по умолч. 14); срок в сводке/уведомлениях.
-- **1.25.0** — шаблоны записей (`templates.dat`); избранный авто (`default_car`).
-- **1.24.0** — сравнение периодов в сводке (Δ топливо/ремонт/прочие/коммунальные и /км).
-- **1.23.0** — напоминание о копии (`backup_remind_days` / `last_backup_utc`); полный экспорт ZIP; подтверждение SD-копии на КПК.
-- **1.22.0** — мягкий месячный бюджет (`budget_month` / `budget_warn_pct`), сводка и уведомление на Android.
-- **1.21.0** — сравнение автомобилей в сводке; проверка целостности данных.
-- **1.20.0** — паспорт авто (`cars-meta.dat`); лента расходов.
-- **1.19.0** — цель заправки (`purpose`); итоги за год; подсказка первого запуска.
-- **1.18.0** — экспорт/шаринг сводки; поиск дубликатов; цена/л из последней заправки.
-- **1.17.0** — проверка пробега; глобальный поиск; Google Sheets для прочих расходов.
-- **1.16.0** — предпросмотр слияния перед sync; автокопия `Safety_`.
-- **1.15.0** — валюта в настройках; фото чеков по Wi‑Fi.
-- **1.14.0** — график расходов 12 мес.; фото чеков в ZIP.
-- **1.13.0** — фильтры Desktop; флаг «полный бак» у заправок.
-- **1.12.0** — Wi‑Fi sync v2 (обфускация); мастер Google Sync на Desktop.
-- **1.11.0** — прочие расходы; настраиваемые интервалы ТО.
-- **1.10.0** — стабильные id и `deleted.dat` (tombstones).
-- **1.9.0** — сводка на Desktop; цена/л и комментарий у заправок; уведомления ТО на Android.
-
-## Проекты
-
-- `Alfa156/Alfa156.sln` — Pocket PC / Windows Mobile, .NET Compact Framework 3.5
-- `Alfa156.Android/Alfa156.Android.csproj` — Android
-- `Alfa156.Desktop/Alfa156.Desktop.csproj` — ПК (.NET Framework 4.8): Excel, CSV, Google Sheets
-- `google-sync/` — Apps Script для двусторонней синхронизации с Google Таблицей
-- `branding/` — общий логотип и описание стиля (`BrandTheme.md`)
-- `VERSION` — единый номер версии приложения (источник правды для имён файлов и сборок)
-- `dist/download/` — готовые сборки: `KiloLedger-<version>.apk`, `KiloLedger-<version>-Desktop.exe`, `KiloLedger-<version>-KPK.exe` / `.zip`
-- `dist/Alfa156-Desktop/` — готовый `Alfa156.Desktop.exe`
-- `AGENTS.md` и `.github/skills/` — инструкции и специализированные навыки для AI-агентов, работающих с репозиторием.
-
-На всех платформах: автомобили, заправки, ремонт/ТО, прочие расходы, коммунальные, фильтры, категории, сводка, интервалы ТО. Android — ZIP и Wi‑Fi; КПК — резервные копии и Wi‑Fi; ПК — Excel/Google.
-
-Фото чеков привязаны к стабильному id записи в папке `Receipts/{recordId}.jpg`. Android и Desktop позволяют прикрепить или удалить фото; КПК позволяет открыть или удалить сохранённое фото выбранной записи.
-
-## Синхронизация
+## Repository layout
 
 ```text
-КПК  ←── Wi‑Fi / точка доступа телефона ──→  Android  ←── Apps Script ──→  Google Sheets  ←→  ПК
+Alfa156/Alfa156/     Windows Mobile solution (Alfa156.sln)
+Alfa156.Android/     Android project
+Alfa156.Desktop/     Windows desktop project
+google-sync/         Apps Script and the illustrated sync guide
+branding/            Shared logo and BrandTheme.md
+localization/        String tables (ru, en, es, fr, de) and older i18n notes
+build/               Handheld build scripts, CF 3.5 reference assemblies, smoke checks
+docs/                Snapshot schema and a competitor comparison
+dist/download/       Versioned APK, Desktop exe, and handheld exe/zip
+VERSION              Single version string used by release file names
 ```
 
-### КПК ↔ Android (в том числе когда телефон раздаёт Wi‑Fi)
+Also at the root: [`INSTALL.md`](INSTALL.md) (short Russian install notes), [`GOOGLE_SYNC.md`](GOOGLE_SYNC.md), [`ROADMAP.md`](ROADMAP.md), and [`AGENTS.md`](AGENTS.md) for automated contributors.
 
-1. На Android включите **точку доступа** (или общую Wi‑Fi сеть).
-2. **Данные → Синхронизация по Wi‑Fi** — смотрите IP с пометкой «точка доступа» (часто `192.168.43.1`) и код.
-3. На КПК подключитесь к этой сети, затем **Данные → Синхронизация по Wi‑Fi**, введите IP и код.
+## Requirements
 
-Интернет на КПК не нужен. Порт: `45816`.
+To **run** a published build:
 
-### Android / ПК ↔ Google Sheets
+- **Android:** Android 6.0 or newer, 64-bit ARM. Allow install from the file manager if the system asks.
+- **Windows PC:** .NET Framework 4.8. The `.exe` is not an installer.
+- **Windows Mobile:** .NET Compact Framework 3.5 on the device. Copy the `.exe` with Windows Mobile Device Center or ActiveSync. The handheld zip in `dist/download` is described there as the app plus the CF 3.5 CAB.
 
-См. `google-sync/README.md`. На Desktop удобнее **Google: мастер** (пошагово + проверка связи). Кратко: вставить `Alfa156Sync.gs` в таблицу, задать `SYNC_TOKEN`, опубликовать Web App, указать URL в приложении.
+To **build**:
 
-КПК в Google напрямую не ходит — только через Android или ZIP/папку через ПК.
+- Handheld on Windows: `build/build-kpk.ps1`, `ResGen.exe`, and `csc.exe`, plus the reference assemblies already in `build/cf35/WindowsCE`. Visual Studio 2008 with the Windows Mobile SDK can open `Alfa156/Alfa156.sln` instead.
+- Handheld on Linux or macOS: Mono (`mono-devel`) and `./build/build-kpk.sh`.
+- Desktop on Windows: MSBuild and the .NET Framework 4.8 targeting pack.
+- Desktop on Linux, as used by this repository’s agent notes: the .NET SDK with `FrameworkPathOverride` pointed at Mono’s 4.8 reference assemblies.
+- Android: .NET 10 SDK, the Android workload, JDK 17, and an Android SDK. CI installs platform 36 and build-tools 36.0.0.
 
-## Данные и резервные копии КПК
+Smoke checks need Python 3. CI uses Python 3.12. They do not need a device or an emulator.
 
-Рабочие файлы на КПК:
+## Installation
 
-```text
-\My Documents\KiloLedger\
-  cars.dat
-  cars-meta.dat
-  fuel.dat
-  repairs.dat
-  utilities.dat
-  repair-categories.dat
-  expenses.dat
-  expense-categories.dat
-  settings.dat
-  templates.dat
-  reminders.dat
-  notes.dat
-  trips.dat
-  deleted.dat
-  Receipts\
-    {recordId}.jpg
-```
+### Published builds
 
-Формат файлов текстовый UTF-8; строки разделены переводами строк, поля — символом `|`. Обратная косая черта экранирует `|` и саму себя. У каждой записи (авто, заправка, ремонт, коммуналка, прочий расход, категория ремонта/прочих, паспорт авто, шаблон, напоминание, заметка, поездка) в конец строки пишется стабильный id (`c_`/`f_`/`r_`/`u_`/`e_`/`k_`/`p_`/`m_`/`t_`/`n_`/`j_`/`g_` + 8 hex). Старые файлы без id читаются; id назначаются при сохранении и синхронизации. `trips.dat` — поездка (`date|car|startKm|endKm|purpose|driver|comment|id`), пробег равен `endKm - startKm`, поля назначения и водителя необязательны для совместимости. `deleted.dat` — tombstones удалений (`тип|id|UTC`), список обрезается до последних 5000. `repair-categories.dat` и `expense-categories.dat` содержат категории (+ id); при отсутствии создаются списки по умолчанию. `fuel.dat` — `date|car|km|liters|cost|[price]|[comment]|[fullTank]|[purpose]|[station]|[id]` (`fullTank`: `1` полный / `0` частичный; без поля = полный; `purpose`: опционально `Личный`/`Работа`/свой текст ≤32; `station`: опционально АЗС/бренд ≤48). `expenses.dat` — прочие расходы автомобиля (`date|car|category|name|sum|comment|id`). `settings.dat` — интервалы ТО (`oil_interval`, `oil_warn`, `belt_interval`, `belt_warn`), валюта (`currency`, по умолчанию `BYN`), флаг первой подсказки (`onboarding_seen|1`), месячный бюджет (`budget_month`, `0` = выкл.; опционально `budget_warn_pct`, по умолчанию `80`), напоминание о копии (`backup_remind_days`, по умолчанию `7`, `0` = выкл.; `last_backup_utc`; `last_backup_nag_date`; избранный авто `default_car`; предупреждение по датам `reminder_warn_days`, по умолчанию `14`). `templates.dat` — шаблоны быстрых записей (`type|templateName|payload…|id`, type=`fuel`/`repair`/`expense`, payload без date/id). `reminders.dat` — напоминания по дате (`date|car|title|type|id`, type=`insurance`/`inspection`/`custom` или русские ярлыки Страховка/Техосмотр/Своё). `notes.dat` — свободные заметки по авто (`date|car|text|id`, не расходы; tombstone type `note`, prefix `j_`). `cars-meta.dat` — паспорт авто (`carName|year|plate|vin|tankLiters|note|id`), ключ — название; при переименовании авто строка метаданных обновляется.
+Version **1.39.3** in [`dist/download`](dist/download):
 
-Для локальной копии в памяти КПК откройте **Данные → Создать копию в памяти КПК**. Такие копии сохраняются в `\My Documents\KiloLedger_LocalBackups\`; пункт **Восстановить копию из памяти КПК** восстанавливает выбранную копию и сначала сохраняет текущие данные рядом. При восстановлении старой копии без папки `Receipts/` текущие фото чеков сохраняются.
+| File | Platform |
+| --- | --- |
+| `KiloLedger-1.39.3.apk` | Android ARM64 |
+| `KiloLedger-1.39.3-Desktop.exe` | Windows PC |
+| `KiloLedger-1.39.3-KPK.exe` | Windows Mobile |
+| `KiloLedger-1.39.3-KPK.zip` | Handheld package (app and CF 3.5 CAB) |
 
-Для копии на SD-карте откройте **Данные → Создать копию на SD**. Копии сохраняются отдельными папками по дате и времени:
+The same files are also attached to the rolling GitHub releases [`android-latest`](https://github.com/Dolfst/alfa/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/alfa/releases/tag/desktop-latest), and [`kpk-latest`](https://github.com/Dolfst/alfa/releases/tag/kpk-latest). Workflows **Android APK**, **Desktop EXE**, and **KPK EXE** rebuild them on pushes that touch the matching project or `VERSION`, and they can be started by hand from the Actions tab.
 
-```text
-\Storage Card\KiloLedger_Backups\ГГГГММДД_ЧЧММСС\
-```
+On the handheld, run the new `KiloLedger-<version>-KPK.exe` once. It rewrites the Start-menu shortcut so it points at that build.
 
-Перед восстановлением копии с SD приложение сохраняет текущие данные ещё одной копией на карту. Для защиты от потери и КПК, и карты памяти регулярно переносите `KiloLedger_Backups` на компьютер через ActiveSync.
+An APK signed with a different key, or an older install that used another application id, cannot be updated in place. Export a ZIP first, uninstall, install the new APK, then import the ZIP.
 
-## Перенос копии на Android
+### Build from source
 
-1. Создайте копию на SD-карте КПК.
-2. Через ActiveSync скопируйте папку нужной копии на компьютер.
-3. Перенесите её на телефон или создайте ZIP-архив папки на компьютере.
-4. В KiloLedger на Android откройте **Данные → Импорт копии**.
-   - Для ZIP выберите архив.
-   - Для папки с КПК выберите файлы `.dat` за один раз. В старых копиях будет четыре–пять файлов, в 1.10+ — до шести (`deleted.dat`).
-5. Выберите раздел **Заправки**, **Ремонт** или **Коммунальные**, чтобы просмотреть записи.
-
-При импорте на Android приложение проверяет наличие всех файлов и формат строк, затем показывает **предпросмотр** (автомобили, заправки, ремонт, прочие, коммуналка, при наличии — шаблоны/напоминания/заметки/чеки). Замена выполняется только после подтверждения; если на телефоне уже есть полный набор данных, перед заменой он сохраняется в `Backups/Safety_…`. На Desktop тот же сценарий — мастер **Импорт…** (ZIP / папка `.dat` / CSV / Excel).
-
-## Синхронизация Android ↔ КПК без интернета
-
-1. Включите на телефоне **точку доступа** и подключите к ней КПК — или посадите оба устройства в одну Wi‑Fi сеть. Интернет не нужен.
-2. На Android: **Данные → Синхронизация по Wi-Fi**. Используйте IP с пометкой «точка доступа» (часто `192.168.43.1`) и шестизначный код.
-3. На КПК: **Данные → Синхронизация по Wi-Fi**, введите этот IP и код. Поле IP запоминает последний адрес.
-4. При конфликте одной записи Android предложит оставить версию телефона или КПК.
-5. После обмена данными показывается **предпросмотр слияния** (счётчики и примеры). Только после **Применить** данные записываются. Перед записью создаётся копия `Safety_yyyyMMdd_HHmmss` (Android: `Backups/`; КПК: `\My Documents\`).
-
-Входящие данные сначала полностью принимаются во временную папку и проверяются; при обрыве до применения локальные файлы не заменяются. Если связь оборвалась уже после применения на одном устройстве, повторите синхронизацию: стабильные ID и tombstones позволяют повторно обработать тот же снимок без воскрешения удалённых записей. При откате или ошибке записи журнал синхронизации содержит поле `Причина отката`.
-
-Синхронизация (с 1.10.0) сопоставляет записи **сначала по стабильному id**, иначе по естественным ключам (заправка: дата+авто+пробег; ремонт: дата+авто+пробег+категория+товар; прочий расход: дата+авто+категория+название; коммуналка: месяц; авто/категория/паспорт: название). Удаления передаются через `deleted.dat` (tombstones, тип `expense` для прочих, `car-meta` для паспорта): удалённый id не воскресает при обмене. Wi‑Fi payload с 1.11.0 также включает `expenses.dat`, `expense-categories.dat`, `settings.dat`; с **1.20.0** — ещё `cars-meta.dat` (устройства 1.20+); с **1.25.0** — `templates.dat`; с **1.26.0** — `reminders.dat` (tombstone `reminder`); с **1.31.0** — `notes.dat` (tombstone `note`). С 1.12.0 — обфускация сессии SYNC2; с **1.15.0** заголовок `KILOLEDGER2R|` (та же криптография) плюс обмен `Receipts/*.jpg` после `.dat` (≤2 МБ/файл, ≤50/сеанс). Клиенты 1.12–1.14 получают сообщение обновить до 1.15+. После sync показывается краткий журнал. **Google Sheets** по-прежнему без прочих расходов и паспорта авто: id остаются в локальных `.dat`/ZIP. Перед первой синхронизацией рекомендуется резервная копия.
-
-## Работа с записями на Android
-
-- Если данных ещё нет, откройте **Данные → Начать с нуля**, укажите первый автомобиль — дальше можно сразу добавлять заправки, ремонт и коммунальные без импорта с КПК. Либо используйте **Импорт копии**.
-- Выберите автомобиль в списке **Авто**; через **Добавить** можно завести ещё один автомобиль. В меню авто: **Свойства** (паспорт) и **Лента** (хронология расходов).
-- Переключайтесь между заправками, ремонтом/ТО и коммунальными платежами. Нажмите запись, чтобы увидеть подробности; для изменения или удаления выберите запись и нажмите соответствующую кнопку. Удаление запрашивает подтверждение.
-- **Добавить** открывает форму: для заправки выберите дату, укажите пробег, литры и стоимость; автомобиль выбран заранее. На КПК и Android автоматически подставляется последний зарегистрированный пробег выбранного автомобиля, его можно изменить. Чекбокс «Полный бак» по умолчанию включён — снимите его для частичной заправки. Для ремонта/ТО укажите дату, автомобиль, пробег, категорию, товар/деталь, наименование, количество, сумму и комментарий. Расход топлива в л/100 км показывается только для полной заправки при наличии предыдущей **полной** заправки с меньшим пробегом.
-- Коммунальная запись содержит месяц и суммы по категориям: коммунальные платежи, электричество, газ, стационарный телефон, домашний интернет, налог на аренду и аренда жилья. Нужно указать хотя бы одну сумму; для каждого месяца допускается одна запись. Даты и месяцы выбираются календарём, числовые поля проверяются при сохранении.
-- Фильтры доступны для заправок и ремонта/ТО. Для заправок можно задать период и искать по пробегу, литрам или стоимости; для ремонта/ТО — выбрать категорию, период и искать по названию/товару. **Сбросить фильтр** очищает фильтр текущего раздела.
-- В разделе **Ремонт и ТО** откройте **Категории**, чтобы добавить, переименовать или удалить категорию. Переименование обновляет категории в старых записях. Удалить категорию с записями нельзя: сначала измените категорию у этих записей. Список переносится между Android и КПК в резервной копии и при Wi-Fi-синхронизации.
-- **Сводка и ТО** показывает расходы на топливо и ремонт выбранного автомобиля, разбивку ремонта по категориям, примерные учтённые расходы на километр, помесячные расходы за последние 12 месяцев и блок **Сравнение автомобилей** (топливо / ремонт / прочие / стоимость/км / ср. л/100 км / пробег по каждому авто). Кнопка **Сравнить периоды** — два диапазона (этот/прошлый месяц или свои даты) с Δ по топливу / ремонту / прочим / коммунальным и /км. **Отчёт за период** — итоги по выбранному авто и диапазону (топливо/ремонт/прочие/коммунальные, /км): на Desktop сохранить txt/html или печать; на Android — поделиться текстом/HTML. При включённом `budget_month` — блок бюджета текущего календарного месяца (топливо+ремонт+прочие vs лимит; коммунальные отдельно). В заголовке — год/госномер из паспорта, если заданы; кнопка **Лента** открывает хронологию. Расходы на километр — ориентир по внесённым затратам и разнице между минимальным и максимальным зарегистрированным пробегом; он не учитывает пропущенные записи и коммунальные платежи. Коммунальные расходы показываются за весь период. Для напоминаний о замене масла и ремня ГРМ выводятся дата и пробег записи, по которой рассчитан интервал; интервалы составляют 10 000 км и 60 000 км соответственно. Блок **Оценка пробега** (если есть показания за 30–90 дней) — средний км/день и оценка км/дней до следующего ТО масла и ремня.
-- Локальные копии и восстановление доступны на обоих устройствах: на Android — **Данные → Копия на телефоне** и **Данные → Восстановить копию**, на КПК — **Данные → Создать копию в памяти КПК** и **Восстановить копию из памяти КПК**. Перед восстановлением текущие данные тоже сохраняются.
-- На Android 13 и новее приложение запрашивает разрешение на уведомления о замене масла, ремня ГРМ и превышении бюджета. Разрешение можно изменить в настройках уведомлений приложения.
-
-На КПК в разделе **Сводка и ТО** доступны те же показатели: расходы по выбранному автомобилю, ремонт по категориям, приблизительные расходы на километр, расходы по месяцам за последние 12 месяцев, сравнение автомобилей (топливо / ремонт / прочие / /км / л/100 / пробег), текущий пробег, оценка пробега/срока до ТО и напоминания о ТО с датой и пробегом записи, по которой рассчитан интервал. **Действия → Сравнить периоды** показывает этот месяц vs прошлый (без своих дат). **Отчёт за период** сохраняет текстовый отчёт (этот или прошлый месяц) в `\My Documents\KiloLedger\`. Данные читаются из тех же файлов `.dat`, поэтому отдельная настройка или преобразование не требуется.
-
-Фильтр заправок по периоду, пробегу, литрам и стоимости также доступен в меню **Действия** на КПК.
-
-Чтобы выгрузить данные с Android, откройте **Данные → Экспорт ZIP** и выберите место сохранения, например «Загрузки» или Google Drive. Чтобы перенести такой ZIP обратно на КПК, распакуйте его на компьютере и скопируйте все пять `.dat` в новую папку внутри `\Storage Card\KiloLedger_Backups\`; затем используйте **Данные → Восстановить копию**.
-
-> Копия только на карте памяти не защищает от потери самой карты или КПК вместе с ней. Храните ещё одну копию на компьютере или в облачном диске. Удаление Android-приложения также удалит его локальные данные, поэтому регулярно используйте экспорт ZIP.
-
-Полные ZIP-копии Android и Desktop, а также папочные backup-копии КПК содержат `snapshot.json` со схемой `kiloledger.snapshot`, номером схемы, версией приложения, временем UTC и постоянным токеном устройства в `settings.dat`. Схема формата описана в [docs/snapshot-schema.md](docs/snapshot-schema.md). Старые архивы и папки без этого файла остаются совместимыми. При импорте или восстановлении metadata проверяется до записи; неподдерживаемая схема или отсутствующие обязательные поля блокируют применение.
-
-## Сборка приложения для КПК
-
-На GitHub Actions (workflow **KPK EXE**) или локально без полного WM SDK:
+Handheld:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build/build-kpk.ps1 -Configuration Release
 ```
 
-На Linux и macOS можно собрать тот же `.exe` через Mono:
-
 ```sh
 ./build/build-kpk.sh Release
 ```
 
-Для Linux нужен пакет `mono-devel`; скрипт использует справочные сборки NET CF 3.5 из `build/cf35/WindowsCE`.
+Desktop on Windows:
 
-Нужны справочные сборки в `build/cf35/WindowsCE` (уже в репозитории) и `ResGen.exe` / `csc.exe` (.NET Framework).  
-Альтернатива: Visual Studio 2008 + Windows Mobile SDK + .NET CF 3.5, открыть `Alfa156/Alfa156.sln`, конфигурация **Release**.
+```bat
+msbuild Alfa156.Desktop\Alfa156.Desktop.csproj /p:Configuration=Release /p:Platform=AnyCPU
+```
 
-## Сборка Android APK
+The output is `Alfa156.Desktop\bin\Release\Alfa156.Desktop.exe`.
 
-Нужны .NET 10 SDK, JDK 17 и workload Android для .NET. Если Android SDK ещё не установлен, установите зависимости (укажите абсолютные пути):
+Desktop on Linux, when Mono 4.8 reference assemblies are installed:
+
+```sh
+dotnet build Alfa156.Desktop/Alfa156.Desktop.csproj --nologo -p:FrameworkPathOverride=/usr/lib/mono/4.8-api
+```
+
+Android ARM64, after `ANDROID_HOME` and `JAVA_HOME` are set and the Android workload is installed:
 
 ```sh
 dotnet workload install android
 dotnet build Alfa156.Android/Alfa156.Android.csproj \
   -t:InstallAndroidDependencies -f net10.0-android \
-  -p:AndroidSdkDirectory="/полный/путь/android-sdk" \
-  -p:JavaSdkDirectory="/полный/путь/jdk" \
+  -p:AndroidSdkDirectory="$ANDROID_HOME" \
+  -p:JavaSdkDirectory="$JAVA_HOME" \
+  -p:AcceptAndroidSDKLicenses=True
+dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
+  -p:RuntimeIdentifier=android-arm64 \
+  -p:AndroidSdkDirectory="$ANDROID_HOME" \
+  -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AcceptAndroidSDKLicenses=True
 ```
 
-После установки задайте переменные `ANDROID_HOME` и `JAVA_HOME`, затем соберите самостоятельный Release APK для ARM64 (сборки приложения включены внутрь файла):
+The signed APK is under `Alfa156.Android/bin/Release/net10.0-android/android-arm64/` and its name ends with `-Signed.apk`.
 
-```sh
-dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
-  -p:RuntimeIdentifier=android-arm64
+## Configuration
+
+The apps do not read a `.env` file.
+
+| What | Where |
+| --- | --- |
+| Handheld database | `\My Documents\KiloLedger\` |
+| Android database | `files/KiloLedger` inside the app’s private files directory (`FilesDir`) |
+| Desktop database | A folder you pick. **Open folder** / **New folder** creates or opens a `KiloLedger` directory. An import that has no folder yet uses `Documents\KiloLedger` |
+| Desktop UI language | `%AppData%\KiloLedger\language.txt` (and the `language` key in `settings.dat` once a database is open) |
+| Desktop Google sync | `%AppData%\KiloLedger\google-sync.json` — `scriptUrl`, `token`, `spreadsheetUrl` |
+| Android Google sync | private preferences file `google-sync` (`scriptUrl`, `token`) |
+| Apps Script secret | script property `SYNC_TOKEN`. A standalone script (not bound to the sheet) also needs `SPREADSHEET_ID` |
+
+`settings.dat` holds pairs such as `oil_interval`, `oil_warn`, `belt_interval`, `belt_warn`, `currency`, `budget_month`, `budget_warn_pct`, `backup_remind_days`, `default_car`, `reminder_warn_days`, `language`, and `snapshot_device_token`.
+
+Build-time variables for Android are `ANDROID_HOME` and `JAVA_HOME`. Do not publish `SYNC_TOKEN`, the web-app URL, or `google-sync.json`.
+
+Step-by-step Google setup, with screenshots: [`google-sync/README.md`](google-sync/README.md) and [`GOOGLE_SYNC.md`](GOOGLE_SYNC.md).
+
+## Usage
+
+**Desktop.** Launch the `.exe`. On the first start the app asks for a language and stores it in `%AppData%\KiloLedger\language.txt`. Open or create a data folder from the **Database** menu. Sections are Vehicles, Fuel, Repairs, Expenses, Utilities, Summary, and Settings. **Exchange** covers ZIP, Excel, CSV, the import wizard, and Google sync (**Google: Wizard**, **Google: Settings**, **Google: Sync**). **Tools** includes **About**. Settings cards hold service intervals, currency, budget, backup reminder, default vehicle, and language.
+
+**Android.** Private storage is created on first use. With an empty database, **Data → Start from scratch** asks for the first vehicle. Import a handheld folder or a ZIP from **Data → Import a copy**. The same **Data** menu exports a ZIP, runs Wi-Fi sync, and opens Google sync settings.
+
+**Windows Mobile.** Data is always `\My Documents\KiloLedger\`. The form is designed at QVGA width (240 px) and scaled to the device. **Data** creates a copy in device memory or on the storage card and starts Wi-Fi sync.
+
+Fuel consumption in l/100 km is shown only from one full tank to the next full tank with a higher odometer. Cost per kilometre uses the entered costs and the span between the lowest and highest recorded odometer. It ignores gaps and it ignores utility bills.
+
+## Data and backups
+
+Files are UTF-8 text. One record per line. Fields are separated by `|`. A backslash escapes `|` and itself. Each record ends with a stable id (`c_`, `f_`, `r_`, `u_`, `e_`, `k_`, `p_`, `m_`, `t_`, `n_`, `j_`, or `g_` plus 8 hex digits). Older files without ids are still read. Ids are assigned on save. Deletes go to `deleted.dat` (`type|id|UTC`), trimmed to the last 5 000 rows, so a later sync does not resurrect them.
+
+The column layout, `snapshot.json` (`schema` = `kiloledger.snapshot`, `schemaVersion` 1), and the rule that unknown schemas are rejected are specified in [`docs/snapshot-schema.md`](docs/snapshot-schema.md). Copies made before 1.36.0 have no `snapshot.json` and remain valid.
+
+Handheld copies:
+
+- Device memory: `\My Documents\KiloLedger_LocalBackups\`
+- Storage card: `\Storage Card\KiloLedger_Backups\yyyyMMdd_HHmmss\`
+
+A restore saves the current data first. Restoring an old copy that has no `Receipts/` folder keeps the photos already on the device. Android writes a `Backups/Safety_…` folder before replacing a full local set. Desktop does the same with a `Safety_yyyyMMdd_HHmmss` folder next to the database.
+
+## Synchronization
+
+```text
+Windows Mobile  ←── Wi-Fi, port 45816 ──→  Android  ←── Apps Script ──→  Google Sheets  ←→  Windows PC
 ```
 
-Готовый APK: `Alfa156.Android/bin/Release/net10.0-android/android-arm64/com.kiloledger.app-Signed.apk`. На Samsung передайте его на телефон, откройте через «Мои файлы» и разрешите установку из этого источника, если Android попросит.
+**Android ↔ handheld.** Put both devices on one Wi-Fi network, or join the handheld to the phone’s hotspot. Internet access is not required. On Android, **Data → Wi-Fi sync** shows an address (a hotspot address is often `192.168.43.1`) and a six-digit code. Enter that address and code on the handheld. The payload is checked in a temporary folder before anything is replaced. Both sides show a merge preview and write only after you apply it. A `Safety_` copy is taken first. From version 1.12 the session is obfuscated with a key derived from the pairing code (`SYNC2`, and `KILOLEDGER2R` when photos are included). That is not TLS. Use a network you trust. Photo transfer allows up to 50 files and 2 MB each.
 
-Текущая ARM64-сборка также хранится в `Alfa156.Android/Alfa156.apk` и включается в ZIP-архив репозитория. При обновлении Android-приложения замените этот файл новой Release-сборкой.
+The Wi-Fi exchange is implemented only on Android and Windows Mobile. The PC does not speak that protocol. Bluetooth is not used.
 
-### Скачать готовые сборки
+Stable ids are matched first. Otherwise the clients fall back to natural keys (for fuel: date + vehicle + odometer). The Wi-Fi payload includes the `.dat` files those clients already share, including templates, reminders, notes, the car passport, and trips on current versions.
 
-Текущая версия: **1.39.3** (файл [`VERSION`](VERSION)).
+**Android / PC ↔ Google Sheets.** You paste `google-sync/Alfa156Sync.gs` into the sheet, set `SYNC_TOKEN`, and deploy a web app that runs as you and is reachable by anyone who has the URL. The script’s pull/push payload is cars, fuel, repairs, other expenses, utilities, repair categories, and expense categories. Sheets are named `Заправки {car}`, `Ремонт {car}`, `Прочие {car}`, `Коммунальные`, `Справочник`, and `Кат. прочих`. Trips, notes, reminders, templates, the car passport, and receipt photos are not part of that payload. Record ids stay in the local `.dat` files and in ZIP backups. Desktop Excel import also recognizes a Dengi-style workbook when the sheet names match that layout.
 
-Папка репозитория [`dist/download`](https://github.com/Dolfst/alfa/tree/main/dist/download): имена включают версию — `KiloLedger-1.39.3.apk` (Android), `KiloLedger-1.39.3-Desktop.exe` (ПК), `KiloLedger-1.39.3-KPK.exe` / `KiloLedger-1.39.3-KPK.zip` (КПК).
+## Tests
 
-См. **История версий** выше (1.9.0 → 1.39.3). Smoke-проверки: `python3 build/run_verifies.py` (также GitHub Actions на push в `main`).
+Offline smoke checks live in `build/verify_*.py`. They read source and fixtures. They do not install an APK or launch Windows Forms.
 
-**Обновление КПК:** скопируйте свежий `KiloLedger-<version>-KPK.exe` на устройство и **один раз запустите именно его** (через Total Commander / Проводник). Приложение перепишет ярлык «KiloLedger» в меню «Пуск», чтобы он указывал на эту сборку с GitHub, а не на старый exe.
+```sh
+python3 build/run_verifies.py
+```
 
-GitHub Actions собирает всё автоматически:
+The runner executes every `verify_*.py` and returns a non-zero status if any script fails. Coverage includes stable ids and tombstones, ZIP and CSV import, the snapshot schema, period reports, trips, budget, sync preview and retry, and a Compact Framework API guard (`verify_cf_apis.py`). `verify_version_consistency.py` checks that version fields follow `VERSION`.
 
-| Workflow | `dist/download` | Rolling Release |
-|----------|-----------------|-----------------|
-| **Android APK** | `KiloLedger-<version>.apk` | [android-latest](https://github.com/Dolfst/alfa/releases/tag/android-latest) |
-| **Desktop EXE** | `KiloLedger-<version>-Desktop.exe` | [desktop-latest](https://github.com/Dolfst/alfa/releases/tag/desktop-latest) |
-| **KPK EXE** | `KiloLedger-<version>-KPK.exe`, `KiloLedger-<version>-KPK.zip` | [kpk-latest](https://github.com/Dolfst/alfa/releases/tag/kpk-latest) |
+GitHub Actions workflow **Smoke verifies** runs that script and `./build/build-kpk.sh Release` on Ubuntu with Mono. It runs on pull requests and on pushes to `main` when application code, `build/`, `VERSION`, `README.md`, or `google-sync/` changes.
 
-Вручную: **Actions → нужный workflow → Run workflow**. Каждый workflow заново создаёт свой rolling release (дата на странице Releases обновляется). Изменение `VERSION` тоже запускает сборки.
+## Status and roadmap
 
-Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит KiloLedger (или прежняя сборка) со **старой** подписью или другим `ApplicationId`, Android откажет в обновлении поверх: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый APK и при необходимости импортируйте ZIP.
+Version 1.39.3 is the current line. Recent desktop work (1.38.3–1.39.3) reworked navigation into a sidebar and compact header, moved settings onto their own cards, fixed an empty Settings tab, embedded language resources in the single `.exe`, and added an **About** screen with a link back to this repository on all three clients.
 
-Если установка пишет «приложение не установлено» без обновления поверх старого: разрешите установку из браузера/«Мои файлы», скачайте APK заново (файл ~4 МБ) и ставьте на 64‑битный телефон (Samsung Galaxy S23+ и новее).
+[`ROADMAP.md`](ROADMAP.md) is the staged backlog. Most items through the reporting, trip, snapshot, and release-quality stages are marked done. Still open there: keeping every version field sourced from `VERSION`, and migrations for future entities (existing rows already receive ids on load). [`docs/competitive-analysis.md`](docs/competitive-analysis.md) compares the app with Drivvo, Fuelio, Simply Auto, aCar, and Fuelly and lists a longer backlog (unified quick-entry, optional local receipt OCR, PDF export). Those items are not implemented unless `ROADMAP.md` marks them done.
 
-## Текущее ограничение
+`localization/LOCALIZATION.md` describes an earlier i18n sketch. The five languages above are already shipped in the clients.
 
-Синхронизация работает только между Android и КПК в одной локальной Wi-Fi сети; компьютер и Bluetooth-протокол не поддерживаются. После проверки 6‑значного кода полезная нагрузка обфусцируется сессионным ключом, производным от кода (SYNC2 / `KILOLEDGER2R`, версия 1.15+ для фото). Это не замена TLS: используйте доверенную точку доступа / сеть.
+## Version history
+
+- **1.39.3** — About screen on Desktop, Android, and the handheld, with a project link and a support section.
+- **1.39.2** — Desktop Settings tab uses `TableLayoutPanel` and no longer renders empty. Default intervals and the Google Sync card are filled in.
+- **1.39.1** — Language resources and the icon are embedded in the desktop `.exe`. The header no longer clips the search box.
+- **1.39.0** — Desktop visual pass, brand mark in the sidebar, language saved for the next launch, live translation of headers and filters.
+- **1.38.5** — Desktop Settings screen. Summary is charts and reports only.
+- **1.38.4** — Desktop Google Sync centre, row action bars, one-line status bar.
+- **1.38.3** — Desktop sidebar and compact header.
+- **1.38.2** — Desktop language choice on first launch, switch without restart.
+- **1.38.1** — Handheld Start-menu icon and scrolling when the on-screen keyboard opens. Public data files no longer contain a personal spreadsheet id.
+- **1.38.0** — Five languages on all three clients.
+- **1.37.1** — First-launch file creation. Handheld layout scales from the QVGA design.
+- **1.37.0** — Period report: litres, l/100 km, budget. Handheld year report and HTML. Snapshot schema documented.
+- **1.36.0** — Trips and a personal/work mileage report. Versioned `snapshot.json`.
+- **1.35.0** — Richer sync logs, receipt checks, full cost in period reports.
+- **1.34.1** — Safer Desktop ZIP/CSV import. Old handheld restores keep receipt photos.
+- **1.34.0** — Stronger integrity checks. Handheld build on Linux via Mono.
+- **1.33.0** — Printable and shareable period report.
+- **1.32.0** — Fuel station / brand.
+- **1.31.0** — Per-car notes.
+- **1.30.0** — Service forecast on the summary.
+- **1.29.0** — Quick fuel entry.
+- **1.28.0** — Smoke checks in CI. CF API guard.
+- **1.27.0** — Desktop import wizard. Android import preview. CSV templates.
+- **1.26.0** — Date reminders.
+- **1.25.0** — Templates and a favourite vehicle.
+- **1.24.0** — Period comparison.
+- **1.23.0** — Backup reminder and a fuller ZIP export.
+- **1.22.0** — Monthly budget.
+- **1.21.0** — Car comparison and the integrity check.
+- **1.20.0** — Car passport and the expense timeline.
+- **1.19.0** — Fuel purpose, yearly totals, first-run hint.
+- **1.18.0** — Summary export, duplicate search, last price per litre.
+- **1.17.0** — Odometer check, global search, other expenses on Google Sheets.
+- **1.16.0** — Merge preview and the automatic `Safety_` copy.
+- **1.15.0** — Currency setting. Receipt photos over Wi-Fi.
+- **1.14.0** — 12-month chart. Photos inside ZIP backups.
+- **1.13.0** — Desktop filters. Full-tank flag.
+- **1.12.0** — Wi-Fi session obfuscation. Desktop Google wizard.
+- **1.11.0** — Other expenses. Configurable service intervals.
+- **1.10.0** — Stable ids and `deleted.dat`.
+- **1.9.0** — Desktop summary, price per litre, Android service notifications.
+
+<a id="support"></a>
+
+## Support
+
+KiloLedger is free and has no ads. The in-app About screen links here (`https://github.com/Dolfst/alfa#support`).
+
+- Star [Dolfst/alfa](https://github.com/Dolfst/alfa) if the project is useful to you.
+- Paid support links (Boosty, Tribute, YooMoney) are not in the repository yet. Add them in this section when you choose them. The apps already point at this anchor.
+
+Issues: [github.com/Dolfst/alfa/issues](https://github.com/Dolfst/alfa/issues).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CONTRIBUTING.ru.md](CONTRIBUTING.ru.md). Short version: keep the three clients and the `.dat` format in step, stay inside the Compact Framework 3.5 API on the handheld, and run `python3 build/run_verifies.py` before you finish. Commit messages in this repository are bilingual (Russian and English).
+
+## License
+
+This repository has **no `LICENSE` file**. Source is published on GitHub, and the About screen calls the project open source, but a license has not been chosen here. Until the owner adds one, do not assume a particular OSI license. The owner should pick a license and add a `LICENSE` file.

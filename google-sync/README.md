@@ -1,6 +1,8 @@
 # Синхронизация KiloLedger с Google Sheets
 
-Инструкция для пользователей, которые впервые настраивают обмен данными между приложением **KiloLedger** (Desktop и Android) и своей таблицей в **Google Sheets** через Google Apps Script.
+[English](../README.md#synchronization) · [Русский](../README.ru.md#синхронизация)
+
+Инструкция для пользователей, которые впервые настраивают обмен данными между приложением **KiloLedger** (Desktop и Android) и своей таблицей в **Google Sheets** через Google Apps Script. КПК в Google напрямую не ходит.
 
 ---
 
