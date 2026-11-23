@@ -109,7 +109,7 @@ def main() -> int:
         if needle not in (ROOT / rel).read_text(encoding="utf-8"):
             errors.append(f"{rel}: missing {needle!r}")
 
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.ru.md").read_text(encoding="utf-8")
     if "**1.31.0**" not in readme:
         errors.append("README: missing 1.31.0")
     if "notes.dat" not in readme:

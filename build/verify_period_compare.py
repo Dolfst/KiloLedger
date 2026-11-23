@@ -113,7 +113,7 @@ def main() -> int:
     if version not in android_csproj:
         errors.append(f"Android csproj: missing ApplicationDisplayVersion {version}")
 
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.ru.md").read_text()
     if f"## Что нового в {version}" not in readme and "**1.24.0**" not in readme:
         errors.append(f"README: missing Что нового / История for {version} or 1.24.0")
     if "**1.24.0**" not in readme:

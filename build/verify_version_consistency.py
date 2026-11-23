@@ -45,7 +45,8 @@ def main() -> int:
             (f'AssemblyVersion("{version}.0")',),
         ),
         ("Alfa156/Alfa156/Form1.cs", (f"Версия {version}",)),
-        ("README.md", (f"Текущая версия: **{version}**",)),
+        ("README.md", (f"Current version: **{version}**",)),
+        ("README.ru.md", (f"Текущая версия: **{version}**",)),
         ("dist/download/README.md", (f"сейчас `{version}`",)),
     )
 

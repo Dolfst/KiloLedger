@@ -20,7 +20,7 @@ Smoke checks do not need a device:
 python3 build/run_verifies.py
 ```
 
-Add or extend a `build/verify_*.py` script when the change can be seen in source text or in a fixture (format, report numbers, import rules). Workflow **Smoke verifies** runs the same script, and it also builds the handheld with `./build/build-kpk.sh Release` on Ubuntu.
+Add or extend a `build/verify_*.py` script when the change can be seen in source text or in a fixture (format, report numbers, import rules). Checks that look for Russian release notes read `README.ru.md`, not the English `README.md`. Workflow **Smoke verifies** runs the same script, and it also builds the handheld with `./build/build-kpk.sh Release` on Ubuntu.
 
 Build the client you touched when the machine can:
 

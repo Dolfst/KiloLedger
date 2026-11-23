@@ -54,8 +54,8 @@ def main() -> int:
     must_contain(ROOT / "Alfa156.Android" / "MainActivity.cs", "Применить")
     must_contain(ROOT / "Alfa156" / "Alfa156" / "RecordIds.cs", "FormatPreview")
     must_contain(ROOT / "Alfa156.Android" / "RecordIds.cs", "MaxExamples = 15")
-    must_contain(ROOT / "README.md", "**1.16.0**")
-    must_contain(ROOT / "README.md", "**1.17.0**")
+    must_contain(ROOT / "README.ru.md", "**1.16.0**")
+    must_contain(ROOT / "README.ru.md", "**1.17.0**")
     must_contain(ROOT / "Alfa156.Android" / "MainActivity.cs", "ShowGlobalSearch")
     must_contain(ROOT / "google-sync" / "Alfa156Sync.gs", "EXPENSE_PREFIX")
 

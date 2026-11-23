@@ -71,7 +71,7 @@ def main() -> int:
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
 
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.ru.md").read_text()
     if "## История версий" not in readme:
         errors.append("README: missing История версий")
     if "**1.22.0**" not in readme or "**1.9.0**" not in readme:
