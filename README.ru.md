@@ -221,7 +221,7 @@ python3 build/run_verifies.py
 
 Скрипт запускает каждый `verify_*.py` и завершается с ненулевым кодом, если хоть один упал. Проверки заметок о выпуске читают этот файл: заголовок «Что нового» для текущей версии и раздел «История версий». В английском `README.md` должна оставаться строка `Current version: **x.y.z**`. Покрыты стабильные id и tombstone, импорт ZIP и CSV, схема снимка, отчёты за период, поездки, бюджет, предпросмотр и повтор синхронизации, а также сторож API Compact Framework (`verify_cf_apis.py`). `verify_version_consistency.py` сверяет поля версии с файлом `VERSION`.
 
-Workflow **Smoke verifies** на GitHub Actions запускает этот набор и `./build/build-kpk.sh Release` на Ubuntu с Mono. Он срабатывает на pull request и на push в `main`, если меняются код приложений, `build/`, `VERSION`, `README.md` или `google-sync/`.
+Workflow **Smoke verifies** на GitHub Actions запускает этот набор и `./build/build-kpk.sh Release` на Ubuntu с Mono. Он срабатывает на pull request и на push в `main`, если меняются код приложений, `build/`, `VERSION`, `README.md`, `README.ru.md` или `google-sync/`.
 
 ## Состояние и план
 

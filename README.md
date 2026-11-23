@@ -217,7 +217,7 @@ python3 build/run_verifies.py
 
 The runner executes every `verify_*.py` and returns a non-zero status if any script fails. Release-note checks read `README.ru.md` (the current «Что нового» heading and «История версий»). The English page must keep the line `Current version: **x.y.z**`. Coverage includes stable ids and tombstones, ZIP and CSV import, the snapshot schema, period reports, trips, budget, sync preview and retry, and a Compact Framework API guard (`verify_cf_apis.py`). `verify_version_consistency.py` checks that version fields follow `VERSION`.
 
-GitHub Actions workflow **Smoke verifies** runs that script and `./build/build-kpk.sh Release` on Ubuntu with Mono. It runs on pull requests and on pushes to `main` when application code, `build/`, `VERSION`, `README.md`, or `google-sync/` changes.
+GitHub Actions workflow **Smoke verifies** runs that script and `./build/build-kpk.sh Release` on Ubuntu with Mono. It runs on pull requests and on pushes to `main` when application code, `build/`, `VERSION`, `README.md`, `README.ru.md`, or `google-sync/` changes.
 
 ## Status and roadmap
 
