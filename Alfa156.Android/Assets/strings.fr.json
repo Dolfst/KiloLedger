@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156 : remplacement requis",
   "notif.due_soon_title": "Alfa 156 : entretien proche",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.38.4\n\nSuivi carburant, réparations, dépenses et services.",
+  "about.kpk_full": "Alfa 156\nVersion 1.38.5\n\nSuivi carburant, réparations, dépenses et services.",
   "error.csv_unclosed_quote": "Le CSV contient un guillemet non fermé.",
   "msg.csv_exported_to": "CSV exportés vers",
   "import.csv_folder_label": "Dossier CSV",
@@ -1244,5 +1244,10 @@
   "title.google_sync_hub": "Centre Google Sync",
   "label.script_configured_yes": "Apps Script configuré",
   "label.script_configured_no": "Apps Script non configuré — lancez l'assistant",
-  "label.google_hub_hint": "Saisissez l'URL de votre feuille Google ou lancez la synchronisation."
+  "label.google_hub_hint": "Saisissez l'URL de votre feuille Google ou lancez la synchronisation.",
+  "tab.settings": "Paramètres",
+  "settings.card_maintenance": "Intervalles d'entretien",
+  "settings.card_currency_budget": "Devise et budget",
+  "settings.card_reminders": "Sauvegardes et rappels",
+  "settings.card_general": "Véhicule et langue"
 }

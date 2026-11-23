@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.38.4";
+        private const string AppVersion = "1.38.5";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -37,6 +37,8 @@ namespace Alfa156.Desktop
         private readonly TextBox summaryBox = new TextBox();
         private readonly MonthlyChartPanel summaryChart = new MonthlyChartPanel();
         private readonly TabPage summaryTab = new TabPage(L10n.Get("tab.summary")) { Tag = "tab.summary" };
+        private readonly TabPage settingsTab = new TabPage(L10n.Get("tab.settings")) { Tag = "tab.settings" };
+        private readonly List<Control> settingsLocalizable = new List<Control>();
         private readonly TextBox oilIntervalBox = new TextBox();
         private readonly TextBox oilWarnBox = new TextBox();
         private readonly TextBox beltIntervalBox = new TextBox();
@@ -126,6 +128,7 @@ else
             // Обновить текст полей, инициализированных до конструктора
             statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
             summaryTab.Text = L10n.Get("tab.summary");
+            settingsTab.Text = L10n.Get("tab.settings");
 
             Text = "Alfa 156 " + ResolveVersion();
             Width = 1180;
@@ -315,6 +318,7 @@ else
             tabs.TabPages.Add(WrapFilteredGrid("tab.utilities", utilitiesGrid, BuildUtilityFilterBar()));
             tabs.TabPages.Add(WrapGrid("tab.categories", categoriesGrid));
 
+            summaryTab.BackColor = Color.FromArgb(244, 246, 249);
             summaryBox.Multiline = true;
             summaryBox.ReadOnly = true;
             summaryBox.ScrollBars = ScrollBars.Vertical;
@@ -324,84 +328,62 @@ else
             summaryBox.ForeColor = Color.FromArgb(35, 51, 70);
             summaryBox.BorderStyle = BorderStyle.None;
             summaryBox.Text = L10n.Get("message.select_folder");
+
             TableLayoutPanel summaryLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 3,
-                Padding = new Padding(8)
+                Padding = new Padding(0),
+                BackColor = Color.FromArgb(244, 246, 249)
             };
-            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
-            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            summaryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 232));
             summaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            intervalRow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.oil_interval"), AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
-            oilIntervalBox.Width = 70;
-            intervalRow.Controls.Add(oilIntervalBox);
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warning"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
-            oilWarnBox.Width = 60;
-            intervalRow.Controls.Add(oilWarnBox);
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.belt_interval"), AutoSize = true, Padding = new Padding(12, 8, 0, 0) });
-            beltIntervalBox.Width = 70;
-            intervalRow.Controls.Add(beltIntervalBox);
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warning"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
-            beltWarnBox.Width = 60;
-            intervalRow.Controls.Add(beltWarnBox);
-            intervalRow.Controls.Add(MakeButton("button.save_intervals", SaveToIntervals));
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.currency"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
-            currencyBox.Width = 60;
-            currencyBox.Text = "BYN";
-            intervalRow.Controls.Add(currencyBox);
-            intervalRow.Controls.Add(MakeButton("button.save_currency", SaveCurrency));
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.budget_month"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
-            budgetBox.Width = 70;
-            budgetBox.Text = "0";
-            intervalRow.Controls.Add(budgetBox);
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.warn_pct_compact"), AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
-            budgetWarnBox.Width = 40;
-            budgetWarnBox.Text = "80";
-            intervalRow.Controls.Add(budgetWarnBox);
-            intervalRow.Controls.Add(MakeButton("button.save_budget", SaveBudget));
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.backup_remind"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
-            backupRemindBox.Width = 40;
-            backupRemindBox.Text = "7";
-            intervalRow.Controls.Add(backupRemindBox);
-            intervalRow.Controls.Add(MakeButton("button.save_backup_remind", SaveBackupRemind));
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.reminder_days"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
-            reminderWarnBox.Width = 40;
-            reminderWarnBox.Text = "14";
-            intervalRow.Controls.Add(reminderWarnBox);
-            intervalRow.Controls.Add(MakeButton("button.save_reminder_days", SaveReminderWarnDays));
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("label.default_car"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
-            defaultCarBox.Width = 140;
-            intervalRow.Controls.Add(defaultCarBox);
-            intervalRow.Controls.Add(MakeButton("button.save_car", SaveDefaultCar));
-            intervalRow.Controls.Add(new Label { Text = L10n.Get("dialog.language"), AutoSize = true, Padding = new Padding(16, 8, 0, 0) });
-            languageBox.Width = 100;
-            languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            foreach (var lang in L10n.GetAvailableLanguages())
-                languageBox.Items.Add(lang);
-            languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
-            intervalRow.Controls.Add(languageBox);
-            intervalRow.Controls.Add(MakeButton("button.save_language", SaveLanguage));
+
+            intervalRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                WrapContents = true,
+                Margin = new Padding(0, 0, 0, 8),
+                Padding = new Padding(6, 4, 6, 4),
+                BackColor = Color.White
+            };
+            intervalRow.Paint += delegate(object s, PaintEventArgs pe)
+            {
+                using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
+                    pe.Graphics.DrawRectangle(p, 0, 0, intervalRow.Width - 1, intervalRow.Height - 1);
+            };
+            intervalRow.Controls.Add(MakeButton("button.compare_periods", ShowPeriodCompare));
+            intervalRow.Controls.Add(MakeButton("button.period_report", ShowPeriodReport));
+            intervalRow.Controls.Add(MakeButton("button.timeline", ShowCarTimeline));
+            intervalRow.Controls.Add(MakeButton("button.save_summary", SaveSummaryText));
+            intervalRow.Controls.Add(MakeButton("button.chart_cost_per_km", ToggleCostPerKmChart));
             intervalRow.Controls.Add(MakeButton("button.add_reminder", AddDateReminder));
             intervalRow.Controls.Add(MakeButton("button.delete_reminder", DeleteDateReminder));
             intervalRow.Controls.Add(MakeButton("button.add_note", AddCarNote));
             intervalRow.Controls.Add(MakeButton("button.edit_note", EditCarNote));
             intervalRow.Controls.Add(MakeButton("button.delete_note", DeleteCarNote));
-            intervalRow.Controls.Add(MakeButton("button.save_summary", SaveSummaryText));
-            intervalRow.Controls.Add(MakeButton("button.compare_periods", ShowPeriodCompare));
-            intervalRow.Controls.Add(MakeButton("button.period_report", ShowPeriodReport));
-            intervalRow.Controls.Add(MakeButton("button.timeline", ShowCarTimeline));
-            intervalRow.Controls.Add(MakeButton("button.apply_template", ApplyTemplateToActiveGrid));
-            intervalRow.Controls.Add(MakeButton("button.save_template", SaveActiveRowAsTemplate));
-            intervalRow.Controls.Add(MakeButton("button.chart_cost_per_km", ToggleCostPerKmChart));
+
             summaryChart.Dock = DockStyle.Fill;
+            Panel chartCard = CreateBorderedCard(new Padding(8), new Padding(0, 0, 0, 8));
+            chartCard.Dock = DockStyle.Fill;
+            chartCard.Controls.Add(summaryChart);
+
+            Panel summaryTextCard = CreateBorderedCard(new Padding(10), new Padding(0));
+            summaryTextCard.Dock = DockStyle.Fill;
+            summaryTextCard.Controls.Add(summaryBox);
+
             summaryLayout.Controls.Add(intervalRow, 0, 0);
-            summaryLayout.Controls.Add(summaryChart, 0, 1);
-            summaryLayout.Controls.Add(summaryBox, 0, 2);
+            summaryLayout.Controls.Add(chartCard, 0, 1);
+            summaryLayout.Controls.Add(summaryTextCard, 0, 2);
             summaryTab.Controls.Add(summaryLayout);
             tabs.TabPages.Add(summaryTab);
+
+            settingsTab.BackColor = Color.FromArgb(244, 246, 249);
+            settingsTab.Controls.Add(BuildSettingsPage());
+            tabs.TabPages.Add(settingsTab);
             tabs.SelectedIndexChanged += SummaryTabSelected;
             tabs.SelectedIndexChanged += delegate { SyncSidebarSelection(); };
 
@@ -1331,7 +1313,7 @@ else
             for (int i = 0; i < tabs.TabPages.Count; i++)
             {
                 TabPage page = tabs.TabPages[i];
-                if (i == tabs.TabPages.Count - 1)
+                if (i == tabs.TabPages.Count - 2)
                 {
                     Panel sep = new Panel
                     {
@@ -1410,6 +1392,190 @@ else
                 saveButton.ForeColor = Color.FromArgb(35, 51, 70);
                 saveButton.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             }
+        }
+
+        private static Panel CreateBorderedCard(Padding padding, Padding margin)
+        {
+            Panel card = new Panel
+            {
+                BackColor = Color.White,
+                Padding = padding,
+                Margin = margin
+            };
+            card.Paint += delegate(object s, PaintEventArgs pe)
+            {
+                using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
+                    pe.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
+            };
+            return card;
+        }
+
+        private Label MakeSettingsLabel(string locKey)
+        {
+            Label lbl = new Label
+            {
+                Text = L10n.Get(locKey),
+                AutoSize = true,
+                Padding = new Padding(0, 7, 4, 0),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Tag = locKey
+            };
+            settingsLocalizable.Add(lbl);
+            return lbl;
+        }
+
+        private Button MakeSettingsButton(string locKey, EventHandler click)
+        {
+            Button btn = MakeButton(locKey, click);
+            settingsLocalizable.Add(btn);
+            return btn;
+        }
+
+        private Panel MakeSettingsCard(string titleKey, Control content)
+        {
+            Panel card = new Panel
+            {
+                BackColor = Color.White,
+                Width = 860,
+                AutoSize = true,
+                Padding = new Padding(16, 12, 16, 14),
+                Margin = new Padding(0, 0, 0, 12)
+            };
+            card.Paint += delegate(object s, PaintEventArgs pe)
+            {
+                using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
+                    pe.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
+            };
+
+            Label header = new Label
+            {
+                Text = L10n.Get(titleKey),
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(35, 51, 70),
+                Dock = DockStyle.Top,
+                Height = 26,
+                Tag = titleKey
+            };
+            settingsLocalizable.Add(header);
+
+            Panel divider = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 1,
+                BackColor = Color.FromArgb(234, 238, 244),
+                Margin = new Padding(0, 4, 0, 8)
+            };
+
+            content.Dock = DockStyle.Top;
+            card.Controls.Add(content);
+            card.Controls.Add(divider);
+            card.Controls.Add(header);
+            return card;
+        }
+
+        private Control BuildSettingsPage()
+        {
+            FlowLayoutPanel host = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                BackColor = Color.FromArgb(244, 246, 249),
+                Padding = new Padding(4, 2, 12, 12)
+            };
+
+            // Card 1: Maintenance intervals
+            FlowLayoutPanel maintBody = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = true,
+                Padding = new Padding(0, 8, 0, 0),
+                BackColor = Color.White
+            };
+            oilIntervalBox.Width = 76;
+            oilWarnBox.Width = 64;
+            beltIntervalBox.Width = 76;
+            beltWarnBox.Width = 64;
+            maintBody.Controls.Add(MakeSettingsLabel("label.oil_interval"));
+            maintBody.Controls.Add(oilIntervalBox);
+            maintBody.Controls.Add(MakeSettingsLabel("label.warning"));
+            maintBody.Controls.Add(oilWarnBox);
+            maintBody.Controls.Add(MakeSettingsLabel("label.belt_interval"));
+            maintBody.Controls.Add(beltIntervalBox);
+            maintBody.Controls.Add(MakeSettingsLabel("label.warning"));
+            maintBody.Controls.Add(beltWarnBox);
+            maintBody.Controls.Add(MakeSettingsButton("button.save_intervals", SaveToIntervals));
+            host.Controls.Add(MakeSettingsCard("settings.card_maintenance", maintBody));
+
+            // Card 2: Currency & monthly budget
+            FlowLayoutPanel financeBody = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = true,
+                Padding = new Padding(0, 8, 0, 0),
+                BackColor = Color.White
+            };
+            currencyBox.Width = 66;
+            currencyBox.Text = "BYN";
+            budgetBox.Width = 76;
+            budgetBox.Text = "0";
+            budgetWarnBox.Width = 46;
+            budgetWarnBox.Text = "80";
+            financeBody.Controls.Add(MakeSettingsLabel("label.currency"));
+            financeBody.Controls.Add(currencyBox);
+            financeBody.Controls.Add(MakeSettingsButton("button.save_currency", SaveCurrency));
+            financeBody.Controls.Add(MakeSettingsLabel("label.budget_month"));
+            financeBody.Controls.Add(budgetBox);
+            financeBody.Controls.Add(MakeSettingsLabel("label.warn_pct_compact"));
+            financeBody.Controls.Add(budgetWarnBox);
+            financeBody.Controls.Add(MakeSettingsButton("button.save_budget", SaveBudget));
+            host.Controls.Add(MakeSettingsCard("settings.card_currency_budget", financeBody));
+
+            // Card 3: Backups & reminders
+            FlowLayoutPanel remindBody = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = true,
+                Padding = new Padding(0, 8, 0, 0),
+                BackColor = Color.White
+            };
+            backupRemindBox.Width = 52;
+            backupRemindBox.Text = "7";
+            reminderWarnBox.Width = 52;
+            reminderWarnBox.Text = "14";
+            remindBody.Controls.Add(MakeSettingsLabel("label.backup_remind"));
+            remindBody.Controls.Add(backupRemindBox);
+            remindBody.Controls.Add(MakeSettingsButton("button.save_backup_remind", SaveBackupRemind));
+            remindBody.Controls.Add(MakeSettingsLabel("label.reminder_days"));
+            remindBody.Controls.Add(reminderWarnBox);
+            remindBody.Controls.Add(MakeSettingsButton("button.save_reminder_days", SaveReminderWarnDays));
+            host.Controls.Add(MakeSettingsCard("settings.card_reminders", remindBody));
+
+            // Card 4: Vehicle & language
+            FlowLayoutPanel generalBody = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = true,
+                Padding = new Padding(0, 8, 0, 0),
+                BackColor = Color.White
+            };
+            defaultCarBox.Width = 170;
+            languageBox.Width = 110;
+            languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            languageBox.Items.Clear();
+            foreach (var lang in L10n.GetAvailableLanguages())
+                languageBox.Items.Add(lang);
+            languageBox.Text = LocalizationManager.Instance.CurrentLanguage;
+            generalBody.Controls.Add(MakeSettingsLabel("label.default_car"));
+            generalBody.Controls.Add(defaultCarBox);
+            generalBody.Controls.Add(MakeSettingsButton("button.save_car", SaveDefaultCar));
+            generalBody.Controls.Add(MakeSettingsLabel("dialog.language"));
+            generalBody.Controls.Add(languageBox);
+            generalBody.Controls.Add(MakeSettingsButton("button.save_language", SaveLanguage));
+            host.Controls.Add(MakeSettingsCard("settings.card_general", generalBody));
+
+            return host;
         }
 
         private void OpenGoogleSyncHub(object sender, EventArgs e)
@@ -2311,6 +2477,7 @@ else
             if (String.IsNullOrEmpty(repository.DirectoryPath))
                 pathBox.Text = L10n.Get("hint.open_folder_or_zip");
             summaryTab.Text = L10n.Get("tab.summary");
+            settingsTab.Text = L10n.Get("tab.settings");
 
             foreach (Control ctrl in headerActions)
             {
@@ -2341,6 +2508,12 @@ else
             {
                 if (ctrl is Button btn3 && btn3.Tag is string key3)
                     btn3.Text = L10n.Get(key3);
+            }
+
+            foreach (Control ctrl in settingsLocalizable)
+            {
+                if (ctrl.Tag is string sKey)
+                    ctrl.Text = L10n.Get(sKey);
             }
 
             UpdateFilterBarButtons(fuelGrid);

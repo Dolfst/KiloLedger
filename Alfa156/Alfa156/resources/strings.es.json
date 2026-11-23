@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: cambio requerido",
   "notif.due_soon_title": "Alfa 156: próximo servicio",
   "about.android_version_prefix": "Alfa 156\nVersión",
-  "about.kpk_full": "Alfa 156\nVersión 1.38.4\n\nRegistro de combustible, reparaciones, gastos y servicios.",
+  "about.kpk_full": "Alfa 156\nVersión 1.38.5\n\nRegistro de combustible, reparaciones, gastos y servicios.",
   "error.csv_unclosed_quote": "El CSV contiene una comilla sin cerrar.",
   "msg.csv_exported_to": "CSV exportados a",
   "import.csv_folder_label": "Carpeta CSV",
@@ -1244,5 +1244,10 @@
   "title.google_sync_hub": "Centro de Google Sync",
   "label.script_configured_yes": "Apps Script configurado",
   "label.script_configured_no": "Apps Script no configurado — ejecute el asistente",
-  "label.google_hub_hint": "Introduzca la URL de su hoja de Google para importar o sincronizar."
+  "label.google_hub_hint": "Introduzca la URL de su hoja de Google para importar o sincronizar.",
+  "tab.settings": "Ajustes",
+  "settings.card_maintenance": "Intervalos de servicio",
+  "settings.card_currency_budget": "Moneda y presupuesto",
+  "settings.card_reminders": "Copias y recordatorios",
+  "settings.card_general": "Vehículo e idioma"
 }

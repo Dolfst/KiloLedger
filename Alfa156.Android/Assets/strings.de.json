@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: Wechsel fällig",
   "notif.due_soon_title": "Alfa 156: Wartung bald fällig",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.38.4\n\nErfassung von Tanken, Reparaturen, Ausgaben und Nebenkosten.",
+  "about.kpk_full": "Alfa 156\nVersion 1.38.5\n\nErfassung von Tanken, Reparaturen, Ausgaben und Nebenkosten.",
   "error.csv_unclosed_quote": "CSV enthält ein nicht geschlossenes Anführungszeichen.",
   "msg.csv_exported_to": "CSV exportiert nach",
   "import.csv_folder_label": "CSV-Ordner",
@@ -1244,5 +1244,10 @@
   "title.google_sync_hub": "Google Sync-Zentrum",
   "label.script_configured_yes": "Apps Script ist eingerichtet",
   "label.script_configured_no": "Apps Script noch nicht eingerichtet — Assistenten starten",
-  "label.google_hub_hint": "Geben Sie die Google-Tabellen-URL für den Import ein oder starten Sie den Abgleich."
+  "label.google_hub_hint": "Geben Sie die Google-Tabellen-URL für den Import ein oder starten Sie den Abgleich.",
+  "tab.settings": "Einstellungen",
+  "settings.card_maintenance": "Wartungsintervalle",
+  "settings.card_currency_budget": "Währung & Budget",
+  "settings.card_reminders": "Backups & Erinnerungen",
+  "settings.card_general": "Fahrzeug & Sprache"
 }

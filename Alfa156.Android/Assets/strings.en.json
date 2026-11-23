@@ -688,7 +688,7 @@
   "notif.due_now_title": "Alfa 156: replacement due",
   "notif.due_soon_title": "Alfa 156: service due soon",
   "about.android_version_prefix": "Alfa 156\nVersion",
-  "about.kpk_full": "Alfa 156\nVersion 1.38.4\n\nFuel, repair, expense, and utility tracker.",
+  "about.kpk_full": "Alfa 156\nVersion 1.38.5\n\nFuel, repair, expense, and utility tracker.",
   "error.csv_unclosed_quote": "CSV contains an unclosed quote.",
   "msg.csv_exported_to": "CSV exported to",
   "import.csv_folder_label": "CSV folder",
@@ -1244,5 +1244,10 @@
   "title.google_sync_hub": "Google Sync Center",
   "label.script_configured_yes": "Apps Script is configured",
   "label.script_configured_no": "Apps Script is not configured yet — run the wizard",
-  "label.google_hub_hint": "Enter your Google Sheet URL for import or run two-way sync."
+  "label.google_hub_hint": "Enter your Google Sheet URL for import or run two-way sync.",
+  "tab.settings": "Settings",
+  "settings.card_maintenance": "Maintenance intervals",
+  "settings.card_currency_budget": "Currency & budget",
+  "settings.card_reminders": "Backups & reminders",
+  "settings.card_general": "Vehicle & language"
 }
