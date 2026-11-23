@@ -2845,7 +2845,7 @@ namespace CarExpenses
         private void ShowAbout(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "Alfa 156\r\nВерсия 1.39.0\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
+                "Alfa 156\r\nВерсия 1.39.1\r\n\r\nУчёт заправок, ремонта, прочих расходов и коммуналки.\r\n" +
                 (L10n.Get("onboarding.station_short") + "\r\n") +
                 (L10n.Get("onboarding.forecast_feature") + "\r\n") +
                 (L10n.Get("onboarding.passport_timeline_short") + "\r\n") +

@@ -88,12 +88,15 @@ namespace Alfa156.Localization
             string[] embeddedNames = Assembly.GetExecutingAssembly().GetManifestResourceNames();
             foreach (string resName in embeddedNames)
             {
-                if (resName.StartsWith("strings.", StringComparison.OrdinalIgnoreCase) &&
-                    resName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) &&
-                    resName.Length > 13)
+                int idx = resName.LastIndexOf("strings.", StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0 && resName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 {
-                    string code = resName.Substring(8, resName.Length - 13).ToLowerInvariant();
-                    found.Add(code);
+                    string tail = resName.Substring(idx);
+                    if (tail.Length > 13)
+                    {
+                        string code = tail.Substring(8, tail.Length - 13).ToLowerInvariant();
+                        found.Add(code);
+                    }
                 }
             }
 
@@ -140,22 +143,35 @@ namespace Alfa156.Localization
             try
             {
                 Assembly asm = Assembly.GetExecutingAssembly();
-                // Try the exact name first, then with the assembly namespace prefix
-                // (MSBuild may embed resources with or without the default namespace prefix).
-                string[] names = new[]
+                string[] candidates = new[]
                 {
                     resourceName,
-                    asm.GetName().Name + "." + resourceName
+                    asm.GetName().Name + "." + resourceName,
+                    asm.GetName().Name + ".resources." + resourceName
                 };
-                foreach (string name in names)
+                foreach (string name in candidates)
                 {
                     using (Stream stream = asm.GetManifestResourceStream(name))
                     {
                         if (stream != null)
                         {
                             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                                return reader.ReadToEnd().TrimStart('\uFEFF');
+                        }
+                    }
+                }
+                string[] all = asm.GetManifestResourceNames();
+                foreach (string fullName in all)
+                {
+                    if (string.Equals(fullName, resourceName, StringComparison.OrdinalIgnoreCase) ||
+                        fullName.EndsWith("." + resourceName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        using (Stream stream = asm.GetManifestResourceStream(fullName))
+                        {
+                            if (stream != null)
                             {
-                                return reader.ReadToEnd();
+                                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                                    return reader.ReadToEnd().TrimStart('\uFEFF');
                             }
                         }
                     }

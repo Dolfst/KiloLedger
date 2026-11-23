@@ -15,7 +15,7 @@ namespace Alfa156.Desktop
 {
     internal sealed class MainForm : Form
     {
-        private const string AppVersion = "1.39.0";
+        private const string AppVersion = "1.39.1";
         private bool chartShowsCostPerKm;
         private bool _firstRun;
 
@@ -135,15 +135,9 @@ namespace Alfa156.Desktop
             Font = new Font("Segoe UI", 9F);
             BackColor = Color.FromArgb(244, 246, 249);
             ForeColor = Color.FromArgb(35, 51, 70);
-            try
-            {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Alfa156.ico");
-                if (!File.Exists(iconPath))
-                    iconPath = Path.Combine(Application.StartupPath, "..", "..", "Alfa156.ico");
-                if (File.Exists(iconPath))
-                    Icon = new Icon(iconPath);
-            }
-            catch { }
+            Icon loadedIcon = LoadAppIcon();
+            if (loadedIcon != null)
+                Icon = loadedIcon;
 
             // Left dark-navy navigation sidebar
             sidebarPanel.Dock = DockStyle.Left;
@@ -214,18 +208,26 @@ namespace Alfa156.Desktop
             sidebarPanel.Controls.Add(navList);
             sidebarPanel.Controls.Add(brandHeader);
 
-            // Compact single-row top header bar
+            // Responsive two-tier white header (never clips search box or title in windowed/scaled mode)
             Panel headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 62,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = Color.White,
-                Padding = new Padding(16, 8, 16, 8)
+                Padding = new Padding(16, 8, 16, 6)
             };
             headerPanel.Paint += delegate(object s, PaintEventArgs pe)
             {
                 using (Pen p = new Pen(Color.FromArgb(225, 230, 238)))
                     pe.Graphics.DrawLine(p, 0, headerPanel.Height - 1, headerPanel.Width, headerPanel.Height - 1);
+            };
+
+            Panel headerTopRow = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                BackColor = Color.White
             };
 
             Panel headerLeft = new Panel
@@ -249,16 +251,15 @@ namespace Alfa156.Desktop
             headerLeft.Controls.Add(pathBox);
             headerLeft.Controls.Add(sectionTitleLabel);
 
-            FlowLayoutPanel headerRight = new FlowLayoutPanel
+            FlowLayoutPanel searchCluster = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
                 AutoSize = true,
                 WrapContents = false,
-                Padding = new Padding(8, 6, 0, 0),
+                Padding = new Padding(8, 2, 0, 0),
                 BackColor = Color.White
             };
-
-            globalSearchBox.Width = 155;
+            globalSearchBox.Width = 175;
             globalSearchBox.Margin = new Padding(0, 6, 4, 4);
             globalSearchBox.Text = L10n.Get("button.search_ellipsis");
             globalSearchBox.ForeColor = Color.Gray;
@@ -271,18 +272,31 @@ namespace Alfa156.Desktop
                 }
             };
             globalSearchBox.KeyDown += GlobalSearchKeyDown;
-            headerRight.Controls.Add(globalSearchBox);
+            searchCluster.Controls.Add(globalSearchBox);
             Control searchBtn = MakeButton("button.search", OpenGlobalSearch);
             headerActions.Add(searchBtn);
-            headerRight.Controls.Add(searchBtn);
+            searchCluster.Controls.Add(searchBtn);
+
+            headerTopRow.Controls.Add(headerLeft);
+            headerTopRow.Controls.Add(searchCluster);
+
+            FlowLayoutPanel actionsBar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                WrapContents = true,
+                Padding = new Padding(0, 4, 0, 2),
+                Margin = new Padding(0),
+                BackColor = Color.White
+            };
 
             quickFuelButton = MakeAccentButton("button.quick_fuel", OpenQuickFuelEntry);
             headerActions.Add(quickFuelButton);
-            headerRight.Controls.Add(quickFuelButton);
+            actionsBar.Controls.Add(quickFuelButton);
 
             saveButton = MakeButton("button.save_data", SaveData);
             headerActions.Add(saveButton);
-            headerRight.Controls.Add(saveButton);
+            actionsBar.Controls.Add(saveButton);
 
             // Database dropdown menu
             dbMenu.Items.Add(MakeMenuItem("button.open_folder", OpenFolder));
@@ -292,7 +306,7 @@ namespace Alfa156.Desktop
             dbMenu.Items.Add(MakeMenuItem("button.export_zip", SaveZip));
             Control dbBtn = MakeDropdownButton("menu.database", dbMenu);
             headerActions.Add(dbBtn);
-            headerRight.Controls.Add(dbBtn);
+            actionsBar.Controls.Add(dbBtn);
 
             // Exchange & Google dropdown menu
             exchangeMenu.Items.Add(MakeMenuItem("title.google_sync_hub", OpenGoogleSyncHub));
@@ -312,7 +326,7 @@ namespace Alfa156.Desktop
             exchangeMenu.Items.Add(MakeMenuItem("button.google_settings", ConfigureGoogleSync));
             Control exBtn = MakeDropdownButton("menu.exchange", exchangeMenu);
             headerActions.Add(exBtn);
-            headerRight.Controls.Add(exBtn);
+            actionsBar.Controls.Add(exBtn);
 
             // Tools dropdown menu
             toolsMenu.Items.Add(MakeMenuItem("button.trip", OpenTripEntry));
@@ -325,10 +339,11 @@ namespace Alfa156.Desktop
             toolsMenu.Items.Add(MakeMenuItem("button.data_integrity", OpenDataIntegrity));
             Control toolsBtn = MakeDropdownButton("menu.tools", toolsMenu);
             headerActions.Add(toolsBtn);
-            headerRight.Controls.Add(toolsBtn);
+            actionsBar.Controls.Add(toolsBtn);
 
-            headerPanel.Controls.Add(headerLeft);
-            headerPanel.Controls.Add(headerRight);
+            // DockStyle.Top stacks bottom-most added control at the top.
+            headerPanel.Controls.Add(actionsBar);
+            headerPanel.Controls.Add(headerTopRow);
 
             tabs.Dock = DockStyle.Fill;
             tabs.Appearance = TabAppearance.FlatButtons;
@@ -482,6 +497,54 @@ namespace Alfa156.Desktop
                 ShowLanguageSelectionDialog();
             else
                 ApplyLanguageToUI();
+
+            dirty = false;
+            UpdateSaveDirtyVisual();
+            statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
+            Shown += delegate
+            {
+                if (String.IsNullOrEmpty(repository.DirectoryPath) && carsGrid.Rows.Count <= 1 && fuelGrid.Rows.Count <= 1)
+                {
+                    dirty = false;
+                    UpdateSaveDirtyVisual();
+                    statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
+                }
+            };
+        }
+
+        private static Icon LoadAppIcon()
+        {
+            try
+            {
+                Assembly asm = Assembly.GetExecutingAssembly();
+                string[] resNames = new[] { "Alfa156.ico", asm.GetName().Name + ".Alfa156.ico" };
+                foreach (string resName in resNames)
+                {
+                    using (Stream s = asm.GetManifestResourceStream(resName))
+                    {
+                        if (s != null)
+                            return new Icon(s);
+                    }
+                }
+            }
+            catch { }
+            try
+            {
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Alfa156.ico");
+                if (!File.Exists(iconPath))
+                    iconPath = Path.Combine(Application.StartupPath, "..", "..", "Alfa156.ico");
+                if (File.Exists(iconPath))
+                    return new Icon(iconPath);
+            }
+            catch { }
+            try
+            {
+                return Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static string StartupLanguageFilePath()
