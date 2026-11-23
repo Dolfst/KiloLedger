@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      - "Alfa156/**"
-      - "Alfa156.Android/**"
-      - "Alfa156.Desktop/**"
+      - "KiloLedger/**"
+      - "KiloLedger.Android/**"
+      - "KiloLedger.Desktop/**"
       - "build/**"
       - "VERSION"
       - "README.md"
@@ -15,9 +15,9 @@ on:
       - ".github/workflows/smoke-verifies.yml"
   pull_request:
     paths:
-      - "Alfa156/**"
-      - "Alfa156.Android/**"
-      - "Alfa156.Desktop/**"
+      - "KiloLedger/**"
+      - "KiloLedger.Android/**"
+      - "KiloLedger.Desktop/**"
       - "build/**"
       - "VERSION"
       - "README.md"

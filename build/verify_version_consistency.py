@@ -25,26 +25,26 @@ def main() -> int:
 
     checks = (
         (
-            "Alfa156.Android/Alfa156.Android.csproj",
+            "KiloLedger.Android/KiloLedger.Android.csproj",
             (
                 f"<ApplicationDisplayVersion>{version}</ApplicationDisplayVersion>",
                 f"<ApplicationVersion>{version_code}</ApplicationVersion>",
             ),
         ),
-        ("Alfa156.Android/MainActivity.cs", (f'version = "{version}"',)),
-        ("Alfa156.Desktop/MainForm.cs", (f'AppVersion = "{version}"',)),
+        ("KiloLedger.Android/MainActivity.cs", (f'version = "{version}"',)),
+        ("KiloLedger.Desktop/MainForm.cs", (f'AppVersion = "{version}"',)),
         (
-            "Alfa156.Desktop/Properties/AssemblyInfo.cs",
+            "KiloLedger.Desktop/Properties/AssemblyInfo.cs",
             (
                 f'AssemblyVersion("{version}.0")',
                 f'AssemblyFileVersion("{version}.0")',
             ),
         ),
         (
-            "Alfa156/Alfa156/Properties/AssemblyInfo.cs",
+            "KiloLedger/KiloLedger/Properties/AssemblyInfo.cs",
             (f'AssemblyVersion("{version}.0")',),
         ),
-        ("Alfa156/Alfa156/Form1.cs", (f"Версия {version}",)),
+        ("KiloLedger/KiloLedger/Form1.cs", (f"Версия {version}",)),
         ("README.md", (f"Текущая версия: **{version}**",)),
         ("dist/download/README.md", (f"сейчас `{version}`",)),
     )

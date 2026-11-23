@@ -262,8 +262,8 @@ if __name__ == "__main__":
     test_duplicate_ids_are_detectable()
 
     for rel in (
-        "Alfa156.Android/DataIntegrity.cs",
-        "Alfa156.Desktop/Data/DataIntegrity.cs",
+        "KiloLedger.Android/DataIntegrity.cs",
+        "KiloLedger.Desktop/Data/DataIntegrity.cs",
     ):
         text = (Path(__file__).resolve().parents[1] / rel).read_text()
         if "CheckDuplicateIds" not in text:
@@ -272,9 +272,9 @@ if __name__ == "__main__":
             raise AssertionError(f"{rel}: duplicate ID report is missing")
 
     for rel in (
-        "Alfa156/Alfa156/RecordIds.cs",
-        "Alfa156.Android/RecordIds.cs",
-        "Alfa156.Desktop/Data/RecordIds.cs",
+        "KiloLedger/KiloLedger/RecordIds.cs",
+        "KiloLedger.Android/RecordIds.cs",
+        "KiloLedger.Desktop/Data/RecordIds.cs",
     ):
         text = (Path(__file__).resolve().parents[1] / rel).read_text()
         for needle in (

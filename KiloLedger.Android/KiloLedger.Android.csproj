@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>KiloLedger.Android</RootNamespace>
+    <AssemblyName>KiloLedger.Android</AssemblyName>
+    <ApplicationId>com.kiloledger.app</ApplicationId>
+    <ApplicationTitle>KiloLedger</ApplicationTitle>
+    <ApplicationVersion>13903</ApplicationVersion>
+    <ApplicationDisplayVersion>1.39.3</ApplicationDisplayVersion>
+    <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+    <AndroidManifest>AndroidManifest.xml</AndroidManifest>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <Nullable>disable</Nullable>
+    <!-- Постоянная подпись для обновлений sideload (один ключ для CI и локальных сборок). -->
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>$(MSBuildThisFileDirectory)kiloledger-upload.keystore</AndroidSigningKeyStore>
+    <AndroidSigningStorePass>Alfa156Upload!</AndroidSigningStorePass>
+    <AndroidSigningKeyAlias>kiloledger</AndroidSigningKeyAlias>
+    <AndroidSigningKeyPass>Alfa156Upload!</AndroidSigningKeyPass>
+  </PropertyGroup>
+</Project>

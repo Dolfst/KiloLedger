@@ -35,7 +35,7 @@ localization/
 ### В коде C#
 
 ```csharp
-using Alfa156.Localization;
+using KiloLedger.Localization;
 
 // Получить переведенную строку
 string title = L10n.Get("app.title");

@@ -1,8 +1,0 @@
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Debug\ResolveAssemblyReference.cache
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Debug\CarExpenses.Form1.resources
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Debug\Alfa156.Properties.Resources.resources
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Debug\Alfa156.csproj.GenerateResource.Cache
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\bin\Debug\Alfa156.exe
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\bin\Debug\Alfa156.pdb
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Debug\Alfa156.exe
-C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\Alfa156\Alfa156\obj\Debug\Alfa156.pdb

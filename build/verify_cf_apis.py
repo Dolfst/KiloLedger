@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-KPK = ROOT / "Alfa156" / "Alfa156"
+KPK = ROOT / "KiloLedger" / "KiloLedger"
 
 CHECKS = [
     (re.compile(r"DateTime\.TryParseExact\s*\("), "DateTime.TryParseExact (not in CF)"),

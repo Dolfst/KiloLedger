@@ -25,9 +25,9 @@ def main() -> int:
         errors.append(f"VERSION expected >= 1.31.0, got {version!r}")
 
     for rel in (
-        "Alfa156/Alfa156/CarNotes.cs",
-        "Alfa156.Android/CarNotes.cs",
-        "Alfa156.Desktop/Data/CarNotes.cs",
+        "KiloLedger/KiloLedger/CarNotes.cs",
+        "KiloLedger.Android/CarNotes.cs",
+        "KiloLedger.Desktop/Data/CarNotes.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for needle in (
@@ -45,9 +45,9 @@ def main() -> int:
             errors.append(f"{rel}: note text must not be silently truncated")
 
     for rel in (
-        "Alfa156/Alfa156/RecordIds.cs",
-        "Alfa156.Android/RecordIds.cs",
-        "Alfa156.Desktop/Data/RecordIds.cs",
+        "KiloLedger/KiloLedger/RecordIds.cs",
+        "KiloLedger.Android/RecordIds.cs",
+        "KiloLedger.Desktop/Data/RecordIds.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         if 'TypeNote = "note"' not in text:
@@ -60,7 +60,7 @@ def main() -> int:
             if "!= 'j'" not in text and '!= "j"' not in text and "prefix != 'j'" not in text:
                 errors.append(f"{rel}: LooksLikeId should accept j_")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text(encoding="utf-8")
     for needle in (
         "ManageCarNotes",
         "AddCarNote",
@@ -74,7 +74,7 @@ def main() -> int:
     if f'version = "{version}"' not in android:
         errors.append(f"Android MainActivity: missing version {version}")
 
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text(encoding="utf-8")
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text(encoding="utf-8")
     for needle in (
         "AddCarNote",
         "EditCarNote",
@@ -87,7 +87,7 @@ def main() -> int:
     if f'AppVersion = "{version}"' not in desktop:
         errors.append(f"Desktop MainForm: missing AppVersion {version}")
 
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text(encoding="utf-8")
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text(encoding="utf-8")
     for needle in (
         "ManageNotesFromMenu",
         "Заметки",
@@ -98,13 +98,13 @@ def main() -> int:
             errors.append(f"KPK Form1: missing {needle!r}")
 
     for rel, needle in (
-        ("Alfa156.Android/ExpenseDataCodec.cs", "NotesFile"),
-        ("Alfa156.Desktop/Data/AlfaCodec.cs", "NotesFile"),
-        ("Alfa156/Alfa156/DataStore.cs", "NotesFile"),
-        ("Alfa156.Android/ExpenseSyncService.cs", "NotesFile"),
-        ("Alfa156/Alfa156/SyncMerge.cs", "notes.dat"),
+        ("KiloLedger.Android/ExpenseDataCodec.cs", "NotesFile"),
+        ("KiloLedger.Desktop/Data/KiloLedgerCodec.cs", "NotesFile"),
+        ("KiloLedger/KiloLedger/DataStore.cs", "NotesFile"),
+        ("KiloLedger.Android/ExpenseSyncService.cs", "NotesFile"),
+        ("KiloLedger/KiloLedger/SyncMerge.cs", "notes.dat"),
         ("build/build-kpk.ps1", "CarNotes.cs"),
-        ("Alfa156.Desktop/Data/AlfaRepository.cs", "NotesRows"),
+        ("KiloLedger.Desktop/Data/KiloLedgerRepository.cs", "NotesRows"),
     ):
         if needle not in (ROOT / rel).read_text(encoding="utf-8"):
             errors.append(f"{rel}: missing {needle!r}")

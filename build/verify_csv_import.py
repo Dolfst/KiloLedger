@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> int:
     errors = []
-    csv_path = ROOT / "Alfa156.Desktop/Exchange/CsvExchange.cs"
+    csv_path = ROOT / "KiloLedger.Desktop/Exchange/CsvExchange.cs"
     csv = csv_path.read_text(encoding="utf-8")
     for token in (
         'ReadCsvFlexible(Path.Combine(folder, "fuel.csv"), 7, 10)',
@@ -27,7 +27,7 @@ def main() -> int:
         if token not in csv:
             errors.append(f"CsvExchange.cs: missing validation {token!r}")
 
-    wizard_path = ROOT / "Alfa156.Desktop/ImportWizardForm.cs"
+    wizard_path = ROOT / "KiloLedger.Desktop/ImportWizardForm.cs"
     wizard = wizard_path.read_text(encoding="utf-8")
     start = wizard.find("private void ApplyImport()")
     end = wizard.find("private static void CopyDatTree(", start)

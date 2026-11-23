@@ -28,7 +28,7 @@ def main() -> int:
     errors = []
     fixtures = ROOT / "build" / "sample_data"
 
-    with tempfile.TemporaryDirectory(prefix="alfa-restore-fixture-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="kiloledger-restore-fixture-") as tmp:
         root = Path(tmp)
         restore = root / "restore"
         restore.mkdir()
@@ -64,7 +64,7 @@ def main() -> int:
         if not (restore / "Receipts" / "f_fixture123.jpg").exists():
             errors.append("fixture restore: modern ZIP receipt was not restored")
 
-    kpk_path = "Alfa156/Alfa156/DataStore.cs"
+    kpk_path = "KiloLedger/KiloLedger/DataStore.cs"
     kpk = (ROOT / kpk_path).read_text(encoding="utf-8-sig")
     receipt_copy = section(
         kpk,
@@ -98,7 +98,7 @@ def main() -> int:
     ):
         errors.append("KPK restore: safety backup must be allocated before replacing data")
 
-    android_path = "Alfa156.Android/ExpenseDataStore.cs"
+    android_path = "KiloLedger.Android/ExpenseDataStore.cs"
     android = (ROOT / android_path).read_text(encoding="utf-8")
     android_copy = section(
         android,
@@ -122,9 +122,9 @@ def main() -> int:
             errors.append(f"Android restore: missing safety/rollback step {needle}")
 
     integrity_paths = (
-        "Alfa156.Android/DataIntegrity.cs",
-        "Alfa156.Desktop/Data/DataIntegrity.cs",
-        "Alfa156/Alfa156/DataIntegrity.cs",
+        "KiloLedger.Android/DataIntegrity.cs",
+        "KiloLedger.Desktop/Data/DataIntegrity.cs",
+        "KiloLedger/KiloLedger/DataIntegrity.cs",
     )
     for rel in integrity_paths:
         source = (ROOT / rel).read_text(encoding="utf-8-sig")
@@ -137,20 +137,20 @@ def main() -> int:
             if needle not in source:
                 errors.append(f"{rel}: missing receipt integrity check {needle}")
 
-    desktop_receipts = (ROOT / "Alfa156.Desktop/Data/ReceiptStore.cs").read_text(encoding="utf-8")
-    desktop_main = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text(encoding="utf-8")
+    desktop_receipts = (ROOT / "KiloLedger.Desktop/Data/ReceiptStore.cs").read_text(encoding="utf-8")
+    desktop_main = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text(encoding="utf-8")
     if "internal static void Delete(string dataDirectory, string recordId)" not in desktop_receipts:
         errors.append("Desktop: receipt Delete method missing")
     if "Удалить фото" not in desktop_main or "DeleteReceiptPhoto" not in desktop_main:
         errors.append("Desktop: receipt delete action missing")
-    android_receipts = (ROOT / "Alfa156.Android/ReceiptStore.cs").read_text(encoding="utf-8")
-    android_main = (ROOT / "Alfa156.Android/MainActivity.cs").read_text(encoding="utf-8")
+    android_receipts = (ROOT / "KiloLedger.Android/ReceiptStore.cs").read_text(encoding="utf-8")
+    android_main = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text(encoding="utf-8")
     if "ReceiptStore.Delete(DataDirectory, editorReceiptId)" not in android_main:
         errors.append("Android: receipt delete action missing")
     if "IsSafeReceiptFileName" not in android_receipts:
         errors.append("Android: safe receipt filename contract missing")
-    kpk_receipts = (ROOT / "Alfa156/Alfa156/DataStore.cs").read_text(encoding="utf-8-sig")
-    kpk_main = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text(encoding="utf-8-sig")
+    kpk_receipts = (ROOT / "KiloLedger/KiloLedger/DataStore.cs").read_text(encoding="utf-8-sig")
+    kpk_main = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text(encoding="utf-8-sig")
     if "internal static void DeleteReceipt(string recordId)" not in kpk_receipts:
         errors.append("KPK: receipt Delete method missing")
     if "OpenReceiptPhoto" not in kpk_main or "DeleteReceiptPhoto" not in kpk_main:

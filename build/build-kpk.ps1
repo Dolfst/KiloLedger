@@ -1,4 +1,4 @@
-# Builds Alfa156.exe for Windows Mobile (.NET CF 3.5) without full WM SDK.
+# Builds KiloLedger.exe for Windows Mobile (.NET CF 3.5) without full WM SDK.
 # Uses desktop csc against CF reference assemblies in build/cf35/WindowsCE.
 param(
     [string]$Configuration = "Release",
@@ -7,9 +7,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$projDir = Join-Path $root "Alfa156\Alfa156"
+$projDir = Join-Path $root "KiloLedger\KiloLedger"
 $cfDir = Join-Path $root "build\cf35\WindowsCE"
-if (-not (Test-Path (Join-Path $projDir "Alfa156.csproj"))) {
+if (-not (Test-Path (Join-Path $projDir "KiloLedger.csproj"))) {
     throw "Project not found: $projDir"
 }
 if ($OutDir -eq "") {
@@ -58,7 +58,7 @@ $rg1 = Start-Process -FilePath $resgen -ArgumentList "`"$formResx`" `"$formResou
 if ($rg1.ExitCode -ne 0) { throw "ResGen Form1.resx failed" }
 
 $propResx = Join-Path $projDir "Properties\Resources.resx"
-$propResources = Join-Path $objDir "Alfa156.Properties.Resources.resources"
+$propResources = Join-Path $objDir "KiloLedger.Properties.Resources.resources"
 $rg2 = Start-Process -FilePath $resgen -ArgumentList "`"$propResx`" `"$propResources`"" -Wait -PassThru -NoNewWindow
 if ($rg2.ExitCode -ne 0) { throw "ResGen Resources.resx failed" }
 
@@ -88,9 +88,9 @@ $sources = @(
     (Join-Path $projDir "Properties\Resources.Designer.cs")
 )
 
-$outExe = Join-Path $OutDir "Alfa156.exe"
-$icon = Join-Path $projDir "Alfa156.ico"
-$rsp = Join-Path $objDir "Alfa156.csc.rsp"
+$outExe = Join-Path $OutDir "KiloLedger.exe"
+$icon = Join-Path $projDir "KiloLedger.ico"
+$rsp = Join-Path $objDir "KiloLedger.csc.rsp"
 $define = "TRACE;PocketPC"
 if ($Configuration -eq "Debug") { $define = "DEBUG;TRACE;PocketPC" }
 
@@ -112,10 +112,10 @@ $lines.Add("/define:$define")
 $lines.Add("/out:" + (Q $outExe))
 $lines.Add("/win32icon:" + (Q $icon))
 $lines.Add((QRes $formResources "CarExpenses.Form1.resources"))
-$lines.Add((QRes $propResources "Alfa156.Properties.Resources.resources"))
-$lines.Add((QRes (Join-Path $projDir "SeedData\Repairs.seed") "Alfa156.SeedData.Repairs.seed"))
-$lines.Add((QRes (Join-Path $projDir "SeedData\Utilities.seed") "Alfa156.SeedData.Utilities.seed"))
-$lines.Add((QRes (Join-Path $projDir "SeedData\Vehicles.seed") "Alfa156.SeedData.Vehicles.seed"))
+$lines.Add((QRes $propResources "KiloLedger.Properties.Resources.resources"))
+$lines.Add((QRes (Join-Path $projDir "SeedData\Repairs.seed") "KiloLedger.SeedData.Repairs.seed"))
+$lines.Add((QRes (Join-Path $projDir "SeedData\Utilities.seed") "KiloLedger.SeedData.Utilities.seed"))
+$lines.Add((QRes (Join-Path $projDir "SeedData\Vehicles.seed") "KiloLedger.SeedData.Vehicles.seed"))
 $lines.Add((QRes (Join-Path $projDir "resources\strings.ru.json") "strings.ru.json"))
 $lines.Add((QRes (Join-Path $projDir "resources\strings.en.json") "strings.en.json"))
 $lines.Add((QRes (Join-Path $projDir "resources\strings.es.json") "strings.es.json"))

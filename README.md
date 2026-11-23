@@ -35,7 +35,7 @@
 
 ## Что нового в 1.38.1
 
-- КПК (Windows Mobile): исправлена иконка приложения в меню «Пуск» (добавлены 4/8/24-битные кадры в `Alfa156.ico`) и добавлена автоматическая прокрутка формы при появлении экранной клавиатуры.
+- КПК (Windows Mobile): исправлена иконка приложения в меню «Пуск» (добавлены 4/8/24-битные кадры в `KiloLedger.ico`) и добавлена автоматическая прокрутка формы при появлении экранной клавиатуры.
 - Публичный чистый старт: удалены личные записи в `SeedData`, жёстко заданный `SPREADSHEET_ID` и привязка справки Google Sync к названию конкретной таблицы на всех трёх платформах.
 
 ## Что нового в 1.38.0
@@ -115,14 +115,14 @@
 
 ## Проекты
 
-- `Alfa156/Alfa156.sln` — Pocket PC / Windows Mobile, .NET Compact Framework 3.5
-- `Alfa156.Android/Alfa156.Android.csproj` — Android
-- `Alfa156.Desktop/Alfa156.Desktop.csproj` — ПК (.NET Framework 4.8): Excel, CSV, Google Sheets
+- `KiloLedger/KiloLedger.sln` — Pocket PC / Windows Mobile, .NET Compact Framework 3.5
+- `KiloLedger.Android/KiloLedger.Android.csproj` — Android
+- `KiloLedger.Desktop/KiloLedger.Desktop.csproj` — ПК (.NET Framework 4.8): Excel, CSV, Google Sheets
 - `google-sync/` — Apps Script для двусторонней синхронизации с Google Таблицей
 - `branding/` — общий логотип и описание стиля (`BrandTheme.md`)
 - `VERSION` — единый номер версии приложения (источник правды для имён файлов и сборок)
 - `dist/download/` — готовые сборки: `KiloLedger-<version>.apk`, `KiloLedger-<version>-Desktop.exe`, `KiloLedger-<version>-KPK.exe` / `.zip`
-- `dist/Alfa156-Desktop/` — готовый `Alfa156.Desktop.exe`
+- `dist/KiloLedger-Desktop/` — готовый `KiloLedger.Desktop.exe`
 - `AGENTS.md` и `.github/skills/` — инструкции и специализированные навыки для AI-агентов, работающих с репозиторием.
 
 На всех платформах: автомобили, заправки, ремонт/ТО, прочие расходы, коммунальные, фильтры, категории, сводка, интервалы ТО. Android — ZIP и Wi‑Fi; КПК — резервные копии и Wi‑Fi; ПК — Excel/Google.
@@ -145,7 +145,7 @@
 
 ### Android / ПК ↔ Google Sheets
 
-См. `google-sync/README.md`. На Desktop удобнее **Google: мастер** (пошагово + проверка связи). Кратко: вставить `Alfa156Sync.gs` в таблицу, задать `SYNC_TOKEN`, опубликовать Web App, указать URL в приложении.
+См. `google-sync/README.md`. На Desktop удобнее **Google: мастер** (пошагово + проверка связи). Кратко: вставить `KiloLedgerSync.gs` в таблицу, задать `SYNC_TOKEN`, опубликовать Web App, указать URL в приложении.
 
 КПК в Google напрямую не ходит — только через Android или ZIP/папку через ПК.
 
@@ -207,7 +207,7 @@
 
 Входящие данные сначала полностью принимаются во временную папку и проверяются; при обрыве до применения локальные файлы не заменяются. Если связь оборвалась уже после применения на одном устройстве, повторите синхронизацию: стабильные ID и tombstones позволяют повторно обработать тот же снимок без воскрешения удалённых записей. При откате или ошибке записи журнал синхронизации содержит поле `Причина отката`.
 
-Синхронизация (с 1.10.0) сопоставляет записи **сначала по стабильному id**, иначе по естественным ключам (заправка: дата+авто+пробег; ремонт: дата+авто+пробег+категория+товар; прочий расход: дата+авто+категория+название; коммуналка: месяц; авто/категория/паспорт: название). Удаления передаются через `deleted.dat` (tombstones, тип `expense` для прочих, `car-meta` для паспорта): удалённый id не воскресает при обмене. Wi‑Fi payload с 1.11.0 также включает `expenses.dat`, `expense-categories.dat`, `settings.dat`; с **1.20.0** — ещё `cars-meta.dat` (устройства 1.20+); с **1.25.0** — `templates.dat`; с **1.26.0** — `reminders.dat` (tombstone `reminder`); с **1.31.0** — `notes.dat` (tombstone `note`). С 1.12.0 — обфускация сессии SYNC2; с **1.15.0** заголовок `KILOLEDGER2R|` (та же криптография) плюс обмен `Receipts/*.jpg` после `.dat` (≤2 МБ/файл, ≤50/сеанс). Клиенты 1.12–1.14 получают сообщение обновить до 1.15+. После sync показывается краткий журнал. **Google Sheets** по-прежнему без прочих расходов и паспорта авто: id остаются в локальных `.dat`/ZIP. Перед первой синхронизацией рекомендуется резервная копия.
+Синхронизация (с 1.10.0) сопоставляет записи **сначала по стабильному id**, иначе по естественным ключам (заправка: дата+авто+пробег; ремонт: дата+авто+пробег+категория+товар; прочий расход: дата+авто+категория+название; коммуналка: месяц; авто/категория/паспорт: название). Удаления передаются через `deleted.dat` (tombstones, тип `expense` для прочих, `car-meta` для паспорта): удалённый id не воскресает при обмене. Wi‑Fi payload с 1.11.0 также включает `expenses.dat`, `expense-categories.dat`, `settings.dat`; с **1.20.0** — ещё `cars-meta.dat` (устройства 1.20+); с **1.25.0** — `templates.dat`; с **1.26.0** — `reminders.dat` (tombstone `reminder`); с **1.31.0** — `notes.dat` (tombstone `note`). С 1.12.0 — обфускация сессии SYNC2; с **1.15.0** заголовок был `ALFA156SYNC2R|`; после ребрендинга Android и КПК используют `KILOLEDGER2R|` (та же криптография) плюс обмен `Receipts/*.jpg` после `.dat` (≤2 МБ/файл, ≤50/сеанс). Клиенты 1.12–1.14 получают сообщение обновить до 1.15+. После sync показывается краткий журнал. **Google Sheets** по-прежнему без прочих расходов и паспорта авто: id остаются в локальных `.dat`/ZIP. Перед первой синхронизацией рекомендуется резервная копия.
 
 ## Работа с записями на Android
 
@@ -249,7 +249,7 @@ powershell -ExecutionPolicy Bypass -File build/build-kpk.ps1 -Configuration Rele
 Для Linux нужен пакет `mono-devel`; скрипт использует справочные сборки NET CF 3.5 из `build/cf35/WindowsCE`.
 
 Нужны справочные сборки в `build/cf35/WindowsCE` (уже в репозитории) и `ResGen.exe` / `csc.exe` (.NET Framework).  
-Альтернатива: Visual Studio 2008 + Windows Mobile SDK + .NET CF 3.5, открыть `Alfa156/Alfa156.sln`, конфигурация **Release**.
+Альтернатива: Visual Studio 2008 + Windows Mobile SDK + .NET CF 3.5, открыть `KiloLedger/KiloLedger.sln`, конфигурация **Release**.
 
 ## Сборка Android APK
 
@@ -257,7 +257,7 @@ powershell -ExecutionPolicy Bypass -File build/build-kpk.ps1 -Configuration Rele
 
 ```sh
 dotnet workload install android
-dotnet build Alfa156.Android/Alfa156.Android.csproj \
+dotnet build KiloLedger.Android/KiloLedger.Android.csproj \
   -t:InstallAndroidDependencies -f net10.0-android \
   -p:AndroidSdkDirectory="/полный/путь/android-sdk" \
   -p:JavaSdkDirectory="/полный/путь/jdk" \
@@ -267,13 +267,13 @@ dotnet build Alfa156.Android/Alfa156.Android.csproj \
 После установки задайте переменные `ANDROID_HOME` и `JAVA_HOME`, затем соберите самостоятельный Release APK для ARM64 (сборки приложения включены внутрь файла):
 
 ```sh
-dotnet build Alfa156.Android/Alfa156.Android.csproj -c Release \
+dotnet build KiloLedger.Android/KiloLedger.Android.csproj -c Release \
   -p:RuntimeIdentifier=android-arm64
 ```
 
-Готовый APK: `Alfa156.Android/bin/Release/net10.0-android/android-arm64/com.kiloledger.app-Signed.apk`. На Samsung передайте его на телефон, откройте через «Мои файлы» и разрешите установку из этого источника, если Android попросит.
+Готовый APK: `KiloLedger.Android/bin/Release/net10.0-android/android-arm64/com.kiloledger.app-Signed.apk`. На Samsung передайте его на телефон, откройте через «Мои файлы» и разрешите установку из этого источника, если Android попросит.
 
-Текущая ARM64-сборка также хранится в `Alfa156.Android/Alfa156.apk` и включается в ZIP-архив репозитория. При обновлении Android-приложения замените этот файл новой Release-сборкой.
+Текущая ARM64-сборка также хранится в `KiloLedger.Android/KiloLedger.apk` и включается в ZIP-архив репозитория. При обновлении Android-приложения замените этот файл новой Release-сборкой.
 
 ### Скачать готовые сборки
 
@@ -295,7 +295,7 @@ GitHub Actions собирает всё автоматически:
 
 Вручную: **Actions → нужный workflow → Run workflow**. Каждый workflow заново создаёт свой rolling release (дата на странице Releases обновляется). Изменение `VERSION` тоже запускает сборки.
 
-Сборки из GitHub Actions подписываются постоянным ключом проекта (`Alfa156.Android/alfa156-upload.keystore`). Если на телефоне уже стоит KiloLedger (или прежняя сборка) со **старой** подписью или другим `ApplicationId`, Android откажет в обновлении поверх: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый APK и при необходимости импортируйте ZIP.
+Сборки из GitHub Actions подписываются постоянным ключом проекта (`KiloLedger.Android/kiloledger-upload.keystore`). Если на телефоне уже стоит KiloLedger (или прежняя сборка) со **старой** подписью или другим `ApplicationId`, Android откажет в обновлении поверх: сначала сделайте **Данные → Экспорт ZIP**, удалите старое приложение, затем установите новый APK и при необходимости импортируйте ZIP.
 
 Если установка пишет «приложение не установлено» без обновления поверх старого: разрешите установку из браузера/«Мои файлы», скачайте APK заново (файл ~4 МБ) и ставьте на 64‑битный телефон (Samsung Galaxy S23+ и новее).
 

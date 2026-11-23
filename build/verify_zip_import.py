@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> int:
     errors = []
-    path = ROOT / "Alfa156.Desktop/Exchange/ImportPreview.cs"
+    path = ROOT / "KiloLedger.Desktop/Exchange/ImportPreview.cs"
     source = path.read_text(encoding="utf-8")
     for token in (
         "ValidateZipEntries(archive)",

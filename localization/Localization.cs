@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Alfa156.Localization
+namespace KiloLedger.Localization
 {
     /// <summary>Система локализации для KiloLedger (i18n)</summary>
     public class LocalizationManager

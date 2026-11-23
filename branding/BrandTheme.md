@@ -1,4 +1,4 @@
-# Alfa 156 — общий визуальный стиль
+# KiloLedger — общий визуальный стиль
 
 Единый облик КПК, Android и ПК.
 
@@ -14,15 +14,15 @@
 
 ## Логотип
 
-Источник: `Alfa156/Alfa156/Alfa156.ico` (красный круг с машинкой).
+Источник: `KiloLedger/KiloLedger/KiloLedger.ico` (красный круг с машинкой).
 
 Копии:
 
-- `branding/Alfa156.ico`, `branding/logo-*.png`
-- КПК: `Alfa156/Alfa156/Alfa156.ico`
+- `branding/KiloLedger.ico`, `branding/logo-*.png`
+- КПК: `KiloLedger/KiloLedger/KiloLedger.ico`
 - Android: `Resources/mipmap-*/ic_launcher(.png|_round.png)`, `drawable/icon.png`
-- Desktop: `Alfa156.Desktop/Alfa156.ico`
+- Desktop: `KiloLedger.Desktop/KiloLedger.ico`
 
 ## Название
 
-Везде: **Alfa 156** (ярлык, заголовок окна, Label приложения).
+Везде: **KiloLedger** (ярлык, заголовок окна, Label приложения).

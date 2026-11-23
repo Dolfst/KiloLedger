@@ -82,9 +82,9 @@ def main() -> int:
 
     # Layout contract across platforms
     for rel in (
-        "Alfa156/Alfa156/DataStore.cs",
-        "Alfa156.Android/ExpenseDataCodec.cs",
-        "Alfa156.Desktop/Data/AlfaCodec.cs",
+        "KiloLedger/KiloLedger/DataStore.cs",
+        "KiloLedger.Android/ExpenseDataCodec.cs",
+        "KiloLedger.Desktop/Data/KiloLedgerCodec.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for needle in (
@@ -98,8 +98,8 @@ def main() -> int:
                 errors.append(f"{rel}: missing {needle!r}")
 
     for rel in (
-        "Alfa156.Android/ExpenseDataCodec.cs",
-        "Alfa156.Desktop/Data/AlfaCodec.cs",
+        "KiloLedger.Android/ExpenseDataCodec.cs",
+        "KiloLedger.Desktop/Data/KiloLedgerCodec.cs",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for needle in (
@@ -114,11 +114,11 @@ def main() -> int:
                 errors.append(f"{rel}: missing {needle!r}")
 
     # Desktop must keep purpose+station on normalize (not truncate at 8)
-    repo = (ROOT / "Alfa156.Desktop/Data/AlfaRepository.cs").read_text(encoding="utf-8")
+    repo = (ROOT / "KiloLedger.Desktop/Data/KiloLedgerRepository.cs").read_text(encoding="utf-8")
     if "if (length > 10)" not in repo and "length > 10" not in repo:
-        errors.append("AlfaRepository.NormalizeFuelRow: expected max content length 10")
+        errors.append("KiloLedgerRepository.NormalizeFuelRow: expected max content length 10")
     if "NormalizeStation" not in repo:
-        errors.append("AlfaRepository.NormalizeFuelRow: missing NormalizeStation")
+        errors.append("KiloLedgerRepository.NormalizeFuelRow: missing NormalizeStation")
 
     # Sample rows covering legacy → modern layouts
     samples = [

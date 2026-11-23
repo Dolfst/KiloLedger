@@ -25,9 +25,9 @@ def main() -> int:
         errors.append(f"VERSION expected >= 1.26.0, got {version!r}")
 
     for rel in (
-        "Alfa156/Alfa156/DateReminders.cs",
-        "Alfa156.Android/DateReminders.cs",
-        "Alfa156.Desktop/Data/DateReminders.cs",
+        "KiloLedger/KiloLedger/DateReminders.cs",
+        "KiloLedger.Android/DateReminders.cs",
+        "KiloLedger.Desktop/Data/DateReminders.cs",
     ):
         text = (ROOT / rel).read_text()
         for needle in (
@@ -43,9 +43,9 @@ def main() -> int:
                 errors.append(f"{rel}: missing {needle!r}")
 
     for rel in (
-        "Alfa156/Alfa156/ToSettings.cs",
-        "Alfa156.Android/ToSettings.cs",
-        "Alfa156.Desktop/Data/ToSettings.cs",
+        "KiloLedger/KiloLedger/ToSettings.cs",
+        "KiloLedger.Android/ToSettings.cs",
+        "KiloLedger.Desktop/Data/ToSettings.cs",
     ):
         text = (ROOT / rel).read_text()
         if 'ReminderWarnDaysKey = "reminder_warn_days"' not in text:
@@ -58,9 +58,9 @@ def main() -> int:
             errors.append(f"{rel}: reminder warning days must be an integer")
 
     for rel in (
-        "Alfa156/Alfa156/RecordIds.cs",
-        "Alfa156.Android/RecordIds.cs",
-        "Alfa156.Desktop/Data/RecordIds.cs",
+        "KiloLedger/KiloLedger/RecordIds.cs",
+        "KiloLedger.Android/RecordIds.cs",
+        "KiloLedger.Desktop/Data/RecordIds.cs",
     ):
         text = (ROOT / rel).read_text()
         if 'TypeReminder = "reminder"' not in text:
@@ -69,7 +69,7 @@ def main() -> int:
                 'reminders.dat") return "n_"' not in text:
             errors.append(f"{rel}: missing n_ prefix for reminders")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
     for needle in (
         "ManageDateReminders",
         "RefreshDateReminderNotifications",
@@ -83,9 +83,9 @@ def main() -> int:
         errors.append(f"Android MainActivity: missing version {version}")
 
     for rel in (
-        "Alfa156/Alfa156/DateReminders.cs",
-        "Alfa156.Android/DateReminders.cs",
-        "Alfa156.Desktop/Data/DateReminders.cs",
+        "KiloLedger/KiloLedger/DateReminders.cs",
+        "KiloLedger.Android/DateReminders.cs",
+        "KiloLedger.Desktop/Data/DateReminders.cs",
     ):
         text = (ROOT / rel).read_text()
         if 'lower == "osago"' not in text or 'lower == "осago"' not in text:
@@ -95,7 +95,7 @@ def main() -> int:
         if "не более 80 символов" not in text:
             errors.append(f"{rel}: reminder titles must not be silently truncated")
 
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
     for needle in (
         "AddDateReminder",
         "DeleteDateReminder",
@@ -107,7 +107,7 @@ def main() -> int:
     if f'AppVersion = "{version}"' not in desktop:
         errors.append(f"Desktop MainForm: missing AppVersion {version}")
 
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text()
     for needle in (
         "ManageRemindersFromMenu",
         "Напоминания",
@@ -118,11 +118,11 @@ def main() -> int:
             errors.append(f"KPK Form1: missing {needle!r}")
 
     for rel, needle in (
-        ("Alfa156.Android/ExpenseDataCodec.cs", "RemindersFile"),
-        ("Alfa156.Desktop/Data/AlfaCodec.cs", "RemindersFile"),
-        ("Alfa156/Alfa156/DataStore.cs", "RemindersFile"),
-        ("Alfa156.Android/ExpenseSyncService.cs", "RemindersFile"),
-        ("Alfa156/Alfa156/SyncMerge.cs", "reminders.dat"),
+        ("KiloLedger.Android/ExpenseDataCodec.cs", "RemindersFile"),
+        ("KiloLedger.Desktop/Data/KiloLedgerCodec.cs", "RemindersFile"),
+        ("KiloLedger/KiloLedger/DataStore.cs", "RemindersFile"),
+        ("KiloLedger.Android/ExpenseSyncService.cs", "RemindersFile"),
+        ("KiloLedger/KiloLedger/SyncMerge.cs", "reminders.dat"),
         ("build/build-kpk.ps1", "DateReminders.cs"),
     ):
         if needle not in (ROOT / rel).read_text():

@@ -1,0 +1,16 @@
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\bin\Release\KiloLedger.exe
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\bin\Release\KiloLedger.pdb
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Release\ResolveAssemblyReference.cache
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Release\CarExpenses.Form1.resources
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Release\KiloLedger.Properties.Resources.resources
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Release\KiloLedger.csproj.GenerateResource.Cache
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Release\KiloLedger.exe
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Release\KiloLedger.pdb
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\bin\Release\KiloLedger.exe
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\bin\Release\KiloLedger.pdb
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\obj\Release\ResolveAssemblyReference.cache
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\obj\Release\CarExpenses.Form1.resources
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\obj\Release\KiloLedger.Properties.Resources.resources
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\obj\Release\KiloLedger.csproj.GenerateResource.Cache
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\obj\Release\KiloLedger.exe
+c:\Users\DIGMA PRO\Projects\alfa\KiloLedger\KiloLedger\obj\Release\KiloLedger.pdb

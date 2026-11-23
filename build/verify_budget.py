@@ -26,9 +26,9 @@ def main() -> int:
         errors.append(f"VERSION expected >= 1.22.0, got {version!r}")
 
     for rel in (
-        "Alfa156/Alfa156/ToSettings.cs",
-        "Alfa156.Android/ToSettings.cs",
-        "Alfa156.Desktop/Data/ToSettings.cs",
+        "KiloLedger/KiloLedger/ToSettings.cs",
+        "KiloLedger.Android/ToSettings.cs",
+        "KiloLedger.Desktop/Data/ToSettings.cs",
     ):
         text = (ROOT / rel).read_text()
         if 'BudgetMonthKey = "budget_month"' not in text:
@@ -40,7 +40,7 @@ def main() -> int:
         if "GetBudgetMonth" not in text or "SetBudget" not in text:
             errors.append(f"{rel}: missing GetBudgetMonth/SetBudget")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
     for needle in (
         'BudgetChannelId = "budget"',
         "RefreshBudgetNotification",
@@ -51,7 +51,7 @@ def main() -> int:
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
 
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
     for needle in (
         "budgetBox",
         "SaveBudget",
@@ -62,7 +62,7 @@ def main() -> int:
     if 'AppVersion = "' not in desktop:
         errors.append("Desktop MainForm: missing AppVersion")
 
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text()
     for needle in (
         "EditBudget",
         "FormatBudgetBlock",
@@ -78,8 +78,8 @@ def main() -> int:
         errors.append("README: История версий should cover 1.9.0 → 1.22.0+")
 
     for rel in (
-        "Alfa156.Android/DataIntegrity.cs",
-        "Alfa156.Desktop/Data/DataIntegrity.cs",
+        "KiloLedger.Android/DataIntegrity.cs",
+        "KiloLedger.Desktop/Data/DataIntegrity.cs",
     ):
         text = (ROOT / rel).read_text()
         if "не указана ни одна сумма" not in text:

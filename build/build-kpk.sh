@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT="$ROOT/Alfa156/Alfa156"
+PROJECT="$ROOT/KiloLedger/KiloLedger"
 CF_DIR="$ROOT/build/cf35/WindowsCE"
 CONFIG="${1:-Release}"
 OUT_DIR="${2:-$PROJECT/bin/$CONFIG}"
@@ -45,7 +45,7 @@ done
 mkdir -p "$OUT_DIR" "$OBJ_DIR"
 
 "$RESGEN" "$PROJECT/Form1.resx" "$OBJ_DIR/CarExpenses.Form1.resources"
-"$RESGEN" "$PROJECT/Properties/Resources.resx" "$OBJ_DIR/Alfa156.Properties.Resources.resources"
+"$RESGEN" "$PROJECT/Properties/Resources.resx" "$OBJ_DIR/KiloLedger.Properties.Resources.resources"
 
 SOURCES=(
   "$PROJECT/Form1.cs"
@@ -78,13 +78,13 @@ ARGS=(
   -noconfig
   -target:winexe
   -platform:anycpu
-  "-out:$OUT_DIR/Alfa156.exe"
-  "-win32icon:$PROJECT/Alfa156.ico"
+  "-out:$OUT_DIR/KiloLedger.exe"
+  "-win32icon:$PROJECT/KiloLedger.ico"
   "-resource:$OBJ_DIR/CarExpenses.Form1.resources,CarExpenses.Form1.resources"
-  "-resource:$OBJ_DIR/Alfa156.Properties.Resources.resources,Alfa156.Properties.Resources.resources"
-  "-resource:$PROJECT/SeedData/Repairs.seed,Alfa156.SeedData.Repairs.seed"
-  "-resource:$PROJECT/SeedData/Utilities.seed,Alfa156.SeedData.Utilities.seed"
-  "-resource:$PROJECT/SeedData/Vehicles.seed,Alfa156.SeedData.Vehicles.seed"
+  "-resource:$OBJ_DIR/KiloLedger.Properties.Resources.resources,KiloLedger.Properties.Resources.resources"
+  "-resource:$PROJECT/SeedData/Repairs.seed,KiloLedger.SeedData.Repairs.seed"
+  "-resource:$PROJECT/SeedData/Utilities.seed,KiloLedger.SeedData.Utilities.seed"
+  "-resource:$PROJECT/SeedData/Vehicles.seed,KiloLedger.SeedData.Vehicles.seed"
   "-resource:$PROJECT/resources/strings.ru.json,strings.ru.json"
   "-resource:$PROJECT/resources/strings.en.json,strings.en.json"
   "-resource:$PROJECT/resources/strings.es.json,strings.es.json"
@@ -104,4 +104,4 @@ done
 
 "$MCS" "${ARGS[@]}" "${SOURCES[@]}"
 
-echo "Built $OUT_DIR/Alfa156.exe"
+echo "Built $OUT_DIR/KiloLedger.exe"

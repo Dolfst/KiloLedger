@@ -38,10 +38,10 @@ KiloLedger Desktop / Android ←→ Google Apps Script ←→ Google Sheets
 
 ![Пустой проект Apps Script с кодом по умолчанию](google-sync/screenshots/scr%20%283%29.png)
 
-3. Скопируйте весь код из [`google-sync/Alfa156Sync.gs`](google-sync/Alfa156Sync.gs)
+3. Скопируйте весь код из [`google-sync/KiloLedgerSync.gs`](google-sync/KiloLedgerSync.gs)
 4. Вставьте код в редактор `Код.gs` и сохраните проект (значок дискеты или `Ctrl+S`)
 
-![Редактор Apps Script со вставленным кодом Alfa156Sync.gs](google-sync/screenshots/scr%20%284%29.png)
+![Редактор Apps Script со вставленным кодом KiloLedgerSync.gs](google-sync/screenshots/scr%20%284%29.png)
 
 ### Шаг 3: Настройте секретный токен (`SYNC_TOKEN`)
 
@@ -120,7 +120,7 @@ Apps Script автоматически создаёт следующие лис�
 
 ## Обновление скрипта
 
-После обновления кода [`google-sync/Alfa156Sync.gs`](google-sync/Alfa156Sync.gs) обязательно сделайте **Начать развертывание → Управление развертываниями → Изменить → Новая версия → Начать развертывание**, иначе на сервере останется старая версия скрипта.
+После обновления кода [`google-sync/KiloLedgerSync.gs`](google-sync/KiloLedgerSync.gs) обязательно сделайте **Начать развертывание → Управление развертываниями → Изменить → Новая версия → Начать развертывание**, иначе на сервере останется старая версия скрипта.
 
 ## Безопасность
 
@@ -131,7 +131,7 @@ Apps Script автоматически создаёт следующие лис�
 ## Поддержка
 
 - **Подробная инструкция**: [`google-sync/README.md`](google-sync/README.md)
-- **Код скрипта**: [`google-sync/Alfa156Sync.gs`](google-sync/Alfa156Sync.gs)
+- **Код скрипта**: [`google-sync/KiloLedgerSync.gs`](google-sync/KiloLedgerSync.gs)
 - **Документация Google Apps Script**: https://developers.google.com/apps-script
 - **Issues**: https://github.com/Dolfst/alfa/issues
 

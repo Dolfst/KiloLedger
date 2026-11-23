@@ -1,0 +1,8 @@
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Debug\ResolveAssemblyReference.cache
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Debug\CarExpenses.Form1.resources
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Debug\KiloLedger.Properties.Resources.resources
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Debug\KiloLedger.csproj.GenerateResource.Cache
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\bin\Debug\KiloLedger.exe
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\bin\Debug\KiloLedger.pdb
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Debug\KiloLedger.exe
+C:\Documents and Settings\Dzmitriy\Мои документы\Visual Studio 2008\Projects\KiloLedger\KiloLedger\obj\Debug\KiloLedger.pdb

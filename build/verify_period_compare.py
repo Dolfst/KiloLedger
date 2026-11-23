@@ -43,9 +43,9 @@ def main() -> int:
         errors.append(f"VERSION expected >= 1.24.0, got {version!r}")
 
     for rel in (
-        "Alfa156.Android/PeriodCompare.cs",
-        "Alfa156.Desktop/Data/PeriodCompare.cs",
-        "Alfa156/Alfa156/PeriodCompare.cs",
+        "KiloLedger.Android/PeriodCompare.cs",
+        "KiloLedger.Desktop/Data/PeriodCompare.cs",
+        "KiloLedger/KiloLedger/PeriodCompare.cs",
     ):
         text = (ROOT / rel).read_text()
         for needle in (
@@ -59,7 +59,7 @@ def main() -> int:
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
 
-    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
+    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompare",
@@ -70,7 +70,7 @@ def main() -> int:
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
 
-    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
+    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompare",
@@ -80,11 +80,11 @@ def main() -> int:
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
 
-    desktop_csproj = (ROOT / "Alfa156.Desktop/Alfa156.Desktop.csproj").read_text()
+    desktop_csproj = (ROOT / "KiloLedger.Desktop/KiloLedger.Desktop.csproj").read_text()
     if "PeriodCompare.cs" not in desktop_csproj:
         errors.append("Desktop csproj: PeriodCompare.cs not listed")
 
-    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
+    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text()
     for needle in (
         "Сравнить периоды",
         "ShowPeriodCompareFromMenu",
@@ -93,11 +93,11 @@ def main() -> int:
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
 
-    kpk_csproj = (ROOT / "Alfa156/Alfa156/Alfa156.csproj").read_text()
+    kpk_csproj = (ROOT / "KiloLedger/KiloLedger/KiloLedger.csproj").read_text()
     if "PeriodCompare.cs" not in kpk_csproj:
         errors.append("KPK csproj: PeriodCompare.cs not listed")
 
-    kpk_pc = (ROOT / "Alfa156/Alfa156/PeriodCompare.cs").read_text()
+    kpk_pc = (ROOT / "KiloLedger/KiloLedger/PeriodCompare.cs").read_text()
     if "namespace CarExpenses" not in kpk_pc:
         errors.append("KPK PeriodCompare: must use namespace CarExpenses (CF build)")
     if "Decimal.TryParse" in kpk_pc:
@@ -109,7 +109,7 @@ def main() -> int:
     if "PeriodCompare.cs" not in build_kpk:
         errors.append("build-kpk.ps1: PeriodCompare.cs not in sources")
 
-    android_csproj = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
+    android_csproj = (ROOT / "KiloLedger.Android/KiloLedger.Android.csproj").read_text()
     if version not in android_csproj:
         errors.append(f"Android csproj: missing ApplicationDisplayVersion {version}")
 
