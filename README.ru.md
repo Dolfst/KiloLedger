@@ -281,8 +281,10 @@ Workflow **Smoke verifies** на GitHub Actions запускает этот на
 
 KiloLedger бесплатный и без рекламы. Репозиторий — [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger). Экран «О программе» по-прежнему открывает `https://github.com/Dolfst/alfa#support`; GitHub перенаправляет этот адрес сюда, на якорь `#support` английского [`README.md`](README.md). Этот раздел его повторяет.
 
+**[Поддержать проект на Boosty](https://boosty.to/kiloledger)**
+
 - Поставьте звезду [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger), если проект полезен.
-- Ссылок на платную поддержку (Boosty, Tribute, ЮMoney) в репозитории пока нет. Добавьте их в раздел Support английского README, когда выберете. Приложения уже открывают этот якорь.
+- Boosty: https://boosty.to/kiloledger — та же ссылка у кнопки Sponsor на GitHub (`.github/FUNDING.yml`).
 
 Замечания: [github.com/Dolfst/KiloLedger/issues](https://github.com/Dolfst/KiloLedger/issues).
 

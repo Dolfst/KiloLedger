@@ -277,8 +277,10 @@ Version 1.39.3 is the current line. Recent desktop work (1.38.3–1.39.3) rework
 
 KiloLedger is free and has no ads. This repository is [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger). The in-app About screen still opens `https://github.com/Dolfst/alfa#support`; GitHub redirects that address here, to `#support` on the English README.
 
+**[Support the project on Boosty](https://boosty.to/kiloledger)**
+
 - Star [Dolfst/KiloLedger](https://github.com/Dolfst/KiloLedger) if the project is useful to you.
-- Paid support links (Boosty, Tribute, YooMoney) are not in the repository yet. Add them in this section when you choose them. The apps already point at this anchor.
+- Boosty: https://boosty.to/kiloledger — the Sponsor button on GitHub uses the same address (`.github/FUNDING.yml`).
 
 Issues: [github.com/Dolfst/KiloLedger/issues](https://github.com/Dolfst/KiloLedger/issues).
 
