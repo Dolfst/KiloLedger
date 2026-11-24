@@ -14,7 +14,7 @@
   - Система готова к использованию
 
 - **ЭТАП 2 (6d6ebca)**: Локализация Desktop главного меню
-  - Добавлена инструкция `using KiloLedger.Localization`
+  - Добавлена инструкция `using Alfa156.Localization`
   - Заменены основные кнопки на `L10n.Get()`
   - ~30% кнопок в главном меню локализировано
 
@@ -65,7 +65,7 @@
 Для создания Pull Request:
 ```bash
 # На GitHub веб-интерфейсе:
-# 1. Перейти на https://github.com/Dolfst/KiloLedger
+# 1. Перейти на https://github.com/Dolfst/alfa
 # 2. Нажать "New pull request"
 # 3. Выбрать base: main, compare: localization
 # 4. Заполнить название и описание PR
@@ -156,16 +156,16 @@ localization/
 │   └── strings.de.json                 # TODO: Немецкий
 └── LOCALIZATION.md                      # Документация
 
-KiloLedger.Desktop/
+Alfa156.Desktop/
 ├── Localization.cs                      # Скопировано из localization/
 ├── resources/                           # Скопировано из localization/
 └── MainForm.cs                          # ~30% локализировано
 
-KiloLedger.Android/
+Alfa156.Android/
 ├── Localization.cs                      # Копия готова
 └── resources/                           # Копия готова
 
-KiloLedger/KiloLedger/
+Alfa156/Alfa156/
 ├── Localization.cs                      # Копия готова
 └── resources/                           # Копия готова
 ```
@@ -188,5 +188,5 @@ KiloLedger/KiloLedger/
 
 Если нужны вопросы по система локализации:
 - Прочитайте `localization/LOCALIZATION.md`
-- Посмотрите на примеры в `KiloLedger.Desktop/MainForm.cs`
+- Посмотрите на примеры в `Alfa156.Desktop/MainForm.cs`
 - Используйте этот файл как roadmap для продолжения

@@ -25,9 +25,9 @@ def main() -> int:
         errors.append(f"VERSION expected >= 1.33.0, got {version!r}")
 
     for rel in (
-        "KiloLedger/KiloLedger/PeriodCompare.cs",
-        "KiloLedger.Android/PeriodCompare.cs",
-        "KiloLedger.Desktop/Data/PeriodCompare.cs",
+        "Alfa156/Alfa156/PeriodCompare.cs",
+        "Alfa156.Android/PeriodCompare.cs",
+        "Alfa156.Desktop/Data/PeriodCompare.cs",
     ):
         text = (ROOT / rel).read_text()
         for needle in (
@@ -48,9 +48,9 @@ def main() -> int:
                 errors.append(f"{rel}: missing {needle!r}")
 
     for rel in (
-        "KiloLedger.Android/PeriodReport.cs",
-        "KiloLedger.Desktop/Data/PeriodReport.cs",
-        "KiloLedger/KiloLedger/PeriodReport.cs",
+        "Alfa156.Android/PeriodReport.cs",
+        "Alfa156.Desktop/Data/PeriodReport.cs",
+        "Alfa156/Alfa156/PeriodReport.cs",
     ):
         text = (ROOT / rel).read_text()
         for needle in (
@@ -75,15 +75,15 @@ def main() -> int:
             if needle not in text:
                 errors.append(f"{rel}: missing {needle!r}")
 
-    android_report = (ROOT / "KiloLedger.Android/PeriodReport.cs").read_text()
+    android_report = (ROOT / "Alfa156.Android/PeriodReport.cs").read_text()
     if "FormatHtml" not in android_report:
         errors.append("Android PeriodReport: missing FormatHtml")
 
-    desktop_report = (ROOT / "KiloLedger.Desktop/Data/PeriodReport.cs").read_text()
+    desktop_report = (ROOT / "Alfa156.Desktop/Data/PeriodReport.cs").read_text()
     if "FormatHtml" not in desktop_report:
         errors.append("Desktop PeriodReport: missing FormatHtml")
 
-    kpk_report = (ROOT / "KiloLedger/KiloLedger/PeriodReport.cs").read_text()
+    kpk_report = (ROOT / "Alfa156/Alfa156/PeriodReport.cs").read_text()
     if "namespace CarExpenses" not in kpk_report:
         errors.append("KPK PeriodReport: must use namespace CarExpenses (CF build)")
     if "Decimal.TryParse" in kpk_report:
@@ -91,7 +91,7 @@ def main() -> int:
     if "FormatHtml" not in kpk_report:
         errors.append("KPK PeriodReport: missing FormatHtml")
 
-    android = (ROOT / "KiloLedger.Android/MainActivity.cs").read_text()
+    android = (ROOT / "Alfa156.Android/MainActivity.cs").read_text()
     for needle in (
         "Отчёт за период",
         "ShowPeriodReport",
@@ -103,7 +103,7 @@ def main() -> int:
         if needle not in android:
             errors.append(f"Android MainActivity: missing {needle!r}")
 
-    desktop = (ROOT / "KiloLedger.Desktop/MainForm.cs").read_text()
+    desktop = (ROOT / "Alfa156.Desktop/MainForm.cs").read_text()
     for needle in (
         "button.period_report",
         "ShowPeriodReport",
@@ -116,11 +116,11 @@ def main() -> int:
         if needle not in desktop:
             errors.append(f"Desktop MainForm: missing {needle!r}")
 
-    desktop_csproj = (ROOT / "KiloLedger.Desktop/KiloLedger.Desktop.csproj").read_text()
+    desktop_csproj = (ROOT / "Alfa156.Desktop/Alfa156.Desktop.csproj").read_text()
     if "PeriodReport.cs" not in desktop_csproj:
         errors.append("Desktop csproj: PeriodReport.cs not listed")
 
-    kpk = (ROOT / "KiloLedger/KiloLedger/Form1.cs").read_text()
+    kpk = (ROOT / "Alfa156/Alfa156/Form1.cs").read_text()
     for needle in (
         "Отчёт за период",
         "ExportPeriodReportFromMenu",
@@ -131,7 +131,7 @@ def main() -> int:
         if needle not in kpk:
             errors.append(f"KPK Form1: missing {needle!r}")
 
-    kpk_csproj = (ROOT / "KiloLedger/KiloLedger/KiloLedger.csproj").read_text()
+    kpk_csproj = (ROOT / "Alfa156/Alfa156/Alfa156.csproj").read_text()
     if "PeriodReport.cs" not in kpk_csproj:
         errors.append("KPK csproj: PeriodReport.cs not listed")
 
@@ -139,11 +139,11 @@ def main() -> int:
     if "PeriodReport.cs" not in build_kpk:
         errors.append("build-kpk.ps1: PeriodReport.cs not in sources")
 
-    android_csproj = (ROOT / "KiloLedger.Android/KiloLedger.Android.csproj").read_text()
+    android_csproj = (ROOT / "Alfa156.Android/Alfa156.Android.csproj").read_text()
     if version not in android_csproj:
         errors.append(f"Android csproj: missing ApplicationDisplayVersion {version}")
 
-    readme = (ROOT / "README.ru.md").read_text()
+    readme = (ROOT / "README.md").read_text()
     if f"## Что нового в {version}" not in readme:
         errors.append(f"README: missing Что нового в {version}")
     if f"**{version}**" not in readme:

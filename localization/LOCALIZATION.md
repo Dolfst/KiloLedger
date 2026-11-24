@@ -1,8 +1,8 @@
 # Система локализации KiloLedger (i18n)
 
-Эта заметка описывает ранний набросок. С версии **1.38.0** языки `ru`, `en`, `es`, `fr` и `de` уже встроены в Desktop, Android и КПК (словари в `KiloLedger.Desktop/resources/`, `KiloLedger.Android/Assets/` и `KiloLedger/KiloLedger/resources/`). Актуальный обзор — [`README.ru.md`](../README.ru.md). Ниже сохранён исходный план, он не отражает текущий статус фаз.
+Эта ветка содержит работу по добавлению поддержки нескольких языков в приложение KiloLedger.
 
-## Статус (исторический набросок)
+## Статус
 
 - ✅ **Фаза 1**: Базовая структура локализации
   - Создан класс `LocalizationManager` для управления переводами
@@ -35,7 +35,7 @@ localization/
 ### В коде C#
 
 ```csharp
-using KiloLedger.Localization;
+using Alfa156.Localization;
 
 // Получить переведенную строку
 string title = L10n.Get("app.title");
