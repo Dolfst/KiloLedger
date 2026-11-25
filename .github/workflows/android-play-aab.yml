@@ -121,14 +121,13 @@ jobs:
           fi
           test -s "${RUNNER_TEMP}/play-upload.keystore"
 
-      - name: Build signed Google Play AAB (arm64 + arm)
+      - name: Build signed Google Play AAB (multi-ABI)
         env:
           KILOLEDGER_KEYSTORE_PATH: ${{ runner.temp }}/play-upload.keystore
         run: >-
           dotnet build KiloLedger.Android/KiloLedger.Android.csproj
           -c Release
           -p:AndroidPackageFormat=aab
-          -p:RuntimeIdentifiers="android-arm64%3Bandroid-arm"
           -p:ApplicationVersion=${{ steps.ver.outputs.version_code }}
           -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }}
           -p:AndroidSdkDirectory="$ANDROID_HOME"
