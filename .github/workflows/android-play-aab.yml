@@ -1,0 +1,158 @@
+name: Android Play AAB
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "KiloLedger.Android/**"
+      - "VERSION"
+      - ".github/workflows/android-play-aab.yml"
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "Optional Android versionCode override (must strictly increase in Google Play)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-play-aab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Read version and compute versionCode
+        id: ver
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          override="${{ github.event.inputs.version_code }}"
+          if [ -n "$override" ]; then
+            version_code="$override"
+          else
+            IFS='.' read -r maj min pat <<< "$version"
+            version_code=$((10#$maj * 10000 + 10#$min * 100 + 10#$pat))
+          fi
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: microsoft
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          set +o pipefail
+          sdk_path="$(command -v sdkmanager || true)"
+          if [ -z "$sdk_path" ]; then
+            sdk_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          if [ ! -x "$sdk_path" ]; then
+            sdk_path="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
+          fi
+          if [ ! -x "$sdk_path" ]; then
+            echo "sdkmanager not found" >&2
+            exit 1
+          fi
+          yes | "$sdk_path" --licenses >/dev/null || true
+          set -o pipefail
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Install Android build dependencies
+        run: >-
+          dotnet build KiloLedger.Android/KiloLedger.Android.csproj
+          -t:InstallAndroidDependencies
+          -f net10.0-android
+          -p:AndroidSdkDirectory="$ANDROID_HOME"
+          -p:JavaSdkDirectory="$JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True
+
+      - name: Resolve and decode signing keystore
+        id: sign
+        env:
+          PLAY_KEYSTORE_BASE64: ${{ secrets.PLAY_KEYSTORE_BASE64 }}
+          PLAY_KEYSTORE_PASSWORD: ${{ secrets.PLAY_KEYSTORE_PASSWORD }}
+          PLAY_KEY_ALIAS: ${{ secrets.PLAY_KEY_ALIAS }}
+          PLAY_KEY_PASSWORD: ${{ secrets.PLAY_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PLAY_KEYSTORE_BASE64" ] && [ -n "$PLAY_KEYSTORE_PASSWORD" ] && [ -n "$PLAY_KEY_ALIAS" ] && [ -n "$PLAY_KEY_PASSWORD" ]; then
+            echo "Using dedicated Google Play upload keystore (PLAY_KEYSTORE_*)"
+            echo "$PLAY_KEYSTORE_BASE64" | base64 -d > "${RUNNER_TEMP}/play-upload.keystore"
+            echo "KILOLEDGER_KEYSTORE_PASSWORD=$PLAY_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KILOLEDGER_KEY_ALIAS=$PLAY_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "KILOLEDGER_KEY_PASSWORD=$PLAY_KEY_PASSWORD" >> "$GITHUB_ENV"
+          elif [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "Using repository Android upload keystore (ANDROID_KEYSTORE_*)"
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "${RUNNER_TEMP}/play-upload.keystore"
+            echo "KILOLEDGER_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KILOLEDGER_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "KILOLEDGER_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "Signing secrets are missing. Configure PLAY_KEYSTORE_* or ANDROID_KEYSTORE_* in GitHub Secrets." >&2
+            exit 1
+          fi
+          test -s "${RUNNER_TEMP}/play-upload.keystore"
+
+      - name: Build signed Google Play AAB (arm64 + arm)
+        env:
+          KILOLEDGER_KEYSTORE_PATH: ${{ runner.temp }}/play-upload.keystore
+        run: >-
+          dotnet build KiloLedger.Android/KiloLedger.Android.csproj
+          -c Release
+          -p:AndroidPackageFormat=aab
+          -p:RuntimeIdentifiers="android-arm64%3Bandroid-arm"
+          -p:ApplicationVersion=${{ steps.ver.outputs.version_code }}
+          -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }}
+          -p:AndroidSdkDirectory="$ANDROID_HOME"
+          -p:JavaSdkDirectory="$JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True
+
+      - name: Package AAB artifact
+        run: |
+          set -euo pipefail
+          version="${{ steps.ver.outputs.version }}"
+          vc="${{ steps.ver.outputs.version_code }}"
+          signed="$(find KiloLedger.Android/bin/Release -name '*-Signed.aab' | head -n 1)"
+          if [ -z "$signed" ]; then
+            echo "Signed AAB not found" >&2
+            find KiloLedger.Android/bin/Release -name '*.aab' -print >&2 || true
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/aab-out"
+          cp "$signed" "$RUNNER_TEMP/aab-out/KiloLedger-${version}-vc${vc}.aab"
+          ls -lh "$RUNNER_TEMP/aab-out"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KiloLedger-${{ steps.ver.outputs.version }}-vc${{ steps.ver.outputs.version_code }}-aab
+          path: ${{ runner.temp }}/aab-out/*.aab
+          retention-days: 30

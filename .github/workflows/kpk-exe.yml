@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "Alfa156/Alfa156/**"
+      - "KiloLedger/KiloLedger/**"
       - "build/cf35/**"
       - "build/build-kpk.ps1"
       - "VERSION"
@@ -50,32 +50,34 @@ jobs:
           $exeName = "KiloLedger-$version-KPK.exe"
           $zipName = "KiloLedger-$version-KPK.zip"
 
-          $exe = "Alfa156/Alfa156/bin/Release/Alfa156.exe"
+          $exe = "KiloLedger/KiloLedger/bin/Release/KiloLedger.exe"
           if (-not (Test-Path $exe)) { throw "KPK exe not found" }
 
-          New-Item -ItemType Directory -Path dist/download, dist/Alfa156-KPK -Force | Out-Null
+          New-Item -ItemType Directory -Path dist/download, dist/KiloLedger-KPK -Force | Out-Null
           Copy-Item $exe "dist/download/$exeName" -Force
-          Copy-Item $exe "dist/Alfa156-KPK/Alfa156.exe" -Force
+          Copy-Item $exe "dist/KiloLedger-KPK/KiloLedger.exe" -Force
 
           # Drop obj dirt so rebase/push is clean; keep freshly built exe for bin/.
-          git checkout -- "Alfa156/Alfa156/obj" 2>$null
-          git clean -fd "Alfa156/Alfa156/obj" 2>$null
-          Copy-Item "dist/download/$exeName" "Alfa156/Alfa156/bin/Release/Alfa156.exe" -Force
+          git checkout -- "KiloLedger/KiloLedger/obj" 2>$null
+          git clean -fd "KiloLedger/KiloLedger/obj" 2>$null
+          Copy-Item "dist/download/$exeName" "KiloLedger/KiloLedger/bin/Release/KiloLedger.exe" -Force
 
           $cab = "build/cf35/NETCFv35.wm.armv4i.cab"
           if (Test-Path $cab) {
-            Copy-Item $cab "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab" -Force
+            Copy-Item $cab "dist/KiloLedger-KPK/NETCFv35.wm.armv4i.cab" -Force
           }
 
-          if (Test-Path "dist/Alfa156-KPK.zip") { Remove-Item "dist/Alfa156-KPK.zip" -Force }
-          Compress-Archive -Path "dist/Alfa156-KPK/*" -DestinationPath "dist/Alfa156-KPK.zip" -Force
-          Copy-Item "dist/Alfa156-KPK.zip" "dist/download/$zipName" -Force
+          if (Test-Path "dist/KiloLedger-KPK.zip") { Remove-Item "dist/KiloLedger-KPK.zip" -Force }
+          Compress-Archive -Path "dist/KiloLedger-KPK/*" -DestinationPath "dist/KiloLedger-KPK.zip" -Force
+          Copy-Item "dist/KiloLedger-KPK.zip" "dist/download/$zipName" -Force
 
           # Remove old unversioned + other versioned KPK download assets.
           Get-ChildItem dist/download -File | Where-Object {
             $_.Name -ne $exeName -and $_.Name -ne $zipName -and (
               $_.Name -eq "Alfa156-KPK.exe" -or
               $_.Name -eq "Alfa156-KPK.zip" -or
+              $_.Name -eq "KiloLedger-KPK.exe" -or
+              $_.Name -eq "KiloLedger-KPK.zip" -or
               $_.Name -match '^(Alfa156|KiloLedger)-.+-KPK\.(exe|zip)$'
             )
           } | Remove-Item -Force
@@ -101,10 +103,10 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "dist/download/$exeName" "dist/download/$zipName" dist/Alfa156-KPK/Alfa156.exe dist/Alfa156-KPK.zip Alfa156/Alfa156/bin/Release/Alfa156.exe
+          git add "dist/download/$exeName" "dist/download/$zipName" dist/KiloLedger-KPK/KiloLedger.exe dist/KiloLedger-KPK.zip KiloLedger/KiloLedger/bin/Release/KiloLedger.exe
           git add -u dist/download
-          if (Test-Path "dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab") { git add dist/Alfa156-KPK/NETCFv35.wm.armv4i.cab }
-          if (Test-Path "dist/Alfa156-KPK/README-KPK.txt") { git add dist/Alfa156-KPK/README-KPK.txt }
+          if (Test-Path "dist/KiloLedger-KPK/NETCFv35.wm.armv4i.cab") { git add dist/KiloLedger-KPK/NETCFv35.wm.armv4i.cab }
+          if (Test-Path "dist/KiloLedger-KPK/README-KPK.txt") { git add dist/KiloLedger-KPK/README-KPK.txt }
 
           if (git diff --cached --quiet) {
             Write-Host "KPK exe unchanged"

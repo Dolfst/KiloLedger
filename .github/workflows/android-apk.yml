@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "Alfa156.Android/**"
+      - "KiloLedger.Android/**"
       - "VERSION"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
@@ -74,16 +74,48 @@ jobs:
 
       - name: Install Android build dependencies
         run: >-
-          dotnet build Alfa156.Android/Alfa156.Android.csproj
+          dotnet build KiloLedger.Android/KiloLedger.Android.csproj
           -t:InstallAndroidDependencies
           -f net10.0-android
           -p:AndroidSdkDirectory="$ANDROID_HOME"
           -p:JavaSdkDirectory="$JAVA_HOME"
           -p:AcceptAndroidSDKLicenses=True
 
+      - name: Require Android signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=
+          [ -z "${ANDROID_KEYSTORE_BASE64}" ] && missing="${missing} ANDROID_KEYSTORE_BASE64"
+          [ -z "${ANDROID_KEYSTORE_PASSWORD}" ] && missing="${missing} ANDROID_KEYSTORE_PASSWORD"
+          [ -z "${ANDROID_KEY_ALIAS}" ] && missing="${missing} ANDROID_KEY_ALIAS"
+          [ -z "${ANDROID_KEY_PASSWORD}" ] && missing="${missing} ANDROID_KEY_PASSWORD"
+          if [ -n "${missing}" ]; then
+            echo "Release signing secrets are not configured:${missing}" >&2
+            echo "Set the four GitHub Actions secrets named above. This job does not publish an unsigned APK." >&2
+            exit 1
+          fi
+
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          echo "${ANDROID_KEYSTORE_BASE64}" | base64 -d > "${RUNNER_TEMP}/kiloledger-upload.keystore"
+          test -s "${RUNNER_TEMP}/kiloledger-upload.keystore"
+
       - name: Build ARM64 APK
+        env:
+          KILOLEDGER_KEYSTORE_PATH: ${{ runner.temp }}/kiloledger-upload.keystore
+          KILOLEDGER_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KILOLEDGER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KILOLEDGER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >-
-          dotnet build Alfa156.Android/Alfa156.Android.csproj
+          dotnet build KiloLedger.Android/KiloLedger.Android.csproj
           -c Release
           -p:RuntimeIdentifier=android-arm64
           -p:ApplicationVersion=${{ steps.android-version.outputs.version_code }}
@@ -99,10 +131,10 @@ jobs:
           version="${{ steps.ver.outputs.version }}"
           apk_name="KiloLedger-${version}.apk"
           apk_path="$RUNNER_TEMP/$apk_name"
-          signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
+          signed="$(find KiloLedger.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
           if [ -z "$signed" ]; then
             echo "Signed APK not found" >&2
-            find Alfa156.Android/bin/Release -name '*.apk' -print >&2 || true
+            find KiloLedger.Android/bin/Release -name '*.apk' -print >&2 || true
             exit 1
           fi
           cp "$signed" "$apk_path"
@@ -112,6 +144,7 @@ jobs:
               --title "KiloLedger ${version} — Android" \
               --notes "Automatically updated Android ARM64 build ${version} (run #${{ github.run_number }})."
             gh release delete-asset android-latest "Alfa156-${version}.apk" --yes >/dev/null 2>&1 || true
+            gh release delete-asset android-latest "KiloLedger-${version}.apk" --yes >/dev/null 2>&1 || true
             gh release upload android-latest "$apk_path" --clobber
           else
             gh release create android-latest "$apk_path" \
@@ -127,7 +160,7 @@ jobs:
         run: |
           version="${{ steps.ver.outputs.version }}"
           apk_name="KiloLedger-${version}.apk"
-          signed="$(find Alfa156.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
+          signed="$(find KiloLedger.Android/bin/Release -name '*-Signed.apk' | head -n 1)"
           mkdir -p dist/download
           cp "$signed" "dist/download/$apk_name"
 
@@ -135,6 +168,7 @@ jobs:
           find dist/download -maxdepth 1 -type f \( \
             -name 'Alfa156.apk' -o \
             -name 'Alfa156-*.apk' -o \
+            -name 'KiloLedger.apk' -o \
             -name 'KiloLedger-*.apk' \
           \) ! -name "$apk_name" -delete
 
