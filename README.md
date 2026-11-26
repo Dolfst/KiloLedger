@@ -8,7 +8,7 @@
 
 KiloLedger keeps fuel, service, other car costs, and household utility bills for one or more vehicles. A Windows PC, an Android phone, and a Windows Mobile handheld share the same text files, the same version number, and the same red-circle logo. The apps work offline. Cloud sync is optional and uses a Google Sheet that you host yourself.
 
-Current version: **1.39.3**, from [`VERSION`](VERSION). Ready-to-run builds are in [`dist/download`](dist/download).
+Current version: **1.39.3**, from [`VERSION`](VERSION). Download ready-to-run builds from **[GitHub Releases](https://github.com/Dolfst/KiloLedger/releases)** (mirrors are also stored in [`dist/download`](dist/download)).
 
 The product name is **KiloLedger**. Project folders and namespaces are `KiloLedger`. The Android application id is `com.kiloledger.app`.
 
@@ -93,16 +93,16 @@ Smoke checks need Python 3. CI uses Python 3.12. They do not need a device or an
 
 ### Published builds
 
-Version **1.39.3** in [`dist/download`](dist/download):
+Version **1.39.3** — download directly from **[GitHub Releases](https://github.com/Dolfst/KiloLedger/releases)** (or [`dist/download`](dist/download)):
 
-| File | Platform |
-| --- | --- |
-| `KiloLedger-1.39.3.apk` | Android ARM64 |
-| `KiloLedger-1.39.3-Desktop.exe` | Windows PC |
-| `KiloLedger-1.39.3-KPK.exe` | Windows Mobile |
-| `KiloLedger-1.39.3-KPK.zip` | Handheld package (app and CF 3.5 CAB) |
+| File | Platform | Direct Release |
+| --- | --- | --- |
+| `KiloLedger-1.39.3.apk` | Android ARM64 | [`android-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest) |
+| `KiloLedger-1.39.3-Desktop.exe` | Windows PC | [`desktop-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest) |
+| `KiloLedger-1.39.3-KPK.exe` | Windows Mobile | [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest) |
+| `KiloLedger-1.39.3-KPK.zip` | Handheld package (app and CF 3.5 CAB) | [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest) |
 
-The same files are also attached to the rolling GitHub releases [`android-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest), and [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest). Workflows **Android APK**, **Desktop EXE**, and **KPK EXE** rebuild them on pushes that touch the matching project or `VERSION`, and they can be started by hand from the Actions tab.
+Workflows **Android APK**, **Desktop EXE**, and **KPK EXE** rebuild these rolling releases on pushes that touch the matching project or `VERSION`, and they can be started by hand from the Actions tab.
 
 On the handheld, run the new `KiloLedger-<version>-KPK.exe` once. It rewrites the Start-menu shortcut so it points at that build.
 

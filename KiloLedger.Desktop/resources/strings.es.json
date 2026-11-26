@@ -1257,5 +1257,8 @@
   "about.platforms_line": "Plataformas: Windows PC, Android y Windows Mobile (PDA)",
   "about.website_label": "Sitio del proyecto y código fuente:",
   "about.support_hint": "La aplicación es totalmente gratuita y sin anuncios. Si te ahorra tiempo, puedes apoyar su desarrollo:",
-  "about.support_url_note": "Opciones y enlaces de apoyo:\nhttps://github.com/Dolfst/alfa#support"
+  "about.support_url_note": "Opciones y enlaces de apoyo:\nhttps://github.com/Dolfst/alfa#support",
+  "title.downloads_folder_warning": "Ejecución desde Descargas",
+  "msg.downloads_folder_warning": "KiloLedger se inició desde la carpeta Descargas. Para no borrarlo por error al limpiar Descargas, mueve KiloLedger.Desktop.exe a una carpeta propia (p. ej. C:\\KiloLedger).\n\nPor defecto, la base de datos se guarda en Documentos\\KiloLedger.",
+  "msg.downloads_create_confirm": "Está creando la base de datos dentro de Descargas. Si limpia esta carpeta más adelante, podría perder sus registros.\n\n¿Crear la base aquí de todos modos?"
 }

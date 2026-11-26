@@ -1257,5 +1257,8 @@
   "about.platforms_line": "Plattformen: Windows PC, Android & Windows Mobile (PDA)",
   "about.website_label": "Projektwebsite & Quellcode:",
   "about.support_hint": "Die App ist völlig kostenlos und werbefrei. Wenn sie Ihnen Zeit spart, können Sie die Entwicklung unterstützen:",
-  "about.support_url_note": "Unterstützungsoptionen und Links:\nhttps://github.com/Dolfst/alfa#support"
+  "about.support_url_note": "Unterstützungsoptionen und Links:\nhttps://github.com/Dolfst/alfa#support",
+  "title.downloads_folder_warning": "Start aus dem Downloads-Ordner",
+  "msg.downloads_folder_warning": "KiloLedger wurde aus dem Downloads-Ordner gestartet. Verschieben Sie KiloLedger.Desktop.exe in einen eigenen Ordner (z. B. C:\\KiloLedger), um ein versehentliches Löschen zu vermeiden.\n\nIhre Datenbank wird standardmäßig unter Dokumente\\KiloLedger gespeichert.",
+  "msg.downloads_create_confirm": "Sie erstellen eine Datenbank im Downloads-Ordner. Beim Aufräumen könnten Ihre Daten gelöscht werden.\n\nDatenbank trotzdem hier erstellen?"
 }

@@ -8,7 +8,7 @@
 
 KiloLedger ведёт заправки, ремонт, прочие расходы на машину и коммунальные платежи для одного или нескольких автомобилей. Компьютер на Windows, телефон на Android и КПК на Windows Mobile используют одни и те же текстовые файлы, один номер версии и общий логотип — красный круг с машинкой. Приложения работают без сети. Облако необязательно: это ваша собственная таблица Google.
 
-Текущая версия: **1.39.3**, файл [`VERSION`](VERSION). Готовые сборки лежат в [`dist/download`](dist/download).
+Текущая версия: **1.39.3**, файл [`VERSION`](VERSION). Скачать готовые сборки проще всего со страницы **[Releases на GitHub](https://github.com/Dolfst/KiloLedger/releases)** (копии также лежат в [`dist/download`](dist/download)).
 
 ## Что нового в 1.39.3
 
@@ -97,16 +97,16 @@ Smoke-проверкам нужен Python 3. В CI стоит Python 3.12. Ус
 
 ### Готовые сборки
 
-Версия **1.39.3** в [`dist/download`](dist/download):
+Версия **1.39.3** — прямые ссылки на **[GitHub Releases](https://github.com/Dolfst/KiloLedger/releases)** (также есть в [`dist/download`](dist/download)):
 
-| Файл | Платформа |
-| --- | --- |
-| `KiloLedger-1.39.3.apk` | Android ARM64 |
-| `KiloLedger-1.39.3-Desktop.exe` | Windows, ПК |
-| `KiloLedger-1.39.3-KPK.exe` | Windows Mobile |
-| `KiloLedger-1.39.3-KPK.zip` | пакет КПК (приложение и CAB CF 3.5) |
+| Файл | Платформа | Страница релиза |
+| --- | --- | --- |
+| `KiloLedger-1.39.3.apk` | Android ARM64 | [`android-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest) |
+| `KiloLedger-1.39.3-Desktop.exe` | Windows, ПК | [`desktop-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest) |
+| `KiloLedger-1.39.3-KPK.exe` | Windows Mobile | [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest) |
+| `KiloLedger-1.39.3-KPK.zip` | пакет КПК (приложение и CAB CF 3.5) | [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest) |
 
-Те же файлы прикреплены к скользящим релизам [`android-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/android-latest), [`desktop-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/desktop-latest) и [`kpk-latest`](https://github.com/Dolfst/KiloLedger/releases/tag/kpk-latest). Workflow **Android APK**, **Desktop EXE** и **KPK EXE** пересобирают их при push в соответствующий проект или в `VERSION`. Их можно запустить вручную на вкладке Actions.
+Workflow **Android APK**, **Desktop EXE** и **KPK EXE** автоматически пересобирают эти релизы при push в соответствующий проект или в `VERSION`. Их можно запустить вручную на вкладке Actions.
 
 На КПК новый `KiloLedger-<версия>-KPK.exe` нужно один раз запустить. Он переписывает ярлык в меню «Пуск», чтобы тот указывал на эту сборку.
 

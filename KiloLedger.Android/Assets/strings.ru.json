@@ -1257,5 +1257,8 @@
   "about.platforms_line": "Платформы: Windows ПК, Android и Windows Mobile (КПК)",
   "about.website_label": "Сайт проекта и исходный код:",
   "about.support_hint": "Приложение полностью бесплатно и без рекламы. Если оно экономит вам время, вы можете поддержать развитие проекта:",
-  "about.support_url_note": "Страница поддержки и ссылки:\nhttps://github.com/Dolfst/alfa#support"
+  "about.support_url_note": "Страница поддержки и ссылки:\nhttps://github.com/Dolfst/alfa#support",
+  "title.downloads_folder_warning": "Запуск из папки «Загрузки»",
+  "msg.downloads_folder_warning": "Программа запущена из папки «Загрузки». Чтобы случайно не удалить её при очистке загрузок, перенесите KiloLedger.Desktop.exe в отдельную папку (например, C:\\KiloLedger).\n\nБаза данных по умолчанию сохраняется в «Документы\\KiloLedger» и не зависит от расположения .exe.",
+  "msg.downloads_create_confirm": "Вы создаёте базу данных внутри папки «Загрузки». При очистке этой папки записи могут быть удалены.\n\nВсё равно создать базу здесь?"
 }

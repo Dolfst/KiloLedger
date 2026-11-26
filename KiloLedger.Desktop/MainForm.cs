@@ -517,6 +517,7 @@ namespace KiloLedger.Desktop
                     UpdateSaveDirtyVisual();
                     statusLabel.Text = L10n.Get("hint.open_folder_or_zip");
                 }
+                MaybeWarnRunningFromDownloads();
             };
         }
 
@@ -588,6 +589,72 @@ namespace KiloLedger.Desktop
                 if (!String.IsNullOrEmpty(dir))
                     Directory.CreateDirectory(dir);
                 File.WriteAllText(path, lang.Trim().ToLowerInvariant(), Encoding.UTF8);
+            }
+            catch { }
+        }
+
+        private static string DownloadsTipFilePath()
+        {
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            return Path.Combine(Path.Combine(appDataPath, "KiloLedger"), "downloads_tip_seen.txt");
+        }
+
+        private static bool IsInDownloadsFolder(string folderPath)
+        {
+            if (String.IsNullOrWhiteSpace(folderPath))
+                return false;
+            try
+            {
+                string normalized = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                if (!String.IsNullOrEmpty(profile))
+                {
+                    string userDownloads = Path.GetFullPath(Path.Combine(profile, "Downloads"))
+                        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    if (String.Equals(normalized, userDownloads, StringComparison.OrdinalIgnoreCase) ||
+                        normalized.StartsWith(userDownloads + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                string[] parts = normalized.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    if (String.Equals(parts[i], "Downloads", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(parts[i], "Загрузки", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private void MaybeWarnRunningFromDownloads()
+        {
+            try
+            {
+                string startupDir = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (!IsInDownloadsFolder(startupDir))
+                    return;
+                string flagPath = DownloadsTipFilePath();
+                if (File.Exists(flagPath))
+                {
+                    string seenPath = (File.ReadAllText(flagPath, Encoding.UTF8) ?? "").Trim();
+                    if (String.Equals(seenPath, startupDir, StringComparison.OrdinalIgnoreCase))
+                        return;
+                }
+                MessageBox.Show(this,
+                    L10n.Get("msg.downloads_folder_warning"),
+                    L10n.Get("title.downloads_folder_warning"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                string dir = Path.GetDirectoryName(flagPath);
+                if (!String.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+                File.WriteAllText(flagPath, startupDir, Encoding.UTF8);
             }
             catch { }
         }
@@ -3407,6 +3474,17 @@ namespace KiloLedger.Desktop
                     return;
                 try
                 {
+                    if (IsInDownloadsFolder(dialog.SelectedPath))
+                    {
+                        if (MessageBox.Show(this,
+                            L10n.Get("msg.downloads_create_confirm"),
+                            L10n.Get("title.downloads_folder_warning"),
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning) != DialogResult.Yes)
+                        {
+                            return;
+                        }
+                    }
                     string target = Path.Combine(dialog.SelectedPath, "KiloLedger");
                     repository.CreateNew(target);
                     BindAll();

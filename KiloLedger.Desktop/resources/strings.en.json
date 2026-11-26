@@ -1257,5 +1257,8 @@
   "about.platforms_line": "Platforms: Windows PC, Android & Windows Mobile (PDA)",
   "about.website_label": "Project website & source code:",
   "about.support_hint": "The app is completely free and ad-free. If it saves you time, you can support its development:",
-  "about.support_url_note": "Support options and links:\nhttps://github.com/Dolfst/alfa#support"
+  "about.support_url_note": "Support options and links:\nhttps://github.com/Dolfst/alfa#support",
+  "title.downloads_folder_warning": "Running from Downloads folder",
+  "msg.downloads_folder_warning": "KiloLedger was launched from your Downloads folder. To avoid accidentally deleting it when cleaning Downloads, move KiloLedger.Desktop.exe to its own folder (e.g. C:\\KiloLedger).\n\nYour database is stored in Documents\\KiloLedger by default and stays safe regardless of where the .exe is located.",
+  "msg.downloads_create_confirm": "You are creating a database inside the Downloads folder. Cleaning Downloads later could delete your records.\n\nCreate the database here anyway?"
 }
