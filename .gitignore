@@ -1,10 +1,10 @@
 # Build output
-/KiloLedger.Android/bin/
-/KiloLedger.Android/obj/
-/KiloLedger.Desktop/bin/
-/KiloLedger.Desktop/obj/
-/KiloLedger/KiloLedger/bin/
-/KiloLedger/KiloLedger/obj/
+/Alfa156.Android/bin/
+/Alfa156.Android/obj/
+/Alfa156.Desktop/bin/
+/Alfa156.Desktop/obj/
+/Alfa156/Alfa156/bin/
+/Alfa156/Alfa156/obj/
 *.SdkResolver.*.proj.Backup.tmp
 
 # User data and local configuration
@@ -32,8 +32,6 @@ My Documents/
 *secret*
 *credential*
 *auth*
-*.keystore
-*.jks
 
 # Local development
 local/

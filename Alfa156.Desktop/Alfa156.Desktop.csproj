@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B7E5A156-0D35-4C2B-9A71-A1F6156D0001}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Alfa156.Desktop</RootNamespace>
+    <AssemblyName>Alfa156.Desktop</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <ApplicationIcon>Alfa156.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Data\AlfaCodec.cs" />
+    <Compile Include="Data\AlfaRepository.cs" />
+    <Compile Include="Data\CarsMeta.cs" />
+    <Compile Include="Data\RecordTemplates.cs" />
+    <Compile Include="Data\DateReminders.cs" />
+    <Compile Include="Data\CarNotes.cs" />
+    <Compile Include="Data\ReceiptStore.cs" />
+    <Compile Include="Data\RecordIds.cs" />
+    <Compile Include="Data\DuplicateFinder.cs" />
+    <Compile Include="Data\CarCompare.cs" />
+    <Compile Include="Data\PeriodCompare.cs" />
+    <Compile Include="Data\PeriodReport.cs" />
+    <Compile Include="Data\ForecastInsights.cs" />
+    <Compile Include="Data\DataIntegrity.cs" />
+    <Compile Include="Data\SyncMerge.cs" />
+    <Compile Include="Data\ToSettings.cs" />
+    <Compile Include="Exchange\CsvExchange.cs" />
+    <Compile Include="Exchange\DengiFormat.cs" />
+    <Compile Include="Exchange\GoogleSyncClient.cs" />
+    <Compile Include="Exchange\ImportPreview.cs" />
+    <Compile Include="Exchange\XlsxExchange.cs" />
+    <Compile Include="GoogleSyncWizardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ImportWizardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MonthlyChartPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SyncOptionsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Localization.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Alfa156.ico" />
+    <EmbeddedResource Include="Alfa156.ico">
+      <LogicalName>Alfa156.ico</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.ru.json">
+      <LogicalName>strings.ru.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.en.json">
+      <LogicalName>strings.en.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.es.json">
+      <LogicalName>strings.es.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.fr.json">
+      <LogicalName>strings.fr.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\strings.de.json">
+      <LogicalName>strings.de.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

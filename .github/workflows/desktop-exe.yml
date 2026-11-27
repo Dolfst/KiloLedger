@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "KiloLedger.Desktop/**"
+      - "Alfa156.Desktop/**"
       - "VERSION"
       - ".github/workflows/desktop-exe.yml"
   workflow_dispatch:
@@ -36,7 +36,7 @@ jobs:
 
       - name: Build Desktop Release
         run: >
-          msbuild KiloLedger.Desktop/KiloLedger.Desktop.csproj
+          msbuild Alfa156.Desktop/Alfa156.Desktop.csproj
           /p:Configuration=Release
           /p:Platform=AnyCPU
           /t:Rebuild
@@ -53,17 +53,16 @@ jobs:
           if (-not $version) { throw "VERSION is empty" }
           $exeName = "KiloLedger-$version-Desktop.exe"
 
-          $exe = Get-ChildItem "KiloLedger.Desktop/bin/Release/KiloLedger.Desktop.exe" | Select-Object -First 1
+          $exe = Get-ChildItem "Alfa156.Desktop/bin/Release/Alfa156.Desktop.exe" | Select-Object -First 1
           if (-not $exe) { throw "Desktop exe not found" }
           New-Item -ItemType Directory -Path dist/download -Force | Out-Null
           Copy-Item $exe.FullName "dist/download/$exeName" -Force
-          Copy-Item $exe.FullName "dist/KiloLedger-Desktop/KiloLedger.Desktop.exe" -Force -ErrorAction SilentlyContinue
+          Copy-Item $exe.FullName "dist/Alfa156-Desktop/Alfa156.Desktop.exe" -Force -ErrorAction SilentlyContinue
 
           # Remove old unversioned + other versioned Desktop download assets.
           Get-ChildItem dist/download -File | Where-Object {
             $_.Name -ne $exeName -and (
               $_.Name -eq "Alfa156.Desktop.exe" -or
-              $_.Name -eq "KiloLedger.Desktop.exe" -or
               $_.Name -match '^(Alfa156|KiloLedger)-.+-Desktop\.exe$'
             )
           } | Remove-Item -Force
@@ -89,8 +88,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "dist/download/$exeName"
           git add -u dist/download
-          if (Test-Path "dist/KiloLedger-Desktop/KiloLedger.Desktop.exe") {
-            git add dist/KiloLedger-Desktop/KiloLedger.Desktop.exe
+          if (Test-Path "dist/Alfa156-Desktop/Alfa156.Desktop.exe") {
+            git add dist/Alfa156-Desktop/Alfa156.Desktop.exe
           }
           if (git diff --cached --quiet) {
             Write-Host "Desktop exe unchanged"

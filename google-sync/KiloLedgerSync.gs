@@ -24,7 +24,6 @@ var UTILITIES_SHEET = 'Коммунальные';
 var CATEGORIES_SHEET = 'Справочник';
 var EXPENSE_CATEGORIES_SHEET = 'Кат. прочих';
 var DEFAULT_CAR = 'Мой автомобиль';
-var dateNumberWarnings_ = [];
 
 // Для standalone Apps Script можно задать SPREADSHEET_ID в Script Properties (или здесь).
 // Если скрипт открыт через Расширения → Apps Script из таблицы, таблица определяется автоматически.
@@ -80,7 +79,6 @@ function assertToken_(token) {
 }
 
 function exportSnapshot_() {
-  dateNumberWarnings_ = [];
   var ss = getSs_();
   var cars = [];
   var fuel = [];
@@ -105,7 +103,7 @@ function exportSnapshot_() {
   }
   if (cars.length === 0) cars.push([DEFAULT_CAR]);
 
-  var snapshot = {
+  return {
     cars: cars,
     fuel: fuel,
     repairs: repairs,
@@ -114,9 +112,6 @@ function exportSnapshot_() {
     expenses: expenses,
     expenseCategories: readExpenseCategories_(ss)
   };
-  if (dateNumberWarnings_.length)
-    snapshot.dateNumberWarnings = dateNumberWarnings_.slice(0, 30);
-  return snapshot;
 }
 
 function importSnapshot_(data) {
@@ -151,21 +146,19 @@ function importSnapshot_(data) {
 }
 
 function readFuel_(sheet, car) {
-  var grid = readGrid_(sheet);
-  var values = grid.values;
-  var display = grid.display;
-  var formats = grid.formats;
+  var values = sheet.getDataRange().getValues();
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
   for (var r = 1; r < values.length; r++) {
     var date = normalizeDate_(values[r][0], display[r][0]);
     if (!date) continue;
-    var km = measure_(values[r][1], display[r][1], formats[r][1], sheet, r, 1);
-    var liters = measure_(values[r][2], display[r][2], formats[r][2], sheet, r, 2);
-    var cost = measure_(values[r][3], display[r][3], formats[r][3], sheet, r, 3);
+    var km = num_(display[r][1]);
+    var liters = num_(display[r][2]);
+    var cost = num_(display[r][3]);
+    if (!km && !liters && !cost) continue;
     // Колонки: Дата | Пробег | Литры | Стоимость | [Расход] | [Цена за литр] | [Комментарий]
     // Новые поля — с индекса 5 (после «Расход на 100км»), старые листы без них остаются 5-полевыми.
-    var price = display[r].length > 5 ? measure_(values[r][5], display[r][5], formats[r][5], sheet, r, 5) : '';
-    if (!km && !liters && !cost) continue;
+    var price = display[r].length > 5 ? num_(display[r][5]) : '';
     var comment = display[r].length > 6 ? clean_(display[r][6]) : '';
     if (price || comment)
       rows.push([date, car, km, liters, cost, price, comment]);
@@ -176,27 +169,25 @@ function readFuel_(sheet, car) {
 }
 
 function readRepairs_(sheet, car) {
-  var grid = readGrid_(sheet);
-  var values = grid.values;
-  var display = grid.display;
-  var formats = grid.formats;
+  var values = sheet.getDataRange().getValues();
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
   for (var r = 1; r < values.length; r++) {
     var date = normalizeDate_(values[r][0], display[r][0]);
     if (!date) continue;
     var product = clean_(display[r][3]);
     var description = clean_(display[r][4]);
-    var sum = measure_(values[r][6], display[r][6], formats[r][6], sheet, r, 6);
+    var sum = num_(display[r][6]);
     // пропускаем совсем пустые хвосты
     if (!product && !description && !sum && !clean_(display[r][2])) continue;
     rows.push([
       date,
       car,
-      measure_(values[r][1], display[r][1], formats[r][1], sheet, r, 1),
+      num_(display[r][1]),
       String(display[r][2] || '').trim(),
       product,
       description,
-      measure_(values[r][5], display[r][5], formats[r][5], sheet, r, 5) || '1',
+      num_(display[r][5]) || '1',
       sum,
       clean_(display[r][7])
     ]);
@@ -207,17 +198,21 @@ function readRepairs_(sheet, car) {
 function readUtilities_(ss) {
   var sheet = ss.getSheetByName(UTILITIES_SHEET);
   if (!sheet) return [];
-  var grid = readGrid_(sheet);
-  var values = grid.values;
-  var display = grid.display;
-  var formats = grid.formats;
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
   for (var r = 1; r < display.length; r++) {
     var month = normalizeMonth_(display[r][0]);
     if (!month) continue;
-    var row = [month];
-    for (var c = 1; c <= 7; c++)
-      row.push(measure_(values[r][c], display[r][c], formats[r][c], sheet, r, c));
+    var row = [
+      month,
+      num_(display[r][1]),
+      num_(display[r][2]),
+      num_(display[r][3]),
+      num_(display[r][4]),
+      num_(display[r][5]),
+      num_(display[r][6]),
+      num_(display[r][7])
+    ];
     var any = false;
     for (var c = 1; c < 8; c++) if (row[c]) { any = true; break; }
     if (!any) continue;
@@ -242,17 +237,15 @@ function readCategories_(ss) {
 }
 
 function readExpenses_(sheet, car) {
-  var grid = readGrid_(sheet);
-  var values = grid.values;
-  var display = grid.display;
-  var formats = grid.formats;
+  var values = sheet.getDataRange().getValues();
+  var display = sheet.getDataRange().getDisplayValues();
   var rows = [];
   for (var r = 1; r < values.length; r++) {
     var date = normalizeDate_(values[r][0], display[r][0]);
     if (!date) continue;
     var category = clean_(display[r][1]);
     var title = clean_(display[r][2]);
-    var sum = measure_(values[r][3], display[r][3], formats[r][3], sheet, r, 3);
+    var sum = num_(display[r][3]);
     var comment = display[r].length > 4 ? clean_(display[r][4]) : '';
     if (!category && !title && !sum && !comment) continue;
     rows.push([date, car, category, title, sum, comment]);
@@ -483,136 +476,6 @@ function monthToRu_(ym) {
   if (idx < 0 || idx > 11) return ym;
   return MONTHS_RU[idx] + ' ' + m[1];
 }
-
-function readGrid_(sheet) {
-  var range = sheet.getDataRange();
-  return {
-    values: range.getValues(),
-    display: range.getDisplayValues(),
-    formats: range.getNumberFormats()
-  };
-}
-
-function measure_(value, display, format, sheet, rowIndex, colIndex) {
-  var result = classifyMeasure_(value, display, format);
-  if (result.kind === 'ambiguous') {
-    rememberDateWarning_(sheet, rowIndex, colIndex, display, value);
-    return '';
-  }
-  if (result.kind === 'recovered') return result.text;
-  return num_(display != null && display !== '' ? display : value);
-}
-
-function rememberDateWarning_(sheet, rowIndex, colIndex, display, value) {
-  if (dateNumberWarnings_.length >= 30) return;
-  var shown = display != null && String(display).trim() ? String(display).trim() : String(value);
-  var name = sheet && sheet.getName ? sheet.getName() : '';
-  dateNumberWarnings_.push(name + '!' + colLetter_(colIndex) + (rowIndex + 1) + ': ' + shown);
-}
-
-function colLetter_(index) {
-  var n = index + 1;
-  var s = '';
-  while (n > 0) {
-    var rem = (n - 1) % 26;
-    s = String.fromCharCode(65 + rem) + s;
-    n = Math.floor((n - 1) / 26);
-  }
-  return s;
-}
-
-// BEGIN dengi-date-number
-function formatDayMonth_(day, month) {
-  var scale = month >= 10 ? 100 : 10;
-  return String(day + month / scale);
-}
-
-function isDayMonthFormat_(formatCode) {
-  if (formatCode == null) return false;
-  var stripped = String(formatCode).replace(/"[^"]*"/g, '').replace(/\[[^\]]*\]/g, '');
-  return /[dD]/.test(stripped);
-}
-
-function classifyMeasure_(value, display, format) {
-  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return finishCalendar_(
-      value.getFullYear(),
-      value.getMonth() + 1,
-      value.getDate(),
-      value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0
-    );
-  }
-  var text = display == null ? '' : String(display).trim();
-  if (!text && typeof value === 'string') text = value.trim();
-  if (text.charAt(0) === '#') return { kind: 'not-date' };
-  if (text) {
-    var parsed = parseDateText_(text);
-    if (parsed) return finishCalendar_(parsed.year, parsed.month, parsed.day, parsed.hasTime);
-  }
-  if (isDayMonthFormat_(format)) {
-    var serial = typeof value === 'number' && isFinite(value) ? value : parseSerial_(typeof value === 'string' ? value : text);
-    if (serial != null && serial > 20000 && serial < 80000) return finishSerial_(serial);
-    if (serial != null) return { kind: 'not-date' };
-    if (text) return { kind: 'ambiguous' };
-  }
-  return { kind: 'not-date' };
-}
-
-function finishSerial_(serial) {
-  var whole = Math.floor(serial);
-  var frac = serial - whole;
-  if (frac > 0.000001 && (1 - frac) > 0.000001) return { kind: 'ambiguous' };
-  var ms = Date.UTC(1899, 11, 30) + whole * 86400000;
-  var date = new Date(ms);
-  return finishCalendar_(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), false);
-}
-
-function finishCalendar_(year, month, day, hasTime) {
-  if (hasTime || year < 1980 || year > 2100 || !isRealDay_(year, month, day))
-    return { kind: 'ambiguous' };
-  return { kind: 'recovered', text: formatDayMonth_(day, month) };
-}
-
-function isRealDay_(year, month, day) {
-  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
-  var probe = new Date(year, month - 1, day);
-  return probe.getFullYear() === year && probe.getMonth() === month - 1 && probe.getDate() === day;
-}
-
-function parseDateText_(raw) {
-  var dmy = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(raw);
-  if (dmy) {
-    return {
-      year: parseInt(dmy[3], 10),
-      month: parseInt(dmy[2], 10),
-      day: parseInt(dmy[1], 10),
-      hasTime: clockSet_(dmy[4], dmy[5], dmy[6])
-    };
-  }
-  var iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.exec(raw);
-  if (!iso) return null;
-  return {
-    year: parseInt(iso[1], 10),
-    month: parseInt(iso[2], 10),
-    day: parseInt(iso[3], 10),
-    hasTime: clockSet_(iso[4], iso[5], iso[6])
-  };
-}
-
-function clockSet_(hour, minute, second) {
-  if (hour == null || hour === '') return false;
-  return parseInt(hour, 10) !== 0 || parseInt(minute, 10) !== 0 || parseInt(second || '0', 10) !== 0;
-}
-
-function parseSerial_(raw) {
-  if (raw == null) return null;
-  var text = String(raw).trim().replace(',', '.');
-  if (!text || text.charAt(0) === '#') return null;
-  if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
-  var n = Number(text);
-  return isNaN(n) ? null : n;
-}
-// END dengi-date-number
 
 function num_(value) {
   var s = String(value == null ? '' : value).trim();
